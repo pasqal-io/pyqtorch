@@ -1,5 +1,5 @@
 import torch
-from pyqtorch.utils import apply_gate, apply_batch_gate
+from pyqtorch.core.utils import _apply_gate, _apply_batch_gate
 
 
 IMAT = torch.eye(2, dtype=torch.cdouble)
@@ -12,21 +12,21 @@ def RX(theta, state, qubits, N_qubits):
     dev = state.device
     mat = IMAT.to(dev) * torch.cos(theta/2) -\
         1j * XMAT.to(dev) * torch.sin(theta/2)
-    return apply_gate(state, mat, qubits, N_qubits)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def RY(theta, state, qubits, N_qubits):
     dev = state.device
     mat = IMAT.to(dev) * torch.cos(theta/2) -\
         1j * YMAT.to(dev) * torch.sin(theta/2)
-    return apply_gate(state, mat, qubits, N_qubits)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def RZ(theta, state, qubits, N_qubits):
     dev = state.device
     mat = IMAT.to(dev) * torch.cos(theta/2) +\
         1j * ZMAT.to(dev) * torch.sin(theta/2)
-    return apply_gate(state, mat, qubits, N_qubits)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def U(phi, theta, omega, state, qubits, N_qubits):
@@ -42,25 +42,32 @@ def U(phi, theta, omega, state, qubits, N_qubits):
         * torch.sin(theta/2) * t_minus + \
         torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).to(dev) \
         * torch.cos(theta/2) * torch.conj(t_plus)
-    return apply_gate(state, mat, qubits, N_qubits)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def X(state, qubits, N_qubits):
     dev = state.device
     mat = XMAT.to(dev)
-    return apply_gate(state, mat, qubits, N_qubits)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def Z(state, qubits, N_qubits):
     dev = state.device
     mat = ZMAT.to(dev)
-    return apply_gate(state, mat, qubits, N_qubits)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def Y(state, qubits, N_qubits):
     dev = state.device
     mat = YMAT.to(dev)
-    return apply_gate(state, mat, qubits, N_qubits)
+    return _apply_gate(state, mat, qubits, N_qubits)
+
+
+def H(state, qubits, N_qubits):
+    dev = state.device
+    mat = 1 / torch.sqrt(torch.tensor(2)) * \
+        torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble).to(dev)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def CNOT(state, qubits, N_qubits):
@@ -68,7 +75,7 @@ def CNOT(state, qubits, N_qubits):
     mat = torch.tensor([[1, 0, 0, 0], [0, 1, 0, 0],
                         [0, 0, 0, 1], [0, 0, 1, 0]],
                         dtype=torch.cdouble).to(dev)
-    return apply_gate(state, mat, qubits, N_qubits)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def batchedRX(theta, state, qubits, N_qubits):
@@ -85,4 +92,4 @@ def batchedRX(theta, state, qubits, N_qubits):
 
     mat = cos_t * imat - 1j * sin_t * xmat
 
-    return apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
+    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)

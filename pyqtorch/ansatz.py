@@ -1,11 +1,10 @@
-from turtle import forward
 import torch
 import torch.nn as nn
 import torch.nn.init as init
 import numpy as np
 
-from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.operation import RX, RY, RZ, U, CNOT
+from pyqtorch.core.circuit import QuantumCircuit
+from pyqtorch.core.operation import RX, RY, RZ, U, CNOT
 
 
 class OneLayerRotation(QuantumCircuit):

@@ -1,7 +1,5 @@
-import torch
-
-from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.operation import batchedRX
+from pyqtorch.core.circuit import QuantumCircuit
+from pyqtorch.core.operation import batchedRX
 
 
 class SingleLayerEncoding(QuantumCircuit):

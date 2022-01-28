@@ -5,7 +5,7 @@ from string import ascii_letters as ABC
 ABC_ARRAY = np.array(list(ABC))
 
 
-def apply_gate(state, mat, qubits, N_qubits):
+def _apply_gate(state, mat, qubits, N_qubits):
     '''
     Apply a gate represented by its matrix `mat` to the quantum state
     `state`
@@ -36,7 +36,7 @@ def apply_gate(state, mat, qubits, N_qubits):
     return state
 
 
-def apply_einsum_gate(state, mat, qubits, N_qubits):
+def _apply_einsum_gate(state, mat, qubits, N_qubits):
     '''
     Same as `apply_gate` but with the `torch.einsum` function
 
@@ -76,7 +76,7 @@ def apply_einsum_gate(state, mat, qubits, N_qubits):
     return state
 
 
-def apply_batch_gate(state, mat, qubits, N_qubits, batch_size):
+def _apply_batch_gate(state, mat, qubits, N_qubits, batch_size):
     '''
     Apply a batch execution of gates to a circuit.
     Given an tensor of states [state_0, ... state_b] and
