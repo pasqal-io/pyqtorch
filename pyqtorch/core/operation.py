@@ -93,3 +93,19 @@ def batchedRX(theta, state, qubits, N_qubits):
     mat = cos_t * imat - 1j * sin_t * xmat
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
+
+def batchedRY(theta, state, qubits, N_qubits):
+    dev = state.device
+    batch_size = len(theta)
+
+    cos_t = torch.cos(theta/2).unsqueeze(0).unsqueeze(1)
+    cos_t = cos_t.repeat((2, 2, 1))
+    sin_t = torch.sin(theta/2).unsqueeze(0).unsqueeze(1)
+    sin_t = sin_t.repeat((2, 2, 1))
+
+    imat = IMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
+    xmat = YMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
+
+    mat = cos_t * imat - 1j * sin_t * xmat
+
+    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
