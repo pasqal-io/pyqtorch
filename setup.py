@@ -40,7 +40,7 @@ setup(
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,
-    license="Copyright Qu&Co 2021",
+    license="Apache 2.0",
     classifiers=[
         "License :: Other/Proprietary License",
         "Programming Language :: Python",
