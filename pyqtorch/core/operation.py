@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List
+
 import torch
 from torch import Tensor
 import numpy as np
@@ -26,21 +28,21 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 
 
 @storable
-def RX(theta: float, state: Tensor, qubits: list[int], N_qubits: int):
+def RX(theta: float, state: Tensor, qubits: List[int], N_qubits: int):
     dev = state.device
     mat = IMAT.to(dev) * torch.cos(theta / 2) - 1j * XMAT.to(dev) * torch.sin(theta / 2)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
 @storable
-def RY(theta: float, state: Tensor, qubits: list[int], N_qubits: int):
+def RY(theta: float, state: Tensor, qubits: List[int], N_qubits: int):
     dev = state.device
     mat = IMAT.to(dev) * torch.cos(theta / 2) - 1j * YMAT.to(dev) * torch.sin(theta / 2)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
 @storable
-def RZ(theta: float, state: Tensor, qubits: list[int], N_qubits: int):
+def RZ(theta: float, state: Tensor, qubits: List[int], N_qubits: int):
     dev = state.device
     mat = IMAT.to(dev) * torch.cos(theta / 2) + 1j * ZMAT.to(dev) * torch.sin(theta / 2)
     return _apply_gate(state, mat, qubits, N_qubits)
