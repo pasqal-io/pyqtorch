@@ -14,23 +14,31 @@
 
 import torch
 import torch.nn as nn
+from torch import Tensor
+
+from pyqtorch.core.visualization import visualizer
+
 
 class QuantumCircuit(nn.Module):
-
-    def __init__(self, n_qubits):
-        super(QuantumCircuit, self).__init__()
+    def __init__(self, n_qubits: int) -> None:
+        super().__init__()
         self.n_qubits = n_qubits
 
-    def init_state(self, batch_size=1, device='cpu'):
-        state = torch.zeros((2**self.n_qubits, batch_size),
-                            dtype=torch.cdouble).to(device)
+        # cleanup the circuit visualizer everytime a forward pass is called
+        self.register_forward_pre_hook(visualizer.clear)
+
+    def init_state(self, batch_size: int = 1, device: str = "cpu") -> Tensor:
+        state = torch.zeros((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(
+            device
+        )
         state[0] = 1
         state = state.reshape([2] * self.n_qubits + [batch_size])
         return state
 
-    def uniform_state(self, batch_size=1, device='cpu'):
-        state = torch.ones((2**self.n_qubits, batch_size),
-                            dtype=torch.cdouble).to(device)
+    def uniform_state(self, batch_size: str = 1, device: str = "cpu") -> Tensor:
+        state = torch.ones((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(
+            device
+        )
         state = state / torch.sqrt(torch.tensor(2**self.n_qubits))
         state = state.reshape([2] * self.n_qubits + [batch_size])
         return state
