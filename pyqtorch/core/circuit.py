@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from pyqtorch.core.visualization import visualizer
+from pyqtorch.converters.store_ops import ops_cache
 
 
 class QuantumCircuit(nn.Module):
@@ -25,7 +25,7 @@ class QuantumCircuit(nn.Module):
         self.n_qubits = n_qubits
 
         # cleanup the circuit visualizer everytime a forward pass is called
-        self.register_forward_pre_hook(visualizer.clear)
+        self.register_forward_pre_hook(ops_cache.clear)
 
     def init_state(self, batch_size: int = 1, device: str = "cpu") -> Tensor:
         state = torch.zeros((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(

@@ -9,6 +9,7 @@ license = "Apache 2.0"
 python = "^3.8"
 torch = "^1.12.1"
 openfermion = "^1.5.1"
+qiskit = {version = "^0.39.0", optional = true}
 
 [tool.poetry.dev-dependencies]
 black = "^22.10.0"
@@ -17,6 +18,9 @@ pytest-cov = "^4.0.0"
 flake8 = "^5.0.4"
 pre-commit = "^2.20.0"
 mypy = "^0.982"
+
+[tool.poetry.extras]
+converters = ["qiskit"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

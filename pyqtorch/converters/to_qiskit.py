@@ -22,6 +22,7 @@ gates_map = {
     "x": "x",
     "y": "y",
     "z": "z",
+    "h": "h",
 }
 
 
@@ -45,11 +46,12 @@ def pyq2qiskit(circuit: QuantumCircuit, *args, **kwargs) -> QiskitCircuit:
     _ = circuit(*args, **kwargs)
     assert len(ops_cache.operations) > 0, "Converting to Qiskit an empty circuit"
 
+    # build the Qiskit circuit starting from the list of operations
+    # in the PyQ circuit forward pass
     nqubits = circuit.n_qubits
-
     qr = QuantumRegister(nqubits, "q")
-    # cr = ClassicalRegister(nqubits, "c")
     qiskit_circuit = QiskitCircuit(qr)
+
     for op in ops_cache.operations:
 
         gate_name = gates_map[op.name]
@@ -62,6 +64,7 @@ def pyq2qiskit(circuit: QuantumCircuit, *args, **kwargs) -> QiskitCircuit:
     return qiskit_circuit
 
 
+# TODO: Implement the other way round
 def qiskit2pyq(circuit: QiskitCircuit) -> QuantumCircuit:
     """Convert a circuit built with Qiskit into an equivalent PyQ module
 
@@ -72,38 +75,3 @@ def qiskit2pyq(circuit: QiskitCircuit) -> QuantumCircuit:
         QuantumCircuit: The output PyQ circuit equivalent to the Qiskit input one
     """
     raise NotImplementedError
-
-
-if __name__ == "__main__":
-    import torch
-    import torch.nn as nn
-
-    from pyqtorch.core.circuit import QuantumCircuit
-    from pyqtorch.core.operation import RX, CNOT
-    from pyqtorch.core.measurement import total_magnetization
-
-    class SampleCircuit(QuantumCircuit):
-        def __init__(self, n_qubits: int):
-            super().__init__(n_qubits)
-            self.theta = nn.Parameter(torch.empty((self.n_qubits,)))
-
-        def forward(self):
-
-            # initial state
-            state = self.init_state()
-
-            # rotation gates
-            for i, t in enumerate(self.theta):
-                state = RX(t, state, [i], self.n_qubits)
-
-            # entangling gates
-            for i in range(self.n_qubits):
-                qubit_indices = [i % self.n_qubits, (i + 1) % self.n_qubits]
-                state = CNOT(state, qubit_indices, self.n_qubits)
-
-            return total_magnetization(state, self.n_qubits, 1)
-
-    nqbit = 4
-    circuit = SampleCircuit(nqbit)
-
-    qiskit_circuit = pyq2qiskit(circuit)
