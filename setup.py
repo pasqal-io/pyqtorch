@@ -8,15 +8,17 @@ __project__ = ""
 __version__ = ""
 exec(open(os.path.join("pyqtorch", "_version.py")).read())
 
-DESCRIPTION = ""
-URL = ""
-EMAIL = ""
-AUTHOR = ""
+DESCRIPTION = "Torch-based library to build differentiable quantum circuits"
+URL = "https://github.com/pasqal-io/PyQ"
+EMAIL = "slimane.thabet@pasqal.com"
+AUTHOR = "Slimane Thabet"
 REQUIRES_PYTHON = ">=3.8.0"
 
-REQUIRED = ["torch", "numpy"]
+REQUIRED = ["torch", "openfermion"]
 
-EXTRAS = { }
+EXTRAS = { 
+    "converters": ["qiskit"]
+}
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -47,6 +49,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
