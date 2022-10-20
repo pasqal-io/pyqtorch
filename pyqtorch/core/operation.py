@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ctypes import c_double
+from typing import Any
 import torch
 from pyqtorch.core.utils import _apply_gate, _apply_batch_gate
 import numpy as np
-
+from numpy.typing import ArrayLike
 
 IMAT = torch.eye(2, dtype=torch.cdouble)
 XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
@@ -24,34 +24,34 @@ YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
 ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 
 
-def RX(theta, state, qubits, N_qubits):
+def RX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
-    mat = IMAT.to(dev) * torch.cos(theta/2) -\
+    mat: torch.Tensor = IMAT.to(dev) * torch.cos(theta/2) -\
         1j * XMAT.to(dev) * torch.sin(theta/2)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def RY(theta, state, qubits, N_qubits):
+def RY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     mat = IMAT.to(dev) * torch.cos(theta/2) -\
         1j * YMAT.to(dev) * torch.sin(theta/2)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def RZ(theta, state, qubits, N_qubits):
+def RZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     mat = IMAT.to(dev) * torch.cos(theta/2) +\
         1j * ZMAT.to(dev) * torch.sin(theta/2)
     return _apply_gate(state, mat, qubits, N_qubits)
 
-def RZZ(theta, state, qubits, N_qubits):
+def RZZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     mat = torch.diag(torch.tensor([1, -1, -1, 1], dtype=torch.cdouble).to(dev))
     mat = 1j * torch.sin(theta/2) * mat + torch.cos(theta/2) * torch.eye(4, dtype=torch.cdouble).to(dev)
     return _apply_gate(state, torch.diag(mat), qubits, N_qubits)
 
 
-def U(phi, theta, omega, state, qubits, N_qubits):
+def U(phi: torch.Tensor, theta: torch.Tensor, omega: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     '''U(phi, theta, omega) = RZ(omega)RY(theta)RZ(phi)'''
     dev = state.device
     t_plus = torch.exp(-1j * (phi + omega) / 2)
@@ -67,32 +67,32 @@ def U(phi, theta, omega, state, qubits, N_qubits):
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def X(state, qubits, N_qubits):
+def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     mat = XMAT.to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def Z(state, qubits, N_qubits):
+def Z(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     mat = ZMAT.to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def Y(state, qubits, N_qubits):
+def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     mat = YMAT.to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def H(state, qubits, N_qubits):
+def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     mat = 1 / torch.sqrt(torch.tensor(2)) * \
         torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def CNOT(state, qubits, N_qubits):
+def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     mat = torch.tensor([[1, 0, 0, 0], [0, 1, 0, 0],
                         [0, 0, 0, 1], [0, 0, 1, 0]],
@@ -100,7 +100,7 @@ def CNOT(state, qubits, N_qubits):
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def batchedRX(theta, state, qubits, N_qubits):
+def batchedRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     batch_size = len(theta)
 
@@ -116,7 +116,7 @@ def batchedRX(theta, state, qubits, N_qubits):
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
-def batchedRY(theta, state, qubits, N_qubits):
+def batchedRY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     batch_size = len(theta)
 
@@ -132,7 +132,7 @@ def batchedRY(theta, state, qubits, N_qubits):
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
-def batchedRZ(theta, state, qubits, N_qubits):
+def batchedRZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     batch_size = len(theta)
 
@@ -148,7 +148,7 @@ def batchedRZ(theta, state, qubits, N_qubits):
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
-def batchedRZZ(theta, state, qubits, N_qubits):
+def batchedRZZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     dev = state.device
     batch_size = len(theta)
 
@@ -166,7 +166,7 @@ def batchedRZZ(theta, state, qubits, N_qubits):
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
-def batchedRXX(theta, state, qubits, N_qubits):
+def batchedRXX(theta: torch.Tensor, state: torch.Tensor, qubits: Any, N_qubits: int) -> torch.Tensor:
     dev = state.device
     batch_size = len(theta)
 
@@ -178,7 +178,7 @@ def batchedRXX(theta, state, qubits, N_qubits):
 
     return state
 
-def batchedRYY(theta, state, qubits, N_qubits):
+def batchedRYY(theta: torch.Tensor, state: torch.Tensor, qubits: Any, N_qubits: int) -> torch.Tensor:
     dev = state.device
     batch_size = len(theta)
 
@@ -191,7 +191,7 @@ def batchedRYY(theta, state, qubits, N_qubits):
     return state
 
 
-def hamiltonian_evolution(H, state, t, qubits, N_qubits, n_steps=100):
+def hamiltonian_evolution(H: torch.Tensor, state: torch.Tensor, t: torch.Tensor, qubits: Any, N_qubits: int, n_steps: int=100) -> torch.Tensor:
     batch_size = len(t)
     # #permutation = [N_qubits - q - 1 for q in qubits]
     # permutation = [N_qubits - q - 1 for q in range(N_qubits) if q not in qubits]
