@@ -13,17 +13,21 @@
 # limitations under the License.
 
 from typing import Any
+
 import torch
+
 from pyqtorch.core.operation import X, Y, Z
 
 """
 TODO: we should create the operator tensor only once, on startup in the network
 """
 
-qubit_operators = {'X': X, 'Y': Y, 'Z': Z}
+qubit_operators = {"X": X, "Y": Y, "Z": Z}
 
 
-def total_magnetization(state: torch.Tensor, N_qubits: int, batch_size: int) -> torch.Tensor:
+def total_magnetization(
+    state: torch.Tensor, N_qubits: int, batch_size: int
+) -> torch.Tensor:
     new_state: torch.Tensor = torch.zeros_like(state)
     for i in range(N_qubits):
         new_state += Z(state, [i], N_qubits)
@@ -31,16 +35,13 @@ def total_magnetization(state: torch.Tensor, N_qubits: int, batch_size: int) -> 
     state = state.reshape((2**N_qubits, batch_size))
     new_state = new_state.reshape((2**N_qubits, batch_size))
 
-    ret =  torch.real(
-        torch.sum(
-            torch.conj(state) * new_state,
-            dim=0
-        )
-    )
+    ret = torch.real(torch.sum(torch.conj(state) * new_state, dim=0))
     return ret
 
 
-def measure_openfermion(state: torch.Tensor, operator: Any, N_qubits: int, batch_size: int) -> torch.Tensor:
+def measure_openfermion(
+    state: torch.Tensor, operator: Any, N_qubits: int, batch_size: int
+) -> torch.Tensor:
     new_state: torch.Tensor = torch.zeros_like(state)
 
     for op, coef in operator.terms.items():
@@ -51,9 +52,4 @@ def measure_openfermion(state: torch.Tensor, operator: Any, N_qubits: int, batch
     state = state.reshape((2**N_qubits, batch_size))
     new_state = new_state.reshape((2**N_qubits, batch_size))
 
-    return torch.real(
-        torch.sum(
-            torch.conj(state) * new_state,
-            dim=0
-            )
-    )
+    return torch.real(torch.sum(torch.conj(state) * new_state, dim=0))

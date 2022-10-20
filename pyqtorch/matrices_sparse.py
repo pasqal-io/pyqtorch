@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Union
 import typing
-import torch
-import scipy.sparse as sp
-import numpy as np
-
 from itertools import combinations
+from typing import Any, Union
+
+import numpy as np
+import scipy.sparse as sp
+import torch
 
 IMAT = sp.coo_matrix(np.eye(2, dtype=np.cdouble))
 XMAT = sp.coo_matrix(np.array([[0, 1], [1, 0]], dtype=np.cdouble))
@@ -28,73 +28,73 @@ NMAT = sp.coo_matrix(np.array([0, 1], dtype=np.cdouble))
 
 
 def XX(
-    N: int, i: int = 0, j: int = 0, device:Union[str, torch.device]='cpu'
+    N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu"
 ) -> Union[sp.coo_matrix, sp.bsr_matrix]:
     op_list = [XMAT.copy() if k in [i, j] else IMAT.copy() for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
-        operator = sp.kron(operator, op, format='coo')
+        operator = sp.kron(operator, op, format="coo")
     return operator
 
 
 def YY(
-    N: int, i: int = 0, j: int = 0, device:Union[str, torch.device]='cpu'
+    N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu"
 ) -> Union[sp.coo_matrix, sp.bsr_matrix]:
     op_list = [YMAT.copy() if k in [i, j] else IMAT.copy() for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
-        operator = sp.kron(operator, op, format='coo')
+        operator = sp.kron(operator, op, format="coo")
     return operator
 
 
 def ZZ(
-    N: int, i: int = 0, j: int = 0, device:Union[str, torch.device]='cpu'
+    N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu"
 ) -> Union[sp.coo_matrix, sp.bsr_matrix]:
     op_list = [ZMAT.copy() if k in [i, j] else IMAT.copy() for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
-        operator = sp.kron(operator, op, format='coo')
+        operator = sp.kron(operator, op, format="coo")
     return operator
 
 
 def NN(
-    N: int, i: int = 0, j: int = 0, device:Union[str, torch.device]='cpu'
+    N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu"
 ) -> Union[sp.coo_matrix, sp.bsr_matrix]:
     op_list = [NMAT.copy() if k in [i, j] else IMAT.copy() for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
-        operator = sp.kron(operator, op, format='coo')
+        operator = sp.kron(operator, op, format="coo")
     return operator
 
 
 def single_Z(
-    N: int, i: int = 0, device:Union[str, torch.device]='cpu'
+    N: int, i: int = 0, device: Union[str, torch.device] = "cpu"
 ) -> Union[sp.coo_matrix, sp.bsr_matrix]:
     op_list = [ZMAT.copy() if k == i else IMAT.copy() for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
-        operator = sp.kron(operator, op, format='coo')
+        operator = sp.kron(operator, op, format="coo")
     return operator
 
 
 def single_N(
-    N: int, i: int = 0, device:Union[str, torch.device]='cpu'
+    N: int, i: int = 0, device: Union[str, torch.device] = "cpu"
 ) -> Union[sp.coo_matrix, sp.bsr_matrix]:
     op_list = [NMAT.copy() if k == i else IMAT.copy() for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
-        operator = sp.kron(operator, op, format='coo')
+        operator = sp.kron(operator, op, format="coo")
     return operator
 
 
-def sum_Z(N: int, device:Union[str, torch.device]='cpu') -> torch.Tensor:
+def sum_Z(N: int, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
     H = torch.zeros(2**N, dtype=torch.cdouble).to(device)
     for i in range(N):
         H += single_Z(N, i, device)
     return H
 
 
-def sum_N(N: int, device:Union[str, torch.device]='cpu') -> torch.Tensor:
+def sum_N(N: int, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
     H = torch.zeros(2**N, dtype=torch.cdouble).to(device)
     for i in range(N):
         H += single_N(N, i, device)
@@ -102,7 +102,10 @@ def sum_N(N: int, device:Union[str, torch.device]='cpu') -> torch.Tensor:
 
 
 def generate_ising_from_graph(
-    graph: Any, precomputed_zz: Any = None, type_ising: str = "Z", device:Union[str, torch.device]='cpu'
+    graph: Any,
+    precomputed_zz: Any = None,
+    type_ising: str = "Z",
+    device: Union[str, torch.device] = "cpu",
 ) -> torch.Tensor:
     N = graph.number_of_nodes()
     # construct the hamiltonian
@@ -116,14 +119,15 @@ def generate_ising_from_graph(
                 key = (edge[1], edge[0])
             H += precomputed_zz[N][key]
         else:
-            if type_ising == 'Z':
+            if type_ising == "Z":
                 H += ZZ(N, edge[0], edge[1], device).copy()
-            elif type_ising == 'N':
+            elif type_ising == "N":
                 H += NN(N, edge[0], edge[1], device).copy()
             else:
                 raise ValueError("'type_ising' must be in ['Z', 'N']")
 
     return H
+
 
 @typing.no_type_check
 def general_hamiltonian(
@@ -131,7 +135,7 @@ def general_hamiltonian(
     alpha: Any = None,
     beta: Any = None,
     gamma: Any = None,
-    device:Union[str, torch.device]='cpu',
+    device: Union[str, torch.device] = "cpu",
 ) -> Union[sp.coo_matrix, sp.bsr_matrix]:
     # alpha, beta, gamma: matrices of parameters (e.g. alpha_ij)
     # connectivity_graph: which qubits are connected
@@ -143,15 +147,15 @@ def general_hamiltonian(
         if alpha is not None:
             if alpha[edge[0], edge[1]] > 1e-15:
                 h = alpha[edge[0], edge[1]] * XX(N, edge[0], edge[1]).copy()
-                H +=  h.copy()#alpha_ij * XX
+                H += h.copy()  # alpha_ij * XX
         if beta is not None:
             if beta[edge[0], edge[1]] > 1e-15:
                 h = beta[edge[0], edge[1]] * YY(N, edge[0], edge[1]).copy()
-                H += h.copy() #beta_ij * YY
+                H += h.copy()  # beta_ij * YY
         if gamma is not None:
             if gamma[edge[0], edge[1]] > 1e-15:
                 h = gamma[edge[0], edge[1]] * ZZ(N, edge[0], edge[1]).copy()
-                H += h.copy() #gamma_ij * ZZ
+                H += h.copy()  # gamma_ij * ZZ
     return H
 
 
@@ -168,14 +172,22 @@ def get_sparse_torch(coo_matrix: Union[sp.coo_matrix, sp.bsr_matrix]) -> torch.T
 
 
 def heisenberg_hamiltonian(
-    graph: Any, alpha: Any, beta: Any, gamma: Any, device:Union[str, torch.device]='cpu'
+    graph: Any,
+    alpha: Any,
+    beta: Any,
+    gamma: Any,
+    device: Union[str, torch.device] = "cpu",
 ) -> torch.Tensor:
     # to do
     pass
 
 
 def XY_hamiltonian(
-    graph: Any, alpha: Any, beta: Any, gamma: Any, device:Union[str, torch.device]='cpu'
+    graph: Any,
+    alpha: Any,
+    beta: Any,
+    gamma: Any,
+    device: Union[str, torch.device] = "cpu",
 ) -> torch.Tensor:
     # to do
     pass
