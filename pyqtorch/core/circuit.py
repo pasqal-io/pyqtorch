@@ -13,25 +13,32 @@
 # limitations under the License.
 
 from typing import Union
+
 import torch
 import torch.nn as nn
 
-class QuantumCircuit(nn.Module):
 
+class QuantumCircuit(nn.Module):
     def __init__(self, n_qubits: int):
         super(QuantumCircuit, self).__init__()
         self.n_qubits = n_qubits
 
-    def init_state(self, batch_size:int = 1, device:Union[str,torch.device]='cpu') -> torch.Tensor:
-        state = torch.zeros((2**self.n_qubits, batch_size),
-                            dtype=torch.cdouble).to(device)
+    def init_state(
+        self, batch_size: int = 1, device: Union[str, torch.device] = "cpu"
+    ) -> torch.Tensor:
+        state = torch.zeros((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(
+            device
+        )
         state[0] = 1
         state = state.reshape([2] * self.n_qubits + [batch_size])
         return state
 
-    def uniform_state(self, batch_size:int = 1, device:Union[str, torch.device]='cpu') -> torch.Tensor:
-        state = torch.ones((2**self.n_qubits, batch_size),
-                            dtype=torch.cdouble).to(device)
+    def uniform_state(
+        self, batch_size: int = 1, device: Union[str, torch.device] = "cpu"
+    ) -> torch.Tensor:
+        state = torch.ones((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(
+            device
+        )
         state = state / torch.sqrt(torch.tensor(2**self.n_qubits))
         state = state.reshape([2] * self.n_qubits + [batch_size])
         return state
