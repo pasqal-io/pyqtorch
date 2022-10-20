@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Sized
 import torch
 import numpy as np
+from numpy.typing import NDArray
 from string import ascii_letters as ABC
 
-ABC_ARRAY = np.array(list(ABC))
+ABC_ARRAY: NDArray = np.array(list(ABC))
 
 
-def _apply_gate(state, mat, qubits, N_qubits):
+def _apply_gate(state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int) -> torch.Tensor:
     '''
     Apply a gate represented by its matrix `mat` to the quantum state
     `state`
@@ -50,14 +52,14 @@ def _apply_gate(state, mat, qubits, N_qubits):
     return state
 
 
-def _apply_einsum_gate(state, mat, qubits, N_qubits):
+def _apply_einsum_gate(state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int) -> torch.Tensor:
     '''
     Same as `apply_gate` but with the `torch.einsum` function
 
     Inputs:
     - state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
     - mat (torch.Tensor): the matrix representing the gate
-    - qubits (list, tuple, array): iterator containing the qubits
+    - qubits (list, tuple, array): Sized iterator containing the qubits
     the gate is applied to
     - N_qubits: the total number of qubits of the system
 
@@ -90,7 +92,7 @@ def _apply_einsum_gate(state, mat, qubits, N_qubits):
     return state
 
 
-def _apply_batch_gate(state, mat, qubits, N_qubits, batch_size):
+def _apply_batch_gate(state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int, batch_size: int) -> torch.Tensor:
     '''
     Apply a batch execution of gates to a circuit.
     Given an tensor of states [state_0, ... state_b] and
@@ -101,12 +103,12 @@ def _apply_batch_gate(state, mat, qubits, N_qubits, batch_size):
     Inputs:
     - state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
     - mat (torch.Tensor): the tensor representing the gates. The last dimension
-    is the batch dimension. It has to be the sam eas the last dimention of
+    is the batch dimension. It has to be the sam eas the last dimension of
     `state`
-    - qubits (list, tuple, array): iterator containing the qubits
+    - qubits (list, tuple, array): Sized iterator containing the qubits
     the gate is applied to
     - N_qubits (int): the total number of qubits of the system
-    - batx-ch_size (int): the size of the batch
+    - batch_size (int): the size of the batch
 
     Output:
     - state (torch.Tensor): the quantum state after application of the gate.
