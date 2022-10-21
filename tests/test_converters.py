@@ -14,3 +14,16 @@ def test_pyq2qiskit(test_circuit: QuantumCircuit):
     for pyq_op, qiskit_op in zip(ops_cache.operations, qiskit_circuit.data):
         assert qiskit_gates_map[pyq_op.name] == qiskit_op.operation.name
         # TODO: Add also additional checks for target qubits and parameters
+
+
+if __name__ == "__main__":
+
+    from pyqtorch.core.circuit import QuantumCircuit
+    from pyqtorch.ansatz import AlternateLayerAnsatz
+
+    n_qubits = 4
+    n_layers = 2
+    ansatz = AlternateLayerAnsatz(n_qubits, n_layers)
+    state = QuantumCircuit(n_qubits).init_state(1)
+    qiskit_ansatz = pyq2qiskit(ansatz, state)
+    print(qiskit_ansatz)

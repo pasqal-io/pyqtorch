@@ -24,9 +24,6 @@ class QuantumCircuit(nn.Module):
         super().__init__()
         self.n_qubits = n_qubits
 
-        # cleanup the circuit visualizer everytime a forward pass is called
-        self.register_forward_pre_hook(ops_cache.clear)
-
     def init_state(self, batch_size: int = 1, device: str = "cpu") -> Tensor:
         state = torch.zeros((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(
             device
@@ -42,3 +39,22 @@ class QuantumCircuit(nn.Module):
         state = state / torch.sqrt(torch.tensor(2**self.n_qubits))
         state = state.reshape([2] * self.n_qubits + [batch_size])
         return state
+
+    def enable_converters(self):
+        """Cleanup the stored operations everytime a forward pass is called"""
+        self._hook_handle = self.register_forward_pre_hook(ops_cache.clear)
+        
+        if ops_cache.enabled:
+            print("Converters already enabled for another circuit")
+            return
+        
+        ops_cache.enabled = True
+
+    def disable_converters(self):
+        """Remove the forward hook and disable the caching system"""
+        if not hasattr(self, "_hook_handle"):
+            print("Converters have not been enabled")
+            return
+        
+        self._hook_handle.remove()
+        ops_cache.enabled = False

@@ -8,21 +8,18 @@ from pyqtorch.converters.store_ops import ops_cache
 
 # gate names mapping from PyQ to Qiskit
 gates_map = {
-    "rx": "rx",
-    "ry": "ry",
-    "rz": "rz",
-    "cnot": "cx",
-    "batchedrx": "rx",
-    "batchedry": "ry",
-    "batchedrz": "rz",
-    "rzz": "rzz",
-    "batchedrxx": "rxx",
-    "batchedryy": "ryy",
-    "batchedrzz": "rzz",
-    "x": "x",
-    "y": "y",
-    "z": "z",
-    "h": "h",
+    "RX": "rx",
+    "RY": "ry",
+    "RZ": "rz",
+    "CNOT": "cx",
+    "RXX": "rxx",
+    "RYY": "ryy",
+    "RZZ": "rzz",
+    "X": "x",
+    "Y": "y",
+    "Z": "z",
+    "H": "h",
+    "U": "rv"
 }
 
 
@@ -43,6 +40,7 @@ def pyq2qiskit(circuit: QuantumCircuit, *args, **kwargs) -> QiskitCircuit:
         qiskit.QuantumCircuit: A QuantumCircuit instance from the Qiskit library
     """
     # execute the forward pass to populate the operation cache
+    circuit.enable_converters()
     _ = circuit(*args, **kwargs)
     assert len(ops_cache.operations) > 0, "Converting to Qiskit an empty circuit"
 
@@ -57,9 +55,13 @@ def pyq2qiskit(circuit: QuantumCircuit, *args, **kwargs) -> QiskitCircuit:
         gate_name = gates_map[op.name]
 
         if op.param is not None:
-            getattr(qiskit_circuit, gate_name)(op.param, *op.targets)
+            if type(op.param) == float:
+                op.param = [op.param]
+            getattr(qiskit_circuit, gate_name)(*op.param, *op.targets)
         else:
             getattr(qiskit_circuit, gate_name)(*op.targets)
+
+    circuit.disable_converters()
 
     return qiskit_circuit
 

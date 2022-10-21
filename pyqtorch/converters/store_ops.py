@@ -1,6 +1,4 @@
 from dataclasses import dataclass
-from functools import wraps
-import inspect
 from typing import List, Union
 
 
@@ -22,6 +20,11 @@ class OpsCache:
     def __init__(self):
         self.operations: List[Operation] = []
         self.nqubits: int = 0
+        self.enabled: bool = False
+
+    def enable(self):
+        if not self.enabled:
+            self.enabled = True
 
     def clear(self, *args, **kwargs):
         """Clear the current circuit visualization"""
@@ -32,27 +35,18 @@ class OpsCache:
 ops_cache = OpsCache()
 
 
-def storable(func):
-    """Decorator to make a circuit operation visualizable"""
+def store_operation(
+    name: str, targets: List[int], param: Union[float, List[float]] = None
+) -> None:
+    """Store an operation in the case saving its properties
 
-    @wraps(func)
-    def _wrapped(*args, **kwargs):
+    Args:
+        name (str): _description_
+        targets (List[int]): _description_
+        param (Union[float, List[float]], optional): _description_. Defaults to None.
+    """
+    if param is not None:
+        param = [float(p) for p in param] if type(param) == list else float(param)
 
-        try:
-            ind_param = inspect.getfullargspec(func).args.index("theta")
-            param = round(float(args[ind_param]), 4)
-        except ValueError:
-            param = None
-
-        try:
-            ind_target = inspect.getfullargspec(func).args.index("qubits")
-            targets = args[ind_target]
-        except ValueError:
-            raise ValueError("The gate visualized should have a target!")
-
-        op = Operation(name=func.__name__.lower(), targets=targets, param=param)
-        ops_cache.operations.append(op)
-
-        return func(*args, **kwargs)
-
-    return _wrapped
+    op = Operation(name=name, targets=targets, param=param)
+    ops_cache.operations.append(op)
