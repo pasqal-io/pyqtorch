@@ -14,11 +14,10 @@
 
 from typing import Any
 
-import numpy as np
 import torch
 from numpy.typing import ArrayLike
 
-from pyqtorch.core.utils import _apply_batch_gate, _apply_gate
+from pyqtorch.core.utils import _apply_gate
 
 IMAT = torch.eye(2, dtype=torch.cdouble)
 XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
@@ -126,116 +125,6 @@ def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=torch.cdouble
     ).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
-
-
-def batchedRX(
-    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
-) -> torch.Tensor:
-    dev = state.device
-    batch_size = len(theta)
-
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-
-    imat = IMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-    xmat = XMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-
-    mat = cos_t * imat - 1j * sin_t * xmat
-
-    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
-
-
-def batchedRY(
-    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
-) -> torch.Tensor:
-    dev = state.device
-    batch_size = len(theta)
-
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-
-    imat = IMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-    xmat = YMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-
-    mat = cos_t * imat - 1j * sin_t * xmat
-
-    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
-
-
-def batchedRZ(
-    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
-) -> torch.Tensor:
-    dev = state.device
-    batch_size = len(theta)
-
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-
-    imat = IMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-    xmat = ZMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-
-    mat = cos_t * imat - 1j * sin_t * xmat
-
-    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
-
-
-def batchedRZZ(
-    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
-) -> torch.Tensor:
-    dev = state.device
-    batch_size = len(theta)
-
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((4, 4, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((4, 4, 1))
-
-    mat = torch.diag(torch.tensor([1, -1, -1, 1], dtype=torch.cdouble).to(dev))
-
-    imat = (
-        torch.eye(4, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-    )
-    xmat = mat.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-
-    mat = cos_t * imat + 1j * sin_t * xmat
-
-    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
-
-
-def batchedRXX(
-    theta: torch.Tensor, state: torch.Tensor, qubits: Any, N_qubits: int
-) -> torch.Tensor:
-    dev = state.device
-    batch_size = len(theta)
-
-    for q in qubits:
-        state = H(state, [q], N_qubits)
-    state = batchedRZZ(theta, state, qubits, N_qubits)
-    for q in qubits:
-        state = H(state, [q], N_qubits)
-
-    return state
-
-
-def batchedRYY(
-    theta: torch.Tensor, state: torch.Tensor, qubits: Any, N_qubits: int
-) -> torch.Tensor:
-    dev = state.device
-    batch_size = len(theta)
-
-    for q in qubits:
-        state = RX(torch.tensor(np.pi / 2), state, [q], N_qubits)
-    state = batchedRZZ(theta, state, qubits, N_qubits)
-    for q in qubits:
-        state = RX(-torch.tensor(np.pi / 2), state, [q], N_qubits)
-
-    return state
 
 
 def hamiltonian_evolution(
