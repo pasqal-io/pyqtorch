@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Union
 
+import torch
+
 
 @dataclass
 class Operation:
@@ -36,7 +38,7 @@ ops_cache = OpsCache()
 
 
 def store_operation(
-    name: str, targets: List[int], param: Union[float, List[float]] = None
+    name: str, targets: List[int], param: Union[float, List[float], torch.Tensor] = None
 ) -> None:
     """Store an operation in the case saving its properties
 
@@ -45,8 +47,18 @@ def store_operation(
         targets (List[int]): _description_
         param (Union[float, List[float]], optional): _description_. Defaults to None.
     """
+   
+    reshaped_par = param
     if param is not None:
-        param = [float(p) for p in param] if type(param) == list else float(param)
+       
+        # taken into account the case of batched gates
+        if isinstance(param, torch.Tensor):
+            # FIXME: Taking only the first element for batched gates here
+            reshaped_par = [float(param.reshape(-1)[0])]
+        elif isinstance(param, List):
+            reshaped_par = [float(p) for p in param]
+        else:
+            reshaped_par = [float(param)]
 
-    op = Operation(name=name, targets=targets, param=param)
+    op = Operation(name=name, targets=targets, param=reshaped_par)
     ops_cache.operations.append(op)

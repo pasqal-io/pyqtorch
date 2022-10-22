@@ -152,7 +152,7 @@ def CNOT(state, qubits, N_qubits):
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def batchedRX(theta, state, qubits, N_qubits):
+def batchedRX(theta, state, qubits, N_qubits): 
 
     if ops_cache.enabled:
         store_operation("RX", qubits, param=theta)

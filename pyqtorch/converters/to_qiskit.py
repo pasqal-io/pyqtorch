@@ -53,7 +53,6 @@ def pyq2qiskit(circuit: QuantumCircuit, *args, **kwargs) -> QiskitCircuit:
     for op in ops_cache.operations:
 
         gate_name = gates_map[op.name]
-
         if op.param is not None:
             if type(op.param) == float:
                 op.param = [op.param]
