@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import torch
+
 from pyqtorch.core.circuit import QuantumCircuit
 from pyqtorch.core.operation import batchedRX
 
 
 class SingleLayerEncoding(QuantumCircuit):
-
-    def __init__(self, n_qubits):
+    def __init__(self, n_qubits: int):
         super().__init__(n_qubits)
 
-    def forward(self, state, x):
+    def forward(self, state: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         for i in range(self.n_qubits):
             state = batchedRX(x, state, [i], self.n_qubits)
         return state

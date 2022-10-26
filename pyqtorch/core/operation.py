@@ -17,6 +17,8 @@ from typing import List
 import torch
 from torch import Tensor
 import numpy as np
+import torch
+from numpy.typing import ArrayLike
 
 from pyqtorch.core.utils import _apply_gate, _apply_batch_gate
 from pyqtorch.converters.store_ops import store_operation, ops_cache
@@ -27,17 +29,23 @@ YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
 ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 
 
-def RX(theta: float, state: Tensor, qubits: List[int], N_qubits: int):
+def RX(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("RX", qubits, param=theta)
 
     dev = state.device
-    mat = IMAT.to(dev) * torch.cos(theta / 2) - 1j * XMAT.to(dev) * torch.sin(theta / 2)
+    mat: torch.Tensor = IMAT.to(dev) * torch.cos(theta / 2) - 1j * XMAT.to(
+        dev
+    ) * torch.sin(theta / 2)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def RY(theta: float, state: Tensor, qubits: List[int], N_qubits: int):
+def RY(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("RY", qubits, param=theta)
@@ -47,7 +55,9 @@ def RY(theta: float, state: Tensor, qubits: List[int], N_qubits: int):
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def RZ(theta: float, state: Tensor, qubits: List[int], N_qubits: int):
+def RZ(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("RZ", qubits, param=theta)
@@ -57,7 +67,9 @@ def RZ(theta: float, state: Tensor, qubits: List[int], N_qubits: int):
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def RZZ(theta, state, qubits, N_qubits):
+def RZZ(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("RZZ", qubits, param=theta)
@@ -70,8 +82,18 @@ def RZZ(theta, state, qubits, N_qubits):
     return _apply_gate(state, torch.diag(mat), qubits, N_qubits)
 
 
-def U(phi, theta, omega, state, qubits, N_qubits):
-    """U(phi, theta, omega) = RZ(omega)RY(theta)RZ(phi)"""
+def U(
+    phi: torch.Tensor,
+    theta: torch.Tensor,
+    omega: torch.Tensor,
+    state: torch.Tensor,
+    qubits: ArrayLike,
+    N_qubits: int,
+) -> torch.Tensor:
+    """Arbitrary rotation along the axes of the Bloch sphere
+
+    U(phi, theta, omega) = RZ(omega)RY(theta)RZ(phi)
+    """
 
     if ops_cache.enabled:
         store_operation("U", qubits, param=[phi, theta, omega])
@@ -96,7 +118,7 @@ def U(phi, theta, omega, state, qubits, N_qubits):
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def X(state, qubits, N_qubits):
+def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("X", qubits)
@@ -106,27 +128,27 @@ def X(state, qubits, N_qubits):
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def Y(state, qubits, N_qubits):
+def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("Y", qubits)
-
-    dev = state.device
-    mat = YMAT.to(dev)
-    return _apply_gate(state, mat, qubits, N_qubits)
-
-
-def Z(state, qubits, N_qubits):
-
-    if ops_cache.enabled:
-        store_operation("Z", qubits)
 
     dev = state.device
     mat = ZMAT.to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def H(state, qubits, N_qubits):
+def Z(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+
+    if ops_cache.enabled:
+        store_operation("Z", qubits)
+
+    dev = state.device
+    mat = YMAT.to(dev)
+    return _apply_gate(state, mat, qubits, N_qubits)
+
+
+def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("H", qubits)
@@ -140,7 +162,7 @@ def H(state, qubits, N_qubits):
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def CNOT(state, qubits, N_qubits):
+def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("CNOT", qubits)
@@ -152,7 +174,9 @@ def CNOT(state, qubits, N_qubits):
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def batchedRX(theta, state, qubits, N_qubits): 
+def batchedRX(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("RX", qubits, param=theta)
@@ -173,7 +197,9 @@ def batchedRX(theta, state, qubits, N_qubits):
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
 
-def batchedRY(theta, state, qubits, N_qubits):
+def batchedRY(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("RY", qubits, param=theta)
@@ -194,7 +220,9 @@ def batchedRY(theta, state, qubits, N_qubits):
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
 
-def batchedRZ(theta, state, qubits, N_qubits):
+def batchedRZ(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("RZ", qubits, param=theta)
@@ -215,7 +243,9 @@ def batchedRZ(theta, state, qubits, N_qubits):
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
 
-def batchedRZZ(theta, state, qubits, N_qubits):
+def batchedRZZ(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("RZZ", qubits, param=theta)
@@ -240,10 +270,15 @@ def batchedRZZ(theta, state, qubits, N_qubits):
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
 
-def batchedRXX(theta, state, qubits, N_qubits):
+def batchedRXX(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("RXX", qubits, param=theta)
+
+    dev = state.device
+    batch_size = len(theta)
 
     for q in qubits:
         state = H(state, [q], N_qubits)
@@ -254,7 +289,11 @@ def batchedRXX(theta, state, qubits, N_qubits):
     return state
 
 
-def batchedRYY(theta, state, qubits, N_qubits):
+def batchedRYY(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
+    dev = state.device
+    batch_size = len(theta)
 
     if ops_cache.enabled:
         store_operation("RYY", qubits, param=theta)
@@ -268,7 +307,18 @@ def batchedRYY(theta, state, qubits, N_qubits):
     return state
 
 
-def hamiltonian_evolution(H, state, t, qubits, N_qubits, n_steps=100):
+def hamiltonian_evolution(
+    H: torch.Tensor,
+    state: torch.Tensor,
+    t: torch.Tensor,
+    qubits: ArrayLike,
+    N_qubits: int,
+    n_steps: int = 100,
+) -> torch.Tensor:
+
+    if ops_cache.enabled:
+        store_operation("hevo", qubits)
+
     batch_size = len(t)
     # #permutation = [N_qubits - q - 1 for q in qubits]
     # permutation = [N_qubits - q - 1 for q in range(N_qubits) if q not in qubits]

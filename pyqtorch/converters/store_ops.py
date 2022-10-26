@@ -47,10 +47,10 @@ def store_operation(
         targets (List[int]): _description_
         param (Union[float, List[float]], optional): _description_. Defaults to None.
     """
-   
+
     reshaped_par = param
     if param is not None:
-       
+
         # taken into account the case of batched gates
         if isinstance(param, torch.Tensor):
             # FIXME: Taking only the first element for batched gates here

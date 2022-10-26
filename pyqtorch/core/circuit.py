@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Union
+
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -20,11 +22,13 @@ from pyqtorch.converters.store_ops import ops_cache
 
 
 class QuantumCircuit(nn.Module):
-    def __init__(self, n_qubits: int) -> None:
-        super().__init__()
+    def __init__(self, n_qubits: int):
+        super(QuantumCircuit, self).__init__()
         self.n_qubits = n_qubits
 
-    def init_state(self, batch_size: int = 1, device: str = "cpu") -> Tensor:
+    def init_state(
+        self, batch_size: int = 1, device: Union[str, torch.device] = "cpu"
+    ) -> torch.Tensor:
         state = torch.zeros((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(
             device
         )
@@ -32,7 +36,9 @@ class QuantumCircuit(nn.Module):
         state = state.reshape([2] * self.n_qubits + [batch_size])
         return state
 
-    def uniform_state(self, batch_size: str = 1, device: str = "cpu") -> Tensor:
+    def uniform_state(
+        self, batch_size: int = 1, device: Union[str, torch.device] = "cpu"
+    ) -> torch.Tensor:
         state = torch.ones((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(
             device
         )
@@ -41,7 +47,11 @@ class QuantumCircuit(nn.Module):
         return state
 
     def enable_converters(self):
-        """Cleanup the stored operations everytime a forward pass is called"""
+        """Enable caching of operations called in the forward pass
+        
+        The pre_forward pass hook is needed to clean up the cache every
+        time before a forward pass is called
+        """
         self._hook_handle = self.register_forward_pre_hook(ops_cache.clear)
         
         if ops_cache.enabled:
