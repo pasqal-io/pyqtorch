@@ -14,7 +14,7 @@ class TestCircuit(QuantumCircuit):
         super().__init__(n_qubits)
         self.theta = nn.Parameter(torch.empty((self.n_qubits,)))
 
-    def forward(self):
+    def forward(self) -> torch.Tensor:
 
         # initial state
         state = self.init_state()
