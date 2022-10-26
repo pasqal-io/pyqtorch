@@ -1,5 +1,6 @@
-from qiskit import QuantumCircuit as QiskitCircuit
-from qiskit import QuantumRegister
+from typing import Any
+
+from qiskit import QuantumCircuit as QiskitCircuit, QuantumRegister
 import torch
 
 from pyqtorch.core.circuit import QuantumCircuit
@@ -23,7 +24,7 @@ gates_map = {
 }
 
 
-def pyq2qiskit(circuit: QuantumCircuit, *args, **kwargs) -> QiskitCircuit:
+def pyq2qiskit(circuit: QuantumCircuit, *args: Any, **kwargs: Any) -> QiskitCircuit:
     """Convert a PyQ module into an equivalent circuit built with Qiskit
 
     This routine can be used for visualizing the quantum circuit models
@@ -53,6 +54,13 @@ def pyq2qiskit(circuit: QuantumCircuit, *args, **kwargs) -> QiskitCircuit:
     for op in ops_cache.operations:
 
         gate_name = gates_map[op.name]
+
+        if not hasattr(qiskit_circuit, gate_name):
+            print(
+                f"The gate {gate_name} is not available in Qiskit, conversion will be incomplete"
+            )
+            continue
+
         if op.param is not None:
             if type(op.param) == float:
                 op.param = [op.param]

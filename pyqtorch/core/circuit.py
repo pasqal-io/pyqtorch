@@ -46,7 +46,7 @@ class QuantumCircuit(nn.Module):
         state = state.reshape([2] * self.n_qubits + [batch_size])
         return state
 
-    def enable_converters(self):
+    def enable_converters(self) -> None:
         """Enable caching of operations called in the forward pass
         
         The pre_forward pass hook is needed to clean up the cache every
@@ -60,7 +60,7 @@ class QuantumCircuit(nn.Module):
         
         ops_cache.enabled = True
 
-    def disable_converters(self):
+    def disable_converters(self) -> None:
         """Remove the forward hook and disable the caching system"""
         if not hasattr(self, "_hook_handle"):
             print("Converters have not been enabled")

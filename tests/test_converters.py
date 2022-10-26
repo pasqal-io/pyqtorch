@@ -5,7 +5,7 @@ from pyqtorch.converters.to_qiskit import pyq2qiskit, gates_map as qiskit_gates_
 from pyqtorch.converters.store_ops import ops_cache
 
 
-def test_pyq2qiskit(test_circuit: QuantumCircuit):
+def test_pyq2qiskit(test_circuit: QuantumCircuit) -> None:
     qiskit_circuit = pyq2qiskit(test_circuit)
     assert isinstance(qiskit_circuit, QiskitCircuit)
     assert qiskit_circuit.num_qubits == test_circuit.n_qubits
