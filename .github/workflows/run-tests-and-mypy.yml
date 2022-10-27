@@ -31,7 +31,7 @@ jobs:
 
         - name: Install main dependencies
           run: |
-	    pip3 install poetry
+            pip3 install poetry
             poetry install
         - name: Perform unit tests
           run: |
