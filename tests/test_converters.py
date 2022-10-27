@@ -1,8 +1,9 @@
 from qiskit import QuantumCircuit as QiskitCircuit
 
-from pyqtorch.core.circuit import QuantumCircuit
-from pyqtorch.converters.to_qiskit import pyq2qiskit, gates_map as qiskit_gates_map
 from pyqtorch.converters.store_ops import ops_cache
+from pyqtorch.converters.to_qiskit import gates_map as qiskit_gates_map
+from pyqtorch.converters.to_qiskit import pyq2qiskit
+from pyqtorch.core.circuit import QuantumCircuit
 
 
 def test_pyq2qiskit(test_circuit: QuantumCircuit) -> None:
@@ -18,8 +19,8 @@ def test_pyq2qiskit(test_circuit: QuantumCircuit) -> None:
 
 if __name__ == "__main__":
 
-    from pyqtorch.core.circuit import QuantumCircuit
     from pyqtorch.ansatz import AlternateLayerAnsatz
+    from pyqtorch.core.circuit import QuantumCircuit
 
     n_qubits = 4
     n_layers = 2

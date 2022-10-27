@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, List, Union
 
-from numpy.typing import ArrayLike
 import torch
+from numpy.typing import ArrayLike
 
 
 @dataclass

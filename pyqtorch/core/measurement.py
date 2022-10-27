@@ -18,10 +18,6 @@ import torch
 
 from pyqtorch.core.operation import X, Y, Z
 
-"""
-TODO: we should create the operator tensor only once, on startup in the network
-"""
-
 qubit_operators = {"X": X, "Y": Y, "Z": Z}
 
 

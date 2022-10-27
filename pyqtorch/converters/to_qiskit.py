@@ -1,11 +1,11 @@
 from typing import Any
 
-from qiskit import QuantumCircuit as QiskitCircuit, QuantumRegister
 import torch
+from qiskit import QuantumCircuit as QiskitCircuit
+from qiskit import QuantumRegister
 
-from pyqtorch.core.circuit import QuantumCircuit
 from pyqtorch.converters.store_ops import ops_cache
-
+from pyqtorch.core.circuit import QuantumCircuit
 
 # gate names mapping from PyQ to Qiskit
 gates_map = {
