@@ -86,9 +86,9 @@ def _apply_einsum_gate(
     new_state_indices[qubits] = mat_indices[0 : len(qubits)]
 
     # Transform the arrays into strings
-    state_indices = "".join(list(state_indices))
-    new_state_indices = "".join(list(new_state_indices))
-    mat_indices = "".join(list(mat_indices))
+    state_indices = "".join(list(state_indices))  # type: ignore
+    new_state_indices = "".join(list(new_state_indices))  # type: ignore
+    mat_indices = "".join(list(mat_indices))  # type: ignore
 
     einsum_indices = f"{mat_indices},{state_indices}->{new_state_indices}"
 
@@ -132,9 +132,9 @@ def _apply_batch_gate(
     new_state_indices = state_indices.copy()
     new_state_indices[qubits] = mat_indices[0 : len(qubits)]
 
-    state_indices = "".join(list(state_indices))
-    new_state_indices = "".join(list(new_state_indices))
-    mat_indices = "".join(list(mat_indices))
+    state_indices = "".join(list(state_indices))  # type: ignore
+    new_state_indices = "".join(list(new_state_indices))  # type: ignore
+    mat_indices = "".join(list(mat_indices))  # type: ignore
 
     einsum_indices = f"{mat_indices},{state_indices}->{new_state_indices}"
     # print(einsum_indices)

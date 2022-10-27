@@ -18,6 +18,7 @@ import numpy as np
 import torch
 from numpy.typing import ArrayLike
 
+from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.operation import RX, H
 from pyqtorch.core.utils import _apply_batch_gate
 
@@ -30,6 +31,10 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 def batchedRX(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+
+    if ops_cache.enabled:
+        store_operation("RX", qubits, param=theta)
+
     dev = state.device
     batch_size = len(theta)
 
@@ -49,6 +54,10 @@ def batchedRX(
 def batchedRY(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+
+    if ops_cache.enabled:
+        store_operation("RY", qubits, param=theta)
+
     dev = state.device
     batch_size = len(theta)
 
@@ -68,6 +77,10 @@ def batchedRY(
 def batchedRZ(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+
+    if ops_cache.enabled:
+        store_operation("RZ", qubits, param=theta)
+
     dev = state.device
     batch_size = len(theta)
 
@@ -87,6 +100,10 @@ def batchedRZ(
 def batchedRZZ(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+
+    if ops_cache.enabled:
+        store_operation("RZZ", qubits, param=theta)
+
     dev = state.device
     batch_size = len(theta)
 
@@ -111,6 +128,9 @@ def batchedRXX(
     theta: torch.Tensor, state: torch.Tensor, qubits: Any, N_qubits: int
 ) -> torch.Tensor:
 
+    if ops_cache.enabled:
+        store_operation("RXX", qubits, param=theta)
+
     for q in qubits:
         state = H(state, [q], N_qubits)
     state = batchedRZZ(theta, state, qubits, N_qubits)
@@ -123,6 +143,9 @@ def batchedRXX(
 def batchedRYY(
     theta: torch.Tensor, state: torch.Tensor, qubits: Any, N_qubits: int
 ) -> torch.Tensor:
+
+    if ops_cache.enabled:
+        store_operation("RYY", qubits, param=theta)
 
     for q in qubits:
         state = RX(torch.tensor(np.pi / 2), state, [q], N_qubits)
