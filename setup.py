@@ -17,7 +17,8 @@ REQUIRES_PYTHON = ">=3.8.0"
 REQUIRED = ["torch", "openfermion"]
 
 EXTRAS = { 
-    "converters": ["qiskit"]
+    "converters": ["qiskit"],
+    "graphs": ["networkx"]
 }
 
 here = os.path.abspath(os.path.dirname(__file__))
