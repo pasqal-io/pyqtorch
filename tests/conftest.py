@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import Module, ModuleList
-
+import pytest
 from pyqtorch import RY, QuantumCircuit, batchedRY, measurement
 from pyqtorch.core.circuit import QuantumCircuit
 from pyqtorch.core.measurement import total_magnetization
