@@ -35,9 +35,7 @@ jobs:
             poetry install
         - name: Perform unit tests
           run: |
-            poetry shell
-            python -m pytest -vvv --cov pyqtorch tests
+            poetry run python -m pytest -vvv --cov pyqtorch tests
         - name: Mypy checks
           run: |
-            poetry shell
-            mypy pyqtorch
+            poetry run mypy pyqtorch
