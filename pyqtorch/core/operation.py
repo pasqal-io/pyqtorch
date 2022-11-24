@@ -87,9 +87,14 @@ def U(
     qubits: ArrayLike,
     N_qubits: int,
 ) -> torch.Tensor:
-    """Arbitrary rotation along the axes of the Bloch sphere
-
+    """Arbitrary rotation along the axes of the Bloch sphere, parameterised via the angles
+    `phi, theta, omega` in tensor format, applied as:
     U(phi, theta, omega) = RZ(omega)RY(theta)RZ(phi)
+    Other inputs:
+    - `state`: the input quantum state, of shape `(N_0,N_1,...N_N,batch_size)`
+    - `qubits`: the array of qubits where the CNOT is going to operate 
+    - `N_qubits`: the system size `N`
+    TODO: in the examples, it appears that indicating qubits is not working for this function 
     """
 
     if ops_cache.enabled:
@@ -146,6 +151,13 @@ def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
 
 def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """
+    A function to perform a Hadamard gate on the `qubits` chosen
+    Inputs:
+        - `state`: the input quantum state, of shape `(N_0,N_1,...N_N,batch_size)`
+        - `qubits`: the array of qubits where the CNOT is going to operate 
+        - `N_qubits`: the system size `N`
+    """
 
     if ops_cache.enabled:
         store_operation("H", qubits)
@@ -160,6 +172,13 @@ def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
 
 def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """
+    A function to perform a CNOT on the `qubits` chosen
+    Inputs:
+        - `state`: the input quantum state, of shape `(N_0,N_1,...N_N,batch_size)`
+        - `qubits`: the array of qubits where the CNOT is going to operate 
+        - `N_qubits`: the system size `N`
+    """
 
     if ops_cache.enabled:
         store_operation("CNOT", qubits)
