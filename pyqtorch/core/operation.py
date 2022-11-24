@@ -179,6 +179,21 @@ def hamiltonian_evolution(
     N_qubits: int,
     n_steps: int = 100,
 ) -> torch.Tensor:
+    """
+    A function to perform time-evolution according to the generator `H` acting on a 
+    `N_qubits`-sized input `state`, for a duration `t`. See also `examples`
+    Inputs:
+        - `H`: the dense matrix representing the Hamiltonian, provided as a `Tensor` object with 
+        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+        - 'state': the input quantum state, of shape `(N_0,N_1,...N_N,batch_size)`
+        - `t`: the evolution time, real for default unitary evolution
+        - `qubits: the system size `N`
+        - 'N_qubits': the qubits the Hamiltonian is expected to act upon
+
+    Returns:
+        - replaces state with the evolved state according to the instructions above (save a copy of `state`
+        if you need further processing on it)
+    """
 
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
