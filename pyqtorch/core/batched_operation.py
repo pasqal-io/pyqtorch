@@ -31,6 +31,44 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 def batchedRX(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized single-qubit RX rotation with batched parameters
+
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Example:
+    ```py
+    import torch
+    from pyqtorch.core.circuit import QuantumCircuit
+    from pyqtorch.core.batched_operation import batchedRX
+    
+    nqubits = 4
+    batch_size = 10
+    
+    state = QuantumCircuit(nqubits).init_state(batch_size)
+    batched_params = torch.rand(batch_size)
+    
+    # if the length of the batched_params is not matching the batch size
+    # an error will be thrown
+    out_state = batchedRX(batched_params, state, [0], nqubits)
+    ```
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
 
     if ops_cache.enabled:
         store_operation("RX", qubits, param=theta)
@@ -54,6 +92,44 @@ def batchedRX(
 def batchedRY(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized single-qubit RY rotation with batched parameters
+
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Example:
+    ```py
+    import torch
+    from pyqtorch.core.circuit import QuantumCircuit
+    from pyqtorch.core.batched_operation import batchedRY
+    
+    nqubits = 4
+    batch_size = 10
+    
+    state = QuantumCircuit(nqubits).init_state(batch_size)
+    batched_params = torch.rand(batch_size)
+    
+    # if the length of the batched_params is not matching the batch size
+    # an error will be thrown
+    out_state = batchedRY(batched_params, state, [0], nqubits)
+    ```
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
 
     if ops_cache.enabled:
         store_operation("RY", qubits, param=theta)
@@ -77,6 +153,44 @@ def batchedRY(
 def batchedRZ(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized single-qubit RZ rotation with batched parameters
+
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Example:
+    ```py
+    import torch
+    from pyqtorch.core.circuit import QuantumCircuit
+    from pyqtorch.core.batched_operation import batchedRZ
+    
+    nqubits = 4
+    batch_size = 10
+    
+    state = QuantumCircuit(nqubits).init_state(batch_size)
+    batched_params = torch.rand(batch_size)
+    
+    # if the length of the batched_params is not matching the batch size
+    # an error will be thrown
+    out_state = batchedRZ(batched_params, state, [0], nqubits)
+    ```
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
 
     if ops_cache.enabled:
         store_operation("RZ", qubits, param=theta)
@@ -100,7 +214,27 @@ def batchedRZ(
 def batchedRZZ(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized two-qubit RZZ rotation with batched parameters
 
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
     if ops_cache.enabled:
         store_operation("RZZ", qubits, param=theta)
 
@@ -127,6 +261,27 @@ def batchedRZZ(
 def batchedRXX(
     theta: torch.Tensor, state: torch.Tensor, qubits: Any, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized two-qubit RXX rotation with batched parameters
+
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
 
     if ops_cache.enabled:
         store_operation("RXX", qubits, param=theta)
@@ -143,6 +298,27 @@ def batchedRXX(
 def batchedRYY(
     theta: torch.Tensor, state: torch.Tensor, qubits: Any, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized two-qubit RYY rotation with batched parameters
+
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
 
     if ops_cache.enabled:
         store_operation("RYY", qubits, param=theta)
