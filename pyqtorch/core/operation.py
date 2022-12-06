@@ -29,7 +29,17 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 def RX(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized single-qubit RX rotation  
 
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
     if ops_cache.enabled:
         store_operation("RX", qubits, param=theta)
 
@@ -43,7 +53,17 @@ def RX(
 def RY(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized single-qubit RY rotation  
 
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
     if ops_cache.enabled:
         store_operation("RY", qubits, param=theta)
 
@@ -55,7 +75,17 @@ def RY(
 def RZ(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized single-qubit RZ rotation  
 
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
     if ops_cache.enabled:
         store_operation("RZ", qubits, param=theta)
 
@@ -67,7 +97,17 @@ def RZ(
 def RZZ(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
+    """Parametrized two-qubits RZ rotation  
 
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
     if ops_cache.enabled:
         store_operation("RZZ", qubits, param=theta)
 
@@ -87,9 +127,21 @@ def U(
     qubits: ArrayLike,
     N_qubits: int,
 ) -> torch.Tensor:
-    """Arbitrary rotation along the axes of the Bloch sphere
-
+    """Parametrized arbitrary rotation along the axes of the Bloch sphere 
+    
+    The angles `phi, theta, omega` in tensor format, applied as:
     U(phi, theta, omega) = RZ(omega)RY(theta)RZ(phi)
+            
+    Args:
+        phi (torch.Tensor): 1D-tensor holding the values of the `phi` parameter
+        theta (torch.Tensor): 1D-tensor holding the values of the `theta` parameter
+        omega (torch.Tensor): 1D-tensor holding the values of the `omega` parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
     """
 
     if ops_cache.enabled:
@@ -116,6 +168,16 @@ def U(
 
 
 def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """X single-qubit gate
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
 
     if ops_cache.enabled:
         store_operation("X", qubits)
@@ -126,6 +188,16 @@ def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
 
 def Z(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """Z single-qubit gate
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
 
     if ops_cache.enabled:
         store_operation("Z", qubits)
@@ -136,6 +208,16 @@ def Z(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
 
 def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """Y single-qubit gate
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
 
     if ops_cache.enabled:
         store_operation("Y", qubits)
@@ -146,6 +228,16 @@ def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
 
 def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """Hadamard single-qubit gate
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
 
     if ops_cache.enabled:
         store_operation("H", qubits)
@@ -160,7 +252,16 @@ def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
 
 def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """Controlled NOT gate with two-qubits support
 
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
     if ops_cache.enabled:
         store_operation("CNOT", qubits)
 
@@ -179,11 +280,28 @@ def hamiltonian_evolution(
     N_qubits: int,
     n_steps: int = 100,
 ) -> torch.Tensor:
+    """A function to perform time-evolution according to the generator `H` acting on a 
+    `N_qubits`-sized input `state`, for a duration `t`. See also tutorials for more information
+    on how to use this gate.
 
+    Args:
+        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with 
+        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        t (torch.Tensor): the evolution time, real for default unitary evolution
+        qubits (Any): The qubits support where the H evolution is applied
+        N_qubits (int): The number of qubits
+        n_steps (int, optional): The number of steps to divide the time interval in. Defaults to 100.
+
+    Returns:
+        torch.Tensor: replaces state with the evolved state according to the instructions above (save a copy of `state`
+        if you need further processing on it)
+    """
+    
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
 
-    batch_size = len(t)
+    # batch_size = len(t)
     # #permutation = [N_qubits - q - 1 for q in qubits]
     # permutation = [N_qubits - q - 1 for q in range(N_qubits) if q not in qubits]
     # permutation += [N_qubits - q - 1 for q in qubits]
