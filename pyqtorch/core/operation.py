@@ -24,6 +24,7 @@ IMAT = torch.eye(2, dtype=torch.cdouble)
 XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
 YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
 ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
+SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
 
 
 def RX(
@@ -269,6 +270,26 @@ def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     mat = torch.tensor(
         [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=torch.cdouble
     ).to(dev)
+    return _apply_gate(state, mat, qubits, N_qubits)
+
+
+def S(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """S single-qubit gate
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+
+    if ops_cache.enabled:
+        store_operation("S", qubits)
+
+    dev = state.device
+    mat = SMAT.to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
