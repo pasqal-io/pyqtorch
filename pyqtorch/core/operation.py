@@ -34,11 +34,11 @@ def get_rotation_matrix(theta: torch.Tensor, rotation_type: str) -> torch.Tensor
     def pass_param_to_matrix(theta, matrix: torch.Tensor):
         return IMAT * torch.cos(theta / 2) - 1j * matrix * torch.sin(theta / 2)
     if rotation_type == "RX":
-        return pass_param_to_matrix(theta,XMAT)
+        return pass_param_to_matrix(theta, XMAT)
     elif rotation_type == "RY":
-        return pass_param_to_matrix(theta,YMAT)
+        return pass_param_to_matrix(theta, YMAT)
     elif rotation_type == "RZ":
-        return pass_param_to_matrix(theta=ZMAT)
+        return pass_param_to_matrix(theta, ZMAT)
 
 
 def get_controlled_rotation_matrix(rotation_matrix: torch.Tensor) -> torch.Tensor:
