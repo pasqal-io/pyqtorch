@@ -42,7 +42,7 @@ def get_rotation_matrix(theta: torch.Tensor, rotation_type: str) -> torch.Tensor
 
 
 def get_controlled_rotation_matrix(rotation_matrix: torch.Tensor) -> torch.Tensor:
-    mat: torch.Tensor = torch.eye(4)
+    mat: torch.Tensor = torch.eye(4, dtype=torch.cdouble)
     mat[2:,2:] = rotation_matrix
     return mat
 
@@ -65,7 +65,7 @@ def RX(
         store_operation("RX", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = get_rotation_matrix(theta,"RX").to(dev)
+    mat: torch.Tensor = get_rotation_matrix(theta, "RX").to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -87,7 +87,7 @@ def RY(
         store_operation("RY", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = get_rotation_matrix(theta,"RY").to(dev)
+    mat: torch.Tensor = get_rotation_matrix(theta, "RY").to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -109,7 +109,7 @@ def RZ(
         store_operation("RZ", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = get_rotation_matrix(theta,"RZ").to(dev)
+    mat: torch.Tensor = get_rotation_matrix(theta, "RZ").to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
