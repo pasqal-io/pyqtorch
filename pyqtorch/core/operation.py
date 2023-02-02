@@ -335,6 +335,30 @@ def SWAP(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
+def CPHASE(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
+    """Parametrized 2-qubit CPHASE gate
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+    if ops_cache.enabled:
+        store_operation("CPHASE", qubits, param=theta)
+
+    dev = state.device
+    mat: torch.Tensor = torch.tensor(
+        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, torch.exp(torch.tensor(1j * theta))]], dtype=torch.cdouble
+    ).to(dev)
+    return _apply_gate(state, mat, qubits, N_qubits)
+
+
 def hamiltonian_evolution(
     H: torch.Tensor,
     state: torch.Tensor,
