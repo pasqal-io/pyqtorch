@@ -20,6 +20,7 @@ from numpy.typing import ArrayLike
 from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.utils import _apply_gate
 
+
 IMAT = torch.eye(2, dtype=torch.cdouble)
 XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
 YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
@@ -27,6 +28,23 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
 TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1j) * torch.pi / 4)]], dtype=torch.cdouble)
 SWAPMAT = torch.tensor([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble)
+
+
+def get_rotation_matrix(theta: torch.Tensor, rotation_type: str) -> torch.Tensor:
+    def pass_param_to_matrix(theta, matrix: torch.Tensor):
+        return IMAT * torch.cos(theta / 2) - 1j * matrix * torch.sin(theta / 2)
+    if rotation_type == "RX":
+        return pass_param_to_matrix(theta,XMAT)
+    elif rotation_type == "RY":
+        return pass_param_to_matrix(theta,YMAT)
+    elif rotation_type == "RZ":
+        return pass_param_to_matrix(theta=ZMAT)
+
+
+def get_controlled_rotation_matrix(rotation_matrix: torch.Tensor) -> torch.Tensor:
+    mat: torch.Tensor = torch.eye(4)
+    mat[2:,2:] = rotation_matrix
+    return mat
 
 
 def RX(
@@ -47,9 +65,7 @@ def RX(
         store_operation("RX", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = IMAT.to(dev) * torch.cos(theta / 2) - 1j * XMAT.to(
-        dev
-    ) * torch.sin(theta / 2)
+    mat: torch.Tensor = get_rotation_matrix(theta,"RX").to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -71,7 +87,7 @@ def RY(
         store_operation("RY", qubits, param=theta)
 
     dev = state.device
-    mat = IMAT.to(dev) * torch.cos(theta / 2) - 1j * YMAT.to(dev) * torch.sin(theta / 2)
+    mat: torch.Tensor = get_rotation_matrix(theta,"RY").to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -93,7 +109,7 @@ def RZ(
         store_operation("RZ", qubits, param=theta)
 
     dev = state.device
-    mat = IMAT.to(dev) * torch.cos(theta / 2) + 1j * ZMAT.to(dev) * torch.sin(theta / 2)
+    mat: torch.Tensor = get_rotation_matrix(theta,"RZ").to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -275,26 +291,26 @@ def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def CRZ(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
-    """Controlled RZ gate with two-qubits support
+def CRotate(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int, rotation_type: str) -> torch.Tensor:
+    """Generalized Controlled Rotation gate with two-qubits support
 
     Args:
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         qubits (ArrayLike): list of qubit indices where the gate will operate
         N_qubits (int): the number of qubits in the system
+        rotation (torch.Tensor): the rotation matrix of the particular operation (X,Y,Z)
 
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
     if ops_cache.enabled:
-        store_operation("CRZ", qubits)
+        store_operation("C" + rotation_type, qubits)
 
     dev = state.device
-    mat = torch.tensor(
-        [[1, 0, 0, 0], [0, torch.exp((-1j * torch.tensor(theta)) / 2), 0, 0], [0, 0, 1, 0], [0, 0, 0, torch.exp((1j * torch.tensor(theta)) / 2)]], dtype=torch.cdouble
-    ).to(dev)
-    return _apply_gate(state, mat, qubits, N_qubits)
-    
+    rotation_matrix: torch.Tensor = get_rotation_matrix(theta, rotation_type)
+    controlled_rotation_matrix: torch.Tensor = get_controlled_rotation_matrix(rotation_matrix)
+    return _apply_gate(state, controlled_rotation_matrix.to(dev), qubits, N_qubits)
+
 
 def S(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     """S single-qubit gate
