@@ -31,8 +31,8 @@ SWAPMAT = torch.tensor([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]],
 NOTMAT = XMAT
 
 
-def get_matrix_for_operation(operation_type: str, theta: torch.Tensor = 0.0) -> torch.Tensor:
-    def pass_param_to_parametrized_matrix(theta, matrix: torch.Tensor):
+def get_matrix_for_operation(operation_type: str, theta: torch.Tensor = torch.tensor(0.0)) -> torch.Tensor:
+    def pass_param_to_parametrized_matrix(theta: torch.Tensor, matrix: torch.Tensor):
         return IMAT * torch.cos(theta / 2) - 1j * matrix * torch.sin(theta / 2)
     if operation_type == "RX":
         return pass_param_to_parametrized_matrix(theta, XMAT)
