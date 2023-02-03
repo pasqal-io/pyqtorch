@@ -11,6 +11,15 @@ torch.use_deterministic_algorithms(True)
 from conftest import TestBatchedFM, TestFM, TestNetwork
 
 from pyqtorch.ansatz import AlternateLayerAnsatz
+from pyqtorch.core import operation
+
+state_00 = torch.tensor([[1,0],[0,0]], dtype=torch.cdouble).unsqueeze(2)
+state_10 = torch.tensor([[0,1],[0,0]], dtype=torch.cdouble).unsqueeze(2)
+state_01 = torch.tensor([[0,0],[1,0]], dtype=torch.cdouble).unsqueeze(2)
+state_11 = torch.tensor([[0,0],[0,1]], dtype=torch.cdouble).unsqueeze(2)
+
+CNOT_mat: torch.Tensor = torch.tensor(
+        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=torch.cdouble)
 
 
 # TODO: these are all the same test, would be better to parameterize a test
@@ -74,3 +83,37 @@ def test_batched_ansatz():
 
     assert torch.allclose(by[0], y0)
     assert torch.allclose(by[1], y1)
+
+    
+def test_CNOT_state00_controlqubit_0():
+    result: torch.Tensor = operation.CNOT(state_00, (0,1), 2)
+    assert torch.equal(state_00, result)
+
+
+def test_CNOT_state10_controlqubit_0():
+    result: torch.Tensor = operation.CNOT(state_10, (0,1), 2)
+    assert torch.equal(state_11, result)
+
+
+def test_CNOT_state11_controlqubit_0():
+    result: torch.Tensor = operation.CNOT(state_11, (0,1), 2)
+    assert torch.equal(state_10, result)
+
+
+def test_CNOT_state00_controlqubit_1():
+    result: torch.Tensor = operation.CNOT(state_00, (1,0), 2)
+    assert torch.equal(state_00, result)
+
+
+def test_CNOT_state10_controlqubit_1():
+    result: torch.Tensor = operation.CNOT(state_10, (1,0), 2)
+    assert torch.equal(state_10, result)
+
+
+def test_CNOT_state11_controlqubit_1():
+    result: torch.Tensor = operation.CNOT(state_11, (1,0), 2)
+    assert torch.equal(state_01, result)
+        
+
+
+
