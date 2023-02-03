@@ -330,3 +330,40 @@ def batchedRYY(
         state = RX(-torch.tensor(np.pi / 2), state, [q], N_qubits)
 
     return state
+    
+
+def batchedCPHASE(
+    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
+    """Parametrized two-qubit CPHASE gate with batched parameters
+
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+    if ops_cache.enabled:
+        store_operation("CPHASE", qubits, param=theta)
+
+    dev = state.device
+    batch_size = len(theta)
+    mat = torch.eye(4).repeat((batch_size,1,1))
+    mat = torch.permute(mat,(1,2,0))
+    phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
+    mat[3,3,:] = phase_rotation_angles
+
+    return _apply_batch_gate(state, mat.to(dev), qubits, N_qubits, batch_size)
