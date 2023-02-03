@@ -118,12 +118,12 @@ def test_CNOT_state11_controlqubit_1():
 
 
 def test_CRY_state10_controlqubit_0():
-    result: torch.Tensor = operation.CRY(state_10, (0,1), 2, pi)
+    result: torch.Tensor = operation.CRY(pi, state_10, (0,1), 2)
     assert torch.allclose(state_11, result)
 
 
 def test_CRY_state01_controlqubit_0():
-    result: torch.Tensor = operation.CRY(state_01, (1,0), 2, pi)
+    result: torch.Tensor = operation.CRY(pi, state_01, (1,0), 2)
     assert torch.allclose(state_11, result)
         
 
