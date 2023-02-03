@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from typing import Any
-
+from functools import partial
 import torch
 from numpy.typing import ArrayLike
 
@@ -28,23 +28,26 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
 TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1j) * torch.pi / 4)]], dtype=torch.cdouble)
 SWAPMAT = torch.tensor([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble)
+NOTMAT = XMAT
 
 
-def get_rotation_matrix(theta: torch.Tensor, rotation_type: str) -> torch.Tensor:
-    def pass_param_to_matrix(theta, matrix: torch.Tensor):
+def get_matrix_for_operation(operation_type: str, theta: torch.Tensor = 0.0) -> torch.Tensor:
+    def pass_param_to_parametrized_matrix(theta, matrix: torch.Tensor):
         return IMAT * torch.cos(theta / 2) - 1j * matrix * torch.sin(theta / 2)
-    if rotation_type == "RX":
-        return pass_param_to_matrix(theta, XMAT)
-    elif rotation_type == "RY":
-        return pass_param_to_matrix(theta, YMAT)
-    elif rotation_type == "RZ":
-        return pass_param_to_matrix(theta, ZMAT)
+    if operation_type == "RX":
+        return pass_param_to_parametrized_matrix(theta, XMAT)
+    elif operation_type == "RY":
+        return pass_param_to_parametrized_matrix(theta, YMAT)
+    elif operation_type == "RZ":
+        return pass_param_to_parametrized_matrix(theta, ZMAT)
+    elif operation_type == "NOT":
+        return NOTMAT
 
 
-def get_controlled_rotation_matrix(rotation_matrix: torch.Tensor) -> torch.Tensor:
-    mat: torch.Tensor = torch.eye(4, dtype=torch.cdouble)
-    mat[2:,2:] = rotation_matrix
-    return mat
+def create_controlled_matrix_from_operation(operation_matrix: torch.Tensor) -> torch.Tensor:
+    controlled_mat: torch.Tensor = torch.eye(4, dtype=torch.cdouble)
+    controlled_mat[2:,2:] = operation_matrix
+    return controlled_mat
 
 
 def RX(
@@ -65,7 +68,7 @@ def RX(
         store_operation("RX", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = get_rotation_matrix(theta, "RX").to(dev)
+    mat: torch.Tensor = get_matrix_for_operation("RX", theta).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -87,7 +90,7 @@ def RY(
         store_operation("RY", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = get_rotation_matrix(theta, "RY").to(dev)
+    mat: torch.Tensor = get_matrix_for_operation("RY", theta).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -109,7 +112,7 @@ def RZ(
         store_operation("RZ", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = get_rotation_matrix(theta, "RZ").to(dev)
+    mat: torch.Tensor = get_matrix_for_operation("RZ", theta).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -270,6 +273,30 @@ def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
+def ControlledOperationGate(state: torch.Tensor, qubits: ArrayLike, N_qubits: int, operation_type: str,
+ maybe_theta: torch.Tensor = torch.tensor(0.0)) -> torch.Tensor:
+    """Generalized Controlled Rotation gate with two-qubits support
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+        operation_type (str): the type of operation which should be performed (NOT,RX,RY,RZ)
+        maybe_theta (torch.Tensor): 1D-tensor holding the values of the parameter 
+                                    in case the operation is parametrized
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+    if ops_cache.enabled:
+        store_operation("C" + operation_type, qubits)
+
+    dev = state.device
+    operation_matrix: torch.Tensor = get_matrix_for_operation(operation_type, maybe_theta)
+    controlled_operation_matrix: torch.Tensor = create_controlled_matrix_from_operation(operation_matrix)
+    return _apply_gate(state, controlled_operation_matrix.to(dev), qubits, N_qubits)
+
+
 def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     """Controlled NOT gate with two-qubits support
 
@@ -281,35 +308,56 @@ def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("CNOT", qubits)
-
-    dev = state.device
-    mat = torch.tensor(
-        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=torch.cdouble
-    ).to(dev)
-    return _apply_gate(state, mat, qubits, N_qubits)
+    
+    return ControlledOperationGate(state, qubits, N_qubits, "NOT")
 
 
-def CRotate(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int, rotation_type: str) -> torch.Tensor:
-    """Generalized Controlled Rotation gate with two-qubits support
+def CRX(state: torch.Tensor, qubits: ArrayLike, N_qubits: int, theta: torch.Tensor) -> torch.Tensor:
+    """Controlled RX rotation gate with two-qubits support
 
     Args:
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         qubits (ArrayLike): list of qubit indices where the gate will operate
         N_qubits (int): the number of qubits in the system
-        rotation (torch.Tensor): the rotation matrix of the particular operation (X,Y,Z)
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
 
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("C" + rotation_type, qubits)
+    
+    return ControlledOperationGate(state, qubits, N_qubits, "RX", theta)
 
-    dev = state.device
-    rotation_matrix: torch.Tensor = get_rotation_matrix(theta, rotation_type)
-    controlled_rotation_matrix: torch.Tensor = get_controlled_rotation_matrix(rotation_matrix)
-    return _apply_gate(state, controlled_rotation_matrix.to(dev), qubits, N_qubits)
+
+def CRY(state: torch.Tensor, qubits: ArrayLike, N_qubits: int, theta: torch.Tensor) -> torch.Tensor:
+    """Controlled RY rotation gate with two-qubits support
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+    
+    return ControlledOperationGate(state, qubits, N_qubits, "RY", theta)
+
+
+def CRZ(state: torch.Tensor, qubits: ArrayLike, N_qubits: int, theta: torch.Tensor) -> torch.Tensor:
+    """Controlled RZ rotation gate with two-qubits support
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+    
+    return ControlledOperationGate(state, qubits, N_qubits, "RZ", theta)
 
 
 def S(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
