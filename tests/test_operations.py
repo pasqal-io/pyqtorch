@@ -18,6 +18,8 @@ state_10 = torch.tensor([[0,1],[0,0]], dtype=torch.cdouble).unsqueeze(2)
 state_01 = torch.tensor([[0,0],[1,0]], dtype=torch.cdouble).unsqueeze(2)
 state_11 = torch.tensor([[0,0],[0,1]], dtype=torch.cdouble).unsqueeze(2)
 
+pi = torch.tensor(torch.pi, dtype=torch.cdouble)
+
 CNOT_mat: torch.Tensor = torch.tensor(
         [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=torch.cdouble)
 
@@ -84,7 +86,7 @@ def test_batched_ansatz():
     assert torch.allclose(by[0], y0)
     assert torch.allclose(by[1], y1)
 
-    
+
 def test_CNOT_state00_controlqubit_0():
     result: torch.Tensor = operation.CNOT(state_00, (0,1), 2)
     assert torch.equal(state_00, result)
@@ -113,6 +115,16 @@ def test_CNOT_state10_controlqubit_1():
 def test_CNOT_state11_controlqubit_1():
     result: torch.Tensor = operation.CNOT(state_11, (1,0), 2)
     assert torch.equal(state_01, result)
+
+
+def test_CRY_state10_controlqubit_0():
+    result: torch.Tensor = operation.CRY(state_10, (0,1), 2, pi)
+    assert torch.allclose(state_11, result)
+
+
+def test_CRY_state01_controlqubit_0():
+    result: torch.Tensor = operation.CRY(state_01, (1,0), 2, pi)
+    assert torch.allclose(state_11, result)
         
 
 
