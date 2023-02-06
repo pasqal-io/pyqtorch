@@ -25,7 +25,7 @@ CNOT_mat: torch.Tensor = torch.tensor(
 
 
 # TODO: these are all the same test, would be better to parameterize a test
-def test_batched_network():
+def test_batched_network() -> None:
     ansatz = AlternateLayerAnsatz(n_qubits=4, n_layers=4)
     network = TestNetwork([TestFM(), ansatz])
     batched_network = TestNetwork([TestBatchedFM(), ansatz])
@@ -47,7 +47,7 @@ def test_batched_network():
     assert torch.allclose(gby[0][1], gy1[0][1])
 
 
-def test_batched_fm():
+def test_batched_fm() -> None:
     network = TestNetwork([TestFM()])
     batched_network = TestNetwork([TestBatchedFM()])
 
@@ -71,7 +71,7 @@ def test_batched_fm():
     assert torch.allclose(gby[0][1], gy1[0][1])
 
 
-def test_batched_ansatz():
+def test_batched_ansatz() -> None:
     network = TestNetwork(
         network=[AlternateLayerAnsatz(n_qubits=2, n_layers=1)], n_qubits=2
     )
@@ -87,42 +87,42 @@ def test_batched_ansatz():
     assert torch.allclose(by[1], y1)
 
 
-def test_CNOT_state00_controlqubit_0():
+def test_CNOT_state00_controlqubit_0() -> None:
     result: torch.Tensor = operation.CNOT(state_00, (0,1), 2)
     assert torch.equal(state_00, result)
 
 
-def test_CNOT_state10_controlqubit_0():
+def test_CNOT_state10_controlqubit_0() -> None:
     result: torch.Tensor = operation.CNOT(state_10, (0,1), 2)
     assert torch.equal(state_11, result)
 
 
-def test_CNOT_state11_controlqubit_0():
+def test_CNOT_state11_controlqubit_0() -> None:
     result: torch.Tensor = operation.CNOT(state_11, (0,1), 2)
     assert torch.equal(state_10, result)
 
 
-def test_CNOT_state00_controlqubit_1():
+def test_CNOT_state00_controlqubit_1() -> None:
     result: torch.Tensor = operation.CNOT(state_00, (1,0), 2)
     assert torch.equal(state_00, result)
 
 
-def test_CNOT_state10_controlqubit_1():
+def test_CNOT_state10_controlqubit_1() -> None:
     result: torch.Tensor = operation.CNOT(state_10, (1,0), 2)
     assert torch.equal(state_10, result)
 
 
-def test_CNOT_state11_controlqubit_1():
+def test_CNOT_state11_controlqubit_1() -> None:
     result: torch.Tensor = operation.CNOT(state_11, (1,0), 2)
     assert torch.equal(state_01, result)
 
 
-def test_CRY_state10_controlqubit_0():
+def test_CRY_state10_controlqubit_0() -> None:
     result: torch.Tensor = operation.CRY(pi, state_10, (0,1), 2)
     assert torch.allclose(state_11, result)
 
 
-def test_CRY_state01_controlqubit_0():
+def test_CRY_state01_controlqubit_0() -> None:
     result: torch.Tensor = operation.CRY(pi, state_01, (1,0), 2)
     assert torch.allclose(state_11, result)
         
