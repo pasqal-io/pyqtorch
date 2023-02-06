@@ -28,6 +28,48 @@ YMAT = OPERATIONS_DICT["RY"]
 ZMAT = OPERATIONS_DICT["RZ"]
 
 
+def get_parametrized_batch_for_operation(operation_type: str, theta: torch.Tensor, batch_size: int, device: torch.device) -> torch.Tensor:
+    """ Helper method which takes a string describing an operation type and a parameter theta vector and returns
+        a batch of the corresponding parametrized rotation matrices
+    Args:
+
+    operation_type (str): the type of operation which should be performed (RX,RY,RZ)
+    theta (torch.Tensor): 1D-tensor holding the values of the parameter
+    batch_size (int): the batch size
+    device (torch.device): the device which to run on
+
+    Returns:
+    torch.Tensor: a batch of gates after applying theta 
+    """
+
+    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
+    cos_t = cos_t.repeat((2, 2, 1))
+    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
+    sin_t = sin_t.repeat((2, 2, 1))
+
+    batch_imat = OPERATIONS_DICT["I"].unsqueeze(2).repeat(1, 1, batch_size).to(device)
+    batch_operation_mat = OPERATIONS_DICT[operation_type].unsqueeze(2).repeat(1, 1, batch_size).to(device)
+
+    return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
+
+
+def create_controlled_batch_from_operation(operation_batch: torch.Tensor, batch_size: int) -> torch.Tensor:
+    """ Method which takes a 2x2 torch.Tensor and transforms it into a Controlled Operation Gate
+
+    Args:
+
+        operation_matrix (torch.Tensor): the type of operation which should be performed (RX,RY,RZ)
+        batch_size (int): the batch size
+    
+    Returns:
+
+        torch.Tensor: the resulting controlled gate populated by operation_matrix
+    """
+    controlled_batch: torch.Tensor = torch.eye(4, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size)
+    controlled_batch[2:,2:,:] = operation_batch
+    return controlled_batch
+
+
 def batchedRX(
     theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
 ) -> torch.Tensor:
@@ -74,17 +116,10 @@ def batchedRX(
         store_operation("RX", qubits, param=theta)
 
     dev = state.device
+
     batch_size = len(theta)
 
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-
-    imat = IMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-    xmat = XMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-
-    mat = cos_t * imat - 1j * sin_t * xmat
+    mat = get_parametrized_batch_for_operation("RX", theta, batch_size, dev)
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
@@ -135,17 +170,10 @@ def batchedRY(
         store_operation("RY", qubits, param=theta)
 
     dev = state.device
+
     batch_size = len(theta)
 
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-
-    imat = IMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-    xmat = YMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-
-    mat = cos_t * imat - 1j * sin_t * xmat
+    mat = get_parametrized_batch_for_operation("RY", theta, batch_size, dev)
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
@@ -196,17 +224,10 @@ def batchedRZ(
         store_operation("RZ", qubits, param=theta)
 
     dev = state.device
+
     batch_size = len(theta)
 
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-
-    imat = IMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-    xmat = ZMAT.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
-
-    mat = cos_t * imat - 1j * sin_t * xmat
+    mat = get_parametrized_batch_for_operation("RZ", theta, batch_size, dev)
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
@@ -367,3 +388,110 @@ def batchedCPHASE(
     mat[3,3,:] = phase_rotation_angles
 
     return _apply_batch_gate(state, mat.to(dev), qubits, N_qubits, batch_size)
+
+
+def batchedCRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
+    """Parametrized two-qubit Controlled X rotation gate with batched parameters
+
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+    if ops_cache.enabled:
+        store_operation("CRX", qubits, param=theta)
+
+    dev = state.device
+    batch_size = len(theta)
+
+    operations_batch = get_parametrized_batch_for_operation("RX", theta, batch_size, dev)
+    controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
+
+    return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
+
+
+
+def batchedCRY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
+    """Parametrized two-qubit Controlled Y rotation gate with batched parameters
+
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+    if ops_cache.enabled:
+        store_operation("CRY", qubits, param=theta)
+
+    dev = state.device
+    batch_size = len(theta)
+
+    operations_batch = get_parametrized_batch_for_operation("RY", theta, batch_size, dev)
+    controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
+
+    return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
+
+
+
+def batchedCRZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
+) -> torch.Tensor:
+    """Parametrized two-qubit Controlled Z rotation gate with batched parameters
+
+    A batched operation is an operation which efficiently applies a set of parametrized
+    gates with parameters held by the `theta` argument on a set of input states held by
+    the `state` argument. The number of gates and input states is the batch size. For 
+    large batches, this gate is much faster than its standard non-batched version 
+
+    Notice that for this operation to work the input state must also have been 
+    initialized with its *last* dimension equal to the batch size. Use the 
+    QuantumCircuit.init_state() method to properly initialize a state usable 
+    for batched operations
+
+    Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+    if ops_cache.enabled:
+        store_operation("CRZ", qubits, param=theta)
+
+    dev = state.device
+    batch_size = len(theta)
+
+    operations_batch = get_parametrized_batch_for_operation("RZ", theta, batch_size, dev)
+    controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
+
+    return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
