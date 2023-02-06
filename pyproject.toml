@@ -34,3 +34,15 @@ converters = ["qiskit"]
 
 [tool.hatch.envs.default]
 skip-install = true
+
+[tool.mypy]
+show_error_codes = true
+ignore_missing_imports = true
+no_implicit_optional = false
+
+[[tool.mypy.overrides]]
+module = "pyqtorch.*"
+disallow_untyped_defs = true
+warn_unreachable = true
+warn_unused_ignores = true
+ignore_errors = false
