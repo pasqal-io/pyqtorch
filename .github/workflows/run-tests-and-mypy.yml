@@ -31,11 +31,10 @@ jobs:
 
         - name: Install main dependencies
           run: |
-            pip3 install poetry
-            poetry install
+            python -m pip install -e .[dev,converters]
         - name: Perform unit tests
           run: |
-            poetry run python -m pytest -vvv --cov pyqtorch tests
+            python -m pytest -vvv --cov pyqtorch tests
         - name: Mypy checks
           run: |
-            poetry run mypy pyqtorch
+            python -m mypy pyqtorch
