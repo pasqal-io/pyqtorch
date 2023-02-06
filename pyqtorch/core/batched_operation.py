@@ -20,12 +20,12 @@ from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.operation import RX, H
-from pyqtorch.core.utils import _apply_batch_gate
+from pyqtorch.core.utils import _apply_batch_gate, OPERATIONS_DICT
 
-IMAT = torch.eye(2, dtype=torch.cdouble)
-XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
-YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
-ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
+IMAT = OPERATIONS_DICT["I"]
+XMAT = OPERATIONS_DICT["RX"]
+YMAT = OPERATIONS_DICT["RY"]
+ZMAT = OPERATIONS_DICT["RZ"]
 
 
 def batchedRX(

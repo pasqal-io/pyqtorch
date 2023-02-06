@@ -18,18 +18,7 @@ import torch
 from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
-from pyqtorch.core.utils import _apply_gate
-
-
-IMAT = torch.eye(2, dtype=torch.cdouble)
-XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
-YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
-ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
-SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
-TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1j) * torch.pi / 4)]], dtype=torch.cdouble)
-SWAPMAT = torch.tensor([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble)
-
-operation_dict = {"RX" : XMAT, "RY" : YMAT, "RZ" : ZMAT}
+from pyqtorch.core.utils import _apply_gate, OPERATIONS_DICT
 
 
 def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tensor) -> torch.Tensor:
@@ -55,9 +44,9 @@ def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tens
             torch.Tensor containing the corresponding operation_matrix for some theta
 
         """
-        return IMAT * torch.cos(theta / 2) - 1j * matrix * torch.sin(theta / 2)
+        return OPERATIONS_DICT["I"] * torch.cos(theta / 2) - 1j * matrix * torch.sin(theta / 2)
 
-    return pass_param_to_parametrized_matrix(theta, operation_dict[operation_type])
+    return pass_param_to_parametrized_matrix(theta, OPERATIONS_DICT[operation_type])
 
 
 def create_controlled_matrix_from_operation(operation_matrix: torch.Tensor) -> torch.Tensor:
@@ -231,7 +220,7 @@ def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("X", qubits)
 
     dev = state.device
-    mat = XMAT.to(dev)
+    mat = OPERATIONS_DICT["RX"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -251,7 +240,7 @@ def Z(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("Z", qubits)
 
     dev = state.device
-    mat = ZMAT.to(dev)
+    mat = OPERATIONS_DICT["RZ"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -271,7 +260,7 @@ def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("Y", qubits)
 
     dev = state.device
-    mat = YMAT.to(dev)
+    mat = OPERATIONS_DICT["RY"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -333,7 +322,7 @@ def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     if ops_cache.enabled:
         store_operation("CNOT", qubits)
     
-    return ControlledOperationGate(state, qubits, N_qubits, XMAT)
+    return ControlledOperationGate(state, qubits, N_qubits, OPERATIONS_DICT["RX"])
 
 
 def CRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -411,7 +400,7 @@ def S(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("S", qubits)
 
     dev = state.device
-    mat = SMAT.to(dev)
+    mat = OPERATIONS_DICT["S"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -431,7 +420,7 @@ def T(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("T", qubits)
 
     dev = state.device
-    mat = TMAT.to(dev)
+    mat = OPERATIONS_DICT["T"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -451,7 +440,7 @@ def SWAP(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("SWAP", qubits)
 
     dev = state.device
-    mat = SWAPMAT.to(dev)
+    mat = OPERATIONS_DICT["SWAP"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
