@@ -32,21 +32,7 @@ def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tens
     Returns:
     torch.Tensor: the resulting gate after applying theta
     """
-    def pass_param_to_parametrized_matrix(theta: torch.Tensor, matrix: torch.Tensor) -> torch.Tensor:
-        """ Helper method to construct a operation_matrix for some input theta
-
-        Args:
-
-            theta (torch.Tensor): 1D-tensor holding the values of the parameter
-            matrix (torch.Tensor): Tensor representing a operation 
-
-        Returns:
-            torch.Tensor containing the corresponding operation_matrix for some theta
-
-        """
-        return OPERATIONS_DICT["I"] * torch.cos(theta / 2) - 1j * matrix * torch.sin(theta / 2)
-
-    return pass_param_to_parametrized_matrix(theta, OPERATIONS_DICT[operation_type])
+    return OPERATIONS_DICT["I"] * torch.cos(theta / 2) - 1j * OPERATIONS_DICT[operation_type] * torch.sin(theta / 2)
 
 
 def create_controlled_matrix_from_operation(operation_matrix: torch.Tensor) -> torch.Tensor:
