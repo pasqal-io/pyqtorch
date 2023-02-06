@@ -32,7 +32,7 @@ NOTMAT = XMAT
 
 
 def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tensor) -> torch.Tensor:
-    def pass_param_to_parametrized_matrix(theta: torch.Tensor, matrix: torch.Tensor):
+    def pass_param_to_parametrized_matrix(theta: torch.Tensor, matrix: torch.Tensor) -> torch.Tensor:
         return IMAT * torch.cos(theta / 2) - 1j * matrix * torch.sin(theta / 2)
     if operation_type == "RX":
         return pass_param_to_parametrized_matrix(theta, XMAT)
