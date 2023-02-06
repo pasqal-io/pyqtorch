@@ -28,7 +28,6 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
 TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1j) * torch.pi / 4)]], dtype=torch.cdouble)
 SWAPMAT = torch.tensor([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble)
-NOTMAT = XMAT
 
 operation_dict = {"RX" : XMAT, "RY" : YMAT, "RZ" : ZMAT}
 
@@ -327,14 +326,14 @@ def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         N_qubits (int): the number of qubits in the system
 
     Returns:
-    
+
         torch.Tensor: the resulting state after applying the gate
     """
 
     if ops_cache.enabled:
         store_operation("CNOT", qubits)
     
-    return ControlledOperationGate(state, qubits, N_qubits, NOTMAT)
+    return ControlledOperationGate(state, qubits, N_qubits, XMAT)
 
 
 def CRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
