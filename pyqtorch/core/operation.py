@@ -340,11 +340,11 @@ def CRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
     """Controlled RX rotation gate with two-qubits support
 
     Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         qubits (ArrayLike): list of qubit indices where the gate will operate
         N_qubits (int): the number of qubits in the system
-        theta (torch.Tensor): 1D-tensor holding the values of the parameter
-
+        
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
@@ -359,10 +359,10 @@ def CRY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
     """Controlled RY rotation gate with two-qubits support
 
     Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         qubits (ArrayLike): list of qubit indices where the gate will operate
         N_qubits (int): the number of qubits in the system
-        theta (torch.Tensor): 1D-tensor holding the values of the parameter
 
     Returns:
         torch.Tensor: the resulting state after applying the gate
@@ -379,10 +379,10 @@ def CRZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
     """Controlled RZ rotation gate with two-qubits support
 
     Args:
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         qubits (ArrayLike): list of qubit indices where the gate will operate
         N_qubits (int): the number of qubits in the system
-        theta (torch.Tensor): 1D-tensor holding the values of the parameter
 
     Returns:
         torch.Tensor: the resulting state after applying the gate
