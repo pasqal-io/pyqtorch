@@ -21,6 +21,14 @@ gates_map = {
     "Z": "z",
     "H": "h",
     "U": "rv",
+    "CRX": "crx",
+    "CRY": "cry",
+    "CRZ": "crz",
+    "SWAP": "swap",
+    "CPHASE": "cp",
+    "S": "s",
+    "T": "t"
+
 }
 
 
