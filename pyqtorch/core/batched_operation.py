@@ -66,7 +66,7 @@ def create_controlled_batch_from_operation(operation_batch: torch.Tensor, batch_
         torch.Tensor: the resulting controlled gate populated by operation_matrix
     """
     controlled_batch: torch.Tensor = torch.eye(4, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size)
-    controlled_batch[2:,2:,:] = operation_batch.copy()
+    controlled_batch[2:,2:,:] = torch.clone(operation_batch)
     return controlled_batch
 
 
@@ -459,7 +459,6 @@ def batchedCRY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qu
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
     return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
-
 
 
 def batchedCRZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
