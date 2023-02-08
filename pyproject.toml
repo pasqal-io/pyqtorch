@@ -24,16 +24,19 @@ classifiers=[
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    "openfermion",
-    "torch"
+    "openfermion>=1.5",
+    "torch>=1.12"
 ]
 
 [project.optional-dependencies]
 dev = ["black", "pytest", "pytest-cov", "flake8", "mypy", "pre-commit"]
 converters = ["qiskit"]
 
-[tool.hatch.envs.default]
-skip-install = true
+[tool.hatch.envs.tests]
+features = [
+  "dev",
+  "converters",
+]
 
 [tool.mypy]
 show_error_codes = true
