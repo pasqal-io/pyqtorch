@@ -30,7 +30,7 @@ SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
 TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1j) * torch.pi / 4)]], dtype=torch.cdouble)
 SWAPMAT = torch.tensor([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble)
 
-OPERATIONS_DICT = {"I" : IMAT, "RX" : XMAT, "RY" : YMAT, "RZ" : ZMAT, "S" : SMAT, "T": TMAT, "SWAP" : SWAPMAT}
+OPERATIONS_DICT = {"I" : IMAT, "X" : XMAT, "Y" : YMAT, "Z" : ZMAT, "S" : SMAT, "T": TMAT, "SWAP" : SWAPMAT}
 
 
 def _apply_gate(

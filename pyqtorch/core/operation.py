@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from typing import Any
-from functools import partial
 import torch
 from numpy.typing import ArrayLike
 
@@ -69,7 +68,7 @@ def RX(
         store_operation("RX", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = get_parametrized_matrix_for_operation("RX", theta).to(dev)
+    mat: torch.Tensor = get_parametrized_matrix_for_operation("X", theta).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -91,7 +90,7 @@ def RY(
         store_operation("RY", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = get_parametrized_matrix_for_operation("RY", theta).to(dev)
+    mat: torch.Tensor = get_parametrized_matrix_for_operation("Y", theta).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -113,7 +112,7 @@ def RZ(
         store_operation("RZ", qubits, param=theta)
 
     dev = state.device
-    mat: torch.Tensor = get_parametrized_matrix_for_operation("RZ", theta).to(dev)
+    mat: torch.Tensor = get_parametrized_matrix_for_operation("Z", theta).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -206,7 +205,7 @@ def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("X", qubits)
 
     dev = state.device
-    mat = OPERATIONS_DICT["RX"].to(dev)
+    mat = OPERATIONS_DICT["X"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -226,7 +225,7 @@ def Z(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("Z", qubits)
 
     dev = state.device
-    mat = OPERATIONS_DICT["RZ"].to(dev)
+    mat = OPERATIONS_DICT["Z"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -246,7 +245,7 @@ def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("Y", qubits)
 
     dev = state.device
-    mat = OPERATIONS_DICT["RY"].to(dev)
+    mat = OPERATIONS_DICT["Y"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
@@ -308,7 +307,7 @@ def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     if ops_cache.enabled:
         store_operation("CNOT", qubits)
     
-    return ControlledOperationGate(state, qubits, N_qubits, OPERATIONS_DICT["RX"])
+    return ControlledOperationGate(state, qubits, N_qubits, OPERATIONS_DICT["X"])
 
 
 def CRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -326,7 +325,7 @@ def CRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
     if ops_cache.enabled:
         store_operation("CRX", qubits, param=theta)
 
-    operation_matrix: torch.Tensor = get_parametrized_matrix_for_operation("RX", theta)
+    operation_matrix: torch.Tensor = get_parametrized_matrix_for_operation("X", theta)
     return ControlledOperationGate(state, qubits, N_qubits, operation_matrix)
 
 
@@ -346,7 +345,7 @@ def CRY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
     if ops_cache.enabled:
         store_operation("CRY", qubits, param=theta)
 
-    operation_matrix: torch.Tensor = get_parametrized_matrix_for_operation("RY", theta)
+    operation_matrix: torch.Tensor = get_parametrized_matrix_for_operation("Y", theta)
     return ControlledOperationGate(state, qubits, N_qubits, operation_matrix)
 
 
@@ -366,7 +365,7 @@ def CRZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
     if ops_cache.enabled:
         store_operation("CRZ", qubits, param=theta)
 
-    operation_matrix: torch.Tensor = get_parametrized_matrix_for_operation("RZ", theta)
+    operation_matrix: torch.Tensor = get_parametrized_matrix_for_operation("Z", theta)
     return ControlledOperationGate(state, qubits, N_qubits, operation_matrix)
 
 

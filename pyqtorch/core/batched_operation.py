@@ -23,9 +23,9 @@ from pyqtorch.core.operation import RX, H
 from pyqtorch.core.utils import _apply_batch_gate, OPERATIONS_DICT
 
 IMAT = OPERATIONS_DICT["I"]
-XMAT = OPERATIONS_DICT["RX"]
-YMAT = OPERATIONS_DICT["RY"]
-ZMAT = OPERATIONS_DICT["RZ"]
+XMAT = OPERATIONS_DICT["X"]
+YMAT = OPERATIONS_DICT["Y"]
+ZMAT = OPERATIONS_DICT["Z"]
 
 
 def get_parametrized_batch_for_operation(operation_type: str, theta: torch.Tensor, batch_size: int, device: torch.device) -> torch.Tensor:
@@ -119,7 +119,7 @@ def batchedRX(
 
     batch_size = len(theta)
 
-    mat = get_parametrized_batch_for_operation("RX", theta, batch_size, dev)
+    mat = get_parametrized_batch_for_operation("X", theta, batch_size, dev)
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
@@ -173,7 +173,7 @@ def batchedRY(
 
     batch_size = len(theta)
 
-    mat = get_parametrized_batch_for_operation("RY", theta, batch_size, dev)
+    mat = get_parametrized_batch_for_operation("Y", theta, batch_size, dev)
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
@@ -227,7 +227,7 @@ def batchedRZ(
 
     batch_size = len(theta)
 
-    mat = get_parametrized_batch_for_operation("RZ", theta, batch_size, dev)
+    mat = get_parametrized_batch_for_operation("Z", theta, batch_size, dev)
 
     return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
 
@@ -419,7 +419,7 @@ def batchedCRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qu
     dev = state.device
     batch_size = len(theta)
 
-    operations_batch = get_parametrized_batch_for_operation("RX", theta, batch_size, dev)
+    operations_batch = get_parametrized_batch_for_operation("X", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
     return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
@@ -455,7 +455,7 @@ def batchedCRY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qu
     dev = state.device
     batch_size = len(theta)
 
-    operations_batch = get_parametrized_batch_for_operation("RY", theta, batch_size, dev)
+    operations_batch = get_parametrized_batch_for_operation("Y", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
     return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
@@ -490,7 +490,7 @@ def batchedCRZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qu
     dev = state.device
     batch_size = len(theta)
 
-    operations_batch = get_parametrized_batch_for_operation("RZ", theta, batch_size, dev)
+    operations_batch = get_parametrized_batch_for_operation("Z", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
     return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
