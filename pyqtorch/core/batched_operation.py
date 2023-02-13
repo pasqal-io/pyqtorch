@@ -27,6 +27,8 @@ XMAT = OPERATIONS_DICT["X"]
 YMAT = OPERATIONS_DICT["Y"]
 ZMAT = OPERATIONS_DICT["Z"]
 
+BATCH_DIM = 2
+
 
 def get_parametrized_batch_for_operation(operation_type: str, theta: torch.Tensor, batch_size: int, device: torch.device) -> torch.Tensor:
     """ Helper method which takes a string describing an operation type and a parameter theta vector and returns
@@ -502,8 +504,7 @@ def batched_hamiltonian_evolution(
     t: torch.Tensor,
     qubits: Any,
     N_qubits: int,
-    n_steps: int,
-    batch_size: int
+    n_steps: int = 100,
 ) -> torch.Tensor:
     """A function to perform time-evolution according to the generator `H` acting on a 
     `N_qubits`-sized input `state`, for a duration `t`. See also tutorials for more information
@@ -522,9 +523,7 @@ def batched_hamiltonian_evolution(
         torch.Tensor: replaces state with the evolved state according to the instructions above (save a copy of `state`
         if you need further processing on it)
     """
-    if n_steps is None:
-        n_steps = 100
-
+    batch_size = H.size()[BATCH_DIM]
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
 
