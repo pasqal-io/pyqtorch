@@ -11,7 +11,7 @@ torch.use_deterministic_algorithms(True)
 from conftest import TestBatchedFM, TestFM, TestNetwork
 
 from pyqtorch.ansatz import AlternateLayerAnsatz
-from pyqtorch.core import operation,circuit
+from pyqtorch.core import batched_operation, operation, circuit
 
 state_00 = torch.tensor([[1,0],[0,0]], dtype=torch.cdouble).unsqueeze(2)
 state_10 = torch.tensor([[0,1],[0,0]], dtype=torch.cdouble).unsqueeze(2)
@@ -142,11 +142,6 @@ def test_hamevo_single() -> None:
     sigmaz = torch.diag(torch.tensor([1.0, -1.0], dtype=torch.cdouble))
     Hbase = torch.kron(sigmaz, sigmaz)
     H = torch.kron(Hbase, Hbase)
-    t_evo = torch.tensor([0], dtype=torch.cdouble)
-    psi = operation.hamiltonian_evolution(H,
-                        psi, t_evo,
-                        range(N), N)
-
     t_evo = torch.tensor([torch.pi/4], dtype=torch.cdouble)
     psi = operation.hamiltonian_evolution(H,
                         psi, t_evo,
@@ -156,6 +151,38 @@ def test_hamevo_single() -> None:
     assert isclose(result, 0.5)
     
 
+def test_hamevo_batch() -> None:
+    import copy
+    from math import isclose
+    N = 4
+    qc = circuit.QuantumCircuit(N)
+    psi = qc.uniform_state(batch_size=2)
+    psi_0 = copy.deepcopy(psi)
+    def overlap(state1, state2) -> torch.Tensor:
+        N = len(state1.shape)-1
+        state1_T = torch.transpose(state1, N, 0)
+        overlap = torch.tensordot(state1_T, state2, dims=N)
+        return list(map(float,torch.abs(overlap**2).flatten()))
+    sigmaz = torch.diag(torch.tensor([1.0, -1.0], dtype=torch.cdouble))
+    Hbase = torch.kron(sigmaz, sigmaz)
+    H = torch.kron(Hbase, Hbase)
+    H_conj = H.conj()
+    
+    t_evo = torch.tensor([0], dtype=torch.cdouble)
+    psi = operation.hamiltonian_evolution(H,
+                        psi, t_evo,
+                        range(N), N)
+
+    t_evo = torch.tensor([torch.pi/4], dtype=torch.cdouble)
+    psi = operation.hamiltonian_evolution(H,
+                        psi, t_evo,
+                        range(N), N)
+    H_batch = torch.stack((H, H_conj), dim = 2)
+    new_state = batched_operation.batched_hamiltonian_evolution(H_batch, psi, t_evo,
+                        range(N), N, 100, 2)
+    result: List[float] = overlap(psi,psi_0)
+
+    assert map(isclose, zip(result, [0.5,0.5]))
         
 
 

@@ -494,3 +494,66 @@ def batchedCRZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qu
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
     return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
+
+
+def batched_hamiltonian_evolution(
+    H: torch.Tensor,
+    state: torch.Tensor,
+    t: torch.Tensor,
+    qubits: Any,
+    N_qubits: int,
+    n_steps: int,
+    batch_size: int
+) -> torch.Tensor:
+    """A function to perform time-evolution according to the generator `H` acting on a 
+    `N_qubits`-sized input `state`, for a duration `t`. See also tutorials for more information
+    on how to use this gate.
+
+    Args:
+        H (torch.Tensor): the tensor containing dense matrices representing the Hamiltonian, provided as a `Tensor` object with 
+        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        t (torch.Tensor): the evolution time, real for default unitary evolution
+        qubits (Any): The qubits support where the H evolution is applied
+        N_qubits (int): The number of qubits
+        n_steps (int, optional): The number of steps to divide the time interval in. Defaults to 100.
+
+    Returns:
+        torch.Tensor: replaces state with the evolved state according to the instructions above (save a copy of `state`
+        if you need further processing on it)
+    """
+    if n_steps is None:
+        n_steps = 100
+
+    if ops_cache.enabled:
+        store_operation("hevo", qubits, param=t)
+
+    # batch_size = len(t)
+    # #permutation = [N_qubits - q - 1 for q in qubits]
+    # permutation = [N_qubits - q - 1 for q in range(N_qubits) if q not in qubits]
+    # permutation += [N_qubits - q - 1 for q in qubits]
+    # permutation.append(N_qubits)
+    # inverse_permutation = list(np.argsort(permutation))
+
+    # new_dim = [2] * (N_qubits - len(qubits)) + [batch_size] + [2**len(qubits)]
+    # state = state.permute(*permutation).reshape((2**len(qubits), -1))
+
+    h = t.reshape((1, -1)) / n_steps
+    for _ in range(N_qubits - 1):
+        h = h.unsqueeze(0)
+
+    h = h.expand_as(state)
+    # h = h.expand(2**len(qubits), -1, 2**(N_qubits - len(qubits))).reshape((2**len(qubits), -1))
+    for _ in range(n_steps):
+        k1 = -1j * _apply_batch_gate(state, H, qubits, N_qubits, batch_size)
+        k2 = -1j * _apply_batch_gate(state + h / 2 * k1, H, qubits, N_qubits, batch_size)
+        k3 = -1j * _apply_batch_gate(state + h / 2 * k2, H, qubits, N_qubits, batch_size)
+        k4 = -1j * _apply_batch_gate(state + h * k3, H, qubits, N_qubits, batch_size)
+        # k1 = -1j * torch.matmul(H, state)
+        # k2 = -1j * torch.matmul(H, state + h/2 * k1)
+        # k3 = -1j * torch.matmul(H, state + h/2 * k2)
+        # k4 = -1j * torch.matmul(H, state + h * k3)
+
+        state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+
+    return state  # .reshape([2]*N_qubits + [batch_size]).permute(*inverse_permutation
