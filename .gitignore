@@ -37,3 +37,4 @@ dist/
 *.db
 *.eggs
 *.env
+*.venv
