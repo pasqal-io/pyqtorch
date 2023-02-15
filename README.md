@@ -26,8 +26,8 @@ to use `hatch` for managing the environments:
 
 ```shell
 hatch env create tests
-hatch run --env tests python -m pytest -vvv --cov pyqtorch tests
-hatch run --env tests python -m mypy pyqtorch tests
+hatch --env tests run python -m pytest -vvv --cov pyqtorch tests
+hatch --env tests run python -m mypy pyqtorch tests
 ```
 
 If you don't want to use `hatch`, you can use the environment manager of your choice (e.g. Conda) and execute
