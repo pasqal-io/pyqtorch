@@ -506,8 +506,10 @@ def batched_hamiltonian_evolution(
     N_qubits: int,
     n_steps: int = 100,
 ) -> torch.Tensor:
-    """A function to perform time-evolution according to the generator `H` acting on a 
-    `N_qubits`-sized input `state`, for a duration `t`. See also tutorials for more information
+    """A function to perform time-evolution according to the generator `H` 
+
+    The operation is batched on the generator matrix `H` which acts on a `N_qubits`-sized 
+    input `state`, for a duration `t`. See also tutorials for more information 
     on how to use this gate.
 
     Args:
@@ -527,22 +529,11 @@ def batched_hamiltonian_evolution(
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
 
-    # batch_size = len(t)
-    # #permutation = [N_qubits - q - 1 for q in qubits]
-    # permutation = [N_qubits - q - 1 for q in range(N_qubits) if q not in qubits]
-    # permutation += [N_qubits - q - 1 for q in qubits]
-    # permutation.append(N_qubits)
-    # inverse_permutation = list(np.argsort(permutation))
-
-    # new_dim = [2] * (N_qubits - len(qubits)) + [batch_size] + [2**len(qubits)]
-    # state = state.permute(*permutation).reshape((2**len(qubits), -1))
-
     h = t.reshape((1, -1)) / n_steps
     for _ in range(N_qubits - 1):
         h = h.unsqueeze(0)
 
     h = h.expand_as(state)
-    # h = h.expand(2**len(qubits), -1, 2**(N_qubits - len(qubits))).reshape((2**len(qubits), -1))
     for _ in range(n_steps):
         k1 = -1j * _apply_batch_gate(state, H, qubits, N_qubits, batch_size)
         k2 = -1j * _apply_batch_gate(state + h / 2 * k1, H, qubits, N_qubits, batch_size)
@@ -555,4 +546,4 @@ def batched_hamiltonian_evolution(
 
         state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
-    return state  # .reshape([2]*N_qubits + [batch_size]).permute(*inverse_permutation
+    return state
