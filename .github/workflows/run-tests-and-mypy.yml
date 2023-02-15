@@ -11,13 +11,12 @@ jobs:
 
   unit_tests:
     if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+      github.event_name == 'push' || github.event_name == 'pull_request'
     name: Unit testing
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: ["3.8", "3.9", "3.10"]
 
     steps:
 
@@ -31,11 +30,10 @@ jobs:
 
         - name: Install main dependencies
           run: |
-            pip3 install poetry
-            poetry install
+            python -m pip install -e .[dev,converters]
         - name: Perform unit tests
           run: |
-            poetry run python -m pytest -vvv --cov pyqtorch tests
+            python -m pytest -vvv --cov pyqtorch tests
         - name: Mypy checks
           run: |
-            poetry run mypy pyqtorch
+            python -m mypy pyqtorch
