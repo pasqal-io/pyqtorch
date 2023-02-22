@@ -50,3 +50,7 @@ disallow_untyped_defs = true
 warn_unreachable = true
 warn_unused_ignores = true
 ignore_errors = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-vvv --cov pyqtorch tests"
