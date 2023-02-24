@@ -19,7 +19,7 @@ import torch
 from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
-from pyqtorch.core.operation import RX, H
+from pyqtorch.core.operation import RX, H, diagonalize
 from pyqtorch.core.utils import _apply_batch_gate, OPERATIONS_DICT
 
 IMAT = OPERATIONS_DICT["I"]
@@ -546,4 +546,62 @@ def batched_hamiltonian_evolution(
 
         state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
+    return state
+
+
+def batched_hamiltonian_evolution_eig(
+    H: torch.Tensor,
+    state: torch.Tensor,
+    t: torch.Tensor,
+    qubits: Any,
+    N_qubits: int,
+) -> torch.Tensor:
+    """A function to perform time-evolution according to the generator `H` 
+
+    The operation is batched on the generator matrix `H` which acts on a `N_qubits`-sized 
+    input `state`, for a duration `t`. See also tutorials for more information 
+    on how to use this gate.
+
+    Args:
+        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with 
+        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        t (torch.Tensor): the evolution time, real for default unitary evolution
+        qubits (Any): The qubits support where the H evolution is applied
+        N_qubits (int): The number of qubits
+
+    Returns:
+        torch.Tensor: returns the evolved state as a new copy
+    """
+    
+    batch_size_h = H.size()[BATCH_DIM]
+    batch_size_t = len(t)
+    
+    evol_operator = torch.zeros(H.size()).to(torch.cdouble)
+
+    t_evo = torch.zeros(batch_size_h).to(torch.cdouble)
+
+    if batch_size_t >= batch_size_h:
+        t_evo = t[:batch_size_h]
+    else:
+        t_evo[:batch_size_t] = t
+
+    if ops_cache.enabled:
+        store_operation("hevo", qubits, param=t)
+
+    for i in range(batch_size_h):
+        eig_values, eig_vectors = diagonalize(H[...,i])
+
+        if eig_vectors is None:
+            # Compute e^(-i H t)
+            evol_operator[..., i] = torch.diag(torch.exp(-1j * eig_values * t_evo[i]))
+                
+        else:
+            # Compute e^(-i D t)
+            eig_exp = torch.diag(torch.exp(-1j * eig_values * t_evo[i]))
+            # e^(-i H t) = V.e^(-i D t).V^\dagger
+            evol_operator[..., i] = torch.matmul(torch.matmul(eig_vectors, eig_exp), torch.conj(eig_vectors.transpose(0, 1))) 
+
+    state = _apply_batch_gate(state, evol_operator, qubits, N_qubits, batch_size_h)
+    
     return state
