@@ -568,20 +568,33 @@ def hamiltonian_evolution_eig(
         torch.Tensor: replaces state with the evolved state according to the instructions above (save a copy of `state`
         if you need further processing on it)
     """
+
+    batch_size_s = state.size()[-1]
+    batch_size_t = len(t)
+
+    t_evo = torch.zeros(batch_size_s).to(torch.cdouble)
     
+    if batch_size_t >= batch_size_s:
+        t_evo = t[:batch_size_s]
+    else:
+        if batch_size_t == 1:
+            t_evo[:] = t[0]
+        else:
+            t_evo[:batch_size_t] = t
+
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
 
     eig_values, eig_vectors = diagonalize(H)
 
     if eig_vectors is None:
-        for i, t_val in enumerate(t):
+        for i, t_val in enumerate(t_evo):
             # Compute e^(-i H t)
             evol_operator = torch.diag(torch.exp(-1j * eig_values * t_val)) 
             state[..., [i]] = _apply_gate(state[..., [i]], evol_operator, qubits, N_qubits)
 
     else:
-        for i, t_val in enumerate(t):
+        for i, t_val in enumerate(t_evo):
             # Compute e^(-i D t)
             eig_exp = torch.diag(torch.exp(-1j * eig_values * t_val))
             # e^(-i H t) = V.e^(-i D t).V^\dagger
