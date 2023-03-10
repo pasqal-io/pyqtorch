@@ -584,7 +584,11 @@ def batched_hamiltonian_evolution_eig(
     if batch_size_t >= batch_size_h:
         t_evo = t[:batch_size_h]
     else:
-        t_evo[:batch_size_t] = t
+        if batch_size_t == 1:
+            t_evo[:] = t[0]
+        else:
+            t_evo[:batch_size_t] = t
+
 
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
