@@ -525,10 +525,10 @@ def diagonalize(
     First checks if it's already diagonal, and second checks if H is real. 
     """
     def is_diag(H: torch.Tensor) -> bool:
-        return (len(torch.abs(torch.triu(H, diagonal = 1)).to_sparse().values()) == 0)
+        return (len(torch.abs(torch.triu(H, diagonal = 1)).to_sparse().coalesce().values()) == 0)
 
     def is_real(H: torch.Tensor) -> bool:
-        return (len(torch.imag(H).to_sparse().values()) == 0)
+        return (len(torch.imag(H).to_sparse().coalesce().values()) == 0)
 
     if is_diag(H):
         # Skips diagonalization
