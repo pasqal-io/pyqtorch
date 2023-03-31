@@ -31,9 +31,11 @@ jobs:
         - name: Install main dependencies
           run: |
             python -m pip install -e .[dev,converters]
+
+        - name: Lint
+          run: |
+            python -m pre-commit run --all-files
+
         - name: Perform unit tests
           run: |
             python -m pytest -vvv --cov pyqtorch tests
-        - name: Mypy checks
-          run: |
-            python -m mypy pyqtorch
