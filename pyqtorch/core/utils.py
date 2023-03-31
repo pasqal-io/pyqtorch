@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from string import ascii_letters as ABC
-from typing import Any, Sized
+from typing import Any
 
 import numpy as np
 import torch
@@ -28,14 +28,22 @@ YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
 ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
 TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1j) * torch.pi / 4)]], dtype=torch.cdouble)
-SWAPMAT = torch.tensor([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble)
+SWAPMAT = torch.tensor(
+    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
+)
 
-OPERATIONS_DICT = {"I" : IMAT, "X" : XMAT, "Y" : YMAT, "Z" : ZMAT, "S" : SMAT, "T": TMAT, "SWAP" : SWAPMAT}
+OPERATIONS_DICT = {
+    "I": IMAT,
+    "X": XMAT,
+    "Y": YMAT,
+    "Z": ZMAT,
+    "S": SMAT,
+    "T": TMAT,
+    "SWAP": SWAPMAT,
+}
 
 
-def _apply_gate(
-    state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int
-) -> torch.Tensor:
+def _apply_gate(state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int) -> torch.Tensor:
     """
     Apply a gate represented by its matrix `mat` to the quantum state
     `state`
@@ -58,9 +66,7 @@ def _apply_gate(
 
     state = torch.tensordot(mat, state, dims=axes)
     inv_perm = torch.argsort(
-        torch.tensor(
-            state_dims + [j for j in range(N_qubits + 1) if j not in state_dims]
-        )
+        torch.tensor(state_dims + [j for j in range(N_qubits + 1) if j not in state_dims])
     )
     state = torch.permute(state, tuple(inv_perm))
     return state

@@ -39,14 +39,16 @@ ops_cache = OpsCache()
 
 
 def store_operation(
-    name: str, targets: ArrayLike, param: Union[float, List[float], torch.Tensor, None] = None
+    name: str,
+    targets: ArrayLike,
+    param: Union[float, List[float], torch.Tensor, None] = None,
 ) -> None:
     """Store an operation in the case saving its properties
 
     Args:
         name (str): The name of the operation to store
         targets (ArrayLike): The target qubits
-        param (Union[float, List[float]], optional): Optional parameter value 
+        param (Union[float, List[float]], optional): Optional parameter value
             for parametric operations
     """
 

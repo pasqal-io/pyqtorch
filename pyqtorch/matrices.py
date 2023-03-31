@@ -21,9 +21,7 @@ ZMAT = torch.tensor([1, -1], dtype=torch.cdouble)
 NMAT = torch.tensor([0, 1], dtype=torch.cdouble)
 
 
-def ZZ(
-    N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu"
-) -> torch.Tensor:
+def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
 
     if i == j:
         return torch.ones(2**N).to(device)
@@ -36,9 +34,7 @@ def ZZ(
     return operator
 
 
-def NN(
-    N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu"
-) -> torch.Tensor:
+def NN(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
 
     if i == j:
         return torch.ones(2**N, dtype=torch.cdouble).to(device)
@@ -51,9 +47,7 @@ def NN(
     return operator
 
 
-def single_Z(
-    N: int, i: int = 0, device: Union[str, torch.device] = "cpu"
-) -> torch.Tensor:
+def single_Z(N: int, i: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
     op_list = [ZMAT.to(device) if k == i else IMAT.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
@@ -62,9 +56,7 @@ def single_Z(
     return operator
 
 
-def single_N(
-    N: int, i: int = 0, device: Union[str, torch.device] = "cpu"
-) -> torch.Tensor:
+def single_N(N: int, i: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
     op_list = [NMAT.to(device) if k == i else IMAT.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:

@@ -1,6 +1,5 @@
 from typing import Any
 
-import torch
 from qiskit import QuantumCircuit as QiskitCircuit
 from qiskit import QuantumRegister
 
@@ -27,8 +26,7 @@ gates_map = {
     "SWAP": "swap",
     "CPHASE": "cp",
     "S": "s",
-    "T": "t"
-
+    "T": "t",
 }
 
 
@@ -64,9 +62,7 @@ def pyq2qiskit(circuit: QuantumCircuit, *args: Any, **kwargs: Any) -> QiskitCirc
         gate_name = gates_map[op.name]
 
         if not hasattr(qiskit_circuit, gate_name):
-            print(
-                f"The gate {gate_name} is not available in Qiskit, conversion will be incomplete"
-            )
+            print(f"The gate {gate_name} is not available in Qiskit, conversion will be incomplete")
             continue
 
         if op.param is not None:

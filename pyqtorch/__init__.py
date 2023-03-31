@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .core import measurement, utils
-from .core.batched_operation import *
-from .core.circuit import *
+from .core.batched_operation import *  # noqa: F403
+from .core.circuit import *  # noqa: F403
 from .core.measurement import measure_openfermion
-from .core.operation import *
+from .core.operation import *  # noqa: F403
