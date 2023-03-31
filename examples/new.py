@@ -1,5 +1,4 @@
 import torch
-from torch import Tensor
 from torch.nn import Module
 from numpy.typing import ArrayLike
 
@@ -23,13 +22,13 @@ class RotationGate(Module):
         self.register_buffer("I", OPERATIONS_DICT["I"])
         self.register_buffer("P", OPERATIONS_DICT[gate])
 
-    def forward(self, theta: Tensor, state: Tensor) -> Tensor:
+    def forward(self, theta: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = len(theta)
         mats = rot_matrices(theta, self.P, self.I, batch_size)
         return _apply_batch_gate(state, mats, self.qubits, self.n_qubits, batch_size)
 
 
-def rot_matrices(theta: Tensor, P: Tensor, I: Tensor, batch_size: int) -> Tensor:
+def rot_matrices(theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int) -> torch.Tensor:
     """ 
     Returns:
         torch.Tensor: a batch of gates after applying theta
@@ -56,10 +55,10 @@ if __name__ == "__main__":
     #g = OPERATIONS_DICT["I"].to(device="mps", dtype=torch.cfloat)
     #print(g + g)
 
-    dtype = torch.cfloat
-    device = "cpu"
+    dtype = torch.cdouble
+    device = "cuda"
 
-    theta = torch.ones(10000, device=device) * 3.14
+    theta = torch.rand(10_000, device=device)
     state_00 = torch.tensor([[1, 0], [0, 0]], dtype=dtype, device=device).unsqueeze(2)
     state_10 = torch.tensor([[0, 1], [0, 0]], dtype=dtype, device=device).unsqueeze(2)
     state_01 = torch.tensor([[0, 0], [1, 0]], dtype=dtype, device=device).unsqueeze(2)
@@ -67,15 +66,18 @@ if __name__ == "__main__":
 
     qubits = [0]
     n_qubits = 2
+    iters = 10_000
 
-    #t1 = time.time()
-    #s = batchedRX(theta, state_00, qubits, n_qubits)
-    #print(f"{time.time()-t1}")
-    #print(s)
+    s = state_00
+
+    t1 = time.time()
+    for _ in range(iters):
+        batchedRX(theta, s, qubits, n_qubits)
+    print(f"{time.time()-t1}")
 
     gate = RX(qubits, n_qubits).to(device=device, dtype=dtype)
-    gate = torch.compile(gate)
+    #gate = torch.compile(gate)
     t1 = time.time()
-    s = gate(theta, state_00)
+    for _ in range(iters):
+        gate(theta, s)
     print(f"{time.time()-t1}")
-    print(s)
