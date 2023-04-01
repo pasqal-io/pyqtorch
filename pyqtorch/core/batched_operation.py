@@ -45,7 +45,7 @@ def get_parametrized_batch_for_operation(
         device (torch.device): the device which to run on
 
     Returns:
-    torch.Tensor: a batch of gates after applying theta
+        torch.Tensor: a batch of gates after applying theta
     """
 
     cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
