@@ -27,8 +27,7 @@ gates_map = {
     "SWAP": "swap",
     "CPHASE": "cp",
     "S": "s",
-    "T": "t"
-
+    "T": "t",
 }
 
 
@@ -60,13 +59,10 @@ def pyq2qiskit(circuit: QuantumCircuit, *args: Any, **kwargs: Any) -> QiskitCirc
     qiskit_circuit = QiskitCircuit(qr)
 
     for op in ops_cache.operations:
-
         gate_name = gates_map[op.name]
 
         if not hasattr(qiskit_circuit, gate_name):
-            print(
-                f"The gate {gate_name} is not available in Qiskit, conversion will be incomplete"
-            )
+            print(f"The gate {gate_name} is not available in Qiskit, conversion will be incomplete")
             continue
 
         if op.param is not None:

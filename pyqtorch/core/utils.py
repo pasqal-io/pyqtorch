@@ -28,14 +28,22 @@ YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
 ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
 TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1j) * torch.pi / 4)]], dtype=torch.cdouble)
-SWAPMAT = torch.tensor([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble)
+SWAPMAT = torch.tensor(
+    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
+)
 
-OPERATIONS_DICT = {"I" : IMAT, "X" : XMAT, "Y" : YMAT, "Z" : ZMAT, "S" : SMAT, "T": TMAT, "SWAP" : SWAPMAT}
+OPERATIONS_DICT = {
+    "I": IMAT,
+    "X": XMAT,
+    "Y": YMAT,
+    "Z": ZMAT,
+    "S": SMAT,
+    "T": TMAT,
+    "SWAP": SWAPMAT,
+}
 
 
-def _apply_gate(
-    state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int
-) -> torch.Tensor:
+def _apply_gate(state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int) -> torch.Tensor:
     """
     Apply a gate represented by its matrix `mat` to the quantum state
     `state`
@@ -58,9 +66,7 @@ def _apply_gate(
 
     state = torch.tensordot(mat, state, dims=axes)
     inv_perm = torch.argsort(
-        torch.tensor(
-            state_dims + [j for j in range(N_qubits + 1) if j not in state_dims]
-        )
+        torch.tensor(state_dims + [j for j in range(N_qubits + 1) if j not in state_dims])
     )
     state = torch.permute(state, tuple(inv_perm))
     return state
@@ -97,9 +103,9 @@ def _apply_einsum_gate(
     new_state_indices[qubits] = mat_indices[0 : len(qubits)]
 
     # Transform the arrays into strings
-    state_indices = "".join(list(state_indices))  # type: ignore
-    new_state_indices = "".join(list(new_state_indices))  # type: ignore
-    mat_indices = "".join(list(mat_indices))  # type: ignore
+    state_indices = "".join(list(state_indices))
+    new_state_indices = "".join(list(new_state_indices))
+    mat_indices = "".join(list(mat_indices))
 
     einsum_indices = f"{mat_indices},{state_indices}->{new_state_indices}"
 
@@ -143,12 +149,12 @@ def _apply_batch_gate(
     new_state_indices = state_indices.copy()
     new_state_indices[qubits] = mat_indices[0 : len(qubits)]
 
-    state_indices = "".join(list(state_indices))  # type: ignore
-    new_state_indices = "".join(list(new_state_indices))  # type: ignore
-    mat_indices = "".join(list(mat_indices))  # type: ignore
+    state_indices = "".join(list(state_indices))
+    new_state_indices = "".join(list(new_state_indices))
+    mat_indices = "".join(list(mat_indices))
 
     einsum_indices = f"{mat_indices},{state_indices}->{new_state_indices}"
-    # print(einsum_indices)
+
     state = torch.einsum(einsum_indices, mat, state)
 
     return state

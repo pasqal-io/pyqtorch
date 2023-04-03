@@ -171,7 +171,7 @@ def get_sparse_torch(coo_matrix: Union[sp.coo_matrix, sp.bsr_matrix]) -> torch.T
     return tensor
 
 
-def heisenberg_hamiltonian(  # type: ignore [empty-body]
+def heisenberg_hamiltonian(
     graph: Any,
     alpha: Any,
     beta: Any,
@@ -182,7 +182,7 @@ def heisenberg_hamiltonian(  # type: ignore [empty-body]
     pass
 
 
-def XY_hamiltonian(  # type: ignore [empty-body]
+def XY_hamiltonian(
     graph: Any,
     alpha: Any,
     beta: Any,

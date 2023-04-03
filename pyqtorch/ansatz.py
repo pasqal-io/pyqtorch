@@ -37,9 +37,7 @@ class OneLayerRotation(QuantumCircuit):
     def reset_parameters(self) -> None:
         init.uniform_(self.theta, -2 * np.pi, 2 * np.pi)
 
-    def forward(
-        self, state: torch.Tensor, _: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, _: Optional[torch.Tensor] = None) -> torch.Tensor:
         if self.arbitrary:
             for i, t in enumerate(self.theta):
                 state = U(t[0], t[1], t[2], state, [i], self.n_qubits)
@@ -50,9 +48,7 @@ class OneLayerXRotation(OneLayerRotation):
     def __init__(self, n_qubits: int):
         super().__init__(n_qubits)
 
-    def forward(
-        self, state: torch.Tensor, _: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, _: Optional[torch.Tensor] = None) -> torch.Tensor:
         for i, t in enumerate(self.theta):
             state = RX(t, state, [i], self.n_qubits)
         return state
@@ -62,9 +58,7 @@ class OneLayerYRotation(OneLayerRotation):
     def __init__(self, n_qubits: int):
         super().__init__(n_qubits)
 
-    def forward(
-        self, state: torch.Tensor, _: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, _: Optional[torch.Tensor] = None) -> torch.Tensor:
         for i, t in enumerate(self.theta):
             state = RY(t, state, [i], self.n_qubits)
         return state
@@ -74,9 +68,7 @@ class OneLayerZRotation(OneLayerRotation):
     def __init__(self, n_qubits: int):
         super().__init__(n_qubits)
 
-    def forward(
-        self, state: torch.Tensor, _: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, _: Optional[torch.Tensor] = None) -> torch.Tensor:
         for i, t in enumerate(self.theta):
             state = RZ(t, state, [i], self.n_qubits)
         return state
@@ -87,14 +79,10 @@ class OneLayerEntanglingAnsatz(QuantumCircuit):
         super().__init__(n_qubits)
         self.param_layer = OneLayerRotation(n_qubits=self.n_qubits, arbitrary=True)
 
-    def forward(
-        self, state: torch.Tensor, _: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, _: Optional[torch.Tensor] = None) -> torch.Tensor:
         state = self.param_layer(state)
         for i in range(self.n_qubits):
-            state = CNOT(
-                state, [i % self.n_qubits, (i + 1) % self.n_qubits], self.n_qubits
-            )
+            state = CNOT(state, [i % self.n_qubits, (i + 1) % self.n_qubits], self.n_qubits)
         return state
 
 
@@ -105,9 +93,7 @@ class AlternateLayerAnsatz(QuantumCircuit):
             [OneLayerEntanglingAnsatz(self.n_qubits) for _ in range(n_layers)]
         )
 
-    def forward(
-        self, state: torch.Tensor, _: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, _: Optional[torch.Tensor] = None) -> torch.Tensor:
         for layer in self.layers:
             state = layer(state)
         return state

@@ -29,9 +29,7 @@ class QuantumCircuit(nn.Module):
     def init_state(
         self, batch_size: int = 1, device: Union[str, torch.device] = "cpu"
     ) -> torch.Tensor:
-        state = torch.zeros((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(
-            device
-        )
+        state = torch.zeros((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(device)
         state[0] = 1
         state = state.reshape([2] * self.n_qubits + [batch_size])
         return state
@@ -39,9 +37,7 @@ class QuantumCircuit(nn.Module):
     def uniform_state(
         self, batch_size: int = 1, device: Union[str, torch.device] = "cpu"
     ) -> torch.Tensor:
-        state = torch.ones((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(
-            device
-        )
+        state = torch.ones((2**self.n_qubits, batch_size), dtype=torch.cdouble).to(device)
         state = state / torch.sqrt(torch.tensor(2**self.n_qubits))
         state = state.reshape([2] * self.n_qubits + [batch_size])
         return state
