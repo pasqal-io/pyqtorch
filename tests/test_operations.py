@@ -1,10 +1,7 @@
-import copy
-from math import isclose
+from __future__ import annotations
 import random
-import copy
 
 import numpy as np
-import networkx as nx
 import torch
 from torch.autograd import grad
 
