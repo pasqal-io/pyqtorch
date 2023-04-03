@@ -390,7 +390,7 @@ def batchedCPHASE(
 
     dev = state.device
     batch_size = len(theta)
-    mat = torch.eye(4, torch.cdouble).repeat((batch_size, 1, 1))
+    mat = torch.eye(4, dtype=torch.cdouble).repeat((batch_size, 1, 1))
     mat = torch.permute(mat, (1, 2, 0))
     phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
     mat[3, 3, :] = phase_rotation_angles
