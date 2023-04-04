@@ -21,9 +21,7 @@ from pyqtorch.core.operation import X, Y, Z
 qubit_operators = {"X": X, "Y": Y, "Z": Z}
 
 
-def total_magnetization(
-    state: torch.Tensor, N_qubits: int, batch_size: int
-) -> torch.Tensor:
+def total_magnetization(state: torch.Tensor, N_qubits: int, batch_size: int) -> torch.Tensor:
     new_state: torch.Tensor = torch.zeros_like(state)
     for i in range(N_qubits):
         new_state += Z(state, [i], N_qubits)

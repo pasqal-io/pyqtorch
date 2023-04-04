@@ -39,7 +39,7 @@ class TestBatchedFM(QuantumCircuit):
 
 
 class TestNetwork(Module):
-    def __init__(self, network, n_qubits=4) -> None:
+    def __init__(self, network: torch.nn.Module, n_qubits: int = 4) -> None:
         super().__init__()
         self.n_qubits = n_qubits
         self.network = ModuleList(network)
@@ -60,7 +60,6 @@ class TestCircuit(QuantumCircuit):
         self.theta = nn.Parameter(torch.empty((self.n_qubits,)))
 
     def forward(self) -> torch.Tensor:
-
         # initial state
         state = self.init_state()
 

@@ -13,7 +13,6 @@ class Operation:
 
 
 class OpsCache:
-
     # make it a singleton
     def __new__(cls) -> "OpsCache":
         if not hasattr(cls, "instance"):
@@ -39,20 +38,21 @@ ops_cache = OpsCache()
 
 
 def store_operation(
-    name: str, targets: ArrayLike, param: Union[float, List[float], torch.Tensor, None] = None
+    name: str,
+    targets: ArrayLike,
+    param: Union[float, List[float], torch.Tensor, None] = None,
 ) -> None:
     """Store an operation in the case saving its properties
 
     Args:
         name (str): The name of the operation to store
         targets (ArrayLike): The target qubits
-        param (Union[float, List[float]], optional): Optional parameter value 
+        param (Union[float, List[float]], optional): Optional parameter value
             for parametric operations
     """
 
     reshaped_par = param
     if param is not None:
-
         # taken into account the case of batched gates
         if isinstance(param, torch.Tensor):
             # FIXME: Taking only the first element for batched gates here

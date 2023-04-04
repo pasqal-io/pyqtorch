@@ -23,8 +23,8 @@ from pyqtorch.core.utils import _apply_gate, OPERATIONS_DICT
 
 
 def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tensor) -> torch.Tensor:
-    """ Helper method which takes a string describing an operation type and a parameter theta and returns
-        the corresponding parametrized rotation matrix 
+    """Helper method which takes a string describing an operation type and a parameter theta and returns
+        the corresponding parametrized rotation matrix
     Args:
 
     operation_type (str): the type of operation which should be performed (RX,RY,RZ)
@@ -33,29 +33,31 @@ def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tens
     Returns:
     torch.Tensor: the resulting gate after applying theta
     """
-    return OPERATIONS_DICT["I"] * torch.cos(theta / 2) - 1j * OPERATIONS_DICT[operation_type] * torch.sin(theta / 2)
+    return OPERATIONS_DICT["I"] * torch.cos(theta / 2) - 1j * OPERATIONS_DICT[
+        operation_type
+    ] * torch.sin(theta / 2)
 
 
-def create_controlled_matrix_from_operation(operation_matrix: torch.Tensor) -> torch.Tensor:
-    """ Method which takes a 2x2 torch.Tensor and transforms it into a Controlled Operation Gate
+def create_controlled_matrix_from_operation(
+    operation_matrix: torch.Tensor,
+) -> torch.Tensor:
+    """Method which takes a 2x2 torch.Tensor and transforms it into a Controlled Operation Gate
 
     Args:
 
         operation_matrix (torch.Tensor): the type of operation which should be performed (RX,RY,RZ)
-    
+
     Returns:
 
         torch.Tensor: the resulting controlled gate populated by operation_matrix
     """
     controlled_mat: torch.Tensor = torch.eye(4, dtype=torch.cdouble)
-    controlled_mat[2:,2:] = operation_matrix
+    controlled_mat[2:, 2:] = operation_matrix
     return controlled_mat
 
 
-def RX(
-    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
-) -> torch.Tensor:
-    """Parametrized single-qubit RX rotation  
+def RX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """Parametrized single-qubit RX rotation
 
     Args:
         theta (torch.Tensor): 1D-tensor holding the values of the parameter
@@ -74,10 +76,8 @@ def RX(
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def RY(
-    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
-) -> torch.Tensor:
-    """Parametrized single-qubit RY rotation  
+def RY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """Parametrized single-qubit RY rotation
 
     Args:
         theta (torch.Tensor): 1D-tensor holding the values of the parameter
@@ -96,10 +96,8 @@ def RY(
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def RZ(
-    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
-) -> torch.Tensor:
-    """Parametrized single-qubit RZ rotation  
+def RZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """Parametrized single-qubit RZ rotation
 
     Args:
         theta (torch.Tensor): 1D-tensor holding the values of the parameter
@@ -118,10 +116,8 @@ def RZ(
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def RZZ(
-    theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int
-) -> torch.Tensor:
-    """Parametrized two-qubits RZ rotation  
+def RZZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """Parametrized two-qubits RZ rotation
 
     Args:
         theta (torch.Tensor): 1D-tensor holding the values of the parameter
@@ -151,11 +147,11 @@ def U(
     qubits: ArrayLike,
     N_qubits: int,
 ) -> torch.Tensor:
-    """Parametrized arbitrary rotation along the axes of the Bloch sphere 
-    
+    """Parametrized arbitrary rotation along the axes of the Bloch sphere
+
     The angles `phi, theta, omega` in tensor format, applied as:
     U(phi, theta, omega) = RZ(omega)RY(theta)RZ(phi)
-            
+
     Args:
         phi (torch.Tensor): 1D-tensor holding the values of the `phi` parameter
         theta (torch.Tensor): 1D-tensor holding the values of the `theta` parameter
@@ -175,9 +171,7 @@ def U(
     t_plus = torch.exp(-1j * (phi + omega) / 2)
     t_minus = torch.exp(-1j * (phi - omega) / 2)
     mat = (
-        torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).to(dev)
-        * torch.cos(theta / 2)
-        * t_plus
+        torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).to(dev) * torch.cos(theta / 2) * t_plus
         - torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).to(dev)
         * torch.sin(theta / 2)
         * torch.conj(t_minus)
@@ -295,7 +289,12 @@ def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def ControlledOperationGate(state: torch.Tensor, qubits: ArrayLike, N_qubits: int, operation_matrix: torch.Tensor) -> torch.Tensor:
+def ControlledOperationGate(
+    state: torch.Tensor,
+    qubits: ArrayLike,
+    N_qubits: int,
+    operation_matrix: torch.Tensor,
+) -> torch.Tensor:
     """Generalized Controlled Rotation gate with two-qubits support
 
     Args:
@@ -309,7 +308,9 @@ def ControlledOperationGate(state: torch.Tensor, qubits: ArrayLike, N_qubits: in
         torch.Tensor: the resulting state after applying the gate
     """
     dev = state.device
-    controlled_operation_matrix: torch.Tensor = create_controlled_matrix_from_operation(operation_matrix)
+    controlled_operation_matrix: torch.Tensor = create_controlled_matrix_from_operation(
+        operation_matrix
+    )
     return _apply_gate(state, controlled_operation_matrix.to(dev), qubits, N_qubits)
 
 
@@ -328,7 +329,7 @@ def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     if ops_cache.enabled:
         store_operation("CNOT", qubits)
-    
+
     return ControlledOperationGate(state, qubits, N_qubits, OPERATIONS_DICT["X"])
 
 
@@ -340,7 +341,7 @@ def CRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         qubits (ArrayLike): list of qubit indices where the gate will operate
         N_qubits (int): the number of qubits in the system
-        
+
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
@@ -470,7 +471,13 @@ def CPHASE(
 
     dev = state.device
     mat: torch.Tensor = torch.tensor(
-        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, torch.exp(torch.tensor(1j * theta))]], dtype=torch.cdouble
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, torch.exp(torch.tensor(1j * theta))],
+        ],
+        dtype=torch.cdouble,
     ).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
@@ -483,12 +490,12 @@ def hamiltonian_evolution(
     N_qubits: int,
     n_steps: int = 100,
 ) -> torch.Tensor:
-    """A function to perform time-evolution according to the generator `H` acting on a 
+    """A function to perform time-evolution according to the generator `H` acting on a
     `N_qubits`-sized input `state`, for a duration `t`. See also tutorials for more information
     on how to use this gate.
 
     Args:
-        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with 
+        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with
         shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
@@ -500,7 +507,7 @@ def hamiltonian_evolution(
         torch.Tensor: replaces state with the evolved state according to the instructions above (save a copy of `state`
         if you need further processing on it)
     """
-    
+
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
 
@@ -517,9 +524,9 @@ def hamiltonian_evolution(
     h = t.reshape((1, -1)) / n_steps
     for _ in range(N_qubits - 1):
         h = h.unsqueeze(0)
-    
+
     h = h.expand_as(state)
-    
+
     # h = h.expand(2**len(qubits), -1, 2**(N_qubits - len(qubits))).reshape((2**len(qubits), -1))
     for _ in range(n_steps):
         k1 = -1j * _apply_gate(state, H, qubits, N_qubits)
@@ -536,19 +543,19 @@ def hamiltonian_evolution(
 
     return state  # .reshape([2]*N_qubits + [batch_size]).permute(*inverse_permutation)
 
+
 @lru_cache(maxsize=256)
-def diagonalize(
-    H: torch.Tensor
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+def diagonalize(H: torch.Tensor) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
     """
     Diagonalizes an Hermitian Hamiltonian, returning eigenvalues and eigenvectors.
-    First checks if it's already diagonal, and second checks if H is real. 
+    First checks if it's already diagonal, and second checks if H is real.
     """
+
     def is_diag(H: torch.Tensor) -> bool:
-        return (len(torch.abs(torch.triu(H, diagonal = 1)).to_sparse().coalesce().values()) == 0)
+        return len(torch.abs(torch.triu(H, diagonal=1)).to_sparse().coalesce().values()) == 0
 
     def is_real(H: torch.Tensor) -> bool:
-        return (len(torch.imag(H).to_sparse().coalesce().values()) == 0)
+        return len(torch.imag(H).to_sparse().coalesce().values()) == 0
 
     if is_diag(H):
         # Skips diagonalization
@@ -572,12 +579,12 @@ def hamiltonian_evolution_eig(
     qubits: Any,
     N_qubits: int,
 ) -> torch.Tensor:
-    """A function to perform time-evolution according to the generator `H` acting on a 
+    """A function to perform time-evolution according to the generator `H` acting on a
     `N_qubits`-sized input `state`, for a duration `t`. See also tutorials for more information
     on how to use this gate. Uses exact diagonalization.
 
     Args:
-        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with 
+        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with
         shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
@@ -593,7 +600,7 @@ def hamiltonian_evolution_eig(
     batch_size_t = len(t)
 
     t_evo = torch.zeros(batch_size_s).to(torch.cdouble)
-    
+
     if batch_size_t >= batch_size_s:
         t_evo = t[:batch_size_s]
     else:
@@ -610,7 +617,7 @@ def hamiltonian_evolution_eig(
     if eig_vectors is None:
         for i, t_val in enumerate(t_evo):
             # Compute e^(-i H t)
-            evol_operator = torch.diag(torch.exp(-1j * eig_values * t_val)) 
+            evol_operator = torch.diag(torch.exp(-1j * eig_values * t_val))
             state[..., [i]] = _apply_gate(state[..., [i]], evol_operator, qubits, N_qubits)
 
     else:
@@ -618,7 +625,10 @@ def hamiltonian_evolution_eig(
             # Compute e^(-i D t)
             eig_exp = torch.diag(torch.exp(-1j * eig_values * t_val))
             # e^(-i H t) = V.e^(-i D t).V^\dagger
-            evol_operator = torch.matmul(torch.matmul(eig_vectors, eig_exp), torch.conj(eig_vectors.transpose(0, 1))) 
+            evol_operator = torch.matmul(
+                torch.matmul(eig_vectors, eig_exp),
+                torch.conj(eig_vectors.transpose(0, 1)),
+            )
             state[..., [i]] = _apply_gate(state[..., [i]], evol_operator, qubits, N_qubits)
 
     return state
