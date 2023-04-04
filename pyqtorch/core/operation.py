@@ -165,7 +165,7 @@ def U(
     """
 
     if ops_cache.enabled:
-        store_operation("U", qubits, param=[phi, theta, omega])
+        store_operation("U", qubits, param=[phi, theta, omega])  # type: ignore[list-item]
 
     dev = state.device
     t_plus = torch.exp(-1j * (phi + omega) / 2)
