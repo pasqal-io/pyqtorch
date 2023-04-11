@@ -431,7 +431,7 @@ def batchedCRX(
     operations_batch = get_parametrized_batch_for_operation("X", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
-    return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
+    return _apply_batch_gate(state, controlledX_batch.to(dev), qubits, N_qubits, batch_size)
 
 
 def batchedCRY(
@@ -467,7 +467,7 @@ def batchedCRY(
     operations_batch = get_parametrized_batch_for_operation("Y", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
-    return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
+    return _apply_batch_gate(state, controlledX_batch.to(dev), qubits, N_qubits, batch_size)
 
 
 def batchedCRZ(
@@ -503,7 +503,7 @@ def batchedCRZ(
     operations_batch = get_parametrized_batch_for_operation("Z", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
-    return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
+    return _apply_batch_gate(state, controlledX_batch.to(dev), qubits, N_qubits, batch_size)
 
 
 def batched_hamiltonian_evolution(
