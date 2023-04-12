@@ -27,8 +27,9 @@ def test_batched_ops() -> None:
     psi = qc.uniform_state(batch_size)
 
     for op in [batchedCPHASE, batchedCRX, batchedCRY, batchedCRZ, batchedCPHASE]:
-        res = op(theta,psi,[i for i in range(n_qubits)],n_qubits)
+        res = op(theta, psi, [i for i in range(n_qubits)], n_qubits)
         assert not torch.any(torch.isnan(res))
+
 
 def test_batched_cphase() -> None:
 
@@ -37,4 +38,4 @@ def test_batched_cphase() -> None:
     psi_target = torch.tensor([[0, 0], [0, -1]], dtype=torch.cdouble).unsqueeze(2)
     angle = pi.unsqueeze(0)
     res = batchedCPHASE(angle, psi, [i for i in range(n_qubits)], n_qubits)
-    assert torch.allclose(res, psi_target,  atol=1e-16)
+    assert torch.allclose(res, psi_target, atol=1e-16)
