@@ -18,7 +18,7 @@ class PauliGate(Module):
         self.n_qubits = n_qubits
         self.register_buffer("pauli", OPERATIONS_DICT[gate])
 
-    def forward(self, _: Tensor, state: Tensor):
+    def forward(self, _: dict[str, Tensor], state: Tensor):
         return _apply_gate(state, self.pauli, self.qubits, self.n_qubits)
 
     @property
@@ -31,14 +31,16 @@ def X(qubits, n_qubits):
 
 
 class RotationGate(Module):
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int, param_name: str):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
+        self.param_name = param_name
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
-    def forward(self, theta: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+    def forward(self, thetas: dict[str, Tensor], state: torch.Tensor) -> torch.Tensor:
+        theta = thetas[self.param_name]
         batch_size = len(theta)
         mats = rot_matrices(theta, self.paulimat, self.imat, batch_size)
         return _apply_batch_gate(state, mats, self.qubits, self.n_qubits, batch_size)
@@ -67,17 +69,14 @@ def rot_matrices(
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
 
 
-def RX(qubits, n_qubits, **kwargs):
-    return RotationGate("X", qubits, n_qubits, **kwargs)
+def RX(*args, **kwargs):
+    return RotationGate("X", *args, **kwargs)
 
+def RY(*args, **kwargs):
+    return RotationGate("Y", *args, **kwargs)
 
-def RY(qubits, n_qubits, **kwargs):
-    return RotationGate("Y", qubits, n_qubits, **kwargs)
-
-
-def RZ(qubits, n_qubits, **kwargs):
-    return RotationGate("Z", qubits, n_qubits, **kwargs)
-
+def RY(*args, **kwargs):
+    return RotationGate("Y", *args, **kwargs)
 
 class ControlledOperationGate(Module):
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
@@ -88,7 +87,7 @@ class ControlledOperationGate(Module):
         mat = OPERATIONS_DICT[gate]
         self.register_buffer("mat", create_controlled_matrix_from_operation(mat))
 
-    def forward(self, _: Tensor, state: Tensor):
+    def forward(self, _: dict[str, Tensor], state: Tensor):
         return _apply_gate(state, self.mat, self.qubits, self.n_qubits)
 
     @property
@@ -130,9 +129,9 @@ class QuantumCircuit(Module):
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
 
-    def forward(self, theta: Tensor, state: Tensor):
+    def forward(self, thetas: dict[str, Tensor], state: Tensor):
         for op in self.operations:
-            state = op(theta, state)
+            state = op(thetas, state)
         return state
 
     @property
@@ -159,7 +158,8 @@ if __name__ == "__main__":
     device = "cpu"
     batch_size = 1_000
     state = uniform_state(2, batch_size=batch_size, device=device, dtype=dtype)
-    theta = torch.rand(batch_size, device=device, dtype=dtype)
+    phi = torch.rand(batch_size, device=device, dtype=dtype)
+    thetas = {"phi": phi}
 
     qubits = [0]
     n_qubits = 2
@@ -167,25 +167,25 @@ if __name__ == "__main__":
 
     t1 = time.time()
     for _ in range(iters):
-        batchedRX(theta, state, qubits, n_qubits)
+        batchedRX(phi, state, qubits, n_qubits)
     print(f"{time.time()-t1}")
 
-    gate = RX(qubits, n_qubits).to(device=device, dtype=dtype)
+    gate = RX(qubits, n_qubits, "phi").to(device=device, dtype=dtype)
     # gate = torch.compile(gate)
     t1 = time.time()
     for _ in range(iters):
-        gate(theta, state)
+        gate(thetas, state)
     print(f"{time.time()-t1}")
     print(state)
 
-    ops = [X([0], 2), X([1], 2), RX([1], 2), CNOT([0, 1], 2)]
-    ops = [RX([0], 2)]
+    ops = [X([0], 2), X([1], 2), RX([1], 2, "phi"), CNOT([0, 1], 2)]
+    ops = [RX([0], 2, "phi")]
     circ = QuantumCircuit(2, ops).to(device=device, dtype=dtype)
 
-    circ(theta, state)
+    circ(thetas, state)
     t1 = time.time()
     for _ in range(iters):
-        circ(theta, state)
+        circ(thetas, state)
     print(f"{time.time()-t1}")
     print(state)
 
