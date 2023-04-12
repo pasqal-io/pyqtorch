@@ -1,10 +1,11 @@
+from typing import Any
+from numpy.typing import ArrayLike
+
 import torch
 from torch.nn import Module
-from numpy.typing import ArrayLike
 
 from pyqtorch.core.utils import OPERATIONS_DICT
 from pyqtorch.core.batched_operation import _apply_batch_gate
-from pyqtorch.core.operation import create_controlled_matrix_from_operation, _apply_gate
 
 
 class RotationGate(Module):
@@ -23,9 +24,8 @@ class RotationGate(Module):
         return _apply_batch_gate(state, mats, self.qubits, self.n_qubits, batch_size)
 
     @property
-    def device(self):
+    def device(self) -> torch.device:
         return self.imat.device
-
 
 
 def rot_matrices(
@@ -46,11 +46,13 @@ def rot_matrices(
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
 
 
-def RX(*args, **kwargs):
+def RX(*args: Any, **kwargs: Any) -> RotationGate:
     return RotationGate("X", *args, **kwargs)
 
-def RY(*args, **kwargs):
+
+def RY(*args: Any, **kwargs: Any) -> RotationGate:
     return RotationGate("Y", *args, **kwargs)
 
-def RZ(*args, **kwargs):
+
+def RZ(*args: Any, **kwargs: Any) -> RotationGate:
     return RotationGate("Z", *args, **kwargs)
