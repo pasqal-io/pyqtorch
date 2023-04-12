@@ -8,11 +8,6 @@ import numpy as np
 import networkx as nx
 import torch
 
-random.seed(0)
-np.random.seed(0)
-torch.manual_seed(0)
-torch.use_deterministic_algorithms(True)
-
 from pyqtorch.core import batched_operation, operation, circuit
 from pyqtorch.core.circuit import QuantumCircuit
 from pyqtorch.core.operation import hamiltonian_evolution, hamiltonian_evolution_eig
@@ -21,6 +16,11 @@ from pyqtorch.core.batched_operation import (
     batched_hamiltonian_evolution_eig,
 )
 from pyqtorch.matrices import generate_ising_from_graph
+
+random.seed(0)
+np.random.seed(0)
+torch.manual_seed(0)
+torch.use_deterministic_algorithms(True)
 
 state_00 = torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_10 = torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2)

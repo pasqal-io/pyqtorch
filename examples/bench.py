@@ -4,14 +4,16 @@ import torch
 from pyqtorch.modules import RX, X, CNOT, QuantumCircuit, uniform_state, zero_state
 from pyqtorch.core.batched_operation import batchedRX
 
+
 def timeit(f, *args, niters=100):
     t = 0
     for _ in range(niters):
         t0 = time.time()
         out = f(*args)
         t1 = time.time()
-        t += t1-t0
+        t += t1 - t0
     return t / niters, out
+
 
 dtype = torch.cdouble
 device = "cuda"
@@ -32,9 +34,9 @@ print(f"Functional pyq: {func_time}")
 print(f"Module pyq:     {mod_time}")
 print(f"Same results:   {torch.allclose(func_out, mod_out)}")
 
-#from pyqtorch.modules.parametric import RotationGate
-#from pyqtorch.modules.primitive import ControlledOperationGate
-#circ = QuantumCircuit(n_qubits, [
+# from pyqtorch.modules.parametric import RotationGate
+# from pyqtorch.modules.primitive import ControlledOperationGate
+# circ = QuantumCircuit(n_qubits, [
 #    RotationGate('X', (0,), 10, 'phi'),
 #    RotationGate('X', (1,), 10, 'phi'),
 #    RotationGate('X', (2,), 10, 'phi'),
@@ -435,9 +437,9 @@ print(f"Same results:   {torch.allclose(func_out, mod_out)}")
 #    ControlledOperationGate('X', (3, 4), 10),
 #    ControlledOperationGate('X', (5, 6), 10),
 #    ControlledOperationGate('X', (7, 8), 10),
-#]).to(device=device, dtype=dtype)
+# ]).to(device=device, dtype=dtype)
 #
-#circ(thetas, state)
+# circ(thetas, state)
 #
-#print(timeit(circ, thetas, state))
+# print(timeit(circ, thetas, state))
 #

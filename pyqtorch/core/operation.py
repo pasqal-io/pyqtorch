@@ -185,7 +185,7 @@ def U(
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def I(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+def I(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:  # noqa: E743
     """I single-qubit gate
 
     Args:

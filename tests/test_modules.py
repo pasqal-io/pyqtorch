@@ -6,7 +6,7 @@ import pyqtorch.core.batched_operation as func_pyq
 
 
 @pytest.mark.parametrize("gate", ["RX", "RY", "RZ"])
-def test_gates(gate: str):
+def test_gates(gate: str) -> None:
     dtype = torch.cdouble
     device = "cpu"
     batch_size = 100
@@ -21,13 +21,13 @@ def test_gates(gate: str):
     FuncOp = getattr(func_pyq, f"batched{gate}")
 
     func_out = FuncOp(phi, state, qubits, n_qubits)
-    gate = Op(qubits, n_qubits, "phi").to(device=device, dtype=dtype)
-    mod_out = gate(thetas, state)
+    op = Op(qubits, n_qubits, "phi").to(device=device, dtype=dtype)
+    mod_out = op(thetas, state)
 
     assert torch.allclose(func_out, mod_out)
 
 
-def test_circuit():
+def test_circuit() -> None:
     device = "cpu"
     dtype = torch.cdouble
     batch_size = 5
@@ -39,4 +39,4 @@ def test_circuit():
     phi = torch.rand(batch_size, device=device, dtype=dtype)
     thetas = {"phi": phi}
 
-    assert circ(thetas, state).size() == (2,2,5)
+    assert circ(thetas, state).size() == (2, 2, 5)

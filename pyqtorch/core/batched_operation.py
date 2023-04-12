@@ -33,9 +33,9 @@ BATCH_DIM = 2
 def get_parametrized_batch_for_operation(
     operation_type: str, theta: torch.Tensor, batch_size: int, device: torch.device
 ) -> torch.Tensor:
-    """Helper method which takes a string describing an operation type and a parameter theta vector and returns
-        a batch of the corresponding parametrized rotation matrices
-    Args:
+    """Helper method which takes a string describing an operation type and a
+    parameter theta vector and returns a batch of the corresponding parametrized
+    rotation matrices
 
     Args:
         operation_type (str): the type of operation which should be performed
@@ -523,8 +523,10 @@ def batched_hamiltonian_evolution(
     on how to use this gate.
 
     Args:
-        H (torch.Tensor): the tensor containing dense matrices representing the Hamiltonian, provided as a `Tensor` object with
-            shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+        H (torch.Tensor): the tensor containing dense matrices representing the
+            Hamiltonian, provided as a `Tensor` object with shape
+            `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the
+            list of its rows
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
         qubits (Any): The qubits support where the H evolution is applied
