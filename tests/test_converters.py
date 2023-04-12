@@ -18,7 +18,6 @@ def test_pyq2qiskit(test_circuit: QuantumCircuit) -> None:
 
 
 if __name__ == "__main__":
-
     from pyqtorch.ansatz import AlternateLayerAnsatz
     from pyqtorch.core.circuit import QuantumCircuit
 

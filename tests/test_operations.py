@@ -1,3 +1,4 @@
+from __future__ import annotations
 import random
 
 import numpy as np
@@ -13,6 +14,9 @@ from conftest import TestBatchedFM, TestFM, TestNetwork  # noqa: E402
 from pyqtorch.ansatz import AlternateLayerAnsatz  # noqa: E402
 from pyqtorch.core import operation  # noqa: E402
 
+state_0 = torch.tensor([[1, 0]], dtype=torch.cdouble)
+state_1 = torch.tensor([[0, 1]], dtype=torch.cdouble)
+
 state_00 = torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_10 = torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_01 = torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble).unsqueeze(2)
@@ -23,6 +27,13 @@ pi = torch.tensor(torch.pi, dtype=torch.cdouble)
 CNOT_mat: torch.Tensor = torch.tensor(
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=torch.cdouble
 )
+
+
+def test_identity() -> None:
+    result0: torch.Tensor = operation.I(state_0, (0,), 1)
+    assert torch.allclose(state_0, result0)
+    result1: torch.Tensor = operation.I(state_1, (0,), 1)
+    assert torch.allclose(state_1, result1)
 
 
 # TODO: these are all the same test, would be better to parameterize a test

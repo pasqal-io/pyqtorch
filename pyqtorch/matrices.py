@@ -22,7 +22,6 @@ NMAT = torch.tensor([0, 1], dtype=torch.cdouble)
 
 
 def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
-
     if i == j:
         return torch.ones(2**N).to(device)
 
@@ -35,7 +34,6 @@ def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
 
 
 def NN(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
-
     if i == j:
         return torch.ones(2**N, dtype=torch.cdouble).to(device)
 

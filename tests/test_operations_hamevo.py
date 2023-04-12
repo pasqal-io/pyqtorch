@@ -13,15 +13,14 @@ np.random.seed(0)
 torch.manual_seed(0)
 torch.use_deterministic_algorithms(True)
 
-from pyqtorch.core import batched_operation, operation, circuit  # noqa: E402
-from pyqtorch.core.circuit import QuantumCircuit  # noqa: E402
-from pyqtorch.core.operation import hamiltonian_evolution, hamiltonian_evolution_eig  # noqa: E402
-from pyqtorch.core.batched_operation import (  # noqa: E402
+from pyqtorch.core import batched_operation, operation, circuit
+from pyqtorch.core.circuit import QuantumCircuit
+from pyqtorch.core.operation import hamiltonian_evolution, hamiltonian_evolution_eig
+from pyqtorch.core.batched_operation import (
     batched_hamiltonian_evolution,
     batched_hamiltonian_evolution_eig,
 )
-from pyqtorch.matrices import generate_ising_from_graph  # noqa: E402
-
+from pyqtorch.matrices import generate_ising_from_graph
 
 state_00 = torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_10 = torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
@@ -41,7 +40,7 @@ def test_hamevo_single() -> None:
     psi = qc.uniform_state(1)
     psi_0 = copy.deepcopy(psi)
 
-    def overlap(state1, state2) -> float:
+    def overlap(state1: torch.Tensor, state2: torch.Tensor) -> float:
         N = len(state1.shape) - 1
         state1_T = torch.transpose(state1, N, 0)
         overlap = torch.tensordot(state1_T, state2, dims=N)
@@ -63,7 +62,7 @@ def test_hamevo_eig_single() -> None:
     psi = qc.uniform_state(1)
     psi_0 = copy.deepcopy(psi)
 
-    def overlap(state1, state2) -> float:
+    def overlap(state1: torch.Tensor, state2: torch.Tensor) -> float:
         N = len(state1.shape) - 1
         state1_T = torch.transpose(state1, N, 0)
         overlap = torch.tensordot(state1_T, state2, dims=N)
@@ -85,7 +84,7 @@ def test_hamevo_batch() -> None:
     psi = qc.uniform_state(batch_size=2)
     psi_0 = copy.deepcopy(psi)
 
-    def overlap(state1, state2) -> list[float]:
+    def overlap(state1: torch.Tensor, state2: torch.Tensor) -> list[float]:
         N = len(state1.shape) - 1
         state1_T = torch.transpose(state1, N, 0)
         overlap = torch.tensordot(state1_T, state2, dims=N)

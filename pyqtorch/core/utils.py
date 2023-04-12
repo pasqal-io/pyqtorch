@@ -154,7 +154,7 @@ def _apply_batch_gate(
     mat_indices = "".join(list(mat_indices))  # type: ignore
 
     einsum_indices = f"{mat_indices},{state_indices}->{new_state_indices}"
-    # print(einsum_indices)
+
     state = torch.einsum(einsum_indices, mat, state)
 
     return state

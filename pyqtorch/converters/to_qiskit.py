@@ -58,7 +58,6 @@ def pyq2qiskit(circuit: QuantumCircuit, *args: Any, **kwargs: Any) -> QiskitCirc
     qiskit_circuit = QiskitCircuit(qr)
 
     for op in ops_cache.operations:
-
         gate_name = gates_map[op.name]
 
         if not hasattr(qiskit_circuit, gate_name):

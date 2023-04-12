@@ -13,7 +13,6 @@ class Operation:
 
 
 class OpsCache:
-
     # make it a singleton
     def __new__(cls) -> "OpsCache":
         if not hasattr(cls, "instance"):
@@ -54,7 +53,6 @@ def store_operation(
 
     reshaped_par = param
     if param is not None:
-
         # taken into account the case of batched gates
         if isinstance(param, torch.Tensor):
             # FIXME: Taking only the first element for batched gates here

@@ -185,6 +185,26 @@ def U(
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
+def I(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """I single-qubit gate
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+
+    if ops_cache.enabled:
+        store_operation("I", qubits)
+
+    dev = state.device
+    mat = OPERATIONS_DICT["I"].to(dev)
+    return _apply_gate(state, mat, qubits, N_qubits)
+
+
 def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     """X single-qubit gate
 
@@ -475,10 +495,15 @@ def hamiltonian_evolution(
     on how to use this gate.
 
     Args:
+<<<<<<< HEAD
         H (torch.Tensor): the dense matrix representing the Hamiltonian,
             provided as a `Tensor` object with shape
             `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into
             the list of its rows
+=======
+        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with
+        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+>>>>>>> main
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
         qubits (Any): The qubits support where the H evolution is applied
@@ -568,10 +593,15 @@ def hamiltonian_evolution_eig(
     on how to use this gate. Uses exact diagonalization.
 
     Args:
+<<<<<<< HEAD
         H (torch.Tensor): the dense matrix representing the Hamiltonian,
             provided as a `Tensor` object with shape
             `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into
             the list of its rows
+=======
+        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with
+        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+>>>>>>> main
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
         qubits (Any): The qubits support where the H evolution is applied

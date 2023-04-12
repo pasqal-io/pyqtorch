@@ -33,9 +33,9 @@ BATCH_DIM = 2
 def get_parametrized_batch_for_operation(
     operation_type: str, theta: torch.Tensor, batch_size: int, device: torch.device
 ) -> torch.Tensor:
-    """Helper method which takes a string describing an operation type and a
-    parameter theta vector and returns a batch of the corresponding parametrized
-    rotation matrices
+    """Helper method which takes a string describing an operation type and a parameter theta vector and returns
+        a batch of the corresponding parametrized rotation matrices
+    Args:
 
     Args:
         operation_type (str): the type of operation which should be performed
@@ -45,7 +45,7 @@ def get_parametrized_batch_for_operation(
         device (torch.device): the device which to run on
 
     Returns:
-        torch.Tensor: a batch of gates after applying theta
+    torch.Tensor: a batch of gates after applying theta
     """
 
     cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
@@ -392,7 +392,7 @@ def batchedCPHASE(
 
     dev = state.device
     batch_size = len(theta)
-    mat = torch.eye(4).repeat((batch_size, 1, 1))
+    mat = torch.eye(4, dtype=torch.cdouble).repeat((batch_size, 1, 1))
     mat = torch.permute(mat, (1, 2, 0))
     phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
     mat[3, 3, :] = phase_rotation_angles
@@ -433,7 +433,7 @@ def batchedCRX(
     operations_batch = get_parametrized_batch_for_operation("X", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
-    return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
+    return _apply_batch_gate(state, controlledX_batch.to(dev), qubits, N_qubits, batch_size)
 
 
 def batchedCRY(
@@ -469,7 +469,7 @@ def batchedCRY(
     operations_batch = get_parametrized_batch_for_operation("Y", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
-    return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
+    return _apply_batch_gate(state, controlledX_batch.to(dev), qubits, N_qubits, batch_size)
 
 
 def batchedCRZ(
@@ -505,7 +505,7 @@ def batchedCRZ(
     operations_batch = get_parametrized_batch_for_operation("Z", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
-    return _apply_batch_gate(state, controlledX_batch, qubits, N_qubits, batch_size)
+    return _apply_batch_gate(state, controlledX_batch.to(dev), qubits, N_qubits, batch_size)
 
 
 def batched_hamiltonian_evolution(
@@ -523,10 +523,8 @@ def batched_hamiltonian_evolution(
     on how to use this gate.
 
     Args:
-        H (torch.Tensor): the tensor containing dense matrices representing the
-            Hamiltonian, provided as a `Tensor` object with
-        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped
-            into the list of its rows
+        H (torch.Tensor): the tensor containing dense matrices representing the Hamiltonian, provided as a `Tensor` object with
+            shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
         qubits (Any): The qubits support where the H evolution is applied
