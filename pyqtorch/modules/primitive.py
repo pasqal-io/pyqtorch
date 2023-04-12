@@ -23,6 +23,9 @@ class PauliGate(Module):
     def device(self) -> torch.device:
         return self.pauli.device
 
+    def extra_repr(self) -> str:
+        return f"'{self.gate}', {self.qubits}, {self.n_qubits}"
+
 
 def X(*args: Any, **kwargs: Any) -> PauliGate:
     return PauliGate("X", *args, **kwargs)
@@ -51,6 +54,9 @@ class ControlledOperationGate(Module):
     @property
     def device(self) -> torch.device:
         return self.mat.device
+
+    def extra_repr(self) -> str:
+        return f"'{self.gate}', {self.qubits}, {self.n_qubits}"
 
 
 def CNOT(qubits: ArrayLike, n_qubits: int) -> ControlledOperationGate:

@@ -14,6 +14,7 @@ class RotationGate(Module):
         self.qubits = qubits
         self.n_qubits = n_qubits
         self.param_name = param_name
+        self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
@@ -26,6 +27,9 @@ class RotationGate(Module):
     @property
     def device(self) -> torch.device:
         return self.imat.device
+
+    def extra_repr(self) -> str:
+        return f"'{self.gate}', {self.qubits}, {self.n_qubits}, '{self.param_name}'"
 
 
 def rot_matrices(
