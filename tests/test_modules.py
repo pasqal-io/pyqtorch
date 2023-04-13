@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import pytest
 import torch
-import pyqtorch.modules as pyq
 
 import pyqtorch.core.batched_operation as func_pyq
+import pyqtorch.modules as pyq
 
 
 @pytest.mark.parametrize("gate", ["RX", "RY", "RZ"])

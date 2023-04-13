@@ -11,15 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Any, Tuple, Optional
+from functools import lru_cache
+from typing import Any, Optional, Tuple
+
 import torch
 from numpy.typing import ArrayLike
 
-from functools import lru_cache
-
 from pyqtorch.converters.store_ops import ops_cache, store_operation
-from pyqtorch.core.utils import _apply_gate, OPERATIONS_DICT
+from pyqtorch.core.utils import OPERATIONS_DICT, _apply_gate
 
 
 def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tensor) -> torch.Tensor:

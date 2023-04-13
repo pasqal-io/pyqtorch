@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import random
 
 import numpy as np
@@ -11,6 +12,7 @@ torch.manual_seed(0)
 torch.use_deterministic_algorithms(True)
 
 from conftest import TestBatchedFM, TestFM, TestNetwork  # noqa: E402
+
 from pyqtorch.ansatz import AlternateLayerAnsatz  # noqa: E402
 from pyqtorch.core import operation  # noqa: E402
 

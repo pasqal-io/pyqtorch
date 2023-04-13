@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import time
 
 import torch
-from pyqtorch.modules import RX, QuantumCircuit, zero_state
+
 from pyqtorch.core.batched_operation import batchedRX
+from pyqtorch.modules import RX, QuantumCircuit, zero_state
 from pyqtorch.modules.parametric import RotationGate
 from pyqtorch.modules.primitive import ControlledOperationGate
 

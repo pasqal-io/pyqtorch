@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from qiskit import QuantumCircuit as QiskitCircuit
 
 from pyqtorch.converters.store_ops import ops_cache
@@ -19,7 +21,6 @@ def test_pyq2qiskit(test_circuit: QuantumCircuit) -> None:
 
 if __name__ == "__main__":
     from pyqtorch.ansatz import AlternateLayerAnsatz
-    from pyqtorch.core.circuit import QuantumCircuit
 
     n_qubits = 4
     n_layers = 2

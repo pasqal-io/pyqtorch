@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import copy
-from math import isclose
 import random
+from math import isclose
 
-import numpy as np
 import networkx as nx
+import numpy as np
 import torch
 
-from pyqtorch.core import batched_operation, operation, circuit
-from pyqtorch.core.circuit import QuantumCircuit
-from pyqtorch.core.operation import hamiltonian_evolution, hamiltonian_evolution_eig
+from pyqtorch.core import batched_operation, circuit, operation
 from pyqtorch.core.batched_operation import (
     batched_hamiltonian_evolution,
     batched_hamiltonian_evolution_eig,
 )
+from pyqtorch.core.circuit import QuantumCircuit
+from pyqtorch.core.operation import hamiltonian_evolution, hamiltonian_evolution_eig
 from pyqtorch.matrices import generate_ising_from_graph
 
 random.seed(0)

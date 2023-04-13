@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from typing import Any
 
@@ -20,7 +21,7 @@ from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.operation import RX, H, diagonalize
-from pyqtorch.core.utils import _apply_batch_gate, OPERATIONS_DICT
+from pyqtorch.core.utils import OPERATIONS_DICT, _apply_batch_gate
 
 IMAT = OPERATIONS_DICT["I"]
 XMAT = OPERATIONS_DICT["X"]

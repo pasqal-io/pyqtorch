@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 from typing import Any
-from numpy.typing import ArrayLike
 
 import torch
+from numpy.typing import ArrayLike
 from torch.nn import Module
 
-from pyqtorch.core.utils import OPERATIONS_DICT
 from pyqtorch.core.batched_operation import _apply_batch_gate
+from pyqtorch.core.utils import OPERATIONS_DICT
 
 
 class RotationGate(Module):
@@ -33,7 +35,7 @@ class RotationGate(Module):
 
 
 def rot_matrices(
-    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int
+    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
 ) -> torch.Tensor:
     """
     Returns:

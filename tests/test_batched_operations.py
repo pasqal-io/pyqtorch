@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import torch
+
 from pyqtorch import QuantumCircuit
 from pyqtorch.core.batched_operation import batchedCPHASE, batchedCRX, batchedCRY, batchedCRZ
 

@@ -12,16 +12,13 @@ repos:
     hooks:
       - id: black
 
--   repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
+-   repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "v0.0.243"
     hooks:
-      - id: flake8
-        entry: pflake8
-        additional_dependencies: [pyproject-flake8]
-        exclude: benchmarks
+      - id: ruff
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.1.1
     hooks:
       - id: mypy
-        exclude: examples|docs|benchmarks
+        exclude: examples|docs

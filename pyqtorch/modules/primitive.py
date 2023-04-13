@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 from typing import Any
-from numpy.typing import ArrayLike
 
 import torch
+from numpy.typing import ArrayLike
 from torch.nn import Module
 
+from pyqtorch.core.operation import _apply_gate, create_controlled_matrix_from_operation
 from pyqtorch.core.utils import OPERATIONS_DICT
-from pyqtorch.core.operation import create_controlled_matrix_from_operation, _apply_gate
 
 
 class PauliGate(Module):
