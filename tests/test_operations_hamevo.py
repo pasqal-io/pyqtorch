@@ -101,7 +101,7 @@ def test_hamevo_batch() -> None:
     t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
     psi = operation.hamiltonian_evolution(H, psi, t_evo, range(N), N)
     H_batch = torch.stack((H, H_conj), dim=2)
-    new_state = batched_operation.batched_hamiltonian_evolution(H_batch, psi, t_evo, range(N), N)
+    batched_operation.batched_hamiltonian_evolution(H_batch, psi, t_evo, range(N), N)
     result: list[float] = overlap(psi, psi_0)
 
     assert map(isclose, zip(result, [0.5, 0.5]))  # type: ignore [arg-type]
