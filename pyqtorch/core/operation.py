@@ -11,27 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Any, Tuple, Optional
+from functools import lru_cache
+from typing import Any, Optional, Tuple
+
 import torch
 from numpy.typing import ArrayLike
 
-from functools import lru_cache
-
 from pyqtorch.converters.store_ops import ops_cache, store_operation
-from pyqtorch.core.utils import _apply_gate, OPERATIONS_DICT
+from pyqtorch.core.utils import OPERATIONS_DICT, _apply_gate
 
 
 def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tensor) -> torch.Tensor:
-    """Helper method which takes a string describing an operation type and a parameter theta and returns
-        the corresponding parametrized rotation matrix
-    Args:
+    """Helper method which takes a string describing an operation type and a
+    parameter theta and returns the corresponding parametrized rotation matrix
 
-    operation_type (str): the type of operation which should be performed (RX,RY,RZ)
-    theta (torch.Tensor): 1D-tensor holding the values of the parameter
+    Args:
+        operation_type (str): the type of operation which should be performed (RX,RY,RZ)
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
 
     Returns:
-    torch.Tensor: the resulting gate after applying theta
+        torch.Tensor: the resulting gate after applying theta
     """
     return OPERATIONS_DICT["I"] * torch.cos(theta / 2) - 1j * OPERATIONS_DICT[
         operation_type
@@ -185,7 +186,7 @@ def U(
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def I(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+def I(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:  # noqa: E743
     """I single-qubit gate
 
     Args:
@@ -301,10 +302,10 @@ def ControlledOperationGate(
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         qubits (ArrayLike): list of qubit indices where the gate will operate
         N_qubits (int): the number of qubits in the system
-        operation_matrix (torch.Tensor): a tensor holding the parameters for the operation (RX,RY,RZ)
+        operation_matrix (torch.Tensor): a tensor holding the parameters for the
+            operation (RX,RY,RZ)
 
     Returns:
-
         torch.Tensor: the resulting state after applying the gate
     """
     dev = state.device
@@ -495,17 +496,21 @@ def hamiltonian_evolution(
     on how to use this gate.
 
     Args:
-        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with
-        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+        H (torch.Tensor): the dense matrix representing the Hamiltonian,
+            provided as a `Tensor` object with shape
+            `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into
+            the list of its rows
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
         qubits (Any): The qubits support where the H evolution is applied
         N_qubits (int): The number of qubits
-        n_steps (int, optional): The number of steps to divide the time interval in. Defaults to 100.
+        n_steps (int, optional): The number of steps to divide the time interval
+            in. Defaults to 100.
 
     Returns:
-        torch.Tensor: replaces state with the evolved state according to the instructions above (save a copy of `state`
-        if you need further processing on it)
+        torch.Tensor: replaces state with the evolved state according to the
+            instructions above (save a copy of `state` if you need further
+            processing on it)
     """
 
     if ops_cache.enabled:
@@ -584,16 +589,18 @@ def hamiltonian_evolution_eig(
     on how to use this gate. Uses exact diagonalization.
 
     Args:
-        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with
-        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+        H (torch.Tensor): the dense matrix representing the Hamiltonian,
+            provided as a `Tensor` object with shape
+            `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into
+            the list of its rows
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
         qubits (Any): The qubits support where the H evolution is applied
         N_qubits (int): The number of qubits
 
     Returns:
-        torch.Tensor: replaces state with the evolved state according to the instructions above (save a copy of `state`
-        if you need further processing on it)
+        torch.Tensor: replaces state with the evolved state according to the
+            instructions above (save a copy of `state` if you need further processing on it)
     """
 
     batch_size_s = state.size()[-1]

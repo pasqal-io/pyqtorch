@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from typing import Any
 
@@ -20,7 +21,7 @@ from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.operation import RX, H, diagonalize
-from pyqtorch.core.utils import _apply_batch_gate, OPERATIONS_DICT
+from pyqtorch.core.utils import OPERATIONS_DICT, _apply_batch_gate
 
 IMAT = OPERATIONS_DICT["I"]
 XMAT = OPERATIONS_DICT["X"]
@@ -33,14 +34,16 @@ BATCH_DIM = 2
 def get_parametrized_batch_for_operation(
     operation_type: str, theta: torch.Tensor, batch_size: int, device: torch.device
 ) -> torch.Tensor:
-    """Helper method which takes a string describing an operation type and a parameter theta vector and returns
-        a batch of the corresponding parametrized rotation matrices
-    Args:
+    """Helper method which takes a string describing an operation type and a
+    parameter theta vector and returns a batch of the corresponding parametrized
+    rotation matrices
 
-    operation_type (str): the type of operation which should be performed (RX,RY,RZ)
-    theta (torch.Tensor): 1D-tensor holding the values of the parameter
-    batch_size (int): the batch size
-    device (torch.device): the device which to run on
+    Args:
+        operation_type (str): the type of operation which should be performed
+            (RX,RY,RZ)
+        theta (torch.Tensor): 1D-tensor holding the values of the parameter
+        batch_size (int): the batch size
+        device (torch.device): the device which to run on
 
     Returns:
     torch.Tensor: a batch of gates after applying theta
@@ -521,17 +524,21 @@ def batched_hamiltonian_evolution(
     on how to use this gate.
 
     Args:
-        H (torch.Tensor): the tensor containing dense matrices representing the Hamiltonian, provided as a `Tensor` object with
-        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+        H (torch.Tensor): the tensor containing dense matrices representing the
+            Hamiltonian, provided as a `Tensor` object with shape
+            `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the
+            list of its rows
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
         qubits (Any): The qubits support where the H evolution is applied
         N_qubits (int): The number of qubits
-        n_steps (int, optional): The number of steps to divide the time interval in. Defaults to 100.
+        n_steps (int, optional): The number of steps to divide the time interval
+            in. Defaults to 100.
 
     Returns:
-        torch.Tensor: replaces state with the evolved state according to the instructions above (save a copy of `state`
-        if you need further processing on it)
+        torch.Tensor: replaces state with the evolved state according to the
+            instructions above (save a copy of `state` if you need further
+            processing on it)
     """
     batch_size = H.size()[BATCH_DIM]
     if ops_cache.enabled:
@@ -571,8 +578,10 @@ def batched_hamiltonian_evolution_eig(
     on how to use this gate.
 
     Args:
-        H (torch.Tensor): the dense matrix representing the Hamiltonian, provided as a `Tensor` object with
-        shape  `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into the list of its rows
+        H (torch.Tensor): the dense matrix representing the Hamiltonian,
+            provided as a `Tensor` object with shape
+            `(N_0,N_1,...N_(N**2),batch_size)`, i.e. the matrix is reshaped into
+            the list of its rows
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
         t (torch.Tensor): the evolution time, real for default unitary evolution
         qubits (Any): The qubits support where the H evolution is applied

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import random
 
 import numpy as np
@@ -9,10 +10,11 @@ random.seed(0)
 np.random.seed(0)
 torch.manual_seed(0)
 torch.use_deterministic_algorithms(True)
-from conftest import TestBatchedFM, TestFM, TestNetwork
 
-from pyqtorch.ansatz import AlternateLayerAnsatz
-from pyqtorch.core import operation
+from conftest import TestBatchedFM, TestFM, TestNetwork  # noqa: E402
+
+from pyqtorch.ansatz import AlternateLayerAnsatz  # noqa: E402
+from pyqtorch.core import operation  # noqa: E402
 
 state_0 = torch.tensor([[1, 0]], dtype=torch.cdouble)
 state_1 = torch.tensor([[0, 1]], dtype=torch.cdouble)

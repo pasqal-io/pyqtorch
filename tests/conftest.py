@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 import random
 
 import numpy as np
+import pytest
 import torch
 import torch.nn as nn
 from torch.nn import Module, ModuleList
-import pytest
-from pyqtorch import RY, QuantumCircuit, batchedRY, measurement
-from pyqtorch.core.circuit import QuantumCircuit
+
+from pyqtorch import QuantumCircuit, batchedRY, measurement
 from pyqtorch.core.measurement import total_magnetization
 from pyqtorch.core.operation import CNOT, RX, RY, RZ, H, X, Y, Z
 

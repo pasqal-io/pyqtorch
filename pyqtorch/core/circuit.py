@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from typing import Union
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 
 from pyqtorch.converters.store_ops import ops_cache
 

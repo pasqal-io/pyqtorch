@@ -1,27 +1,26 @@
 from __future__ import annotations
 
 import copy
-from math import isclose
 import random
-import copy
+from math import isclose
 
-import numpy as np
 import networkx as nx
+import numpy as np
 import torch
+
+from pyqtorch.core import batched_operation, circuit, operation
+from pyqtorch.core.batched_operation import (
+    batched_hamiltonian_evolution,
+    batched_hamiltonian_evolution_eig,
+)
+from pyqtorch.core.circuit import QuantumCircuit
+from pyqtorch.core.operation import hamiltonian_evolution, hamiltonian_evolution_eig
+from pyqtorch.matrices import generate_ising_from_graph
 
 random.seed(0)
 np.random.seed(0)
 torch.manual_seed(0)
 torch.use_deterministic_algorithms(True)
-
-from pyqtorch.core import batched_operation, operation, circuit
-from pyqtorch.core.circuit import QuantumCircuit
-from pyqtorch.core.operation import hamiltonian_evolution, hamiltonian_evolution_eig
-from pyqtorch.core.batched_operation import (
-    batched_hamiltonian_evolution,
-    batched_hamiltonian_evolution_eig,
-)
-from pyqtorch.matrices import generate_ising_from_graph
 
 state_00 = torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_10 = torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
@@ -102,7 +101,7 @@ def test_hamevo_batch() -> None:
     t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
     psi = operation.hamiltonian_evolution(H, psi, t_evo, range(N), N)
     H_batch = torch.stack((H, H_conj), dim=2)
-    new_state = batched_operation.batched_hamiltonian_evolution(H_batch, psi, t_evo, range(N), N)
+    batched_operation.batched_hamiltonian_evolution(H_batch, psi, t_evo, range(N), N)
     result: list[float] = overlap(psi, psi_0)
 
     assert map(isclose, zip(result, [0.5, 0.5]))  # type: ignore [arg-type]
