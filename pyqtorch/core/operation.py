@@ -282,11 +282,7 @@ def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         store_operation("H", qubits)
 
     dev = state.device
-    mat = (
-        1
-        / torch.sqrt(torch.tensor(2))
-        * torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble).to(dev)
-    )
+    mat = OPERATIONS_DICT["H"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
