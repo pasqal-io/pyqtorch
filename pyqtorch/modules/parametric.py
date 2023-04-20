@@ -6,7 +6,10 @@ import torch
 from numpy.typing import ArrayLike
 from torch.nn import Module
 
-from pyqtorch.core.batched_operation import _apply_batch_gate, create_controlled_batch_from_operation, batched_hamiltonian_evolution_eig
+from pyqtorch.core.batched_operation import (
+    _apply_batch_gate,
+    create_controlled_batch_from_operation,
+)
 from pyqtorch.core.utils import OPERATIONS_DICT
 
 
@@ -20,7 +23,7 @@ class RotationGate(Module):
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
-    def matrices(self, thetas: dict[str,torch.Tensor]) -> torch.Tensor:
+    def matrices(self, thetas: dict[str, torch.Tensor]) -> torch.Tensor:
         theta = thetas[self.param_name]
         batch_size = len(theta)
         return rot_matrices(theta, self.paulimat, self.imat, batch_size)
@@ -60,7 +63,6 @@ def rot_matrices(
 
 
 class ControlledRotationGate(Module):
-
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int, param_name: str):
         super().__init__()
         self.qubits = qubits
@@ -70,7 +72,7 @@ class ControlledRotationGate(Module):
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
-    def matrices(self, thetas: dict[str,torch.Tensor]) -> torch.Tensor:
+    def matrices(self, thetas: dict[str, torch.Tensor]) -> torch.Tensor:
         theta = thetas[self.param_name]
         batch_size = len(theta)
         return rot_matrices(theta, self.paulimat, self.imat, batch_size)

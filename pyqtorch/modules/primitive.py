@@ -18,10 +18,10 @@ class PrimitiveGate(Module):
         self.n_qubits = n_qubits
         self.register_buffer("matrix", OPERATIONS_DICT[gate])
 
-    def matrices(self, thetas):
+    def matrices(self, thetas: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.matrix
 
-    def apply(self, matrix, state):
+    def apply(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         return _apply_gate(state, matrix, self.qubits, self.n_qubits)
 
     def forward(self, _: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:
@@ -46,9 +46,10 @@ def Y(*args: Any, **kwargs: Any) -> PrimitiveGate:
 def Z(*args: Any, **kwargs: Any) -> PrimitiveGate:
     return PrimitiveGate("Z", *args, **kwargs)
 
+
 # FIXME: do we really have to apply a matrix here?
 # can't we just return the identical state?
-def I(*args: Any, **kwargs: Any) -> PrimitiveGate:
+def I(*args: Any, **kwargs: Any) -> PrimitiveGate:  # noqa: E743
     return PrimitiveGate("I", *args, **kwargs)
 
 
