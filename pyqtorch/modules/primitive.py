@@ -91,3 +91,11 @@ class ControlledOperationGate(Module):
 
 def CNOT(qubits: ArrayLike, n_qubits: int) -> ControlledOperationGate:
     return ControlledOperationGate("X", qubits, n_qubits)
+
+
+def CY(qubits: ArrayLike, n_qubits: int) -> ControlledOperationGate:
+    return ControlledOperationGate("Y", qubits, n_qubits)
+
+
+def CZ(qubits: ArrayLike, n_qubits: int) -> ControlledOperationGate:
+    return ControlledOperationGate("Z", qubits, n_qubits)
