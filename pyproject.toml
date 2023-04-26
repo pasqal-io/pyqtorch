@@ -30,22 +30,6 @@ dependencies = [
     "torch>=1.12"
 ]
 
-[tool.hatch.envs.default]
-dependencies = [
-  "flaky",
-  "hypothesis",
-  "pytest",
-  "pytest-cov",
-  "pytest-mypy",
-  "pytest-xdist",
-  "nbconvert",
-  "ipykernel",
-  "pre-commit",
-  "black",
-  "isort",
-  "ruff",
-]
-
 [project.optional-dependencies]
 dev = ["black", "pytest", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff"]
 converters = ["qiskit"]
