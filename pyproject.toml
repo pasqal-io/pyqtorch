@@ -30,6 +30,22 @@ dependencies = [
     "torch>=1.12"
 ]
 
+[tool.hatch.envs.default]
+dependencies = [
+  "flaky",
+  "hypothesis",
+  "pytest",
+  "pytest-cov",
+  "pytest-mypy",
+  "pytest-xdist",
+  "nbconvert",
+  "ipykernel",
+  "pre-commit",
+  "black",
+  "isort",
+  "ruff",
+]
+
 [project.optional-dependencies]
 dev = ["black", "pytest", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff"]
 converters = ["qiskit"]
@@ -40,9 +56,8 @@ features = [
   "converters",
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-vvv --cov pyqtorch tests"
+[tool.hatch.envs.default.scripts]
+test = "pytest {args}"
 
 [tool.ruff]
 select = ["E", "F", "I", "Q"]
