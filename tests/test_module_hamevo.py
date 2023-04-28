@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-import pytest
-import numpy as np
-import torch
-
-import pyqtorch.core.batched_operation as func_pyq
-import pyqtorch.modules as pyq
-
 import copy
 import random
 from math import isclose
 
+import numpy as np
+import torch
 
-
-
+import pyqtorch.modules as pyq
 
 random.seed(0)
 np.random.seed(0)
@@ -22,7 +16,6 @@ torch.use_deterministic_algorithms(True)
 
 
 pi = torch.tensor(torch.pi, dtype=torch.cdouble)
-
 
 
 def test_hamevo_module_single() -> None:
@@ -41,7 +34,6 @@ def test_hamevo_module_single() -> None:
     psi = pyq.uniform_state(n_qubits)
 
     psi_0 = copy.deepcopy(psi)
- 
 
     def overlap(state1: torch.Tensor, state2: torch.Tensor) -> float:
         N = len(state1.shape) - 1
@@ -52,5 +44,5 @@ def test_hamevo_module_single() -> None:
     psi_star = hamevo.forward(psi)
     # result = overlap(psi, psi_star)
     result: float = overlap(psi_star, psi_0)
-    
+
     assert isclose(result, 0.5)
