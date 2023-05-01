@@ -30,21 +30,21 @@ class HamEvo(torch.nn.Module):
             h = h.unsqueeze(0)
 
         h = h.expand_as(state)
-
+        _state = state.clone()
         for _ in range(self.n_steps):
-            k1 = -1j * _apply_batch_gate(state, self.H, self.qubits, self.n_qubits, batch_size)
+            k1 = -1j * _apply_batch_gate(_state, self.H, self.qubits, self.n_qubits, batch_size)
             k2 = -1j * _apply_batch_gate(
-                state + h / 2 * k1, self.H, self.qubits, self.n_qubits, batch_size
+                _state + h / 2 * k1, self.H, self.qubits, self.n_qubits, batch_size
             )
             k3 = -1j * _apply_batch_gate(
-                state + h / 2 * k2, self.H, self.qubits, self.n_qubits, batch_size
+                _state + h / 2 * k2, self.H, self.qubits, self.n_qubits, batch_size
             )
             k4 = -1j * _apply_batch_gate(
-                state + h * k3, self.H, self.qubits, self.n_qubits, batch_size
+                _state + h * k3, self.H, self.qubits, self.n_qubits, batch_size
             )
-            state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+            _state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
-        return state
+        return _state
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         return self.apply(state)

@@ -508,41 +508,24 @@ def hamiltonian_evolution(
             instructions above (save a copy of `state` if you need further
             processing on it)
     """
-
+    _state = state.clone()
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
-
-    # batch_size = len(t)
-    # #permutation = [N_qubits - q - 1 for q in qubits]
-    # permutation = [N_qubits - q - 1 for q in range(N_qubits) if q not in qubits]
-    # permutation += [N_qubits - q - 1 for q in qubits]
-    # permutation.append(N_qubits)
-    # inverse_permutation = list(np.argsort(permutation))
-
-    # new_dim = [2] * (N_qubits - len(qubits)) + [batch_size] + [2**len(qubits)]
-    # state = state.permute(*permutation).reshape((2**len(qubits), -1))
 
     h = t.reshape((1, -1)) / n_steps
     for _ in range(N_qubits - 1):
         h = h.unsqueeze(0)
 
-    h = h.expand_as(state)
+    h = h.expand_as(_state)
 
-    # h = h.expand(2**len(qubits), -1, 2**(N_qubits - len(qubits))).reshape((2**len(qubits), -1))
     for _ in range(n_steps):
-        k1 = -1j * _apply_gate(state, H, qubits, N_qubits)
-        k2 = -1j * _apply_gate(state + h / 2 * k1, H, qubits, N_qubits)
-        k3 = -1j * _apply_gate(state + h / 2 * k2, H, qubits, N_qubits)
-        k4 = -1j * _apply_gate(state + h * k3, H, qubits, N_qubits)
-        # print(state.shape)
-        # k1 = -1j * torch.matmul(H, state)
-        # k2 = -1j * torch.matmul(H, state + h/2 * k1)
-        # k3 = -1j * torch.matmul(H, state + h/2 * k2)
-        # k4 = -1j * torch.matmul(H, state + h * k3)
+        k1 = -1j * _apply_gate(_state, H, qubits, N_qubits)
+        k2 = -1j * _apply_gate(_state + h / 2 * k1, H, qubits, N_qubits)
+        k3 = -1j * _apply_gate(_state + h / 2 * k2, H, qubits, N_qubits)
+        k4 = -1j * _apply_gate(_state + h * k3, H, qubits, N_qubits)
+        _state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
-        state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
-
-    return state  # .reshape([2]*N_qubits + [batch_size]).permute(*inverse_permutation)
+    return _state
 
 
 @lru_cache(maxsize=256)
@@ -598,7 +581,7 @@ def hamiltonian_evolution_eig(
         torch.Tensor: replaces state with the evolved state according to the
             instructions above (save a copy of `state` if you need further processing on it)
     """
-
+    _state = state.clone()
     batch_size_s = state.size()[-1]
     batch_size_t = len(t)
 
@@ -621,7 +604,7 @@ def hamiltonian_evolution_eig(
         for i, t_val in enumerate(t_evo):
             # Compute e^(-i H t)
             evol_operator = torch.diag(torch.exp(-1j * eig_values * t_val))
-            state[..., [i]] = _apply_gate(state[..., [i]], evol_operator, qubits, N_qubits)
+            _state[..., [i]] = _apply_gate(state[..., [i]], evol_operator, qubits, N_qubits)
 
     else:
         for i, t_val in enumerate(t_evo):
@@ -632,6 +615,6 @@ def hamiltonian_evolution_eig(
                 torch.matmul(eig_vectors, eig_exp),
                 torch.conj(eig_vectors.transpose(0, 1)),
             )
-            state[..., [i]] = _apply_gate(state[..., [i]], evol_operator, qubits, N_qubits)
+            _state[..., [i]] = _apply_gate(state[..., [i]], evol_operator, qubits, N_qubits)
 
-    return state
+    return _state

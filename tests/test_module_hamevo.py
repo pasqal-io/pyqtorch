@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import random
 from math import isclose
 
@@ -50,9 +49,8 @@ def test_hamevo_modules_single(ham_evo: torch.nn.Module) -> None:
     t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
     hamevo = ham_evo(H, t_evo, range(n_qubits), n_qubits)
     psi = pyq.uniform_state(n_qubits)
-    psi_0 = copy.deepcopy(psi)
     psi_star = hamevo.forward(psi)
-    result = overlap(psi_star, psi_0)
+    result = overlap(psi_star, psi)
     result = result if isinstance(result, float) else result[0]
     assert isclose(result, 0.5)
 
@@ -69,9 +67,8 @@ def test_hamevo_modules_batch(ham_evo: torch.nn.Module) -> None:
 
     hamevo = ham_evo(H, t_evo, range(n_qubits), n_qubits)
     psi = pyq.uniform_state(n_qubits, batch_size)
-    psi_0 = copy.deepcopy(psi)
     psi_star = hamevo.forward(psi)
-    result = overlap(psi_star, psi_0)
+    result = overlap(psi_star, psi)
     print(result)
 
     assert map(isclose, zip(result, [0.5, 0.5]))  # type: ignore [arg-type]

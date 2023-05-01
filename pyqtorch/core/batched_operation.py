@@ -540,6 +540,7 @@ def batched_hamiltonian_evolution(
             instructions above (save a copy of `state` if you need further
             processing on it)
     """
+    _state = state.clone()
     batch_size = H.size()[BATCH_DIM]
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
@@ -549,19 +550,20 @@ def batched_hamiltonian_evolution(
         h = h.unsqueeze(0)
 
     h = h.expand_as(state)
+
     for _ in range(n_steps):
-        k1 = -1j * _apply_batch_gate(state, H, qubits, N_qubits, batch_size)
-        k2 = -1j * _apply_batch_gate(state + h / 2 * k1, H, qubits, N_qubits, batch_size)
-        k3 = -1j * _apply_batch_gate(state + h / 2 * k2, H, qubits, N_qubits, batch_size)
-        k4 = -1j * _apply_batch_gate(state + h * k3, H, qubits, N_qubits, batch_size)
+        k1 = -1j * _apply_batch_gate(_state, H, qubits, N_qubits, batch_size)
+        k2 = -1j * _apply_batch_gate(_state + h / 2 * k1, H, qubits, N_qubits, batch_size)
+        k3 = -1j * _apply_batch_gate(_state + h / 2 * k2, H, qubits, N_qubits, batch_size)
+        k4 = -1j * _apply_batch_gate(_state + h * k3, H, qubits, N_qubits, batch_size)
         # k1 = -1j * torch.matmul(H, state)
         # k2 = -1j * torch.matmul(H, state + h/2 * k1)
         # k3 = -1j * torch.matmul(H, state + h/2 * k2)
         # k4 = -1j * torch.matmul(H, state + h * k3)
 
-        state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+        _state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
-    return state
+    return _state
 
 
 def batched_hamiltonian_evolution_eig(
@@ -590,7 +592,7 @@ def batched_hamiltonian_evolution_eig(
     Returns:
         torch.Tensor: returns the evolved state as a new copy
     """
-
+    _state = state.clone()
     batch_size_h = H.size()[BATCH_DIM]
     batch_size_t = len(t)
 
@@ -608,7 +610,6 @@ def batched_hamiltonian_evolution_eig(
 
     if ops_cache.enabled:
         store_operation("hevo", qubits, param=t)
-
     for i in range(batch_size_h):
         eig_values, eig_vectors = diagonalize(H[..., i])
 
@@ -625,6 +626,6 @@ def batched_hamiltonian_evolution_eig(
                 torch.conj(eig_vectors.transpose(0, 1)),
             )
 
-    state = _apply_batch_gate(state, evol_operator, qubits, N_qubits, batch_size_h)
+    _state = _apply_batch_gate(state, evol_operator, qubits, N_qubits, batch_size_h)
 
-    return state
+    return _state
