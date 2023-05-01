@@ -27,10 +27,6 @@ class PrimitiveGate(Module):
     def forward(self, _: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:
         return self.apply(self.matrix, state)
 
-    @property
-    def device(self) -> torch.device:
-        return self.matrix.device
-
     def extra_repr(self) -> str:
         return f"'{self.gate}', {self.qubits}, {self.n_qubits}"
 
@@ -80,10 +76,6 @@ class ControlledOperationGate(Module):
 
     def forward(self, _: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:
         return _apply_gate(state, self.matrix, self.qubits, self.n_qubits)
-
-    @property
-    def device(self) -> torch.device:
-        return self.matrix.device
 
     def extra_repr(self) -> str:
         return f"'{self.gate}', {self.qubits}, {self.n_qubits}"

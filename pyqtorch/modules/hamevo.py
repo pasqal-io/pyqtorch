@@ -49,10 +49,6 @@ class HamEvo(torch.nn.Module):
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         return self.apply(state)
 
-    @property
-    def device(self) -> torch.device:
-        return self.H.device
-
 
 @lru_cache(maxsize=256)
 def diagonalize(H: torch.Tensor) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
