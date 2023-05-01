@@ -7,6 +7,17 @@ import pyqtorch.core.batched_operation as func_pyq
 import pyqtorch.modules as pyq
 
 
+@pytest.fixture
+def simple_circ(n_qubits: int = 2) -> pyq.QuantumCircuit:
+    ops = [
+        pyq.RX([0], n_qubits, "theta_0"),
+        pyq.RY([1], n_qubits, "theta_1"),
+        pyq.RX([1], n_qubits, "theta_2"),
+        pyq.CNOT([0, 1], n_qubits),
+    ]
+    return pyq.QuantumCircuit(n_qubits, ops)
+
+
 @pytest.mark.parametrize("gate", ["RX", "RY", "RZ"])
 def test_gates(gate: str) -> None:
     dtype = torch.cdouble
@@ -57,3 +68,12 @@ def test_circuit() -> None:
     # g = torch.autograd.grad(circ, thetas)
     dres_theta = torch.autograd.grad(res, phi, torch.ones_like(res), create_graph=True)[0]
     assert not torch.all(torch.isnan(dres_theta))
+
+
+def test_U_gate() -> None:
+    n_qubits = 1
+    batch_size = 1
+    u = pyq.U([0], n_qubits, ["phi", "theta", "omega"])
+    d = {"phi": torch.tensor([1.0]), "theta": torch.tensor([1.0]), "omega": torch.tensor([1.0])}
+    state = pyq.zero_state(n_qubits, batch_size=batch_size, device="cpu", dtype=torch.cdouble)
+    assert not torch.all(torch.isnan(u.forward(d, state)))
