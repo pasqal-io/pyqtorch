@@ -27,7 +27,7 @@ classifiers=[
 ]
 dependencies = [
     "openfermion>=1.5",
-    "torch>=1.12"
+    "torch"
 ]
 
 [project.optional-dependencies]
