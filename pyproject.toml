@@ -40,7 +40,7 @@ features = [
   "converters",
 ]
 
-[tool.hatch.envs.default.scripts]
+[tool.hatch.envs.tests.scripts]
 test = "pytest {args}"
 
 [tool.ruff]
