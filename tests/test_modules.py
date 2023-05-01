@@ -40,11 +40,11 @@ def test_gates(gate: str) -> None:
     assert torch.allclose(func_out, mod_out)
 
 
-def test_circuit() -> None:
+@pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
+def test_circuit(batch_size: int) -> None:
     n_qubits = 2
     device = "cpu"
     dtype = torch.cdouble
-    batch_size = 5
 
     ops = [
         pyq.X([0], n_qubits),
@@ -58,7 +58,7 @@ def test_circuit() -> None:
     phi = torch.rand(batch_size, device=device, dtype=dtype, requires_grad=True)
     thetas = {"phi": phi}
 
-    assert circ(thetas, state).size() == (2, 2, 5)
+    assert circ(thetas, state).size() == (2, 2, batch_size)
 
     state = pyq.zero_state(n_qubits, batch_size=batch_size, device=device, dtype=dtype)
 
@@ -70,10 +70,14 @@ def test_circuit() -> None:
     assert not torch.all(torch.isnan(dres_theta))
 
 
-def test_U_gate() -> None:
+@pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
+def test_U_gate(batch_size: int) -> None:
     n_qubits = 1
-    batch_size = 1
     u = pyq.U([0], n_qubits, ["phi", "theta", "omega"])
-    d = {"phi": torch.tensor([1.0]), "theta": torch.tensor([1.0]), "omega": torch.tensor([1.0])}
+    d = {
+        "phi": torch.rand(batch_size),
+        "theta": torch.rand(batch_size),
+        "omega": torch.rand(batch_size),
+    }
     state = pyq.zero_state(n_qubits, batch_size=batch_size, device="cpu", dtype=torch.cdouble)
     assert not torch.all(torch.isnan(u.forward(d, state)))
