@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import random
 from math import isclose
 
@@ -38,7 +37,6 @@ def test_hamevo_single() -> None:
     N = 4
     qc = circuit.QuantumCircuit(N)
     psi = qc.uniform_state(1)
-    psi_0 = copy.deepcopy(psi)
 
     def overlap(state1: torch.Tensor, state2: torch.Tensor) -> float:
         N = len(state1.shape) - 1
@@ -50,8 +48,8 @@ def test_hamevo_single() -> None:
     Hbase = torch.kron(sigmaz, sigmaz)
     H = torch.kron(Hbase, Hbase)
     t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
-    psi = operation.hamiltonian_evolution(H, psi, t_evo, range(N), N)
-    result: float = overlap(psi, psi_0)
+    psi_star = operation.hamiltonian_evolution(H, psi, t_evo, range(N), N)
+    result: float = overlap(psi_star, psi)
 
     assert isclose(result, 0.5)
 
@@ -60,7 +58,6 @@ def test_hamevo_eig_single() -> None:
     N = 4
     qc = circuit.QuantumCircuit(N)
     psi = qc.uniform_state(1)
-    psi_0 = copy.deepcopy(psi)
 
     def overlap(state1: torch.Tensor, state2: torch.Tensor) -> float:
         N = len(state1.shape) - 1
@@ -72,8 +69,8 @@ def test_hamevo_eig_single() -> None:
     Hbase = torch.kron(sigmaz, sigmaz)
     H = torch.kron(Hbase, Hbase)
     t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
-    psi = operation.hamiltonian_evolution_eig(H, psi, t_evo, range(N), N)
-    result: float = overlap(psi, psi_0)
+    psi_star = operation.hamiltonian_evolution_eig(H, psi, t_evo, range(N), N)
+    result: float = overlap(psi_star, psi)
 
     assert isclose(result, 0.5)
 
@@ -82,7 +79,6 @@ def test_hamevo_batch() -> None:
     N = 4
     qc = circuit.QuantumCircuit(N)
     psi = qc.uniform_state(batch_size=2)
-    psi_0 = copy.deepcopy(psi)
 
     def overlap(state1: torch.Tensor, state2: torch.Tensor) -> list[float]:
         N = len(state1.shape) - 1
@@ -99,10 +95,10 @@ def test_hamevo_batch() -> None:
     psi = operation.hamiltonian_evolution(H, psi, t_evo, range(N), N)
 
     t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
-    psi = operation.hamiltonian_evolution(H, psi, t_evo, range(N), N)
+    psi_star = operation.hamiltonian_evolution(H, psi, t_evo, range(N), N)
     H_batch = torch.stack((H, H_conj), dim=2)
     batched_operation.batched_hamiltonian_evolution(H_batch, psi, t_evo, range(N), N)
-    result: list[float] = overlap(psi, psi_0)
+    result: list[float] = overlap(psi_star, psi)
 
     assert map(isclose, zip(result, [0.5, 0.5]))  # type: ignore [arg-type]
 
@@ -113,7 +109,6 @@ def test_hamevo_rk4_vs_eig_diag_H() -> None:
     graph: nx.Graph = nx.fast_gnp_random_graph(n_qubits, 0.7)
     qc = QuantumCircuit(n_qubits)
     psi = qc.uniform_state(batch_size)
-    psi_ini = copy.deepcopy(psi)
 
     H_diag = generate_ising_from_graph(graph)
     H = torch.diag(H_diag)
@@ -125,13 +120,11 @@ def test_hamevo_rk4_vs_eig_diag_H() -> None:
     for i in range(n_trials):
         t_evo = torch.rand(batch_size) * 0.5
 
-        psi = copy.deepcopy(psi_ini)
-        hamiltonian_evolution(H, psi, t_evo, range(n_qubits), n_qubits)
-        wf_save_rk[i] = psi
+        psi_star = hamiltonian_evolution(H, psi, t_evo, range(n_qubits), n_qubits)
+        wf_save_rk[i] = psi_star
 
-        psi = copy.deepcopy(psi_ini)
-        hamiltonian_evolution_eig(H, psi, t_evo, range(n_qubits), n_qubits)
-        wf_save_eig[i] = psi
+        psi_star = hamiltonian_evolution_eig(H, psi, t_evo, range(n_qubits), n_qubits)
+        wf_save_eig[i] = psi_star
 
     diff = torch.tensor(
         [torch.max(abs(wf_save_rk[i, ...] - wf_save_eig[i, ...])) for i in range(n_trials)]
@@ -146,7 +139,6 @@ def test_hamevo_rk4_vs_eig_general_H() -> None:
 
     qc = QuantumCircuit(n_qubits)
     psi = qc.uniform_state(batch_size)
-    psi_ini = copy.deepcopy(psi)
 
     H_0 = torch.randn((2**n_qubits, 2**n_qubits), dtype=torch.cdouble)
     H = (H_0 + torch.conj(H_0.transpose(0, 1))).to(torch.cdouble)
@@ -157,14 +149,10 @@ def test_hamevo_rk4_vs_eig_general_H() -> None:
 
     for i in range(n_trials):
         t_evo = torch.rand(batch_size) * 0.5
-
-        psi = copy.deepcopy(psi_ini)
-        hamiltonian_evolution(H, psi, t_evo, range(n_qubits), n_qubits)
-        wf_save_rk[i] = psi
-
-        psi = copy.deepcopy(psi_ini)
-        hamiltonian_evolution_eig(H, psi, t_evo, range(n_qubits), n_qubits)
-        wf_save_eig[i] = psi
+        psi_star = hamiltonian_evolution(H, psi, t_evo, range(n_qubits), n_qubits)
+        wf_save_rk[i] = psi_star
+        psi_star = hamiltonian_evolution_eig(H, psi, t_evo, range(n_qubits), n_qubits)
+        wf_save_eig[i] = psi_star
 
     diff = torch.tensor(
         [torch.max(abs(wf_save_rk[i, ...] - wf_save_eig[i, ...])) for i in range(n_trials)]
@@ -179,7 +167,6 @@ def test_hamevo_rk4_vs_eig_general_H_batched() -> None:
 
     qc = QuantumCircuit(n_qubits)
     psi = qc.uniform_state(batch_size)
-    psi_ini = copy.deepcopy(psi)
 
     H_batch = torch.zeros(2**n_qubits, 2**n_qubits, batch_size).to(torch.cdouble)
     for i in range(batch_size):
@@ -188,16 +175,12 @@ def test_hamevo_rk4_vs_eig_general_H_batched() -> None:
 
     t_evo = (torch.rand(batch_size) * 0.5).to(torch.cdouble)
 
-    psi = copy.deepcopy(psi_ini)
-    psi = batched_hamiltonian_evolution(H_batch, psi, t_evo, range(n_qubits), n_qubits)
-    wf_save_rk = copy.deepcopy(psi)
+    psi_star_norm = batched_hamiltonian_evolution(H_batch, psi, t_evo, range(n_qubits), n_qubits)
 
-    psi = copy.deepcopy(psi_ini)
-    psi = batched_hamiltonian_evolution_eig(H_batch, psi, t_evo, range(n_qubits), n_qubits)
-    wf_save_eig = copy.deepcopy(psi)
+    psi_star_eig = batched_hamiltonian_evolution_eig(H_batch, psi, t_evo, range(n_qubits), n_qubits)
 
     diff = torch.tensor(
-        [torch.max(abs(wf_save_rk[..., b] - wf_save_eig[..., b])) for b in range(batch_size)]
+        [torch.max(abs(psi_star_norm[..., b] - psi_star_eig[..., b])) for b in range(batch_size)]
     )
 
     assert torch.max(diff) <= 10 ** (-6)
