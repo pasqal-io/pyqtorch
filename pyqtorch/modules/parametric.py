@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 import torch
 from numpy.typing import ArrayLike
 from torch.nn import Module
@@ -14,17 +12,17 @@ from pyqtorch.core.utils import OPERATIONS_DICT
 
 
 class RotationGate(Module):
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int, param_name: str):
+    n_params = 1
+
+    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
-        self.param_name = param_name
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
-    def matrices(self, thetas: dict[str, torch.Tensor]) -> torch.Tensor:
-        theta = thetas[self.param_name]
+    def matrices(self, theta: torch.Tensor) -> torch.Tensor:
         batch_size = len(theta)
         return rot_matrices(theta, self.paulimat, self.imat, batch_size)
 
@@ -32,12 +30,15 @@ class RotationGate(Module):
         batch_size = matrices.size(-1)
         return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
 
-    def forward(self, thetas: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:
-        mats = self.matrices(thetas)
+    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+        # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
+        # want to allow e.g. (3,batch_size) in the U gate.
+        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+        mats = self.matrices(theta)
         return self.apply(mats, state)
 
     def extra_repr(self) -> str:
-        return f"'{self.gate}', {self.qubits}, {self.n_qubits}, '{self.param_name}'"
+        return f"'{self.gate}', {self.qubits}, {self.n_qubits}"
 
 
 def rot_matrices(
@@ -58,76 +59,68 @@ def rot_matrices(
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
 
 
-class MultiParamRotationGate(Module):
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int, param_names: list[str]):
+class U(Module):
+    """Parametrized arbitrary rotation along the axes of the Bloch sphere
+
+    The angles `phi, theta, omega` in tensor format, applied as:
+
+        U(phi, theta, omega) = RZ(omega)RY(theta)RZ(phi)
+    """
+
+    n_params = 3
+
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
-        self.param_names = param_names
-        self.gate = gate
 
-    def matrices(self, params: dict[str, torch.Tensor]) -> torch.Tensor:
-        params_values: list[torch.Tensor] = [params[p_name] for p_name in self.param_names]
-        assert all(tensor.size(0) == params_values[0].size(0) for tensor in params_values)
-        batch_size = params_values[0].size(0)
-        return multiparam_rot_matrices(*tuple(params_values + [batch_size]))
+        self.register_buffer("a", torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
+        self.register_buffer("b", torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
+        self.register_buffer("c", torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble).unsqueeze(2))
+        self.register_buffer("d", torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).unsqueeze(2))
+
+    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
+        if thetas.ndim == 1:
+            thetas = thetas.unsqueeze(1)
+        assert thetas.size(0) == 3
+        phi, theta, omega = thetas[0, :], thetas[1, :], thetas[2, :]
+        batch_size = thetas.size(1)
+
+        t_plus = torch.exp(-1j * (phi + omega) / 2)
+        t_minus = torch.exp(-1j * (phi - omega) / 2)
+        sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1).repeat((2, 2, 1))
+        cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1).repeat((2, 2, 1))
+
+        a = self.a.repeat(1, 1, batch_size) * cos_t * t_plus
+        b = self.b.repeat(1, 1, batch_size) * sin_t * torch.conj(t_minus)
+        c = self.c.repeat(1, 1, batch_size) * sin_t * t_minus
+        d = self.d.repeat(1, 1, batch_size) * cos_t * torch.conj(t_plus)
+        return a - b + c + d
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
         return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
 
-    def forward(self, params: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:
-        mats = self.matrices(params)
+    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            state: batched state
+            thetas: Tensor of size (3, batch_size) which contais the values of `phi`/`theta`/`omega`
+
+        Returns:
+            torch.Tensor: the resulting state after applying the gate
+        """
+        mats = self.matrices(thetas)
         return self.apply(mats, state)
-
-    def extra_repr(self) -> str:
-        return f"'{self.gate}', {self.qubits}, {self.n_qubits}, '{self.param_names}'"
-
-
-def multiparam_rot_matrices(
-    phi: torch.Tensor, theta: torch.Tensor, omega: torch.Tensor, batch_size: int
-) -> torch.Tensor:
-    """Parametrized arbitrary rotation along the axes of the Bloch sphere
-
-    The angles `phi, theta, omega` in tensor format, applied as:
-    U(phi, theta, omega) = RZ(omega)RY(theta)RZ(phi)
-
-    Args:
-        phi (torch.Tensor): 1D-tensor holding the values of the `phi` parameter
-        theta (torch.Tensor): 1D-tensor holding the values of the `theta` parameter
-        omega (torch.Tensor): 1D-tensor holding the values of the `omega` parameter
-
-    Returns:
-        torch.Tensor: the resulting state after applying the gate
-    """
-    t_plus = torch.exp(-1j * (phi + omega) / 2)
-    t_minus = torch.exp(-1j * (phi - omega) / 2)
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    return (
-        torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size)
-        * cos_t
-        * t_plus
-        - torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size)
-        * sin_t
-        * torch.conj(t_minus)
-        + torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size)
-        * sin_t
-        * t_minus
-        + torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size)
-        * cos_t
-        * torch.conj(t_plus)
-    )
 
 
 class ControlledRotationGate(Module):
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int, param_name: str):
+    n_params = 1
+
+    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
-        self.param_name = param_name
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
@@ -147,40 +140,43 @@ class ControlledRotationGate(Module):
         return self.apply(mats, state)
 
 
-def RX(*args: Any, **kwargs: Any) -> RotationGate:
-    return RotationGate("X", *args, **kwargs)
+class RX(RotationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("X", qubits, n_qubits)
 
 
-def RY(*args: Any, **kwargs: Any) -> RotationGate:
-    return RotationGate("Y", *args, **kwargs)
+class RY(RotationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("Y", qubits, n_qubits)
 
 
-def RZ(*args: Any, **kwargs: Any) -> RotationGate:
-    return RotationGate("Z", *args, **kwargs)
+class RZ(RotationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("Z", qubits, n_qubits)
 
 
-def U(*args: Any, **kwargs: Any) -> MultiParamRotationGate:
-    return MultiParamRotationGate("U", *args, **kwargs)
+class CRX(ControlledRotationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("X", qubits, n_qubits)
 
 
-def CRX(*args: Any, **kwargs: Any) -> RotationGate:
-    return ControlledRotationGate("X", *args, **kwargs)
+class CRY(ControlledRotationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("Y", qubits, n_qubits)
 
 
-def CRY(*args: Any, **kwargs: Any) -> RotationGate:
-    return ControlledRotationGate("Y", *args, **kwargs)
-
-
-def CRZ(*args: Any, **kwargs: Any) -> RotationGate:
-    return ControlledRotationGate("Z", *args, **kwargs)
+class CRZ(ControlledRotationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("Z", qubits, n_qubits)
 
 
 class CPHASE(Module):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, param_name: str):
+    n_params = 1
+
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
-        self.param_name = param_name
         self.register_buffer("imat", torch.eye(4, dtype=torch.cdouble))
 
     def forward(self, thetas: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:

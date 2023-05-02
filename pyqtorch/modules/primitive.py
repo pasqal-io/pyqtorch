@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 import torch
 from numpy.typing import ArrayLike
 from torch.nn import Module
@@ -18,51 +16,59 @@ class PrimitiveGate(Module):
         self.n_qubits = n_qubits
         self.register_buffer("matrix", OPERATIONS_DICT[gate])
 
-    def matrices(self, thetas: dict[str, torch.Tensor]) -> torch.Tensor:
+    def matrices(self, _: torch.Tensor) -> torch.Tensor:
         return self.matrix
 
     def apply(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         return _apply_gate(state, matrix, self.qubits, self.n_qubits)
 
-    def forward(self, _: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
         return self.apply(self.matrix, state)
 
     def extra_repr(self) -> str:
         return f"'{self.gate}', {self.qubits}, {self.n_qubits}"
 
 
-def X(*args: Any, **kwargs: Any) -> PrimitiveGate:
-    return PrimitiveGate("X", *args, **kwargs)
+class X(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("X", qubits, n_qubits)
 
 
-def Y(*args: Any, **kwargs: Any) -> PrimitiveGate:
-    return PrimitiveGate("Y", *args, **kwargs)
+class Y(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("Y", qubits, n_qubits)
 
 
-def Z(*args: Any, **kwargs: Any) -> PrimitiveGate:
-    return PrimitiveGate("Z", *args, **kwargs)
+class Z(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("Z", qubits, n_qubits)
 
 
 # FIXME: do we really have to apply a matrix here?
 # can't we just return the identical state?
-def I(*args: Any, **kwargs: Any) -> PrimitiveGate:  # noqa: E743
-    return PrimitiveGate("I", *args, **kwargs)
+class I(PrimitiveGate):  # noqa: E742
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("I", qubits, n_qubits)
 
 
-def H(*args: Any, **kwargs: Any) -> PrimitiveGate:
-    return PrimitiveGate("H", *args, **kwargs)
+class H(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("H", qubits, n_qubits)
 
 
-def T(*args: Any, **kwargs: Any) -> PrimitiveGate:
-    return PrimitiveGate("T", *args, **kwargs)
+class T(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("T", qubits, n_qubits)
 
 
-def S(*args: Any, **kwargs: Any) -> PrimitiveGate:
-    return PrimitiveGate("S", *args, **kwargs)
+class S(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("S", qubits, n_qubits)
 
 
-def SWAP(*args: Any, **kwargs: Any) -> PrimitiveGate:
-    return PrimitiveGate("SWAP", *args, **kwargs)
+class SWAP(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("SWAP", qubits, n_qubits)
 
 
 class ControlledOperationGate(Module):
@@ -74,20 +80,26 @@ class ControlledOperationGate(Module):
         mat = OPERATIONS_DICT[gate]
         self.register_buffer("matrix", create_controlled_matrix_from_operation(mat))
 
-    def forward(self, _: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
         return _apply_gate(state, self.matrix, self.qubits, self.n_qubits)
 
     def extra_repr(self) -> str:
         return f"'{self.gate}', {self.qubits}, {self.n_qubits}"
 
 
-def CNOT(qubits: ArrayLike, n_qubits: int) -> ControlledOperationGate:
-    return ControlledOperationGate("X", qubits, n_qubits)
+class CNOT(ControlledOperationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("X", qubits, n_qubits)
 
 
-def CY(qubits: ArrayLike, n_qubits: int) -> ControlledOperationGate:
-    return ControlledOperationGate("Y", qubits, n_qubits)
+CX = CNOT
 
 
-def CZ(qubits: ArrayLike, n_qubits: int) -> ControlledOperationGate:
-    return ControlledOperationGate("Z", qubits, n_qubits)
+class CY(ControlledOperationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("Y", qubits, n_qubits)
+
+
+class CZ(ControlledOperationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        super().__init__("Z", qubits, n_qubits)
