@@ -36,10 +36,6 @@ class RotationGate(Module):
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
-    @property
-    def device(self) -> torch.device:
-        return self.imat.device
-
     def extra_repr(self) -> str:
         return f"'{self.gate}', {self.qubits}, {self.n_qubits}, '{self.param_name}'"
 
