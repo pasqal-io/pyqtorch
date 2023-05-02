@@ -592,7 +592,6 @@ def batched_hamiltonian_evolution_eig(
     Returns:
         torch.Tensor: returns the evolved state as a new copy
     """
-    _state = state.clone()
     batch_size_h = H.size()[BATCH_DIM]
     batch_size_t = len(t)
 
@@ -626,6 +625,4 @@ def batched_hamiltonian_evolution_eig(
                 torch.conj(eig_vectors.transpose(0, 1)),
             )
 
-    _state = _apply_batch_gate(state, evol_operator, qubits, N_qubits, batch_size_h)
-
-    return _state
+    return _apply_batch_gate(state, evol_operator, qubits, N_qubits, batch_size_h)
