@@ -52,7 +52,7 @@ def test_parametrized_gates(gate: str) -> None:
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
 def test_circuit(batch_size: int) -> None:
     n_qubits = 2
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.cdouble
 
     ops = [

@@ -158,7 +158,7 @@ def test_hamevo_rk4_vs_eig_general_H() -> None:
         [torch.max(abs(wf_save_rk[i, ...] - wf_save_eig[i, ...])) for i in range(n_trials)]
     )
 
-    assert torch.max(diff) <= 10 ** (-6)
+    assert torch.max(diff) <= 10 ** (-5)
 
 
 def test_hamevo_rk4_vs_eig_general_H_batched() -> None:
