@@ -145,6 +145,7 @@ class ControlledRotationGate(Module):
     def extra_repr(self) -> str:
         return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
+
 class RX(RotationGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         super().__init__("X", qubits, n_qubits)
