@@ -1,0 +1,101 @@
+site_name: QuCInt
+repo_url: "https://gitlab.pasqal.com/pqs/qucint"
+repo_name: "qucint"
+
+nav:
+
+  - Tutorials:
+      - Getting started: tutorials/getting_started.ipynb
+      - Blocks abstraction: tutorials/abstract_interface.ipynb
+      - Parametric circuits and observables: tutorials/parameters.ipynb
+      - PyQ backend: tutorials/pyq.ipynb
+      - Braket digital backend: tutorials/braket_digital.ipynb
+      - Pulser backend: tutorials/pulser.ipynb
+      - Advanced features: tutorials/advanced.ipynb
+      - Emu-C backend: tutorials/emuc.ipynb
+      - VQE calculations on H2 molecule: tutorials/VQE_H2.ipynb
+      # - Full Demo: tutorials/demo.ipynb
+
+  - Recipes:
+      - Time-evolution with arbitrary generators: how_tos/hams_generators.md
+
+  - Core:
+    - qucint/index.md
+    - QuantumCircuit: qucint/quantumcircuit.md
+    - Blocks: qucint/blocks.md
+    - Operations: qucint/operations.md
+    - Parameters: qucint/parameters.md
+    - Register: qucint/register.md
+    - Backend: qucint/backend.md
+
+  - Backends:
+    - backends/index.md
+    - PyQ: backends/pyq.md
+    - Braket Digital: backends/braket_digital.md
+    - Emu-C: backends/emu_c.md
+
+  - Quantum models:
+    - models/index.md
+    - QuantumModel: models/quantum_model.md
+    - QNN: models/qnn.md
+
+theme:
+  name: material
+  features:
+  - content.code.annotate
+  - navigation.indexes
+  - navigation.sections
+
+  palette:
+  - media: "(prefers-color-scheme: light)"
+    scheme: default
+    primary: light green
+    accent: purple
+    toggle:
+      icon: material/weather-sunny
+      name: Switch to dark mode
+  - media: "(prefers-color-scheme: dark)"
+    scheme: slate
+    primary: black
+    accent: light green
+    toggle:
+      icon: material/weather-night
+      name: Switch to light mode
+
+markdown_extensions:
+- admonition  # for notes
+- pymdownx.arithmatex: # for mathjax
+    generic: true
+- pymdownx.highlight:
+    anchor_linenums: true
+- pymdownx.inlinehilite
+- pymdownx.snippets
+- pymdownx.superfences
+
+plugins:
+- search
+- section-index
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        selection:
+          filters:
+            - "!^_"  # exlude all members starting with _
+            - "^__init__$"  # but always include __init__ modules and methods
+    watch:
+      - qucint
+
+- mkdocs-jupyter:
+    theme: light
+- markdown-exec
+
+# To get nice tabs
+extra_css:
+- css/mkdocstrings.css
+
+# For mathjax
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
