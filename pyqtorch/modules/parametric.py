@@ -38,7 +38,7 @@ class RotationGate(Module):
         return self.apply(mats, state)
 
     def extra_repr(self) -> str:
-        return f"'{self.gate}', {self.qubits}, {self.n_qubits}"
+        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 
 def rot_matrices(
@@ -113,6 +113,9 @@ class U(Module):
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
+    def extra_repr(self) -> str:
+        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
+
 
 class ControlledRotationGate(Module):
     n_params = 1
@@ -139,6 +142,8 @@ class ControlledRotationGate(Module):
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
+    def extra_repr(self) -> str:
+        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 class RX(RotationGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
@@ -187,3 +192,6 @@ class CPHASE(Module):
         phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
         mat[3, 3, :] = phase_rotation_angles
         return _apply_batch_gate(state, mat, self.qubits, self.n_qubits, batch_size)
+
+    def extra_repr(self) -> str:
+        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"

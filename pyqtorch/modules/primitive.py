@@ -26,7 +26,7 @@ class PrimitiveGate(Module):
         return self.apply(self.matrix, state)
 
     def extra_repr(self) -> str:
-        return f"'{self.gate}', {self.qubits}, {self.n_qubits}"
+        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 
 class X(PrimitiveGate):
@@ -84,7 +84,7 @@ class ControlledOperationGate(Module):
         return _apply_gate(state, self.matrix, self.qubits, self.n_qubits)
 
     def extra_repr(self) -> str:
-        return f"'{self.gate}', {self.qubits}, {self.n_qubits}"
+        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 
 class CNOT(ControlledOperationGate):
