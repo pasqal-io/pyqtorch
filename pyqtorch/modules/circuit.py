@@ -59,10 +59,9 @@ class QuantumCircuit(Module):
         return zero_state(self.n_qubits, batch_size, device=self._device)
 
 
-class FeaturemapLayer(QuantumCircuit):
-    def __init__(self, n_qubits: int, Op: Any):
-        operations = ModuleList([Op([i], n_qubits) for i in range(n_qubits)])
-        super().__init__(n_qubits, operations)
+def FeaturemapLayer(n_qubits: int, Op: Any):
+    operations = [Op([i], n_qubits) for i in range(n_qubits)]
+    return QuantumCircuit(n_qubits, operations)
 
 
 class VariationalLayer(QuantumCircuit):
