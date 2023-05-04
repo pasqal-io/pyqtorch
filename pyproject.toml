@@ -43,7 +43,6 @@ features = [
 [tool.hatch.envs.tests.scripts]
 test = "pytest {args}"
 
-
 [tool.hatch.envs.docs]
 dependencies = [
   "mkdocs",
@@ -55,6 +54,9 @@ dependencies = [
   "mkdocs-exclude",
   "markdown-exec",
 ]
+
+[tool.hatch.envs.docs.scripts]
+build = "mkdocs build --clean --strict"
 
 [tool.ruff]
 select = ["E", "F", "I", "Q"]
