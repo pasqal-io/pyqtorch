@@ -59,7 +59,7 @@ class QuantumCircuit(Module):
         return zero_state(self.n_qubits, batch_size, device=self._device)
 
 
-def FeaturemapLayer(n_qubits: int, Op: Any):
+def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
     operations = [Op([i], n_qubits) for i in range(n_qubits)]
     return QuantumCircuit(n_qubits, operations)
 
