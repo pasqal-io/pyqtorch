@@ -5,8 +5,9 @@ repo_name: "PyQ"
 nav:
 
   - Tutorials:
-      - Getting started: examples/getting_started.ipynb
-      - QAOA : examples/QAOA.ipynb
+      - Index : index.ipynb
+      - Getting started: getting_started.ipynb
+      - QAOA : QAOA.ipynb
    
 
 theme:
