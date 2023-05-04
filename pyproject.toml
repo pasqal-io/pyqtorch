@@ -43,6 +43,19 @@ features = [
 [tool.hatch.envs.tests.scripts]
 test = "pytest {args}"
 
+
+[tool.hatch.envs.docs]
+dependencies = [
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocstrings",
+  "mkdocstrings-python",
+  "mkdocs-section-index",
+  "mkdocs-jupyter",
+  "mkdocs-exclude",
+  "markdown-exec",
+]
+
 [tool.ruff]
 select = ["E", "F", "I", "Q"]
 extend-ignore = ["F841"]

@@ -1,43 +1,13 @@
-site_name: QuCInt
-repo_url: "https://gitlab.pasqal.com/pqs/qucint"
-repo_name: "qucint"
+site_name: PyQ
+repo_url: "https://github.com/pasqal-io/PyQ"
+repo_name: "PyQ"
 
 nav:
 
   - Tutorials:
-      - Getting started: tutorials/getting_started.ipynb
-      - Blocks abstraction: tutorials/abstract_interface.ipynb
-      - Parametric circuits and observables: tutorials/parameters.ipynb
-      - PyQ backend: tutorials/pyq.ipynb
-      - Braket digital backend: tutorials/braket_digital.ipynb
-      - Pulser backend: tutorials/pulser.ipynb
-      - Advanced features: tutorials/advanced.ipynb
-      - Emu-C backend: tutorials/emuc.ipynb
-      - VQE calculations on H2 molecule: tutorials/VQE_H2.ipynb
-      # - Full Demo: tutorials/demo.ipynb
-
-  - Recipes:
-      - Time-evolution with arbitrary generators: how_tos/hams_generators.md
-
-  - Core:
-    - qucint/index.md
-    - QuantumCircuit: qucint/quantumcircuit.md
-    - Blocks: qucint/blocks.md
-    - Operations: qucint/operations.md
-    - Parameters: qucint/parameters.md
-    - Register: qucint/register.md
-    - Backend: qucint/backend.md
-
-  - Backends:
-    - backends/index.md
-    - PyQ: backends/pyq.md
-    - Braket Digital: backends/braket_digital.md
-    - Emu-C: backends/emu_c.md
-
-  - Quantum models:
-    - models/index.md
-    - QuantumModel: models/quantum_model.md
-    - QNN: models/qnn.md
+      - Getting started: docs/getting_started.ipynb
+      - QAOA : examples/QAOA.ipynb
+   
 
 theme:
   name: material
