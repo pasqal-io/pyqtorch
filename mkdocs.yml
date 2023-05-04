@@ -9,7 +9,7 @@ nav:
       - Getting started: getting_started.ipynb
       - Fitting a function: fit_function.ipynb
       - QAOA : QAOA.ipynb
-   
+
 
 theme:
   name: material
