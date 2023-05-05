@@ -22,7 +22,10 @@ class RotationGate(Module):
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
-    def matrices(self, theta: torch.Tensor) -> torch.Tensor:
+    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
+        # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
+        # want to allow e.g. (3,batch_size) in the U gate.
+        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
         return rot_matrices(theta, self.paulimat, self.imat, batch_size)
 
@@ -31,10 +34,7 @@ class RotationGate(Module):
         return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-        # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
-        # want to allow e.g. (3,batch_size) in the U gate.
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
-        mats = self.matrices(theta)
+        mats = self.matrices(thetas)
         return self.apply(mats, state)
 
     def extra_repr(self) -> str:
@@ -128,8 +128,8 @@ class ControlledRotationGate(Module):
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
-    def matrices(self, thetas: dict[str, torch.Tensor]) -> torch.Tensor:
-        theta = thetas[self.param_name]
+    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
+        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
         return rot_matrices(theta, self.paulimat, self.imat, batch_size)
 
@@ -138,7 +138,7 @@ class ControlledRotationGate(Module):
         controlled_mats = create_controlled_batch_from_operation(matrices, batch_size)
         return _apply_batch_gate(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
 
-    def forward(self, thetas: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
@@ -185,14 +185,24 @@ class CPHASE(Module):
         self.n_qubits = n_qubits
         self.register_buffer("imat", torch.eye(4, dtype=torch.cdouble))
 
-    def forward(self, thetas: dict[str, torch.Tensor], state: torch.Tensor) -> torch.Tensor:
-        theta = thetas[self.param_name]
+    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
+        # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
+        # want to allow e.g. (3,batch_size) in the U gate.
+        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
         mat = self.imat.repeat((batch_size, 1, 1))
         mat = torch.permute(mat, (1, 2, 0))
         phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
         mat[3, 3, :] = phase_rotation_angles
-        return _apply_batch_gate(state, mat, self.qubits, self.n_qubits, batch_size)
+        return mat
+
+    def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        batch_size = matrices.size(-1)
+        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+
+    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+        mats = self.matrices(thetas)
+        return self.apply(mats, state)
 
     def extra_repr(self) -> str:
         return f"qubits={self.qubits}, n_qubits={self.n_qubits}"

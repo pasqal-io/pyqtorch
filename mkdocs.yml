@@ -1,0 +1,73 @@
+site_name: pyqtorch
+repo_url: "https://github.com/pasqal-io/PyQ"
+repo_name: "PyQ"
+
+nav:
+
+  - Tutorials:
+      - Index : index.ipynb
+      - Getting started: getting_started.ipynb
+      - Fitting a function: fit_function.ipynb
+      - QAOA : QAOA.ipynb
+
+
+theme:
+  name: material
+  features:
+  - content.code.annotate
+  - navigation.indexes
+  - navigation.sections
+
+  palette:
+  - media: "(prefers-color-scheme: light)"
+    scheme: default
+    primary: light green
+    accent: purple
+    toggle:
+      icon: material/weather-sunny
+      name: Switch to dark mode
+  - media: "(prefers-color-scheme: dark)"
+    scheme: slate
+    primary: black
+    accent: light green
+    toggle:
+      icon: material/weather-night
+      name: Switch to light mode
+
+markdown_extensions:
+- admonition  # for notes
+- pymdownx.arithmatex: # for mathjax
+    generic: true
+- pymdownx.highlight:
+    anchor_linenums: true
+- pymdownx.inlinehilite
+- pymdownx.snippets
+- pymdownx.superfences
+
+plugins:
+- search
+- section-index
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        selection:
+          filters:
+            - "!^_"  # exlude all members starting with _
+            - "^__init__$"  # but always include __init__ modules and methods
+    watch:
+      - qucint
+
+- mkdocs-jupyter:
+    theme: light
+- markdown-exec
+
+# To get nice tabs
+extra_css:
+- css/mkdocstrings.css
+
+# For mathjax
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

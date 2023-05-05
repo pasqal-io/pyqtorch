@@ -80,8 +80,14 @@ class ControlledOperationGate(Module):
         mat = OPERATIONS_DICT[gate]
         self.register_buffer("matrix", create_controlled_matrix_from_operation(mat))
 
+    def matrices(self, _: torch.Tensor) -> torch.Tensor:
+        return self.matrix
+
+    def apply(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        return _apply_gate(state, matrix, self.qubits, self.n_qubits)
+
     def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
-        return _apply_gate(state, self.matrix, self.qubits, self.n_qubits)
+        return self.apply(self.matrix, state)
 
     def extra_repr(self) -> str:
         return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
