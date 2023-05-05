@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyqtorch"
-description = "PyTorch-based quantum circuit library"
+description = "An efficient, large-scale emulator designed for quantum machine learning, seamlessly integrated with a PyTorch backend. Please refer to https://pyqtorch.readthedocs.io/en/latest/ for setup and usage info, along with the full documentation."
 authors = [
     { name = "Slimane Thabet", email = "slimane.thabet@pasqal.com" },
     { name = "Aleksander Wennersteen", email = "aleksander.wennersteen@pasqal.com" },
@@ -14,7 +14,7 @@ authors = [
 ]
 requires-python = ">=3.8.1,<3.11"
 license = {text = "Proprietary"}
-version = "0.2.0"
+version = "0.2.1"
 classifiers=[
     "License :: Other/Proprietary License",
     "Programming Language :: Python",
