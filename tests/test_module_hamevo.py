@@ -41,7 +41,7 @@ def Hamiltonian(batch_size: int = 1) -> torch.Tensor:
 
 @pytest.mark.parametrize(
     "ham_evo",
-    [pyq.HamEvo, pyq.HamEvoEig],
+    [pyq.HamEvo, pyq.HamEvoEig, pyq.HamEvoExp],
 )
 def test_hamevo_modules_single(ham_evo: torch.nn.Module) -> None:
     n_qubits = 4
@@ -57,7 +57,7 @@ def test_hamevo_modules_single(ham_evo: torch.nn.Module) -> None:
 
 @pytest.mark.parametrize(
     "ham_evo",
-    [pyq.HamEvo, pyq.HamEvoEig],
+    [pyq.HamEvo, pyq.HamEvoEig, pyq.HamEvoExp],
 )
 def test_hamevo_modules_batch(ham_evo: torch.nn.Module) -> None:
     n_qubits = 4
