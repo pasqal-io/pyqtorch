@@ -89,7 +89,8 @@ class HamEvoEig(HamEvo):
         self.l_vec = []
         self.l_val = []
         for i in range(batch_size_h):
-            eig_values, eig_vectors = diagonalize(self.H[..., [i]])
+            eig_values, eig_vectors = diagonalize(self.H[..., i])
+
             self.l_vec.append(eig_vectors)
             self.l_val.append(eig_values)
 
@@ -110,7 +111,6 @@ class HamEvoEig(HamEvo):
 
         for i in range(batch_size_h):
             eig_values, eig_vectors = self.l_val[i], self.l_vec[i]
-            eig_values = eig_values.flatten(0)
 
             if eig_vectors is None:
                 # Compute e^(-i H t)

@@ -72,3 +72,31 @@ def test_hamevo_modules_batch(ham_evo: torch.nn.Module) -> None:
     print(result)
 
     assert map(isclose, zip(result, [0.5, 0.5]))  # type: ignore [arg-type]
+
+
+def test_hamevo_modules_consistency() -> None:
+    n_qubits = 4
+    batch_size = 10
+
+    H_batch = torch.zeros((2**n_qubits, 2**n_qubits, batch_size), dtype=torch.cdouble)
+
+    for i in range(batch_size):
+        H_0 = torch.randn((2**n_qubits, 2**n_qubits), dtype=torch.cdouble)
+        H = (H_0 + torch.conj(H_0.transpose(0, 1))).cdouble()
+        H_batch[..., i] = H
+
+    t_evo = torch.tensor([torch.pi / 18], dtype=torch.cdouble)
+    psi_0 = pyq.uniform_state(batch_size=batch_size, n_qubits=n_qubits)
+
+    hamevo_rk4 = pyq.HamEvo(H_batch, t_evo, range(n_qubits), n_qubits)
+    psi_rk4 = hamevo_rk4.forward(psi_0)
+
+    hamevo_eig = pyq.HamEvoEig(H_batch, t_evo, range(n_qubits), n_qubits)
+    psi_eig = hamevo_eig.forward(psi_0)
+
+    hamevo_exp = pyq.HamEvoExp(H_batch, t_evo, range(n_qubits), n_qubits)
+    psi_exp = hamevo_exp.forward(psi_0)
+
+    assert torch.allclose(psi_rk4, psi_eig)
+    assert torch.allclose(psi_rk4, psi_eig)
+    assert torch.allclose(psi_eig, psi_exp)
