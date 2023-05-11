@@ -9,7 +9,7 @@ from torch.autograd import grad
 random.seed(0)
 np.random.seed(0)
 torch.manual_seed(0)
-torch.use_deterministic_algorithms(True)
+torch.use_deterministic_algorithms(not torch.cuda.is_available())
 
 from conftest import TestBatchedFM, TestFM, TestNetwork  # noqa: E402
 

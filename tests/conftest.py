@@ -15,7 +15,7 @@ from pyqtorch.core.operation import CNOT, RX, RY, RZ, H, X, Y, Z
 random.seed(42)
 np.random.seed(42)
 torch.manual_seed(42)
-torch.use_deterministic_algorithms(True)
+torch.use_deterministic_algorithms(not torch.cuda.is_available())
 
 
 class TestFM(QuantumCircuit):
