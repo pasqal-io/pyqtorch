@@ -19,7 +19,7 @@ from pyqtorch.matrices import generate_ising_from_graph
 random.seed(0)
 np.random.seed(0)
 torch.manual_seed(0)
-torch.use_deterministic_algorithms(True)
+torch.use_deterministic_algorithms(not torch.cuda.is_available())
 
 state_00 = torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_10 = torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
