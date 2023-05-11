@@ -47,13 +47,8 @@ class QuantumCircuit(Module):
 
     @property
     def _device(self) -> torch.device:
-        devices = set(p.device for p in self.parameters())
-        if len(devices) == 0:
-            return torch.device("cpu")
-        elif len(devices) == 1:
-            return devices.pop()
-        else:
-            raise ValueError("only one device supported.")
+        (_, buffer) = next(self.named_buffers())
+        return buffer.device
 
     def init_state(self, batch_size: int) -> torch.Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
