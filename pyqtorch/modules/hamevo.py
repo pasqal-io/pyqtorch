@@ -6,6 +6,7 @@ from typing import Any, Optional, Tuple
 import torch
 
 from pyqtorch.core.utils import _apply_batch_gate
+from pyqtorch.modules.utils import is_diag, is_real
 
 BATCH_DIM = 2
 
@@ -57,12 +58,6 @@ def diagonalize(H: torch.Tensor) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
     First checks if it's already diagonal, and second checks if H is real.
     """
 
-    def is_diag(H: torch.Tensor) -> bool:
-        return len(torch.abs(torch.triu(H, diagonal=1)).to_sparse().coalesce().values()) == 0
-
-    def is_real(H: torch.Tensor) -> bool:
-        return len(torch.imag(H).to_sparse().coalesce().values()) == 0
-
     if is_diag(H):
         # Skips diagonalization
         eig_values = torch.diagonal(H)
@@ -89,7 +84,8 @@ class HamEvoEig(HamEvo):
         self.l_vec = []
         self.l_val = []
         for i in range(batch_size_h):
-            eig_values, eig_vectors = diagonalize(self.H[..., [i]])
+            eig_values, eig_vectors = diagonalize(self.H[..., i])
+
             self.l_vec.append(eig_vectors)
             self.l_val.append(eig_values)
 
@@ -110,7 +106,6 @@ class HamEvoEig(HamEvo):
 
         for i in range(batch_size_h):
             eig_values, eig_vectors = self.l_val[i], self.l_vec[i]
-            eig_values = eig_values.flatten(0)
 
             if eig_vectors is None:
                 # Compute e^(-i H t)
@@ -124,5 +119,47 @@ class HamEvoEig(HamEvo):
                     torch.matmul(eig_vectors, eig_exp),
                     torch.conj(eig_vectors.transpose(0, 1)),
                 )
+
+        return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
+
+
+class HamEvoExp(HamEvo):
+    def __init__(
+        self, H: torch.Tensor, t: torch.Tensor, qubits: Any, n_qubits: int, n_steps: int = 100
+    ):
+        super().__init__(H, t, qubits, n_qubits, n_steps)
+        if len(self.H.size()) < 3:
+            self.H = self.H.unsqueeze(2)
+        batch_size_h = self.H.size()[BATCH_DIM]
+
+        # Check if all hamiltonians in the batch are diagonal
+        diag_check = torch.tensor([is_diag(self.H[..., i]) for i in range(batch_size_h)])
+        self.batch_is_diag = bool(torch.prod(diag_check))
+
+    def apply(self, state: torch.Tensor) -> torch.Tensor:
+
+        batch_size_t = len(self.t)
+        batch_size_h = self.H.size()[BATCH_DIM]
+        t_evo = torch.zeros(batch_size_h).to(torch.cdouble)
+
+        if batch_size_t >= batch_size_h:
+            t_evo = self.t[:batch_size_h]
+        else:
+            if batch_size_t == 1:
+                t_evo[:] = self.t[0]
+            else:
+                t_evo[:batch_size_t] = self.t
+
+        if self.batch_is_diag:
+            # Skips the matrix exponential for diagonal hamiltonians
+            H_diagonals = torch.diagonal(self.H)
+            evol_exp_arg = H_diagonals * (-1j * t_evo).view((-1, 1))
+            evol_operator_T = torch.diag_embed(torch.exp(evol_exp_arg))
+            evol_operator = torch.transpose(evol_operator_T, 0, -1)
+        else:
+            H_T = torch.transpose(self.H, 0, -1)
+            evol_exp_arg = H_T * (-1j * t_evo).view((-1, 1, 1))
+            evol_operator_T = torch.linalg.matrix_exp(evol_exp_arg)
+            evol_operator = torch.transpose(evol_operator_T, 0, -1)
 
         return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
