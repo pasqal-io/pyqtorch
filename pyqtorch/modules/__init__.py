@@ -10,4 +10,4 @@ from pyqtorch.modules.circuit import (
 )
 from pyqtorch.modules.hamevo import HamEvo, HamEvoEig, HamEvoExp
 from pyqtorch.modules.parametric import CPHASE, CRX, CRY, CRZ, RX, RY, RZ, U
-from pyqtorch.modules.primitive import CNOT, SWAP, H, I, S, T, X, Y, Z, CZ, CY
+from pyqtorch.modules.primitive import CNOT, CY, CZ, SWAP, H, I, S, T, X, Y, Z
