@@ -4,6 +4,7 @@ from functools import lru_cache
 from typing import Any, Optional, Tuple
 
 import torch
+from torch.nn import Module
 
 from pyqtorch.core.utils import _apply_batch_gate
 from pyqtorch.modules.utils import is_diag, is_real
@@ -158,6 +159,51 @@ class HamEvoExp(HamEvo):
             evol_operator = torch.transpose(evol_operator_T, 0, -1)
         else:
             H_T = torch.transpose(self.H, 0, -1)
+            evol_exp_arg = H_T * (-1j * t_evo).view((-1, 1, 1))
+            evol_operator_T = torch.linalg.matrix_exp(evol_exp_arg)
+            evol_operator = torch.transpose(evol_operator_T, 0, -1)
+
+        return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
+
+
+class HamiltonianEvolution(Module):
+    def __init__(self, qubits: Any, n_qubits: int, n_steps: int = 100):
+        super().__init__()
+        self.qubits = qubits
+        self.n_qubits = n_qubits
+        self.n_steps = n_steps
+
+    def forward(self, H: torch.Tensor, t: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        return self.apply(H, t, state)
+
+    def apply(self, H: torch.Tensor, t: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        if len(H.size()) < 3:
+            H = H.unsqueeze(2)
+        batch_size_h = H.size()[BATCH_DIM]
+
+        # Check if all hamiltonians in the batch are diagonal
+        diag_check = torch.tensor([is_diag(H[..., i]) for i in range(batch_size_h)])
+        batch_is_diag = bool(torch.prod(diag_check))
+
+        batch_size_t = len(t)
+        t_evo = torch.zeros(batch_size_h).to(torch.cdouble)
+
+        if batch_size_t >= batch_size_h:
+            t_evo = t[:batch_size_h]
+        else:
+            if batch_size_t == 1:
+                t_evo[:] = t[0]
+            else:
+                t_evo[:batch_size_t] = t
+
+        if batch_is_diag:
+            # Skips the matrix exponential for diagonal hamiltonians
+            H_diagonals = torch.diagonal(H)
+            evol_exp_arg = H_diagonals * (-1j * t_evo).view((-1, 1))
+            evol_operator_T = torch.diag_embed(torch.exp(evol_exp_arg))
+            evol_operator = torch.transpose(evol_operator_T, 0, -1)
+        else:
+            H_T = torch.transpose(H, 0, -1)
             evol_exp_arg = H_T * (-1j * t_evo).view((-1, 1, 1))
             evol_operator_T = torch.linalg.matrix_exp(evol_exp_arg)
             evol_operator = torch.transpose(evol_operator_T, 0, -1)
