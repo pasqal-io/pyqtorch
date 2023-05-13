@@ -79,6 +79,26 @@ def test_circuit(batch_size: int) -> None:
 
 
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
+def test_empy_circuit(batch_size: int) -> None:
+    n_qubits = 2
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    dtype = torch.cdouble
+
+    ops: list = []
+    circ = pyq.QuantumCircuit(n_qubits, ops).to(device=device, dtype=dtype)
+
+    state = circ.init_state(batch_size)
+    phi = torch.rand(batch_size, device=device, dtype=dtype, requires_grad=True)
+
+    assert circ(state, phi).size() == (2, 2, batch_size)
+
+    state = pyq.zero_state(n_qubits, batch_size=batch_size, device=device, dtype=dtype)
+
+    res = circ(state, phi)
+    assert not torch.all(torch.isnan(res))
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
 def test_U_gate(batch_size: int) -> None:
     n_qubits = 1
     u = pyq.U([0], n_qubits)

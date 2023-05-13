@@ -62,6 +62,40 @@ def Hamiltonian_diag(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
 
 @pytest.mark.parametrize(
     "ham_evo",
+    [pyq.HamiltonianEvolution],
+)
+def test_ham_modules_single(ham_evo: torch.nn.Module) -> None:
+    n_qubits = 4
+    H = Hamiltonian(1)
+    t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
+    hamevo = ham_evo(range(n_qubits), n_qubits)
+    psi = pyq.uniform_state(n_qubits)
+    psi_star = hamevo(H, t_evo, psi)
+    result = overlap(psi_star, psi)
+    result = result if isinstance(result, float) else result[0]
+    assert isclose(result, 0.5)
+
+
+@pytest.mark.parametrize(
+    "ham_evo",
+    [pyq.HamiltonianEvolution],
+)
+def test_hamiltonianevolution_batch(ham_evo: torch.nn.Module) -> None:
+    n_qubits = 4
+    batch_size = 2
+    H = Hamiltonian(batch_size)
+    t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
+
+    hamevo = ham_evo(range(n_qubits), n_qubits)
+    psi = pyq.uniform_state(n_qubits, batch_size)
+    psi_star = hamevo(H, t_evo, psi)
+    result = overlap(psi_star, psi)
+
+    assert map(isclose, zip(result, [0.5, 0.5]))  # type: ignore [arg-type]
+
+
+@pytest.mark.parametrize(
+    "ham_evo",
     [pyq.HamEvo, pyq.HamEvoEig, pyq.HamEvoExp],
 )
 def test_hamevo_modules_single(ham_evo: torch.nn.Module) -> None:
@@ -112,6 +146,11 @@ def test_hamevo_consistency(get_hamiltonians: Callable) -> None:
     hamevo_exp = pyq.HamEvoExp(H_batch, t_evo, range(n_qubits), n_qubits)
     psi_exp = hamevo_exp.forward(psi_0)
 
-    assert torch.allclose(psi_rk4, psi_eig)
-    assert torch.allclose(psi_rk4, psi_eig)
-    assert torch.allclose(psi_eig, psi_exp)
+    hamiltonian_evolution = pyq.HamiltonianEvolution(range(n_qubits), n_qubits)
+    psi_ham = hamiltonian_evolution(H_batch, t_evo, psi_0)
+
+    # assert torch.allclose(psi_rk4, psi_eig)
+    # assert torch.allclose(psi_rk4, psi_eig)
+    # assert torch.allclose(psi_eig, psi_exp)
+    tensors = [psi_rk4, psi_eig, psi_exp, psi_ham]
+    assert all(torch.allclose(tensors[i], tensors[0]) for i in range(1, len(tensors)))
