@@ -80,7 +80,7 @@ def test_ham_modules_single(ham_evo: torch.nn.Module) -> None:
     "ham_evo",
     [pyq.HamiltonianEvolution],
 )
-def test_hamevo_modules_batch(ham_evo: torch.nn.Module) -> None:
+def test_hamiltonianevolution_batch(ham_evo: torch.nn.Module) -> None:
     n_qubits = 4
     batch_size = 2
     H = Hamiltonian(batch_size)
