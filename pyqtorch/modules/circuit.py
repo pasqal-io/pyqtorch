@@ -47,8 +47,11 @@ class QuantumCircuit(Module):
 
     @property
     def _device(self) -> torch.device:
-        (_, buffer) = next(self.named_buffers())
-        return buffer.device
+        try:
+            (_, buffer) = next(self.named_buffers())
+            return buffer.device
+        except StopIteration:
+            return torch.device("cpu")
 
     def init_state(self, batch_size: int) -> torch.Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
