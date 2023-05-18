@@ -70,5 +70,5 @@ hatch run test
 Or without hatch:
 
 ```shell
-pytest 
+pytest
 ```
