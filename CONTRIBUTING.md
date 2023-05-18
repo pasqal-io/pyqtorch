@@ -38,16 +38,37 @@ otherwise the automatic pipeline will not pass. To do so, the recommended way is
 to use `hatch` for managing the environments:
 
 ```shell
-hatch env create tests
-hatch --env tests run python -m pytest -vvv --cov pyqtorch tests
-hatch --env tests run python -m mypy pyqtorch tests
+pip install hatch
+hatch -v shell
+hatch run test
 ```
 
 If you don't want to use `hatch`, you can use the environment manager of your
 choice (e.g. Conda) and execute the following:
 
 ```shell
+pip install pytest
 pip install -e .[dev]
-pytest -vvv --cov pyqtorch tests
-mypy pyqtorch tests
+pytest
+```
+
+### Useful Things for your workflow
+
+1. Use `pre-commit` hooks to make sure that the code is properly linted before pushing a new commit.
+
+```shell
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+2.  Make sure that the unit tests and type checks are passing since the merge request will not be accepted if the automatic CI/CD pipeline do not pass.
+
+```shell
+hatch run test
+```
+Or without hatch:
+
+```shell
+pytest 
 ```
