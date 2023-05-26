@@ -30,6 +30,7 @@ Click the "Fork" button at the upper right corner of the [repo page](https://git
 
    ```bash
    git remote add upstream https://github.com/pasqal-io/PyQ.git
+   ```
 
 ## SETUP
 
@@ -78,4 +79,29 @@ And with `hatch`:
 ```shell
 hatch -e tests run pre-commit run --all-files
 hatch -e tests run test
+```
+
+Make sure your docs build too!
+
+With `hatch`:
+
+```shell
+hatch -e docs run mkdocs build --clean --strict
+```
+
+Without `hatch`, `pip` install those libraries first:
+"mkdocs",
+"mkdocs-material",
+"mkdocstrings",
+"mkdocstrings-python",
+"mkdocs-section-index",
+"mkdocs-jupyter",
+"mkdocs-exclude",
+"markdown-exec"
+
+
+And then:
+
+```shell
+ mkdocs build --clean --strict
 ```
