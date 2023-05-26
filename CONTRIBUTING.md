@@ -20,17 +20,15 @@ Here's the process for making a contribution:
 
 Click the "Fork" button at the upper right corner of the [repo page](https://github.com/pasqal-io/PyQ) to create a new GitHub repo at `https://github.com/USERNAME/PyQ`, where `USERNAME` is your GitHub ID. Then, `cd` into the directory where you want to place your new fork and clone it:
 
-    ```bash
-    git clone https://github.com/USERNAME/PyQ.git
-    ```
+```shell
+git clone https://github.com/USERNAME/PyQ.git
+```
 
-    **Note**: Replace `USERNAME` with your own GitHub ID.
+Next, navigate to your new PyQ fork directory and mark the main PyQ repository as the `upstream`:
 
-   Next, navigate to your new PyQ fork directory and mark the main PyQ repository as the `upstream`:
-
-   ```bash
-   git remote add upstream https://github.com/pasqal-io/PyQ.git
-   ```
+```shell
+git remote add upstream https://github.com/pasqal-io/PyQ.git
+```
 
 ## SETUP
 
