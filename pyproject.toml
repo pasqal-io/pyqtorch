@@ -41,7 +41,7 @@ features = [
 ]
 
 [tool.hatch.envs.tests.scripts]
-test = "pytest {args}"
+test = "pytest {args} && hatch -e docs run mkdocs build --clean --strict"
 
 [tool.hatch.envs.docs]
 dependencies = [
