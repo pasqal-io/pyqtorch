@@ -188,6 +188,38 @@ class ComposedRotationGate(Module):
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("mat", matrix)
 
+    def __mul__(self, other: torch.Tensor) -> ComposedRotationGate:
+        if self.n_qubits != other.n_qubits:
+            raise ValueError(
+                (
+                    f"Number of Qubits don't match. "
+                    f"Left gate is applied on {self.n_qubits} and "
+                    f"right gate is applied on {other.n_qubits}."
+                )
+            )
+
+        if self.qubits != other.qubits:
+            raise ValueError(
+                (
+                    f"Qubits don't match. "
+                    f"Left side qubits are {self.qubits} and "
+                    f"right side qubits are {other.qubits}."
+                )
+            )
+
+        if isinstance(other, ComposedRotationGate):
+            return ComposedRotationGate(
+                self.qubits, self.n_qubits, torch.matmul(self.mat, other.mat)
+            )
+
+        elif isinstance(other, RotationGate):
+            return ComposedRotationGate(
+                self.qubits, self.n_qubits, torch.matmul(self.mat, other.paulimat)
+            )
+
+        else:
+            return NotImplemented
+
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
         # want to allow e.g. (3,batch_size) in the U gate.
