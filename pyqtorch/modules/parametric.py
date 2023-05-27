@@ -22,11 +22,7 @@ class RotationGate(Module):
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
-    # Todo: ComposedRotationGate multiplication
     def __mul__(self, other: torch.Tensor) -> ComposedRotationGate:
-        if not isinstance(other, RotationGate):
-            return NotImplemented  # Allows for __rmul__
-
         if self.n_qubits != other.n_qubits:
             raise ValueError(
                 (
@@ -45,9 +41,18 @@ class RotationGate(Module):
                 )
             )
 
-        return ComposedRotationGate(
-            self.qubits, self.n_qubits, torch.multiply(self.paulimat, other.paulimat)
-        )
+        if isinstance(other, ComposedRotationGate):
+            return ComposedRotationGate(
+                self.qubits, self.n_qubits, torch.matmul(self.paulimat, other.mat)
+            )
+
+        elif isinstance(other, RotationGate):
+            return ComposedRotationGate(
+                self.qubits, self.n_qubits, torch.matmul(self.paulimat, other.paulimat)
+            )
+
+        else:
+            return NotImplemented
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
