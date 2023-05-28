@@ -30,7 +30,7 @@ Next, navigate to your new PyQ fork directory and mark the main PyQ repository a
 git remote add upstream https://github.com/pasqal-io/PyQ.git
 ```
 
-## SETUP
+## Setting up your development environment
 
 We recommended to use `hatch` for managing the environments:
 
