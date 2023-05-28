@@ -1,4 +1,4 @@
-# How to Participate
+# How to Contribute
 
 We're grateful for your interest in participating in PyQ! Please follow our guidelines to ensure a smooth contribution process.
 
