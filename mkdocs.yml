@@ -4,8 +4,13 @@ repo_name: "PyQ"
 
 nav:
 
+  - Setting up : index.md
+  - Contributing: 
+      - How to Contribute: CONTRIBUTING.md
+      - Code of Conduct: CODE_OF_CONDUCT.md
+  - Overview : 
+      - Essentials : essentials.ipynb
   - Tutorials:
-      - Index : index.ipynb
       - Getting started: getting_started.ipynb
       - Fitting a function: fit_function.ipynb
       - QAOA : QAOA.ipynb
@@ -56,7 +61,7 @@ plugins:
             - "!^_"  # exlude all members starting with _
             - "^__init__$"  # but always include __init__ modules and methods
     watch:
-      - qucint
+      - pyqtorch
 
 - mkdocs-jupyter:
     theme: light
