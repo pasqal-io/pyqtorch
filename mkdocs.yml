@@ -4,14 +4,13 @@ repo_name: "PyQ"
 
 nav:
 
-  - Setting up : index.md
-  - Contributing:
+  - Setup : index.md
+  - Contribute:
       - How to Contribute: CONTRIBUTING.md
       - Code of Conduct: CODE_OF_CONDUCT.md
-  - Overview :
+  - Overview:
       - Essentials : essentials.ipynb
   - Tutorials:
-      - Getting started: getting_started.ipynb
       - Fitting a function: fit_function.ipynb
       - QAOA : QAOA.ipynb
 
