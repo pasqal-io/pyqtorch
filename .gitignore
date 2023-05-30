@@ -20,6 +20,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 
 # Distribution / packaging
 .Python
@@ -38,3 +39,10 @@ dist/
 *.eggs
 *.env
 *.venv
+
+# mkdocs
+site/
+docs/*.py
+
+# Jupyter Notebook
+.ipynb_checkpoints
