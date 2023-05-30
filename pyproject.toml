@@ -31,7 +31,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["black", "pytest", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff"]
+dev = ["black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff"]
 converters = ["qiskit"]
 
 [tool.hatch.envs.tests]
@@ -41,7 +41,7 @@ features = [
 ]
 
 [tool.hatch.envs.tests.scripts]
-test = "pytest {args} && hatch -e docs run mkdocs build --clean --strict"
+test = "pytest -n auto {args} && hatch -e docs run mkdocs build --clean --strict"
 
 [tool.hatch.envs.docs]
 dependencies = [
