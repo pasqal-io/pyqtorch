@@ -22,38 +22,6 @@ class RotationGate(Module):
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
-    def __mul__(self, other: torch.Tensor) -> ComposedRotationGate:
-        if self.n_qubits != other.n_qubits:
-            raise ValueError(
-                (
-                    f"Number of Qubits don't match. "
-                    f"Left gate is applied on {self.n_qubits} and "
-                    f"right gate is applied on {other.n_qubits}."
-                )
-            )
-
-        if self.qubits != other.qubits:
-            raise ValueError(
-                (
-                    f"Qubits don't match. "
-                    f"Left side qubits are {self.qubits} and "
-                    f"right side qubits are {other.qubits}."
-                )
-            )
-
-        if isinstance(other, ComposedRotationGate):
-            return ComposedRotationGate(
-                self.qubits, self.n_qubits, torch.matmul(self.paulimat, other.mat)
-            )
-
-        elif isinstance(other, RotationGate):
-            return ComposedRotationGate(
-                self.qubits, self.n_qubits, torch.matmul(self.paulimat, other.paulimat)
-            )
-
-        else:
-            return NotImplemented
-
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
         # want to allow e.g. (3,batch_size) in the U gate.
@@ -169,67 +137,6 @@ class ControlledRotationGate(Module):
         batch_size = matrices.size(-1)
         controlled_mats = create_controlled_batch_from_operation(matrices, batch_size)
         return _apply_batch_gate(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
-
-    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-        mats = self.matrices(thetas)
-        return self.apply(mats, state)
-
-    def extra_repr(self) -> str:
-        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
-
-
-class ComposedRotationGate(Module):
-    n_params = 1
-
-    def __init__(self, qubits: ArrayLike, n_qubits: int, matrix: torch.Tensor):
-        super().__init__()
-        self.qubits = qubits
-        self.n_qubits = n_qubits
-        self.register_buffer("imat", OPERATIONS_DICT["I"])
-        self.register_buffer("mat", matrix)
-
-    def __mul__(self, other: torch.Tensor) -> ComposedRotationGate:
-        if self.n_qubits != other.n_qubits:
-            raise ValueError(
-                (
-                    f"Number of Qubits don't match. "
-                    f"Left gate is applied on {self.n_qubits} and "
-                    f"right gate is applied on {other.n_qubits}."
-                )
-            )
-
-        if self.qubits != other.qubits:
-            raise ValueError(
-                (
-                    f"Qubits don't match. "
-                    f"Left side qubits are {self.qubits} and "
-                    f"right side qubits are {other.qubits}."
-                )
-            )
-
-        if isinstance(other, ComposedRotationGate):
-            return ComposedRotationGate(
-                self.qubits, self.n_qubits, torch.matmul(self.mat, other.mat)
-            )
-
-        elif isinstance(other, RotationGate):
-            return ComposedRotationGate(
-                self.qubits, self.n_qubits, torch.matmul(self.mat, other.paulimat)
-            )
-
-        else:
-            return NotImplemented
-
-    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
-        # want to allow e.g. (3,batch_size) in the U gate.
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
-        batch_size = len(theta)
-        return rot_matrices(theta, self.mat, self.imat, batch_size)
-
-    def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
