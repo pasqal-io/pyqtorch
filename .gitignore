@@ -42,3 +42,6 @@ dist/
 # mkdocs
 site/
 docs/*.py
+
+# Jupyter Notebook
+.ipynb_checkpoints
