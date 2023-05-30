@@ -1,0 +1,45 @@
+name: Run tests and mypy
+
+on:
+  push:
+      branches: [ main ]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+
+jobs:
+
+  unit_tests:
+    if: |
+      github.event_name == 'push' || github.event_name == 'pull_request'
+    name: Unit testing
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+
+    steps:
+
+        - name: Checkout main code and submodules
+          uses: actions/checkout@v2
+
+        - name: Set up Python ${{ matrix.python-version }}
+          uses: actions/setup-python@v2
+          with:
+            python-version: ${{ matrix.python-version }}
+
+        - name: Install hatch
+          run: |
+            python -m pip install hatch
+
+        - name: Install main dependencies
+          run: |
+            python -m hatch -v -e tests
+
+        - name: Lint
+          run: |
+            python -m hatch -e tests run pre-commit run --all-files
+
+        - name: Perform unit tests
+          run: |
+            python -m hatch -e tests run pytest
