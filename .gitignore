@@ -38,3 +38,7 @@ dist/
 *.eggs
 *.env
 *.venv
+
+# mkdocs
+site/
+docs/*.py
