@@ -47,7 +47,33 @@ OPERATIONS_DICT = {
 }
 
 
-def _apply_gate(state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int) -> torch.Tensor:
+class State(torch.Tensor):
+    @staticmethod
+    def __new__(
+        cls: Any,
+        state_tensor: torch.Tensor,
+        applied_gates_tensor: torch.Tensor,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        return super().__new__(cls, state_tensor, *args, **kwargs)
+
+    def __init__(self, state_tensor: torch.Tensor, applied_gates_tensor: torch.Tensor):
+        self._applied_gates_tensor = applied_gates_tensor
+
+    def __matmul__(self, other: torch.Tensor | State) -> torch.Tensor:
+        return State(
+            torch.matmul(self._applied_gates_tensor, other),
+            torch.matmul(self._applied_gates_tensor, other._applied_gates_tensor),
+        )
+
+
+def _apply_gate(
+    state: torch.Tensor,
+    mat: torch.Tensor,
+    qubits: Any,
+    N_qubits: int,
+) -> torch.Tensor:
     """
     Apply a gate represented by its matrix `mat` to the quantum state
     `state`
