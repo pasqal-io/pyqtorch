@@ -9,9 +9,8 @@ from typing import List
 
 import pytest
 
-expected_fail = {}
-
-skip = {}
+expected_fail = {}  # type: ignore
+skip = {}  # type: ignore
 
 
 def get_ipynb_files(dir: Path) -> List[Path]:
@@ -20,7 +19,7 @@ def get_ipynb_files(dir: Path) -> List[Path]:
     for it in dir.iterdir():
         if it.suffix == ".ipynb":
             files.append(it)
-        elif it.is_dir() and it.name != 'deprecated':
+        elif it.is_dir() and it.name != "deprecated":
             files.extend(get_ipynb_files(it))
     return files
 
