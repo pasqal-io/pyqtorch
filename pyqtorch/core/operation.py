@@ -20,7 +20,7 @@ import torch
 from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
-from pyqtorch.core.utils import OPERATIONS_DICT, State, _apply_gate
+from pyqtorch.core.utils import OPERATIONS_DICT, _apply_gate
 
 
 def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tensor) -> torch.Tensor:
@@ -74,7 +74,7 @@ def RX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: in
 
     dev = state.device
     mat: torch.Tensor = get_parametrized_matrix_for_operation("X", theta).to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def RY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -94,7 +94,7 @@ def RY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: in
 
     dev = state.device
     mat: torch.Tensor = get_parametrized_matrix_for_operation("Y", theta).to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def RZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -114,7 +114,7 @@ def RZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: in
 
     dev = state.device
     mat: torch.Tensor = get_parametrized_matrix_for_operation("Z", theta).to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def RZZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -183,7 +183,7 @@ def U(
         * torch.cos(theta / 2)
         * torch.conj(t_plus)
     )
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def I(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:  # noqa: E743
@@ -203,7 +203,7 @@ def I(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:  #
 
     dev = state.device
     mat = OPERATIONS_DICT["I"].to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -223,7 +223,7 @@ def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     dev = state.device
     mat = OPERATIONS_DICT["X"].to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def Z(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -243,7 +243,7 @@ def Z(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     dev = state.device
     mat = OPERATIONS_DICT["Z"].to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -263,7 +263,7 @@ def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     dev = state.device
     mat = OPERATIONS_DICT["Y"].to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -283,7 +283,7 @@ def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     dev = state.device
     mat = OPERATIONS_DICT["H"].to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def ControlledOperationGate(
@@ -406,7 +406,7 @@ def S(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     dev = state.device
     mat = OPERATIONS_DICT["S"].to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def T(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -426,7 +426,7 @@ def T(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     dev = state.device
     mat = OPERATIONS_DICT["T"].to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def SWAP(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
@@ -446,7 +446,7 @@ def SWAP(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
 
     dev = state.device
     mat = OPERATIONS_DICT["SWAP"].to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def CPHASE(
@@ -476,7 +476,7 @@ def CPHASE(
         ],
         dtype=torch.cdouble,
     ).to(dev)
-    return State(_apply_gate(state, mat, qubits, N_qubits), mat)
+    return _apply_gate(state, mat, qubits, N_qubits)
 
 
 def hamiltonian_evolution(

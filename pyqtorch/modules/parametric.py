@@ -9,11 +9,11 @@ from pyqtorch.core.batched_operation import (
     create_controlled_batch_from_operation,
 )
 from pyqtorch.core.utils import OPERATIONS_DICT
+from pyqtorch.modules import QuantumCircuit
+from pyqtorch.modules.utils import rot_matrices
 
 
-class RotationGate(Module):
-    n_params = 1
-
+class Gate(Module):
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
         super().__init__()
         self.qubits = qubits
@@ -21,6 +21,51 @@ class RotationGate(Module):
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+
+    def __mul__(self, other: RotationGate | QuantumCircuit) -> QuantumCircuit:
+        if self.n_qubits != other.n_qubits:
+            raise ValueError(
+                (
+                    f"Number of Qubits don't match. "
+                    f"Left gate is applied on a {self.n_qubits} qubit system and "
+                    f"right gate is applied on a {other.n_qubits} qubit system."
+                )
+            )
+
+        if isinstance(other, RotationGate):
+            return QuantumCircuit(self.n_qubits, [self, other])
+
+        if isinstance(other, QuantumCircuit):
+            return QuantumCircuit(self.n_qubits, other.operations.insert(0, self))
+
+        else:
+            return NotImplemented
+
+    def __rmul__(self, other: QuantumCircuit) -> QuantumCircuit:
+        if self.n_qubits != other.n_qubits:
+            raise ValueError(
+                (
+                    f"Number of Qubits don't match. "
+                    f"Left gate is applied on a {self.n_qubits} qubit system and "
+                    f"right gate is applied on a {other.n_qubits} qubit system."
+                )
+            )
+
+        if isinstance(other, QuantumCircuit):
+            other.operations.append(self)
+            return other
+        else:
+            return NotImplemented
+
+    def extra_repr(self) -> str:
+        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
+
+
+class RotationGate(Gate):
+    n_params = 1
+
+    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
+        super().__init__(gate, qubits, n_qubits)
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
@@ -36,27 +81,6 @@ class RotationGate(Module):
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
         return self.apply(mats, state)
-
-    def extra_repr(self) -> str:
-        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
-
-
-def rot_matrices(
-    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
-) -> torch.Tensor:
-    """
-    Returns:
-        torch.Tensor: a batch of gates after applying theta
-    """
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-
-    batch_imat = I.unsqueeze(2).repeat(1, 1, batch_size)
-    batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
-
-    return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
 
 
 class U(Module):
@@ -117,16 +141,11 @@ class U(Module):
         return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 
-class ControlledRotationGate(Module):
+class ControlledRotationGate(Gate):
     n_params = 1
 
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__()
-        self.qubits = qubits
-        self.n_qubits = n_qubits
-        self.gate = gate
-        self.register_buffer("imat", OPERATIONS_DICT["I"])
-        self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+        super().__init__(gate, qubits, n_qubits)
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -141,9 +160,6 @@ class ControlledRotationGate(Module):
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
         return self.apply(mats, state)
-
-    def extra_repr(self) -> str:
-        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 
 class RX(RotationGate):

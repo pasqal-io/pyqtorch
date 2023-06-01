@@ -40,6 +40,22 @@ class QuantumCircuit(Module):
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
 
+    def __mul__(self, other: QuantumCircuit) -> QuantumCircuit:
+        if self.n_qubits != other.n_qubits:
+            raise ValueError(
+                (
+                    f"Number of Qubits don't match. "
+                    f"Left gate is applied on a {self.n_qubits} qubit system and "
+                    f"right gate is applied on a {other.n_qubits} qubit system."
+                )
+            )
+
+        if isinstance(other, QuantumCircuit):
+            return QuantumCircuit(self.n_qubits, other.operations.append(self.operations))
+
+        else:
+            return NotImplemented
+
     def forward(self, state: torch.Tensor, thetas: torch.Tensor = None) -> torch.Tensor:
         for op in self.operations:
             state = op(state, thetas)
@@ -55,6 +71,12 @@ class QuantumCircuit(Module):
 
     def init_state(self, batch_size: int) -> torch.Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
+
+    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
+        matrix = self.operations[0].matrices(thetas[-1]).squeeze(2)
+        for i, operation in enumerate(self.operations[1:]):
+            matrix = matrix @ operation.matrices(thetas[-2 - i, :]).squeeze(2)
+        return matrix.unsqueeze(2)
 
 
 def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
