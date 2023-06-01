@@ -166,21 +166,23 @@ class HamEvoExp(HamEvo):
 
         return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
 
-
 class HamEvoType(Enum):
     RK4 = HamEvo
     EIG = HamEvoEig
     EXP = HamEvoExp
-    
+
 class HamiltonianEvolution(Module):
     def __init__(self, qubits: Any, n_qubits: int, n_steps: int = 100, type: HamEvoType = HamEvoType.RK4):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
         self.n_steps = n_steps
+        if isinstance(type, str):
+            type = HamEvoType[type.upper()]
         self.type = type
-
 
     def forward(self, H: torch.Tensor, t: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         ham_evo_instance = self.type.value(H, t, self.qubits, self.n_qubits, self.n_steps)
         return ham_evo_instance.forward(state)
+
+    
