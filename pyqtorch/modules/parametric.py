@@ -8,7 +8,8 @@ from pyqtorch.core.batched_operation import (
     create_controlled_batch_from_operation,
 )
 from pyqtorch.core.utils import OPERATIONS_DICT
-from pyqtorch.modules.utils import AbstractGate, rot_matrices
+from pyqtorch.modules.abstract import AbstractGate
+from pyqtorch.modules.utils import rot_matrices
 
 
 class RotationGate(AbstractGate):
@@ -32,9 +33,6 @@ class RotationGate(AbstractGate):
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
         return self.apply(mats, state)
-
-    def extra_repr(self) -> str:
-        return super().extra_repr()
 
 
 class U(AbstractGate):
@@ -89,9 +87,6 @@ class U(AbstractGate):
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
-    def extra_repr(self) -> str:
-        return super().extra_repr()
-
 
 class ControlledRotationGate(AbstractGate):
     n_params = 1
@@ -115,9 +110,6 @@ class ControlledRotationGate(AbstractGate):
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
         return self.apply(mats, state)
-
-    def extra_repr(self) -> str:
-        return super().extra_repr()
 
 
 class RX(RotationGate):
@@ -173,6 +165,3 @@ class CPHASE(AbstractGate):
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
         return self.apply(mats, state)
-
-    def extra_repr(self) -> str:
-        return super().extra_repr()

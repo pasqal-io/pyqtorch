@@ -5,7 +5,7 @@ from numpy.typing import ArrayLike
 
 from pyqtorch.core.operation import _apply_gate, create_controlled_matrix_from_operation
 from pyqtorch.core.utils import OPERATIONS_DICT
-from pyqtorch.modules.utils import AbstractGate
+from pyqtorch.modules.abstract import AbstractGate
 
 
 class PrimitiveGate(AbstractGate):
@@ -22,9 +22,6 @@ class PrimitiveGate(AbstractGate):
 
     def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
         return self.apply(self.matrix, state)
-
-    def extra_repr(self) -> str:
-        return super().extra_repr()
 
 
 class X(PrimitiveGate):
@@ -84,9 +81,6 @@ class ControlledOperationGate(AbstractGate):
 
     def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
         return self.apply(self.matrix, state)
-
-    def extra_repr(self) -> str:
-        return super().extra_repr()
 
 
 class CNOT(ControlledOperationGate):
