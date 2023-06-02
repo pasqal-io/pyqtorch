@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, Union
 from enum import Enum
 
 import torch
@@ -172,17 +172,25 @@ class HamEvoType(Enum):
     EXP = HamEvoExp
 
 class HamiltonianEvolution(Module):
-    def __init__(self, qubits: Any, n_qubits: int, n_steps: int = 100, type: HamEvoType = HamEvoType.RK4):
+    def __init__(self, qubits: Any, n_qubits: int, n_steps: int = 100, hamevo_type: Union[HamEvoType, str] = HamEvoType.RK4):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
         self.n_steps = n_steps
-        if isinstance(type, str):
-            type = HamEvoType[type.upper()]
-        self.type = type
+
+        if isinstance(hamevo_type, str):
+            try:
+                hamevo_type = HamEvoType[hamevo_type.upper()]
+            except KeyError:
+                raise ValueError(f"Invalid Hamiltonian Evolution type: {hamevo_type}. Expected one of: {[e.name for e in HamEvoType]}")
+        
+        self.hamevo_type = hamevo_type
+
+
+    def get_hamevo_instance(self, H: torch.Tensor, t: torch.Tensor) -> torch.nn.Module:
+        #Returns an instance of the Hamiltonian evolution object of the appropriate type.
+        return self.hamevo_type.value(H, t, self.qubits, self.n_qubits, self.n_steps)
 
     def forward(self, H: torch.Tensor, t: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        ham_evo_instance = self.type.value(H, t, self.qubits, self.n_qubits, self.n_steps)
-        return ham_evo_instance.forward(state)
-
-    
+        ham_evo_instance = self.get_hamevo_instance(H, t)
+        return ham_evo_instance.forward(state)    
