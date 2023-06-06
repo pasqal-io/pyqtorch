@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Hamiltonian Evolution (`HamiltonianEvolution`) module is designed for performing quantum operations using different Hamiltonian evolution strategies, such as 4th order Runge-Kutta (RK4), Eigenvalue Decomposition, and Matrix Exponential. 
+The Hamiltonian Evolution (`HamiltonianEvolution`) module is designed for performing quantum operations using different Hamiltonian evolution strategies, such as 4th order Runge-Kutta (RK4), Eigenvalue Decomposition, and Matrix Exponential.
 
 This module also features a function `diagonalize()` that performs an eigenvalue decomposition on a given Hamiltonian. This function checks if the input Hamiltonian is already diagonal and real before computing the decomposition, thus saving computational resources when the checks are met.
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from enum import Enum
 from functools import lru_cache
 from typing import Any, Optional, Tuple, Union
-from enum import Enum
 
 import torch
 from torch.nn import Module
@@ -15,17 +15,18 @@ BATCH_DIM = 2
 
 class HamEvo(torch.nn.Module):
     """
-    Base class for Hamiltonian evolution classes, performing the evolution operation using RK4 method.
-    
+    Base class for Hamiltonian evolution classes, performing the evolution using RK4 method.
+
     Args:
         H (tensor): Hamiltonian tensor.
         t (tensor): Time tensor.
         qubits (Any): Qubits for operation.
         n_qubits (int): Number of qubits.
         n_steps (int): Number of steps to be performed in RK4-based evolution. Defaults to 100.
-    
+
 
     """
+
     def __init__(
         self, H: torch.Tensor, t: torch.Tensor, qubits: Any, n_qubits: int, n_steps: int = 100
     ):
@@ -109,14 +110,14 @@ def diagonalize(H: torch.Tensor) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
 
 class HamEvoEig(HamEvo):
     """
-    Class for Hamiltonian evolution operation, performing the evolution operation using Eigenvalue Decomposition method.
-    
+    Class for Hamiltonian evolution operation using Eigenvalue Decomposition method.
+
     Args:
         H (tensor): Hamiltonian tensor
         t (tensor): Time tensor
         qubits (Any): Qubits for operation
         n_qubits (int): Number of qubits
-        n_steps (int): Number of steps to be performed in eigenvalue decomposition evolution, defaults to 100
+        n_steps (int): Number of steps to be performed, defaults to 100
     """
 
     def __init__(
@@ -136,7 +137,8 @@ class HamEvoEig(HamEvo):
 
     def apply(self, state: torch.Tensor) -> torch.Tensor:
         """
-        Applies the Hamiltonian evolution operation on the given state using Eigenvalue Decomposition method.
+        Applies the Hamiltonian evolution operation on the given state
+        using Eigenvalue Decomposition method.
 
         Args:
             state (tensor): Input quantum state.
@@ -179,14 +181,14 @@ class HamEvoEig(HamEvo):
 
 class HamEvoExp(HamEvo):
     """
-    Class for Hamiltonian evolution operation, performing the evolution operation using matrix exponential method.
-    
+    Class for Hamiltonian evolution operation, using matrix exponential method.
+
     Args:
         H (tensor): Hamiltonian tensor
         t (tensor): Time tensor
         qubits (Any): Qubits for operation
         n_qubits (int): Number of qubits
-        n_steps (int): Number of steps to be performed in matrix exponential evolution, defaults to 100.
+        n_steps (int): Number of steps to be performed, defaults to 100.
     """
 
     def __init__(
@@ -203,7 +205,8 @@ class HamEvoExp(HamEvo):
 
     def apply(self, state: torch.Tensor) -> torch.Tensor:
         """
-        Applies the Hamiltonian evolution operation on the given state using matrix exponential method.
+        Applies the Hamiltonian evolution operation
+        on the given state using matrix exponential method.
 
         Args:
             state (tensor): Input quantum state.
@@ -238,6 +241,7 @@ class HamEvoExp(HamEvo):
 
         return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
 
+
 class HamEvoType(Enum):
     """
     An Enumeration to represent types of Hamiltonian Evolution
@@ -246,18 +250,21 @@ class HamEvoType(Enum):
     EIG: Hamiltonian evolution performed using Eigenvalue Decomposition.
     EXP: Hamiltonian evolution performed using the Exponential of the Hamiltonian.
     """
+
     RK4 = HamEvo
     EIG = HamEvoEig
     EXP = HamEvoExp
 
+
 class HamiltonianEvolution(Module):
     """
-    A module to encapsulate Hamiltonian Evolution operations. 
+    A module to encapsulate Hamiltonian Evolution operations.
 
-    Performs Hamiltonian Evolution using different strategies such as, RK4, Eigenvalue Decomposition, and Exponential,
-    Based on the 'hamevo_type' parameter.  
+    Performs Hamiltonian Evolution using different strategies
+    such as, RK4, Eigenvalue Decomposition, and Exponential,
+    Based on the 'hamevo_type' parameter.
 
-    Attributes:    
+    Attributes:
         qubits: A list of qubits to be used in the operation
         n_qubits (int): Total number of qubits
         n_steps  (int): The number of steps to be performed in RK4-based evolution. Defaults to 100
@@ -267,32 +274,41 @@ class HamiltonianEvolution(Module):
     Examples:
     (1)
     # Instantiate HamiltonianEvolution with RK4 string input
-        >>> hamiltonian_evolution = HamiltonianEvolution(qubits, n_qubits, 100, "RK4") 
+        >>> hamiltonian_evolution = HamiltonianEvolution(qubits, n_qubits, 100, "RK4")
     # Use the HamiltonianEvolution instance to evolve the state
-        >>> output_state = hamiltonian_evolution(H, t, state) 
+        >>> output_state = hamiltonian_evolution(H, t, state)
 
     (2)
     # Instantiate HamiltonianEvolution with HamEvoType. input
-        >>>H_evol = HamiltonianEvolution(qubits, n_qubits, 100, HamEvoType.Eig) 
+        >>>H_evol = HamiltonianEvolution(qubits, n_qubits, 100, HamEvoType.Eig)
     # Use the HamiltonianEvolution instance to evolve the state
         >>>output = H_evol(H, t, state) # Use the HamiltonianEvolution instance to evolve the state
 
     """
-    def __init__(self, qubits: Any, n_qubits: int, n_steps: int = 100, hamevo_type: Union[HamEvoType, str] = HamEvoType.RK4):
+
+    def __init__(
+        self,
+        qubits: Any,
+        n_qubits: int,
+        n_steps: int = 100,
+        hamevo_type: Union[HamEvoType, str] = HamEvoType.RK4,
+    ):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
         self.n_steps = n_steps
 
-        #Handles the case where the Hamiltonian Evolution type is provided as a string
+        # Handles the case where the Hamiltonian Evolution type is provided as a string
         if isinstance(hamevo_type, str):
             try:
                 hamevo_type = HamEvoType[hamevo_type.upper()]
             except KeyError:
-                raise ValueError(f"Invalid Hamiltonian Evolution type: {hamevo_type}. Expected one of: {[e.name for e in HamEvoType]}")
-        
-        self.hamevo_type = hamevo_type
+                allowed = [e.name for e in HamEvoType]
+                raise ValueError(
+                    f"Invalid Hamiltonian Evolution type: {hamevo_type}. Expected from: {allowed}"
+                )
 
+        self.hamevo_type = hamevo_type
 
     def get_hamevo_instance(self, H: torch.Tensor, t: torch.Tensor) -> torch.nn.Module:
         """
@@ -323,4 +339,4 @@ class HamiltonianEvolution(Module):
         """
 
         ham_evo_instance = self.get_hamevo_instance(H, t)
-        return ham_evo_instance.forward(state)    
+        return ham_evo_instance.forward(state)
