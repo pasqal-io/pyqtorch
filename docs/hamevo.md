@@ -38,15 +38,78 @@ A function to diagonalize a Hermitian Hamiltonian, returning eigenvalues and eig
 
 ## Examples
 
-The following example shows how to use the `HamiltonianEvolution` module:
+The following examples show how to use the `HamiltonianEvolution` module:
+<br>
+<br>
+Initialization of HamiltonianEvolution takes parameters (qubits, n_qubits, n_steps, hamevo_type)
+<br>
+Using the HamiltonianEvolution instance to evolve the state takes parameters (H, t, state)
+<br>
 
+### Example 1:
 ```python
+import torch
+import pyqtorch.modules as pyq
+ 
+#Define initialization parameters
+n_qubits = 2
+qubits = list(range(n_qubits))
+
+# Define the Hamiltonian H (random for this example)
+H = torch.randn((2**n_qubits, 2**n_qubits), dtype=torch.cdouble)
+
+# Make sure H is Hermitian as required for a Hamiltonian
+H = (H + H.conj().T) / 2
+
+# Define the initial state 
+state = pyq.uniform_state(n_qubits)
+
+# Define the evolution time tensor
+t = torch.tensor([torch.pi / 4], dtype=torch.cdouble)  
+
 # Instantiate HamiltonianEvolution with RK4 string input
-hamiltonian_evolution = HamiltonianEvolution(qubits, n_qubits, 100, "RK4")
+hamiltonian_evolution = pyq.HamiltonianEvolution(qubits, n_qubits, 100, "RK4")
+
 # Use the HamiltonianEvolution instance to evolve the state
-output_state = hamiltonian_evolution(H, t, state)
+output_state_rk4 = hamiltonian_evolution(H, t, state)
+
+```
+
+
+
+### Example 2:
+```python
+import torch
+import pyqtorch.modules as pyq
+
+# Define initialization parameters
+n_qubits = 1
+qubits = list(range(n_qubits))
+n_steps = 100
+
+# Define the Hamiltonian H for a qubit in a z-direction magnetic field
+H = torch.tensor([[0.5, 0], [0, -0.5]], dtype=torch.cdouble)
+
+# Define the initial state as |0> (you could also try with |1> or a superposition state)
+state = torch.tensor([[1], [0]], dtype=torch.cdouble)
+
+# Define the evolution time tensor
+t = torch.tensor([torch.pi / 2], dtype=torch.cdouble) 
 
 # Instantiate HamiltonianEvolution with HamEvoType input
-H_evol = HamiltonianEvolution(qubits, n_qubits, 100, HamEvoType.EIG)
+H_evol = pyq.HamiltonianEvolution(qubits, n_qubits, n_steps, pyq.HamEvoType.EIG)
+
 # Use the HamiltonianEvolution instance to evolve the state
-output_state = H_evol(H, t, state)
+output_state_eig = H_evol(H, t, state)
+
+# Print the output state
+print(output_state_eig)
+
+# Now compare the output state with the expected result: e^(-i * H * t) * |0> = [[e^(-i*t/2)], [0]]
+expected_state = torch.tensor([[torch.exp(-1j * t / 2)], [0]], dtype=torch.cdouble)
+print(expected_state)
+
+# Check if the output_state is close to the expected_state
+print(torch.allclose(output_state_rk4, expected_state))
+
+```
