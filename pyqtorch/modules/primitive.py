@@ -111,7 +111,7 @@ class Z(PrimitiveGate):
 
         # Apply the Z gate to the zero state
         result = z_gate(z_state)
-        
+
         print(result)
         ```
         """
@@ -153,8 +153,10 @@ class H(PrimitiveGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
         Represents an H gate (Hadamard gate) in a quantum circuit.
-        The H Gate class creates a H gate. It performs a PI rotation around the X+Z axis changing the basis from 
-        |0⟩,|1⟩ to  |+⟩,|-⟩ and from |+⟩,|-⟩ back to |0⟩,|1⟩  depending on the number of times the gate is applied 
+        The H Gate class creates a H gate. It performs a PI rotation
+        around the X+Z axis changing the basis from |0⟩,|1⟩ to  |+⟩,|-⟩
+        and from |+⟩,|-⟩ back to |0⟩,|1⟩  depending on the number of times
+        the gate is applied
 
         Arguments:
             qubits (ArrayLike): The qubits to which the H gate is applied.
@@ -243,7 +245,8 @@ class SWAP(PrimitiveGate):
 
 
         Arguments:
-            qubits (ArrayLike): The qubits to which the SWAP gate is applied. It should be a list of two qubits.
+            qubits (ArrayLike): The qubits to which the SWAP gate is applied.
+            It should be a list of two qubits.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
@@ -293,7 +296,8 @@ class CNOT(ControlledOperationGate):
         Represents a controlled NOT (CNOT) gate in a quantum circuit.
 
         Arguments:
-            qubits (ArrayLike): The control and target qubits for the CNOT gate. It should be a list of two qubits.
+            qubits (ArrayLike): The control and target qubits for the CNOT gate.
+            It should be a list of two qubits.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
@@ -322,10 +326,12 @@ class CY(ControlledOperationGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
         Represents a controlled-Y (CY) gate in a quantum circuit.
-        The CY Gate class creates a controlled Y gate, applying the Y gate according to the control qubit state.
+        The CY Gate class creates a controlled Y gate, applying the Y gate
+        according to the control qubit state.
 
         Arguments:
-            qubits (ArrayLike): The control and target qubits for the CY gate. It should be a list of two qubits.
+            qubits (ArrayLike): The control and target qubits for the CY gate.
+            It should be a list of two qubits.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
@@ -351,11 +357,13 @@ class CZ(ControlledOperationGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
         Represents a controlled-Z (CZ) gate in a quantum circuit.
-        The CZ gate class creates a controlled Z gate, applying the Z gate according to the control qubit state.
+        The CZ gate class creates a controlled Z gate, applying
+        the Z gate according to the control qubit state.
 
 
         Arguments:
-            qubits (ArrayLike): The control and target qubits for the CZ gate. It should be a list of two qubits.
+            qubits (ArrayLike): The control and target qubits for the CZ gate.
+            It should be a list of two qubits.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:

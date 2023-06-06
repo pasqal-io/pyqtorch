@@ -16,8 +16,9 @@ nav:
   - Documentation:
     - Modules:
         - Circuit : documentation/modules/circuit.py
-        - Parametric : documentation/modules/parametric.py 
-        - Primitive : documentation/modules/primitive.py 
+        - Matrices : documentation/modules/matrices.py
+        - Parametric : documentation/modules/parametric.py
+        - Primitive : documentation/modules/primitive.py
 
 
 theme:

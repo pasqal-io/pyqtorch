@@ -26,9 +26,10 @@ def zero_state(
         dtype (torch.cdouble): The data type of the zero state tensor.
 
     Returns:
-        torch.Tensor: A tensor representing the zero state. The shape of the tensor is (batch_size, 2^n_qubits),
-        where 2^n_qubits is the total number of possible states for the given number of qubits. The data type of
-        the tensor is specified by the dtype parameter.
+        torch.Tensor: A tensor representing the zero state.
+        The shape of the tensor is (batch_size, 2^n_qubits),
+        where 2^n_qubits is the total number of possible states for the given number of qubits.
+        The data type of the tensor is specified by the dtype parameter.
 
     Examples:
     ```python exec="on" source="above" result="json"
@@ -61,9 +62,11 @@ def uniform_state(
         dtype (torch.cdouble): The data type of the uniform state tensor.
 
     Returns:
-        torch.Tensor: A tensor representing the uniform state. The shape of the tensor is (2^n_qubits, batch_size),
-        where 2^n_qubits is the total number of possible states for the given number of qubits. The data type of
-        the tensor is specified by the dtype parameter. Each element of the tensor is initialized to 1/sqrt(2^n_qubits),
+        torch.Tensor: A tensor representing the uniform state.
+        The shape of the tensor is (2^n_qubits, batch_size),
+        where 2^n_qubits is the total number of possible states for the given number of qubits.
+        The data type of the tensor is specified by the dtype parameter.
+        Each element of the tensor is initialized to 1/sqrt(2^n_qubits),
         ensuring that the total probability of the state is equal to 1.
 
     Examples:
@@ -72,7 +75,8 @@ def uniform_state(
     import pyqtorch.modules as pyq
 
     state = pyq.uniform_state(n_qubits=2)
-    print(state)  #tensor([[[0.5000+0.j],[0.5000+0.j]],[[0.5000+0.j],[0.5000+0.j]]], dtype=torch.complex128)
+    print(state)
+    #tensor([[[0.5000+0.j],[0.5000+0.j]],[[0.5000+0.j],[0.5000+0.j]]], dtype=torch.complex128)
     ```
     """
     state = torch.ones((2**n_qubits, batch_size), dtype=dtype, device=device)
@@ -84,7 +88,8 @@ def uniform_state(
 class QuantumCircuit(Module):
     def __init__(self, n_qubits: int, operations: list):
         """
-        Creates a QuantumCircuit that can be used to compose multiple gates  from a list of operations.
+        Creates a QuantumCircuit that can be used to compose multiple gates
+        from a list of operations.
 
         Arguments:
             n_qubits (int): The total number of qubits in the circuit.
@@ -104,15 +109,15 @@ class QuantumCircuit(Module):
                                             pyq.CNOT([0,1], 2)
                                         ]
                                     )
-            #create a zero state 
+            #create a zero state
             z = pyq.zero_state(2)
-            
-            #apply the circuit and its list of operations onto the zero state 
+
+            #apply the circuit and its list of operations onto the zero state
             result=circ(z)
 
             #print the result
             print(result) #tensor([[[0.+0.j],[0.+0.j]],[[0.+0.j],[1.+0.j]]], dtype=torch.complex128)
-        ```   
+        ```
         """
         super().__init__()
         self.n_qubits = n_qubits
@@ -182,8 +187,9 @@ def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
 class VariationalLayer(QuantumCircuit):
     def __init__(self, n_qubits: int, Op: Any):
         """
-        Represents a variational layer in a quantum neural network allowing you to create a trainable QuantumCircuit.
-        If you want the angles of your circuit to be trainable you can use a VariationalLayer. 
+        Represents a variational layer in a quantum neural network allowing you
+        to create a trainable QuantumCircuit.
+        If you want the angles of your circuit to be trainable you can use a VariationalLayer.
         The VariationalLayer ignores the second input (because it has trainable angle parameters).
 
         Arguments:
@@ -195,7 +201,7 @@ class VariationalLayer(QuantumCircuit):
         ```python exec="on" source="above" result="json"
             import torch
             import pyqtorch.modules as pyq
-            #create a variational layer with 3 qubits and operation of RX as the second parameter 
+            #create a variational layer with 3 qubits and operation of RX as the second parameter
             circ = pyq.VariationalLayer(n_qubits=3, Op=pyq.RX)
             state = pyq.zero_state(3)
             this_argument_is_ignored = None
@@ -228,11 +234,11 @@ class EntanglingLayer(QuantumCircuit):
 
         Example:
         ```python exec="on" source="above" result="json"
-            from pyqtorch.modules.circuit import EntanglingLayer 
+            from pyqtorch.modules.circuit import EntanglingLayer
 
             # Create an entangling layer with 4 qubits
             entangling_layer = EntanglingLayer(n_qubits=4)
-            
+
             print(entangling_layer)
         ```
         """
