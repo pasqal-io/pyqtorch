@@ -25,7 +25,7 @@ class RotationGate(Module):
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
         # want to allow e.g. (3,batch_size) in the U gate.
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+        theta = thetas.squeeze(0).cdouble() if thetas.ndim == 2 else thetas.cdouble()
         batch_size = len(theta)
         return rot_matrices(theta, self.paulimat, self.imat, batch_size)
 
@@ -81,9 +81,9 @@ class U(Module):
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         if thetas.ndim == 1:
-            thetas = thetas.unsqueeze(1)
+            thetas = thetas.unsqueeze(1).cdouble()
         assert thetas.size(0) == 3
-        phi, theta, omega = thetas[0, :], thetas[1, :], thetas[2, :]
+        phi, theta, omega = thetas[0, :].cdouble(), thetas[1, :].cdouble(), thetas[2, :].cdouble()
         batch_size = thetas.size(1)
 
         t_plus = torch.exp(-1j * (phi + omega) / 2)
@@ -129,7 +129,7 @@ class ControlledRotationGate(Module):
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+        theta = thetas.squeeze(0).cdouble() if thetas.ndim == 2 else thetas.cdouble()
         batch_size = len(theta)
         return rot_matrices(theta, self.paulimat, self.imat, batch_size)
 
@@ -188,7 +188,7 @@ class CPHASE(Module):
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
         # want to allow e.g. (3,batch_size) in the U gate.
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+        theta = thetas.squeeze(0).cdouble() if thetas.ndim == 2 else thetas.cdouble()
         batch_size = len(theta)
         mat = self.imat.repeat((batch_size, 1, 1))
         mat = torch.permute(mat, (1, 2, 0))
