@@ -267,9 +267,10 @@ class HamiltonianEvolution(Module):
     Attributes:
         qubits: A list of qubits to be used in the operation
         n_qubits (int): Total number of qubits
-        n_steps  (int): The number of steps to be performed in RK4-based evolution. Defaults to 100
+        n_steps  (int): The number of steps to be performed. Defaults to 100
         hamevo_type (Enum or str): The type of Hamiltonian evolution to be performed.
                      Must be a member of the `HamEvoType` enum or equivalent string.
+                     Defaults to HamEvoExp.
 
     Examples:
     (1)
@@ -291,7 +292,7 @@ class HamiltonianEvolution(Module):
         qubits: Any,
         n_qubits: int,
         n_steps: int = 100,
-        hamevo_type: Union[HamEvoType, str] = HamEvoType.RK4,
+        hamevo_type: Union[HamEvoType, str] = HamEvoType.EXP,
     ):
         super().__init__()
         self.qubits = qubits

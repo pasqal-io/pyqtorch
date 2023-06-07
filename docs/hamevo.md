@@ -10,7 +10,7 @@ This module also features a function `diagonalize()` that performs an eigenvalue
 
 ### `HamiltonianEvolution`
 
-This class is a PyTorch module designed to encapsulate Hamiltonian Evolution operations. The evolution operation performed by the module depends on the strategy specified through the `hamevo_type` attribute, which can be a member of the `HamEvoType` enumeration or an equivalent string ("RK4", "EIG", "EXP").
+This class is a PyTorch module designed to encapsulate Hamiltonian Evolution operations. The evolution operation performed by the module depends on the strategy specified through the `hamevo_type` attribute, which can be a member of the `HamEvoType` enumeration or an equivalent string ("RK4", "EIG", "EXP"). Default is set to HamEvoEXP.
 
 ### `HamEvo`
 
@@ -50,7 +50,7 @@ Using the HamiltonianEvolution instance to evolve the state takes parameters (H,
 ```python
 import torch
 import pyqtorch.modules as pyq
- 
+
 #Define initialization parameters
 n_qubits = 2
 qubits = list(range(n_qubits))
@@ -61,11 +61,11 @@ H = torch.randn((2**n_qubits, 2**n_qubits), dtype=torch.cdouble)
 # Make sure H is Hermitian as required for a Hamiltonian
 H = (H + H.conj().T) / 2
 
-# Define the initial state 
+# Define the initial state
 state = pyq.uniform_state(n_qubits)
 
 # Define the evolution time tensor
-t = torch.tensor([torch.pi / 4], dtype=torch.cdouble)  
+t = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
 
 # Instantiate HamiltonianEvolution with RK4 string input
 hamiltonian_evolution = pyq.HamiltonianEvolution(qubits, n_qubits, 100, "RK4")
@@ -94,7 +94,7 @@ H = torch.tensor([[0.5, 0], [0, -0.5]], dtype=torch.cdouble)
 state = torch.tensor([[1], [0]], dtype=torch.cdouble)
 
 # Define the evolution time tensor
-t = torch.tensor([torch.pi / 2], dtype=torch.cdouble) 
+t = torch.tensor([torch.pi / 2], dtype=torch.cdouble)
 
 # Instantiate HamiltonianEvolution with HamEvoType input
 H_evol = pyq.HamiltonianEvolution(qubits, n_qubits, n_steps, pyq.HamEvoType.EIG)
