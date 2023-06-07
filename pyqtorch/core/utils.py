@@ -32,7 +32,11 @@ TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1j) * torch.pi / 4)]], d
 SWAPMAT = torch.tensor(
     [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
 )
-HMAT = 1 / torch.sqrt(torch.tensor(2)) * torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble)
+HMAT = (
+    1
+    / torch.sqrt(torch.tensor(2, dtype=torch.cdouble))
+    * torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble)
+)
 
 
 OPERATIONS_DICT = {
