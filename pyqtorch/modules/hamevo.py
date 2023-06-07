@@ -16,6 +16,16 @@ class HamEvo(torch.nn.Module):
     def __init__(
         self, H: torch.Tensor, t: torch.Tensor, qubits: Any, n_qubits: int, n_steps: int = 100
     ):
+        """
+                Represents Hamiltonian evolution over a specified time period.
+
+                Args:
+                    H (torch.Tensor): The Hamiltonian operator.
+                    t (torch.Tensor): The time period for evolution.
+                    qubits (Any): The target qubits for the evolution.
+                    n_qubits (int): The total number of qubits in the system.
+                    n_steps (int, optional): The number of steps for numerical integration. Defaults to 100.
+                """
         super().__init__()
         self.H: torch.Tensor
         self.t: torch.Tensor
@@ -26,6 +36,27 @@ class HamEvo(torch.nn.Module):
         self.register_buffer("t", t)
 
     def apply(self, state: torch.Tensor) -> torch.Tensor:
+        """
+               Apply Hamiltonian evolution to the input state.
+
+               Args:
+                   state (torch.Tensor): The input state.
+
+               Returns:
+                   torch.Tensor: The evolved state.
+
+               Examples:
+                   ```python exec="on" source="above" result="json"
+                   H = torch.tensor([[1, 0], [0, -1]])
+                   t = torch.tensor([0.5])
+                   qubits = ...
+                   n_qubits = 2
+                   n_steps = 100
+                   ham_evo = HamEvo(H, t, qubits, n_qubits, n_steps)
+                   state = ...
+                   evolved_state = ham_evo.apply(state)
+                   '''
+               """
         batch_size = state.size(-1)
         h = self.t.reshape((1, -1)) / self.n_steps
         for _ in range(self.n_qubits - 1):
@@ -49,15 +80,49 @@ class HamEvo(torch.nn.Module):
         return _state
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
+        """
+                Apply Hamiltonian evolution to the input state.
+
+                Args:
+                    state (torch.Tensor): The input state.
+
+                Returns:
+                    torch.Tensor: The evolved state.
+
+                Examples:
+                    ```python exec="on" source="above" result="json"
+                    H = torch.tensor([[1, 0], [0, -1]])
+                    t = torch.tensor([0.5])
+                    qubits = ...
+                    n_qubits = 2
+                    n_steps = 100
+                    ham_evo = HamEvo(H, t, qubits, n_qubits, n_steps)
+                    state = ...
+                    evolved_state = ham_evo(state)
+                    '''
+                """
         return self.apply(state)
 
 
 @lru_cache(maxsize=256)
 def diagonalize(H: torch.Tensor) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
     """
-    Diagonalizes an Hermitian Hamiltonian, returning eigenvalues and eigenvectors.
-    First checks if it's already diagonal, and second checks if H is real.
-    """
+        Diagonalizes the input Hermitian matrix.
+
+        Args:
+            H (torch.Tensor): The Hermitian matrix to be diagonalized.
+
+        Returns:
+            Tuple[torch.Tensor, Optional[torch.Tensor]]: A tuple containing the eigenvalues and
+                eigenvectors of the matrix. If the matrix is already diagonal, eigenvectors
+                will be None.
+
+        Examples:
+            ```python exec="on" source="above" result="json"
+            H = torch.tensor([[1, 0], [0, 2]])
+            eig_values, eig_vectors = diagonalize(H)
+            '''
+        """
 
     if is_diag(H):
         # Skips diagonalization
@@ -128,6 +193,16 @@ class HamEvoExp(HamEvo):
     def __init__(
         self, H: torch.Tensor, t: torch.Tensor, qubits: Any, n_qubits: int, n_steps: int = 100
     ):
+        """
+                Represents a Hamiltonian evolution with diagonalization.
+
+                Args:
+                    H (torch.Tensor): The Hamiltonian matrix.
+                    t (torch.Tensor): The time values for evolution.
+                    qubits (Any): The target qubits for the evolution.
+                    n_qubits (int): The total number of qubits in the circuit.
+                    n_steps (int, optional): The number of steps for the evolution. Defaults to 100.
+                """
         super().__init__(H, t, qubits, n_qubits, n_steps)
         if len(self.H.size()) < 3:
             self.H = self.H.unsqueeze(2)
@@ -138,7 +213,29 @@ class HamEvoExp(HamEvo):
         self.batch_is_diag = bool(torch.prod(diag_check))
 
     def apply(self, state: torch.Tensor) -> torch.Tensor:
+        """
+                Apply the diagonalized Hamiltonian evolution to the input state.
 
+                Args:
+                    state (torch.Tensor): The input state.
+
+                Returns:
+                    torch.Tensor: The evolved state.
+
+                Raises:
+                    AssertionError: If the number of time steps is incompatible with the Hamiltonian.
+
+                Examples:
+                    ```python exec="on" source="above" result="json"
+                    H = torch.tensor([[1, 0], [0, 2]])
+                    t = torch.tensor([0.1, 0.2, 0.3])
+                    qubits = [0]
+                    n_qubits = 1
+                    ham_evo = HamEvoEig(H, t, qubits, n_qubits)
+                    state = torch.tensor([1, 0], dtype=torch.cdouble)
+                    evolved_state = ham_evo.apply(state)
+                    '''
+                """
         batch_size_t = len(self.t)
         batch_size_h = self.H.size()[BATCH_DIM]
         t_evo = torch.zeros(batch_size_h).to(torch.cdouble)
@@ -168,15 +265,70 @@ class HamEvoExp(HamEvo):
 
 class HamiltonianEvolution(Module):
     def __init__(self, qubits: Any, n_qubits: int, n_steps: int = 100):
+        """
+                Represents a Hamiltonian evolution.
+
+                Args:
+                    qubits (Any): The target qubits for the evolution.
+                    n_qubits (int): The total number of qubits in the circuit.
+                    n_steps (int, optional): The number of steps for the evolution. Defaults to 100.
+                """
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
         self.n_steps = n_steps
 
     def forward(self, H: torch.Tensor, t: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        """
+                Apply the Hamiltonian evolution to the input state.
+
+                Args:
+                    H (torch.Tensor): The Hamiltonian matrix.
+                    t (torch.Tensor): The time values for evolution.
+                    state (torch.Tensor): The input state.
+
+                Returns:
+                    torch.Tensor: The evolved state.
+
+                Examples:
+                    ```python exec="on" source="above" result="json"
+                    H = torch.tensor([[1, 0], [0, 2]])
+                    t = torch.tensor([0.1, 0.2, 0.3])
+                    qubits = [0]
+                    n_qubits = 1
+                    ham_evo = HamiltonianEvolution(qubits, n_qubits)
+                    state = torch.tensor([1, 0], dtype=torch.cdouble)
+                    evolved_state = ham_evo(H, t, state)
+                    '''
+                """
         return self.apply(H, t, state)
 
     def apply(self, H: torch.Tensor, t: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        """
+            Apply Hamiltonian evolution on the input state.
+
+            Args:
+                H (torch.Tensor): The Hamiltonian matrix.
+                t (torch.Tensor): The time values for evolution.
+                state (torch.Tensor): The input state.
+
+            Returns:
+                torch.Tensor: The evolved state.
+
+            Raises:
+                AssertionError: If the number of time steps is incompatible with the Hamiltonian.
+
+            Examples:
+                 ```python exec="on" source="above" result="json"
+                H = torch.tensor([[1, 0], [0, 2]])
+                t = torch.tensor([0.1, 0.2, 0.3])
+                qubits = [0]
+                n_qubits = 1
+                ham_evo = HamiltonianEvolution(qubits, n_qubits)
+                state = torch.tensor([1, 0], dtype=torch.cdouble)
+                evolved_state = ham_evo.apply(H, t, state)
+                '''
+            """
         if len(H.size()) < 3:
             H = H.unsqueeze(2)
         batch_size_h = H.size()[BATCH_DIM]
