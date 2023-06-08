@@ -12,6 +12,7 @@ from pyqtorch.core.utils import OPERATIONS_DICT
 
 torch.set_default_dtype(torch.float64)
 
+
 class RotationGate(Module):
     n_params = 1
 
