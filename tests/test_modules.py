@@ -105,3 +105,20 @@ def test_U_gate(batch_size: int) -> None:
     x = torch.rand(3, batch_size)
     state = pyq.zero_state(n_qubits, batch_size=batch_size, device="cpu", dtype=torch.cdouble)
     assert not torch.all(torch.isnan(u(state, x)))
+
+
+@pytest.mark.parametrize("angle_denominators", [(1, 1, 1), (2, 2, 2), (3, 4, 5), (1, 1, 2)])
+def test_gate_composition(angle_denominators: tuple[int, int, int]) -> None:
+    circ = pyq.RZ([0], n_qubits=1) * pyq.RY([0], n_qubits=1) * pyq.RZ([0], n_qubits=1)
+    thetas = torch.tensor(
+        [
+            [torch.pi / angle_denominators[0]],
+            [torch.pi / angle_denominators[1]],
+            [torch.pi / angle_denominators[2]],
+        ]
+    )
+
+    customUGate = circ.matrices(thetas)
+    UGate = pyq.U(qubits=[0], n_qubits=1).matrices(thetas)
+
+    assert customUGate.allclose(UGate)
