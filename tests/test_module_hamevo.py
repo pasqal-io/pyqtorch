@@ -154,3 +154,32 @@ def test_hamevo_consistency(get_hamiltonians: Callable) -> None:
     # assert torch.allclose(psi_eig, psi_exp)
     tensors = [psi_rk4, psi_eig, psi_exp, psi_ham]
     assert all(torch.allclose(tensors[i], tensors[0]) for i in range(1, len(tensors)))
+
+
+@pytest.mark.parametrize(
+    "ham_evo_type, ham_evo_class",
+    [
+        (pyq.HamEvoType.RK4, pyq.HamEvo),
+        (pyq.HamEvoType.EIG, pyq.HamEvoEig),
+        (pyq.HamEvoType.EXP, pyq.HamEvoExp),
+        ("rk4", pyq.HamEvo),
+        ("eig", pyq.HamEvoEig),
+        ("exp", pyq.HamEvoExp),
+    ],
+)
+def test_hamiltonianevolution_with_types(
+    ham_evo_type: pyq.HamEvoType, ham_evo_class: torch.nn.Module
+) -> None:
+    n_qubits = 4
+    H = Hamiltonian(1)
+    t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
+
+    hamevo = pyq.HamiltonianEvolution(range(n_qubits), n_qubits, hamevo_type=ham_evo_type)
+    ham_evo_instance = hamevo.get_hamevo_instance(H, t_evo)
+    assert isinstance(ham_evo_instance, ham_evo_class)
+
+    psi = pyq.uniform_state(n_qubits)
+    psi_star = hamevo(H, t_evo, psi)
+    result = overlap(psi_star, psi)
+    result = result if isinstance(result, float) else result[0]
+    assert isclose(result, 0.5)
