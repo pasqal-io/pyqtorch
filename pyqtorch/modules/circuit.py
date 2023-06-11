@@ -5,7 +5,8 @@ from typing import Any
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
-from pyqtorch.modules.primitive import CNOT
+from pyqtorch.modules.parametric import Gate
+from pyqtorch.modules.primitive import CNOT, PrimitiveGate
 
 PI = 2.0 * torch.asin(torch.Tensor([1.0]).double()).item()
 
@@ -40,7 +41,7 @@ class QuantumCircuit(Module):
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
 
-    def __mul__(self, other: QuantumCircuit) -> QuantumCircuit:
+    def __mul__(self, other: PrimitiveGate | Gate | QuantumCircuit) -> QuantumCircuit:
         if self.n_qubits != other.n_qubits:
             raise ValueError(
                 (
@@ -51,7 +52,10 @@ class QuantumCircuit(Module):
             )
 
         if isinstance(other, QuantumCircuit):
-            return QuantumCircuit(self.n_qubits, other.operations.append(self.operations))
+            return QuantumCircuit(self.n_qubits, self.operations.extend(other.operations))
+
+        if isinstance(other, ((Gate, PrimitiveGate))):
+            return QuantumCircuit(self.n_qubits, self.operations.append(other))
 
         else:
             return NotImplemented

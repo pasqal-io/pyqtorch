@@ -4,12 +4,13 @@ import torch
 from numpy.typing import ArrayLike
 from torch.nn import Module
 
+import pyqtorch.modules
 from pyqtorch.core.batched_operation import (
     _apply_batch_gate,
     create_controlled_batch_from_operation,
 )
 from pyqtorch.core.utils import OPERATIONS_DICT
-from pyqtorch.modules import QuantumCircuit
+from pyqtorch.modules.primitive import PrimitiveGate
 from pyqtorch.modules.utils import rot_matrices
 
 
@@ -22,7 +23,9 @@ class Gate(Module):
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
-    def __mul__(self, other: RotationGate | QuantumCircuit) -> QuantumCircuit:
+    def __mul__(
+        self, other: PrimitiveGate | Gate | pyqtorch.modules.QuantumCircuit
+    ) -> pyqtorch.modules.QuantumCircuit:
         if self.n_qubits != other.n_qubits:
             raise ValueError(
                 (
@@ -32,28 +35,12 @@ class Gate(Module):
                 )
             )
 
-        if isinstance(other, RotationGate):
-            return QuantumCircuit(self.n_qubits, [self, other])
+        if isinstance(other, (Gate, PrimitiveGate)):
+            return pyqtorch.modules.QuantumCircuit(self.n_qubits, [self, other])
 
-        if isinstance(other, QuantumCircuit):
-            return QuantumCircuit(self.n_qubits, other.operations.insert(0, self))
+        if isinstance(other, pyqtorch.modules.QuantumCircuit):
+            return pyqtorch.modules.QuantumCircuit(self.n_qubits, other.operations.insert(0, self))
 
-        else:
-            return NotImplemented
-
-    def __rmul__(self, other: QuantumCircuit) -> QuantumCircuit:
-        if self.n_qubits != other.n_qubits:
-            raise ValueError(
-                (
-                    f"Number of Qubits don't match. "
-                    f"Left gate is applied on a {self.n_qubits} qubit system and "
-                    f"right gate is applied on a {other.n_qubits} qubit system."
-                )
-            )
-
-        if isinstance(other, QuantumCircuit):
-            other.operations.append(self)
-            return other
         else:
             return NotImplemented
 
