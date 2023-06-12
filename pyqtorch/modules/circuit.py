@@ -53,18 +53,16 @@ class QuantumCircuit(Module):
         else:
             return ValueError(f"Cannot compose {type(self)} with {type(other)}")
 
+    def __key(self) -> tuple:
+        return (self.n_qubits, *self.operations)
+
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, QuantumCircuit):
-            return False
+        if isinstance(other, QuantumCircuit):
+            return self.__key() == other.__key()
+        return NotImplemented
 
-        if len(self.operations) != len(other.operations):
-            return False
-
-        eq_ops = all(a == b for (a, b) in zip(self.operations, other.operations))
-        return (self.n_qubits == other.n_qubits) and eq_ops
-
-    def __hash__(self):
-        return super().__hash__()
+    def __hash__(self) -> int:
+        return hash(self.__key())
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor = None) -> torch.Tensor:
         for op in self.operations:

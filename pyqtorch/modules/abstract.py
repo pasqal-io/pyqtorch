@@ -26,14 +26,16 @@ class AbstractGate(ABC, Module):
         else:
             return ValueError(f"Cannot compose {type(self)} with {type(other)}")
 
+    def __key(self) -> tuple:
+        return (self.n_qubits, *self.qubits)
+
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, type(self)):
-            return False
+        if isinstance(other, type(self)):
+            return self.__key() == other.__key()
+        return NotImplemented
 
-        return self.qubits == other.qubits and self.n_qubits == other.n_qubits
-
-    def __hash__(self):
-        return super().__hash__()
+    def __hash__(self) -> int:
+        return hash(self.__key())
 
     @abstractmethod
     def matrices(self, tensors: torch.Tensor) -> torch.Tensor:
