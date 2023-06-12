@@ -76,12 +76,6 @@ class QuantumCircuit(Module):
     def init_state(self, batch_size: int) -> torch.Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
 
-    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        matrix = self.operations[0].matrices(thetas[-1]).squeeze(2)
-        for i, operation in enumerate(self.operations[1:]):
-            matrix = matrix @ operation.matrices(thetas[-2 - i, :]).squeeze(2)
-        return matrix.unsqueeze(2)
-
 
 def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
     operations = [Op([i], n_qubits) for i in range(n_qubits)]
