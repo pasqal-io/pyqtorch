@@ -47,7 +47,12 @@ OPERATIONS_DICT = {
 }
 
 
-def _apply_gate(state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int) -> torch.Tensor:
+def _apply_gate(
+    state: torch.Tensor,
+    mat: torch.Tensor,
+    qubits: Any,
+    N_qubits: int,
+) -> torch.Tensor:
     """
     Apply a gate represented by its matrix `mat` to the quantum state
     `state`

@@ -5,6 +5,7 @@ from typing import Any
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
+from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.primitive import CNOT
 
 PI = 2.0 * torch.asin(torch.Tensor([1.0]).double()).item()
@@ -40,6 +41,18 @@ class QuantumCircuit(Module):
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
 
+    def __mul__(self, other: AbstractGate | QuantumCircuit) -> QuantumCircuit:
+        if isinstance(other, QuantumCircuit):
+            return QuantumCircuit(
+                max(self.n_qubits, other.n_qubits), self.operations.extend(other.operations)
+            )
+
+        if isinstance(other, AbstractGate):
+            return QuantumCircuit(max(self.n_qubits, other.n_qubits), self.operations.append(other))
+
+        else:
+            return NotImplemented
+
     def forward(self, state: torch.Tensor, thetas: torch.Tensor = None) -> torch.Tensor:
         for op in self.operations:
             state = op(state, thetas)
@@ -55,6 +68,14 @@ class QuantumCircuit(Module):
 
     def init_state(self, batch_size: int) -> torch.Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
+
+    def is_same_circuit(self, other: QuantumCircuit) -> bool:
+        return (
+            all(
+                gate1.is_same_gate(gate2) for gate1, gate2 in zip(self.operations, other.operations)
+            )
+            and self.n_qubits == other.n_qubits
+        )
 
 
 def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:

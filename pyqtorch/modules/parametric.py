@@ -34,6 +34,9 @@ class RotationGate(AbstractGate):
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
+    def extra_repr(self) -> str:
+        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
+
 
 class U(AbstractGate):
     """Parametrized arbitrary rotation along the axes of the Bloch sphere
