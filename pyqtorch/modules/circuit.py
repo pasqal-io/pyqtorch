@@ -63,6 +63,9 @@ class QuantumCircuit(Module):
         eq_ops = all(a == b for (a, b) in zip(self.operations, other.operations))
         return (self.n_qubits == other.n_qubits) and eq_ops
 
+    def __hash__(self):
+        return super().__hash__()
+
     def forward(self, state: torch.Tensor, thetas: torch.Tensor = None) -> torch.Tensor:
         for op in self.operations:
             state = op(state, thetas)

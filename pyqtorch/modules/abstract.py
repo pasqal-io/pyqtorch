@@ -18,10 +18,11 @@ class AbstractGate(ABC, Module):
 
     def __mul__(self, other: AbstractGate | pyq.QuantumCircuit) -> pyq.QuantumCircuit:
         if isinstance(other, AbstractGate):
-            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), [self, other])
+            ml = torch.nn.ModuleList([self, other])
+            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), ml)
         elif isinstance(other, pyq.QuantumCircuit):
-            # using * here because list concatenation is not implemented for ModuleList
-            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), [self, *other.operations])
+            ml = torch.nn.ModuleList([self]) + other.operations
+            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), ml)
         else:
             return ValueError(f"Cannot compose {type(self)} with {type(other)}")
 
@@ -30,6 +31,9 @@ class AbstractGate(ABC, Module):
             return False
 
         return self.qubits == other.qubits and self.n_qubits == other.n_qubits
+
+    def __hash__(self):
+        return super().__hash__()
 
     @abstractmethod
     def matrices(self, tensors: torch.Tensor) -> torch.Tensor:
