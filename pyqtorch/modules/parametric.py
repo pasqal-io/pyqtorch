@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import torch
 from numpy.typing import ArrayLike
-from torch.nn import Module
 
 import pyqtorch.modules
 from pyqtorch.core.batched_operation import (
@@ -10,21 +9,21 @@ from pyqtorch.core.batched_operation import (
     create_controlled_batch_from_operation,
 )
 from pyqtorch.core.utils import OPERATIONS_DICT
-from pyqtorch.modules.primitive import PrimitiveGate
+from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.utils import rot_matrices
 
 
-class Gate(Module):
+class RotationGate(AbstractGate):
+    n_params = 1
+
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__()
-        self.qubits = qubits
-        self.n_qubits = n_qubits
+        super().__init__(qubits, n_qubits)
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
     def __mul__(
-        self, other: PrimitiveGate | Gate | pyqtorch.modules.QuantumCircuit
+        self, other: AbstractGate | pyqtorch.modules.QuantumCircuit
     ) -> pyqtorch.modules.QuantumCircuit:
         if self.n_qubits != other.n_qubits:
             raise ValueError(
@@ -35,7 +34,7 @@ class Gate(Module):
                 )
             )
 
-        if isinstance(other, (Gate, PrimitiveGate)):
+        if isinstance(other, AbstractGate):
             return pyqtorch.modules.QuantumCircuit(self.n_qubits, [self, other])
 
         if isinstance(other, pyqtorch.modules.QuantumCircuit):
@@ -44,19 +43,7 @@ class Gate(Module):
         else:
             return NotImplemented
 
-    def extra_repr(self) -> str:
-        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
-
-
-class RotationGate(Gate):
-    n_params = 1
-
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__(gate, qubits, n_qubits)
-
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
-        # want to allow e.g. (3,batch_size) in the U gate.
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
         return rot_matrices(theta, self.paulimat, self.imat, batch_size)
@@ -69,8 +56,11 @@ class RotationGate(Gate):
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
+    def extra_repr(self) -> str:
+        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
-class U(Module):
+
+class U(AbstractGate):
     """Parametrized arbitrary rotation along the axes of the Bloch sphere
 
     The angles `phi, theta, omega` in tensor format, applied as:
@@ -81,9 +71,7 @@ class U(Module):
     n_params = 3
 
     def __init__(self, qubits: ArrayLike, n_qubits: int):
-        super().__init__()
-        self.qubits = qubits
-        self.n_qubits = n_qubits
+        super().__init__(qubits, n_qubits)
 
         self.register_buffer("a", torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
         self.register_buffer("b", torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
@@ -124,15 +112,15 @@ class U(Module):
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
-    def extra_repr(self) -> str:
-        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
-
-class ControlledRotationGate(Gate):
+class ControlledRotationGate(AbstractGate):
     n_params = 1
 
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__(gate, qubits, n_qubits)
+        super().__init__(qubits, n_qubits)
+        self.gate = gate
+        self.register_buffer("imat", OPERATIONS_DICT["I"])
+        self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -179,18 +167,14 @@ class CRZ(ControlledRotationGate):
         super().__init__("Z", qubits, n_qubits)
 
 
-class CPHASE(Module):
+class CPHASE(AbstractGate):
     n_params = 1
 
     def __init__(self, qubits: ArrayLike, n_qubits: int):
-        super().__init__()
-        self.qubits = qubits
-        self.n_qubits = n_qubits
+        super().__init__(qubits, n_qubits)
         self.register_buffer("imat", torch.eye(4, dtype=torch.cdouble))
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
-        # want to allow e.g. (3,batch_size) in the U gate.
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
         mat = self.imat.repeat((batch_size, 1, 1))
@@ -206,6 +190,3 @@ class CPHASE(Module):
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
         return self.apply(mats, state)
-
-    def extra_repr(self) -> str:
-        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
