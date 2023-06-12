@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import torch
 from numpy.typing import ArrayLike
 from torch.nn import Module
 
-import pyqtorch.modules
+import pyqtorch.modules as pyq
 
 
 class AbstractGate(ABC, Module):
@@ -15,21 +16,20 @@ class AbstractGate(ABC, Module):
         self.qubits = qubits
         self.n_qubits = n_qubits
 
-    def __mul__(
-        self, other: AbstractGate | pyqtorch.modules.QuantumCircuit
-    ) -> pyqtorch.modules.QuantumCircuit:
+    def __mul__(self, other: AbstractGate | pyq.QuantumCircuit) -> pyq.QuantumCircuit:
         if isinstance(other, AbstractGate):
-            return pyqtorch.modules.QuantumCircuit(
-                max(self.n_qubits, other.n_qubits), [self, other]
-            )
-
-        if isinstance(other, pyqtorch.modules.QuantumCircuit):
-            return pyqtorch.modules.QuantumCircuit(
-                max(self.n_qubits, other.n_qubits), [self, *other.operations]
-            )
-
+            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), [self, other])
+        elif isinstance(other, pyq.QuantumCircuit):
+            # using * here because list concatenation is not implemented for ModuleList
+            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), [self, *other.operations])
         else:
-            return NotImplemented
+            return ValueError(f"Cannot compose {type(self)} with {type(other)}")
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, type(self)):
+            return False
+
+        return self.qubits == other.qubits and self.n_qubits == other.n_qubits
 
     @abstractmethod
     def matrices(self, tensors: torch.Tensor) -> torch.Tensor:
@@ -47,10 +47,3 @@ class AbstractGate(ABC, Module):
 
     def extra_repr(self) -> str:
         return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
-
-    def is_same_gate(self, other: AbstractGate) -> bool:
-        return (
-            self.qubits == other.qubits
-            and self.n_qubits == other.n_qubits
-            and type(self) == type(other)
-        )

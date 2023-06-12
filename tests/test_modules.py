@@ -5,6 +5,7 @@ import torch
 
 import pyqtorch.core as func_pyq
 import pyqtorch.modules as pyq
+from pyqtorch.modules.abstract import AbstractGate
 
 
 @pytest.mark.parametrize("gate", ["X", "Y", "Z"])
@@ -79,7 +80,7 @@ def test_circuit(batch_size: int) -> None:
 
 
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
-def test_empy_circuit(batch_size: int) -> None:
+def test_empty_circuit(batch_size: int) -> None:
     n_qubits = 2
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.cdouble
@@ -107,54 +108,84 @@ def test_U_gate(batch_size: int) -> None:
     assert not torch.all(torch.isnan(u(state, x)))
 
 
+@pytest.mark.parametrize(
+    "a,b,val",
+    [
+        (pyq.X([0], 1), pyq.X([0], 1), True),
+        (pyq.RY([0], 1), pyq.RY([0], 1), True),
+        (pyq.RY([0], 1), pyq.RY([0], 1), True),
+        (pyq.X([0], 1), pyq.Y([0], 1), False),
+        (pyq.RX([0], 2), pyq.RX([0], 1), False),
+        (pyq.RX([1], 1), pyq.RX([0], 1), False),
+    ],
+)
+def test_gate_equality(a: AbstractGate, b: AbstractGate, val: bool) -> None:
+    x = a == b
+    assert x == val
+
+
+def test_circuit_equality() -> None:
+    c1 = pyq.QuantumCircuit(2, [pyq.RX([0], 2), pyq.Z([1], 2)])
+    c2 = pyq.QuantumCircuit(2, [pyq.RX([0], 2), pyq.Z([1], 2)])
+    assert c1 == c2
+
+    c3 = pyq.QuantumCircuit(2, [pyq.RX([1], 2), pyq.Z([1], 2)])
+    assert c1 != c3
+
+    c4 = pyq.QuantumCircuit(2, [pyq.Z([1], 2)])
+    assert c3 != c4
+
+    c5 = pyq.QuantumCircuit(2, [pyq.RX([0], 2)])
+    assert c1 != c5
+
+
 @pytest.mark.parametrize("n_qubits", [1, 2, 3])
 def test_gate_composition(n_qubits: int) -> None:
-    X = pyq.X(torch.randint(0, n_qubits, (1,)).tolist(), n_qubits)
-    Y = pyq.Y(torch.randint(0, n_qubits, (1,)).tolist(), n_qubits)
-    XYcirc = X * Y
-    XYcirc_ref = pyq.QuantumCircuit(n_qubits, [X, Y])
-    assert XYcirc.is_same_circuit(XYcirc_ref)
+    x = pyq.X(torch.randint(0, n_qubits, (1,)).tolist(), n_qubits)
+    y = pyq.Y(torch.randint(0, n_qubits, (1,)).tolist(), n_qubits)
+    circ = x * y
+    truth = pyq.QuantumCircuit(n_qubits, [x, y])
+    assert circ == truth
 
-    RX = pyq.RX(torch.randint(0, n_qubits, (1,)).tolist(), n_qubits)
-    RY = pyq.RY(torch.randint(0, n_qubits, (1,)).tolist(), n_qubits)
-    RXRYcirc = RX * RY
-    RXRYcirc_ref = pyq.QuantumCircuit(n_qubits, [RX, RY])
-    assert RXRYcirc.is_same_circuit(RXRYcirc_ref)
+    rx = pyq.RX(torch.randint(0, n_qubits, (1,)).tolist(), n_qubits)
+    ry = pyq.RY(torch.randint(0, n_qubits, (1,)).tolist(), n_qubits)
+    circ = rx * ry
+    truth = pyq.QuantumCircuit(n_qubits, [rx, ry])
+    assert circ == truth
 
     r1, r2, r3 = 1, n_qubits, max(n_qubits - 1, 1)
-    Z1 = pyq.Z(torch.randint(0, r1, (1,)).tolist(), r1)
-    Y = pyq.Y(torch.randint(0, r2, (1,)).tolist(), r2)
-    Z2 = pyq.Z(torch.randint(0, r3, (1,)).tolist(), r3)
-
-    ZYZcirc = Z1 * Y * Z2
-    ZYZcirc_ref = pyq.QuantumCircuit(max(r1, r2, r3), [Z1, Y, Z2])
-    assert ZYZcirc.is_same_circuit(ZYZcirc_ref)
+    z1 = pyq.Z(torch.randint(0, r1, (1,)).tolist(), r1)
+    y = pyq.Y(torch.randint(0, r2, (1,)).tolist(), r2)
+    z2 = pyq.Z(torch.randint(0, r3, (1,)).tolist(), r3)
+    circ = z1 * y * z2
+    truth = pyq.QuantumCircuit(max(r1, r2, r3), [z1, y, z2])
+    assert circ == truth
 
     rr1, rr2, rr3 = 1, n_qubits, max(n_qubits - 1, 1)
-    RZ1 = pyq.RZ(torch.randint(0, rr1, (1,)).tolist(), rr1)
-    RY1 = pyq.RY(torch.randint(0, rr2, (1,)).tolist(), rr2)
-    RZ2 = pyq.RZ(torch.randint(0, rr3, (1,)).tolist(), rr3)
+    rz1 = pyq.RZ(torch.randint(0, rr1, (1,)).tolist(), rr1)
+    ry1 = pyq.RY(torch.randint(0, rr2, (1,)).tolist(), rr2)
+    rz2 = pyq.RZ(torch.randint(0, rr3, (1,)).tolist(), rr3)
 
-    Ucirc = RZ1 * RY1 * RZ2
-    Ucirc_ref = pyq.QuantumCircuit(max(r1, r2, r3), [RZ1, RY1, RZ2])
-    assert Ucirc.is_same_circuit(Ucirc_ref)
+    circ = rz1 * ry1 * rz2
+    truth = pyq.QuantumCircuit(max(r1, r2, r3), [rz1, ry1, rz2])
+    assert circ == truth
 
 
 @pytest.mark.parametrize("n_qubits", [1, 2, 3])
-def test_QuantumCircuit_composition(n_qubits: int) -> None:
+def test_circuit_composition(n_qubits: int) -> None:
     r = torch.randint(1, n_qubits + 1, (1,)).tolist()
-    RX = pyq.RX(r, n_qubits)
+    rx = pyq.RX(r, n_qubits)
 
-    RXcirc = RX * pyq.QuantumCircuit(1, [pyq.X([0], 1), pyq.Y([0], 1)])
-    RXcirc_ref = pyq.QuantumCircuit(n_qubits, [RX, pyq.X([0], 1), pyq.Y([0], 1)])
-    assert RXcirc.is_same_circuit(RXcirc_ref)
+    circ = rx * pyq.QuantumCircuit(1, [pyq.X([0], 1), pyq.Y([0], 1)])
+    truth = pyq.QuantumCircuit(n_qubits, [rx, pyq.X([0], 1), pyq.Y([0], 1)])
+    assert circ == truth
 
-    circRX = pyq.QuantumCircuit(1, [pyq.X([0], 1), pyq.Y([0], 1)]) * RX
-    circRX_ref = pyq.QuantumCircuit(n_qubits, [pyq.X([0], 1), pyq.Y([0], 1), RX])
-    assert circRX.is_same_circuit(circRX_ref)
+    circ = pyq.QuantumCircuit(1, [pyq.X([0], 1), pyq.Y([0], 1)]) * rx
+    truth = pyq.QuantumCircuit(n_qubits, [pyq.X([0], 1), pyq.Y([0], 1), rx])
+    assert circ == truth
 
-    circ_mult = pyq.QuantumCircuit(1, [pyq.X([0], 1), pyq.Y([0], 1)]) * pyq.QuantumCircuit(
-        n_qubits, [RX, pyq.RY([0], 1)]
+    circ = pyq.QuantumCircuit(1, [pyq.X([0], 1), pyq.Y([0], 1)]) * pyq.QuantumCircuit(
+        n_qubits, [rx, pyq.RY([0], 1)]
     )
-    circ_mult_ref = pyq.QuantumCircuit(n_qubits, [pyq.X([0], 1), pyq.Y([0], 1), RX, pyq.RY([0], 1)])
-    assert circ_mult.is_same_circuit(circ_mult_ref)
+    truth = pyq.QuantumCircuit(n_qubits, [pyq.X([0], 1), pyq.Y([0], 1), rx, pyq.RY([0], 1)])
+    assert circ == truth
