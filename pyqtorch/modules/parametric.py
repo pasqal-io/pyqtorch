@@ -3,7 +3,6 @@ from __future__ import annotations
 import torch
 from numpy.typing import ArrayLike
 
-import pyqtorch.modules
 from pyqtorch.core.batched_operation import (
     _apply_batch_gate,
     create_controlled_batch_from_operation,
@@ -21,27 +20,6 @@ class RotationGate(AbstractGate):
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
-
-    def __mul__(
-        self, other: AbstractGate | pyqtorch.modules.QuantumCircuit
-    ) -> pyqtorch.modules.QuantumCircuit:
-        if self.n_qubits != other.n_qubits:
-            raise ValueError(
-                (
-                    f"Number of Qubits don't match. "
-                    f"Left gate is applied on a {self.n_qubits} qubit system and "
-                    f"right gate is applied on a {other.n_qubits} qubit system."
-                )
-            )
-
-        if isinstance(other, AbstractGate):
-            return pyqtorch.modules.QuantumCircuit(self.n_qubits, [self, other])
-
-        if isinstance(other, pyqtorch.modules.QuantumCircuit):
-            return pyqtorch.modules.QuantumCircuit(self.n_qubits, other.operations.insert(0, self))
-
-        else:
-            return NotImplemented
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas

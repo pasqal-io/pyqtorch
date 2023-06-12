@@ -42,20 +42,13 @@ class QuantumCircuit(Module):
         self.operations = torch.nn.ModuleList(operations)
 
     def __mul__(self, other: AbstractGate | QuantumCircuit) -> QuantumCircuit:
-        if self.n_qubits != other.n_qubits:
-            raise ValueError(
-                (
-                    f"Number of Qubits don't match. "
-                    f"Left gate is applied on a {self.n_qubits} qubit system and "
-                    f"right gate is applied on a {other.n_qubits} qubit system."
-                )
+        if isinstance(other, QuantumCircuit):
+            return QuantumCircuit(
+                max(self.n_qubits, other.n_qubits), self.operations.extend(other.operations)
             )
 
-        if isinstance(other, QuantumCircuit):
-            return QuantumCircuit(self.n_qubits, self.operations.extend(other.operations))
-
         if isinstance(other, AbstractGate):
-            return QuantumCircuit(self.n_qubits, self.operations.append(other))
+            return QuantumCircuit(max(self.n_qubits, other.n_qubits), self.operations.append(other))
 
         else:
             return NotImplemented
@@ -75,6 +68,14 @@ class QuantumCircuit(Module):
 
     def init_state(self, batch_size: int) -> torch.Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
+
+    def is_same_circuit(self, other: QuantumCircuit) -> bool:
+        return (
+            all(
+                gate1.is_same_gate(gate2) for gate1, gate2 in zip(self.operations, other.operations)
+            )
+            and self.n_qubits == other.n_qubits
+        )
 
 
 def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
