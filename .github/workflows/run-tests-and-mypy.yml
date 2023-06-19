@@ -42,4 +42,4 @@ jobs:
 
         - name: Perform unit tests
           run: |
-            python -m hatch -e tests run pytest -n auto
+            python -m hatch -e tests run pytest -n auto && hatch -e docs run mkdocs build --clean --strict
