@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from enum import Enum
 from functools import lru_cache
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, Union
 
 import torch
 from torch.nn import Module
@@ -13,6 +14,19 @@ BATCH_DIM = 2
 
 
 class HamEvo(torch.nn.Module):
+    """
+    Base class for Hamiltonian evolution classes, performing the evolution using RK4 method.
+
+    Args:
+        H (tensor): Hamiltonian tensor.
+        t (tensor): Time tensor.
+        qubits (Any): Qubits for operation.
+        n_qubits (int): Number of qubits.
+        n_steps (int): Number of steps to be performed in RK4-based evolution. Defaults to 100.
+
+
+    """
+
     def __init__(
         self, H: torch.Tensor, t: torch.Tensor, qubits: Any, n_qubits: int, n_steps: int = 100
     ):
@@ -26,6 +40,16 @@ class HamEvo(torch.nn.Module):
         self.register_buffer("t", t)
 
     def apply(self, state: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the Hamiltonian evolution operation on the given state using RK4 method.
+
+        Args:
+            state (tensor): Input quantum state.
+
+        Returns:
+            tensor: Output state after Hamiltonian evolution.
+        """
+
         batch_size = state.size(-1)
         h = self.t.reshape((1, -1)) / self.n_steps
         for _ in range(self.n_qubits - 1):
@@ -49,6 +73,16 @@ class HamEvo(torch.nn.Module):
         return _state
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the module, applies the Hamiltonian evolution operation.
+
+        Args:
+            state (tensor): Input quantum state.
+
+        Returns:
+            tensor: Output state after Hamiltonian evolution.
+        """
+
         return self.apply(state)
 
 
@@ -75,6 +109,17 @@ def diagonalize(H: torch.Tensor) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
 
 
 class HamEvoEig(HamEvo):
+    """
+    Class for Hamiltonian evolution operation using Eigenvalue Decomposition method.
+
+    Args:
+        H (tensor): Hamiltonian tensor
+        t (tensor): Time tensor
+        qubits (Any): Qubits for operation
+        n_qubits (int): Number of qubits
+        n_steps (int): Number of steps to be performed, defaults to 100
+    """
+
     def __init__(
         self, H: torch.Tensor, t: torch.Tensor, qubits: Any, n_qubits: int, n_steps: int = 100
     ):
@@ -91,6 +136,16 @@ class HamEvoEig(HamEvo):
             self.l_val.append(eig_values)
 
     def apply(self, state: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the Hamiltonian evolution operation on the given state
+        using Eigenvalue Decomposition method.
+
+        Args:
+            state (tensor): Input quantum state.
+
+        Returns:
+            tensor: Output state after Hamiltonian evolution.
+        """
 
         batch_size_t = len(self.t)
         batch_size_h = self.H.size()[BATCH_DIM]
@@ -125,6 +180,17 @@ class HamEvoEig(HamEvo):
 
 
 class HamEvoExp(HamEvo):
+    """
+    Class for Hamiltonian evolution operation, using matrix exponential method.
+
+    Args:
+        H (tensor): Hamiltonian tensor
+        t (tensor): Time tensor
+        qubits (Any): Qubits for operation
+        n_qubits (int): Number of qubits
+        n_steps (int): Number of steps to be performed, defaults to 100.
+    """
+
     def __init__(
         self, H: torch.Tensor, t: torch.Tensor, qubits: Any, n_qubits: int, n_steps: int = 100
     ):
@@ -138,6 +204,16 @@ class HamEvoExp(HamEvo):
         self.batch_is_diag = bool(torch.prod(diag_check))
 
     def apply(self, state: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the Hamiltonian evolution operation
+        on the given state using matrix exponential method.
+
+        Args:
+            state (tensor): Input quantum state.
+
+        Returns:
+            tensor: Output state after Hamiltonian evolution.
+        """
 
         batch_size_t = len(self.t)
         batch_size_h = self.H.size()[BATCH_DIM]
@@ -166,46 +242,102 @@ class HamEvoExp(HamEvo):
         return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
 
 
+class HamEvoType(Enum):
+    """
+    An Enumeration to represent types of Hamiltonian Evolution
+
+    RK4: Hamiltonian evolution performed using the 4th order Runge-Kutta method.
+    EIG: Hamiltonian evolution performed using Eigenvalue Decomposition.
+    EXP: Hamiltonian evolution performed using the Exponential of the Hamiltonian.
+    """
+
+    RK4 = HamEvo
+    EIG = HamEvoEig
+    EXP = HamEvoExp
+
+
 class HamiltonianEvolution(Module):
-    def __init__(self, qubits: Any, n_qubits: int, n_steps: int = 100):
+    """
+    A module to encapsulate Hamiltonian Evolution operations.
+
+    Performs Hamiltonian Evolution using different strategies
+    such as, RK4, Eigenvalue Decomposition, and Exponential,
+    Based on the 'hamevo_type' parameter.
+
+    Attributes:
+        qubits: A list of qubits to be used in the operation
+        n_qubits (int): Total number of qubits
+        n_steps  (int): The number of steps to be performed. Defaults to 100
+        hamevo_type (Enum or str): The type of Hamiltonian evolution to be performed.
+                     Must be a member of the `HamEvoType` enum or equivalent string.
+                     Defaults to HamEvoExp.
+
+    Examples:
+    (1)
+    # Instantiate HamiltonianEvolution with RK4 string input
+        >>> hamiltonian_evolution = HamiltonianEvolution(qubits, n_qubits, 100, "RK4")
+    # Use the HamiltonianEvolution instance to evolve the state
+        >>> output_state = hamiltonian_evolution(H, t, state)
+
+    (2)
+    # Instantiate HamiltonianEvolution with HamEvoType. input
+        >>>H_evol = HamiltonianEvolution(qubits, n_qubits, 100, HamEvoType.Eig)
+    # Use the HamiltonianEvolution instance to evolve the state
+        >>>output = H_evol(H, t, state) # Use the HamiltonianEvolution instance to evolve the state
+
+    """
+
+    def __init__(
+        self,
+        qubits: Any,
+        n_qubits: int,
+        n_steps: int = 100,
+        hamevo_type: Union[HamEvoType, str] = HamEvoType.EXP,
+    ):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
         self.n_steps = n_steps
 
+        # Handles the case where the Hamiltonian Evolution type is provided as a string
+        if isinstance(hamevo_type, str):
+            try:
+                hamevo_type = HamEvoType[hamevo_type.upper()]
+            except KeyError:
+                allowed = [e.name for e in HamEvoType]
+                raise ValueError(
+                    f"Invalid Hamiltonian Evolution type: {hamevo_type}. Expected from: {allowed}"
+                )
+
+        self.hamevo_type = hamevo_type
+
+    def get_hamevo_instance(self, H: torch.Tensor, t: torch.Tensor) -> torch.nn.Module:
+        """
+        Returns an instance of the Hamiltonian evolution object of the appropriate type.
+
+        Args:
+            H (tensor): The Hamiltonian to be used in the evolution.
+            t (tensor): The evolution time.
+
+        Returns:
+            An instance of the Hamiltonian evolution object of the appropriate type.
+
+        """
+
+        return self.hamevo_type.value(H, t, self.qubits, self.n_qubits, self.n_steps)
+
     def forward(self, H: torch.Tensor, t: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        return self.apply(H, t, state)
+        """
+        Performs Hamiltonian evolution on the given state.
 
-    def apply(self, H: torch.Tensor, t: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        if len(H.size()) < 3:
-            H = H.unsqueeze(2)
-        batch_size_h = H.size()[BATCH_DIM]
+        Args:
+            H (tensor): The Hamiltonian to be used in the evolution.
+            t (tensor): The evolution time.
+            state (tensor): The state on which to perform Hamiltonian evolution.
 
-        # Check if all hamiltonians in the batch are diagonal
-        diag_check = torch.tensor([is_diag(H[..., i]) for i in range(batch_size_h)])
-        batch_is_diag = bool(torch.prod(diag_check))
+        Returns:
+            The state (tensor) after Hamiltonian evolution.
+        """
 
-        batch_size_t = len(t)
-        t_evo = torch.zeros(batch_size_h).to(torch.cdouble)
-
-        if batch_size_t >= batch_size_h:
-            t_evo = t[:batch_size_h]
-        else:
-            if batch_size_t == 1:
-                t_evo[:] = t[0]
-            else:
-                t_evo[:batch_size_t] = t
-
-        if batch_is_diag:
-            # Skips the matrix exponential for diagonal hamiltonians
-            H_diagonals = torch.diagonal(H)
-            evol_exp_arg = H_diagonals * (-1j * t_evo).view((-1, 1))
-            evol_operator_T = torch.diag_embed(torch.exp(evol_exp_arg))
-            evol_operator = torch.transpose(evol_operator_T, 0, -1)
-        else:
-            H_T = torch.transpose(H, 0, -1)
-            evol_exp_arg = H_T * (-1j * t_evo).view((-1, 1, 1))
-            evol_operator_T = torch.linalg.matrix_exp(evol_exp_arg)
-            evol_operator = torch.transpose(evol_operator_T, 0, -1)
-
-        return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
+        ham_evo_instance = self.get_hamevo_instance(H, t)
+        return ham_evo_instance.forward(state)

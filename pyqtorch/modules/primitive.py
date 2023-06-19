@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import torch
 from numpy.typing import ArrayLike
-from torch.nn import Module
 
 from pyqtorch.core.operation import _apply_gate, create_controlled_matrix_from_operation
 from pyqtorch.core.utils import OPERATIONS_DICT
+from pyqtorch.modules.abstract import AbstractGate
 
 
-class PrimitiveGate(Module):
+class PrimitiveGate(AbstractGate):
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__()
+        super().__init__(qubits, n_qubits)
         self.gate = gate
-        self.qubits = qubits
-        self.n_qubits = n_qubits
         self.register_buffer("matrix", OPERATIONS_DICT[gate])
 
     def matrices(self, _: torch.Tensor) -> torch.Tensor:
@@ -24,9 +22,6 @@ class PrimitiveGate(Module):
 
     def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
         return self.apply(self.matrix, state)
-
-    def extra_repr(self) -> str:
-        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 
 class X(PrimitiveGate):
@@ -267,12 +262,10 @@ class SWAP(PrimitiveGate):
         super().__init__("SWAP", qubits, n_qubits)
 
 
-class ControlledOperationGate(Module):
+class ControlledOperationGate(AbstractGate):
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__()
+        super().__init__(qubits, n_qubits)
         self.gate = gate
-        self.qubits = qubits
-        self.n_qubits = n_qubits
         mat = OPERATIONS_DICT[gate]
         self.register_buffer("matrix", create_controlled_matrix_from_operation(mat))
 
@@ -284,9 +277,6 @@ class ControlledOperationGate(Module):
 
     def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
         return self.apply(self.matrix, state)
-
-    def extra_repr(self) -> str:
-        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 
 class CNOT(ControlledOperationGate):
