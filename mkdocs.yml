@@ -15,10 +15,10 @@ nav:
       - QAOA : QAOA.ipynb
   - Documentation:
     - Modules:
-        - Circuit : documentation/modules/circuit.py
-        - Matrices : documentation/modules/matrices.py
-        - Parametric : documentation/modules/parametric.py
-        - Primitive : documentation/modules/primitive.py
+        - Circuit : circuit.md
+        - Matrices : matrices.md
+        - Parametric : parametric.md
+        - Primitive : primitive.md
 
 
 theme:

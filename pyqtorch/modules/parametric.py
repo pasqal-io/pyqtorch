@@ -114,8 +114,7 @@ class U(Module):
 
         Arguments:
             state  (torch.Tensor): batched state
-            thetas (torch.Tensor): Tensor of size (3, batch_size) which
-            contains the values of `phi`/`theta`/`omega`
+            thetas (torch.Tensor): Tensor of size 3 ,contains values of `phi`/`theta`/`omega`
 
         Returns:
             torch.Tensor: the resulting state after applying the gate
@@ -164,8 +163,7 @@ class RX(RotationGate):
         a given rotation around the X axis.
 
         Arguments:
-            qubits (ArrayLike): The qubits to apply the RX gate to.
-            It should be a list of qubit indices.
+            qubits (ArrayLike):The list of qubits the controlled RX gate acts on.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
@@ -201,7 +199,7 @@ class RY(RotationGate):
         a given rotation around the Y axis.
 
         Arguments:
-            qubit (ArrayLike): The qubit index to apply the RY gate to.
+            qubits (ArrayLike): The qubit index to apply the RY gate to.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
@@ -269,12 +267,13 @@ class CRX(ControlledRotationGate):
 
 
         Arguments:
-            qubits (ArrayLike): The qubit index or list of qubit indices where
-            the controlled CRX gate acts on.
+            qubits (ArrayLike):The list of qubits the controlled CRX gate acts on.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
-            ```python exec="on" source="above" result="json"
+        ```python exec="on" source="above" result="json"
+        import torch
+        import pyqtorch.modules as pyq
         # Create a CRX gate
         #The CRX gate is a controlled version of the RX gate.
         #It applies an RX rotation to the target qubit based on the state of the control qubit.
@@ -298,7 +297,7 @@ class CRX(ControlledRotationGate):
         result = crx_gate(activation_state, theta)
         print(result)
 
-            ```
+        ```
         """
         super().__init__("X", qubits, n_qubits)
 
@@ -312,12 +311,11 @@ class CRY(ControlledRotationGate):
 
 
         Arguments:
-            qubits (ArrayLike): The qubit index or list of qubit indices where
-            the controlled CRY gate acts on.
+            qubits (ArrayLike):The list of qubits the controlled CRY gate acts on.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
-            ```python exec="on" source="above" result="json"
+        ```python exec="on" source="above" result="json"
         import torch
         import pyqtorch.modules as pyq
 
@@ -342,7 +340,7 @@ class CRY(ControlledRotationGate):
         # Apply the CRY gate to the activation state with the random theta angle
         result = cry_gate(activation_state, theta)
         print(result)
-            ```
+        ```
         """
         super().__init__("Y", qubits, n_qubits)
 
@@ -355,37 +353,36 @@ class CRZ(ControlledRotationGate):
         to the control qubit state.
 
         Arguments:
-            qubits (ArrayLike): The qubit index or list of qubit indices where
-            the controlled CRZ gate acts on.
+            qubits (ArrayLike):The list of qubits the controlled CRZ gate acts on.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
-            ```python exec="on" source="above" result="json"
-            import torch
-            import pyqtorch.modules as pyq
+        ```python exec="on" source="above" result="json"
+        import torch
+        import pyqtorch.modules as pyq
 
-            # Create a CRZ gate
-            # The CRZ gate is a controlled version of the RZ gate.
-            # It applies an RZ rotation to the target qubit based on the state of the control qubit.
-            # The gate takes two qubits as input: the control qubit and the target qubit.
-            crz_gate = pyq.CRZ(qubits=[0, 1], n_qubits=2)
+        # Create a CRZ gate
+        # The CRZ gate is a controlled version of the RZ gate.
+        # It applies an RZ rotation to the target qubit based on the state of the control qubit.
+        # The gate takes two qubits as input: the control qubit and the target qubit.
+        crz_gate = pyq.CRZ(qubits=[0, 1], n_qubits=2)
 
-            # Create a X gate
-            x_gate = pyq.X(qubits=[0], n_qubits=2)
+        # Create a X gate
+        x_gate = pyq.X(qubits=[0], n_qubits=2)
 
-            # Create a zero state
-            z_state = pyq.zero_state(n_qubits=2)
+        # Create a zero state
+        z_state = pyq.zero_state(n_qubits=2)
 
-            # Apply a X gate to the zero state to change its state
-            activation_state = x_gate(z_state)
+        # Apply a X gate to the zero state to change its state
+        activation_state = x_gate(z_state)
 
-            # Create a random theta angle
-            theta = torch.rand(1)
+        # Create a random theta angle
+        theta = torch.rand(1)
 
-            # Apply the CRZ gate to the activation state with the random theta angle
-            result = crz_gate(activation_state, theta)
-            print(result)
-            ```
+        # Apply the CRZ gate to the activation state with the random theta angle
+        result = crz_gate(activation_state, theta)
+        print(result)
+        ```
         """
         super().__init__("Z", qubits, n_qubits)
 
@@ -401,7 +398,6 @@ class CPHASE(Module):
 
         Arguments:
             qubits (ArrayLike): The control and target qubits for the CPHASE gate.
-            It should be a list of two qubits.
             n_qubits (int): The total number of qubits in the circuit.
 
         """

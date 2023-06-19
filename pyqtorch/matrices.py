@@ -38,9 +38,9 @@ def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
 
     Examples:
     ```python exec="on" source="above" result="json"
-        from pyqtorch.matrices import ZZ
-        result=ZZ(2, 0, 1)
-        print(result) #tensor([ 1.+0.j, -1.+0.j, -1.+0.j,  1.-0.j], dtype=torch.complex128)
+    from pyqtorch.matrices import ZZ
+    result=ZZ(2, 0, 1)
+    print(result) #tensor([ 1.+0.j, -1.+0.j, -1.+0.j,  1.-0.j], dtype=torch.complex128)
     ```
     """
     if i == j:
@@ -70,9 +70,9 @@ def NN(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
 
     Examples:
     ```python exec="on" source="above" result="json"
-        from pyqtorch.matrices import NN
-        result=NN(2, 0, 1)
-        print(result) #tensor([0.+0.j, 0.+0.j, 0.+0.j, 1.+0.j], dtype=torch.complex128)
+    from pyqtorch.matrices import NN
+    result=NN(2, 0, 1)
+    print(result) #tensor([0.+0.j, 0.+0.j, 0.+0.j, 1.+0.j], dtype=torch.complex128)
     ```
     """
     if i == j:

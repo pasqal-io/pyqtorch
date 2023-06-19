@@ -246,7 +246,6 @@ class SWAP(PrimitiveGate):
 
         Arguments:
             qubits (ArrayLike): The qubits to which the SWAP gate is applied.
-            It should be a list of two qubits.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
@@ -297,7 +296,6 @@ class CNOT(ControlledOperationGate):
 
         Arguments:
             qubits (ArrayLike): The control and target qubits for the CNOT gate.
-            It should be a list of two qubits.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
@@ -331,7 +329,6 @@ class CY(ControlledOperationGate):
 
         Arguments:
             qubits (ArrayLike): The control and target qubits for the CY gate.
-            It should be a list of two qubits.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
@@ -363,7 +360,6 @@ class CZ(ControlledOperationGate):
 
         Arguments:
             qubits (ArrayLike): The control and target qubits for the CZ gate.
-            It should be a list of two qubits.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:

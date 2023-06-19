@@ -54,6 +54,12 @@ def uniform_state(
 ) -> torch.Tensor:
     """
     Generates the uniform state for a specified number of qubits.
+    Returns a tensor representing the uniform state.
+    The shape of the tensor is (2^n_qubits, batch_size),
+    where 2^n_qubits is the total number of possible states for the given number of qubits.
+    The data type of the tensor is specified by the dtype parameter.
+    Each element of the tensor is initialized to 1/sqrt(2^n_qubits),
+    ensuring that the total probability of the state is equal to 1.
 
     Arguments:
         n_qubits (int): The number of qubits for which the uniform state is to be generated.
@@ -63,11 +69,7 @@ def uniform_state(
 
     Returns:
         torch.Tensor: A tensor representing the uniform state.
-        The shape of the tensor is (2^n_qubits, batch_size),
-        where 2^n_qubits is the total number of possible states for the given number of qubits.
-        The data type of the tensor is specified by the dtype parameter.
-        Each element of the tensor is initialized to 1/sqrt(2^n_qubits),
-        ensuring that the total probability of the state is equal to 1.
+
 
     Examples:
     ```python exec="on" source="above" result="json"
@@ -97,26 +99,26 @@ class QuantumCircuit(Module):
 
         Example:
         ```python exec="on" source="above" result="json"
-            import torch
-            import pyqtorch.modules as pyq
+        import torch
+        import pyqtorch.modules as pyq
 
-            #create a circuit with 2 qubits than provide a list of operations .
-            #in this example we apply a X gate followed by a CNOT gate.
-            circ = pyq.QuantumCircuit(
-                                        n_qubits=2,
-                                        operations=[
-                                            pyq.X([0], 2),
-                                            pyq.CNOT([0,1], 2)
-                                        ]
-                                    )
-            #create a zero state
-            z = pyq.zero_state(2)
+        #create a circuit with 2 qubits than provide a list of operations .
+        #in this example we apply a X gate followed by a CNOT gate.
+        circ = pyq.QuantumCircuit(
+                                    n_qubits=2,
+                                    operations=[
+                                        pyq.X([0], 2),
+                                        pyq.CNOT([0,1], 2)
+                                    ]
+                                )
+        #create a zero state
+        z = pyq.zero_state(2)
 
-            #apply the circuit and its list of operations onto the zero state
-            result=circ(z)
+        #apply the circuit and its list of operations onto the zero state
+        result=circ(z)
 
-            #print the result
-            print(result) #tensor([[[0.+0.j],[0.+0.j]],[[0.+0.j],[1.+0.j]]], dtype=torch.complex128)
+        #print the result
+        print(result) #tensor([[[0.+0.j],[0.+0.j]],[[0.+0.j],[1.+0.j]]], dtype=torch.complex128)
         ```
         """
         super().__init__()
@@ -166,18 +168,18 @@ def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
 
     Example:
     ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch.modules as pyq
+    import torch
+    import pyqtorch.modules as pyq
 
-        #create a FeaturemapLayer to apply the RX operation on all 3 Qubits
-        circ = pyq.FeaturemapLayer(n_qubits=3, Op=pyq.RX)
-        print(circ)
+    #create a FeaturemapLayer to apply the RX operation on all 3 Qubits
+    circ = pyq.FeaturemapLayer(n_qubits=3, Op=pyq.RX)
+    print(circ)
 
-        states = pyq.zero_state(n_qubits=3, batch_size=4)
-        inputs = torch.rand(4)
+    states = pyq.zero_state(n_qubits=3, batch_size=4)
+    inputs = torch.rand(4)
 
-        # the same batch of inputs are passed to the operations
-        circ(states, inputs).shape
+    # the same batch of inputs are passed to the operations
+    circ(states, inputs).shape
     ```
     """
     operations = [Op([i], n_qubits) for i in range(n_qubits)]
@@ -199,14 +201,14 @@ class VariationalLayer(QuantumCircuit):
 
         Example:
         ```python exec="on" source="above" result="json"
-            import torch
-            import pyqtorch.modules as pyq
-            #create a variational layer with 3 qubits and operation of RX as the second parameter
-            circ = pyq.VariationalLayer(n_qubits=3, Op=pyq.RX)
-            state = pyq.zero_state(3)
-            this_argument_is_ignored = None
-            result=circ(state, this_argument_is_ignored)
-            print(result)
+        import torch
+        import pyqtorch.modules as pyq
+        #create a variational layer with 3 qubits and operation of RX as the second parameter
+        circ = pyq.VariationalLayer(n_qubits=3, Op=pyq.RX)
+        state = pyq.zero_state(3)
+        this_argument_is_ignored = None
+        result=circ(state, this_argument_is_ignored)
+        print(result)
         ```
         """
         operations = ModuleList([Op([i], n_qubits) for i in range(n_qubits)])
@@ -234,12 +236,12 @@ class EntanglingLayer(QuantumCircuit):
 
         Example:
         ```python exec="on" source="above" result="json"
-            from pyqtorch.modules.circuit import EntanglingLayer
+        from pyqtorch.modules.circuit import EntanglingLayer
 
-            # Create an entangling layer with 4 qubits
-            entangling_layer = EntanglingLayer(n_qubits=4)
+        # Create an entangling layer with 4 qubits
+        entangling_layer = EntanglingLayer(n_qubits=4)
 
-            print(entangling_layer)
+        print(entangling_layer)
         ```
         """
         operations = ModuleList(
