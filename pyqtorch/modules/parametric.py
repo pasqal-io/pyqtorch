@@ -11,6 +11,8 @@ from pyqtorch.core.utils import OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.utils import rot_matrices
 
+torch.set_default_dtype(torch.float64)
+
 
 class RotationGate(AbstractGate):
     n_params = 1
