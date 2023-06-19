@@ -23,6 +23,26 @@ NMAT = torch.tensor([0, 1], dtype=torch.cdouble)
 
 
 def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
+    """
+    Returns the tensor representation of the ZZ interaction operator
+    between qubits i and j in a quantum circuit.
+
+    Arguments:
+        N (int): The total number of qubits in the circuit.
+        i (int): Index of the first qubit (default: 0).
+        j (int): Index of the second qubit (default: 0).
+        device (Union[str, torch.device]): Device to store the tensor on (default: "cpu").
+
+    Returns:
+        torch.Tensor: The tensor representation of the ZZ interaction operator.
+
+    Examples:
+    ```python exec="on" source="above" result="json"
+    from pyqtorch.matrices import ZZ
+    result=ZZ(2, 0, 1)
+    print(result) #tensor([ 1.+0.j, -1.+0.j, -1.+0.j,  1.-0.j], dtype=torch.complex128)
+    ```
+    """
     if i == j:
         return torch.ones(2**N).to(device)
 
@@ -35,6 +55,26 @@ def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
 
 
 def NN(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
+    """
+    Returns the tensor representation of the NN interaction operator
+    between qubits i and j in a quantum circuit.
+
+    Arguments:
+        N (int): The total number of qubits in the circuit.
+        i (int): Index of the first qubit (default: 0).
+        j (int): Index of the second qubit (default: 0).
+        device (Union[str, torch.device]): Device to store the tensor on (default: "cpu").
+
+    Returns:
+        torch.Tensor: The tensor representation of the NN interaction operator.
+
+    Examples:
+    ```python exec="on" source="above" result="json"
+    from pyqtorch.matrices import NN
+    result=NN(2, 0, 1)
+    print(result) #tensor([0.+0.j, 0.+0.j, 0.+0.j, 1.+0.j], dtype=torch.complex128)
+    ```
+    """
     if i == j:
         return torch.ones(2**N, dtype=torch.cdouble).to(device)
 

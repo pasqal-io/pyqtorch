@@ -13,6 +13,12 @@ nav:
   - Tutorials:
       - Fitting a function: fit_function.ipynb
       - QAOA : QAOA.ipynb
+  - Documentation:
+    - Modules:
+        - Circuit : circuit.md
+        - Matrices : matrices.md
+        - Parametric : parametric.md
+        - Primitive : primitive.md
 
 
 theme:
