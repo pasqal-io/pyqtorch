@@ -242,7 +242,7 @@ class VariationalLayer(QuantumCircuit):
         init.uniform_(self.thetas, -2 * PI, 2 * PI)
 
     def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
-        for (op, t) in zip(self.operations, self.thetas):
+        for op, t in zip(self.operations, self.thetas):
             state = op(state, t)
         return state
 
