@@ -77,7 +77,9 @@ def _apply_gate(
 
     state = torch.tensordot(mat, state, dims=axes)
     inv_perm = torch.argsort(
-        torch.tensor(state_dims + [j for j in range(N_qubits + 1) if j not in state_dims])
+        torch.tensor(
+            state_dims + [j for j in range(N_qubits + 1) if j not in state_dims], dtype=torch.int
+        )
     )
     state = torch.permute(state, tuple(inv_perm))
     return state
