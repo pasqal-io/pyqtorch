@@ -41,11 +41,9 @@ class RotationGate(AbstractGate):
 
 
 class U(AbstractGate):
-
     n_params = 3
 
     def __init__(self, qubits: ArrayLike, n_qubits: int):
-
         """
         Represents a parametrized arbitrary rotation along the axes of the Bloch sphere.
 
@@ -364,7 +362,6 @@ class CPHASE(AbstractGate):
     n_params = 1
 
     def __init__(self, qubits: ArrayLike, n_qubits: int):
-
         """
         Represents a controlled-phase (CPHASE) gate in a quantum circuit.
         The CPhase gate class creates a controlled Phase gate, applying the PhaseGate

@@ -17,7 +17,6 @@ pi = torch.tensor(torch.pi, dtype=torch.cdouble)
 
 
 def test_batched_ops() -> None:
-
     n_qubits: int = 2
     batch_size: int = 10
     qc = QuantumCircuit(n_qubits)
@@ -33,7 +32,6 @@ def test_batched_ops() -> None:
 
 
 def test_batched_cphase() -> None:
-
     n_qubits: int = 2
     psi = torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).unsqueeze(2)
     psi_target = torch.tensor([[0, 0], [0, -1]], dtype=torch.cdouble).unsqueeze(2)
