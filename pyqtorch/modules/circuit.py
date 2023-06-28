@@ -150,8 +150,16 @@ class QuantumCircuit(Module):
             torch.Tensor: The output quantum state tensor after applying the circuit operations.
 
         """
+
+        from functools import partial
+
+        from torch.utils.checkpoint import checkpoint
+
+        # SEGMENTS = 1
+        # ms = [m for k, m in model._modules.items()]
+        # model.forward = partial(checkpoint_sequential, ms, SEGMENTS)
         for op in self.operations:
-            state = op(state, thetas)
+            state = checkpoint(op,state, thetas, use_reentrant=False)
         return state
 
     @property
