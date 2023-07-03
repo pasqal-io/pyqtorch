@@ -34,6 +34,19 @@ TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]])
 SWAPMAT = torch.tensor(
     [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
 )
+CSWAPMAT = torch.tensor(
+    [
+        [1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1]
+    ],
+    dtype=torch.cdouble
+)
 HMAT = 1 / torch.sqrt(torch.tensor(2)) * torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble)
 
 
@@ -46,6 +59,7 @@ OPERATIONS_DICT = {
     "T": TMAT,
     "H": HMAT,
     "SWAP": SWAPMAT,
+    "CSWAP": CSWAPMAT,
 }
 
 

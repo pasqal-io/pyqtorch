@@ -15,6 +15,8 @@ from conftest import TestBatchedFM, TestFM, TestNetwork  # noqa: E402
 
 from pyqtorch.ansatz import AlternateLayerAnsatz  # noqa: E402
 from pyqtorch.core import operation  # noqa: E402
+from pyqtorch.modules import zero_state, X
+
 
 state_0 = torch.tensor([[1, 0]], dtype=torch.cdouble)
 state_1 = torch.tensor([[0, 1]], dtype=torch.cdouble)
@@ -23,6 +25,12 @@ state_00 = torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_10 = torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_01 = torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_11 = torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).unsqueeze(2)
+
+state_000 = zero_state(3)
+state_001 = X(qubits=[2], n_qubits=3)(zero_state(3))
+state_100 = X(qubits=[0], n_qubits=3)(zero_state(3))
+state_101 = X(qubits=[2], n_qubits=3)(X(qubits=[0], n_qubits=3)(zero_state(3)))
+state_110 = X(qubits=[1], n_qubits=3)(X(qubits=[0], n_qubits=3)(zero_state(3)))
 
 pi = torch.tensor(torch.pi, dtype=torch.cdouble)
 
@@ -137,3 +145,28 @@ def test_CRY_state10_controlqubit_0() -> None:
 def test_CRY_state01_controlqubit_0() -> None:
     result: torch.Tensor = operation.CRY(pi, state_01, (1, 0), 2)
     assert torch.allclose(state_11, result)
+
+
+def test_CSWAP_state000_controlqubit_0() -> None:
+    result: torch.Tensor = operation.CSWAP(state_000, (0, 1, 2), 3)
+    assert torch.allclose(state_000, result)
+
+
+def test_CSWAP_state001_controlqubit_0() -> None:
+    result: torch.Tensor = operation.CSWAP(state_001, (0, 1, 2), 3)
+    assert torch.allclose(state_001, result)
+
+
+def test_CSWAP_state100_controlqubit_0() -> None:
+    result: torch.Tensor = operation.CSWAP(state_100, (0, 1, 2), 3)
+    assert torch.allclose(state_100, result)
+
+
+def test_CSWAP_state101_controlqubit_0() -> None:
+    result: torch.Tensor = operation.CSWAP(state_101, (0, 1, 2), 3)
+    assert torch.allclose(state_110, result)
+
+
+def test_CSWAP_state110_controlqubit_0() -> None:
+    result: torch.Tensor = operation.CSWAP(state_110, (0, 1, 2), 3)
+    assert torch.allclose(state_101, result)

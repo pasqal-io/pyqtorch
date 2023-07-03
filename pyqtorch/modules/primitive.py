@@ -369,3 +369,33 @@ class CZ(ControlledOperationGate):
         ```
         """
         super().__init__("Z", qubits, n_qubits)
+
+
+class CSWAP(ControlledOperationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        """
+        Represents a controlled-SWAP (CSWAP) gate in a quantum circuit.
+        The CSWAP gate class creates a controlled SWAP gate, applying
+        the SWAP gate according to the control qubit state.
+
+
+        Arguments:
+            qubits (ArrayLike): The control and targets qubits for the CSWAP gate.
+            n_qubits (int): The total number of qubits in the circuit.
+
+        Examples:
+        ```python exec="on" source="above" result="json"
+        import torch
+        import pyqtorch.modules as pyq
+
+        # Create a CSWAP gate
+        cswap_gate = pyq.CSWAP(qubits=[0, 1, 2], n_qubits=3)
+
+        # Create a zero state
+        swap_state = pyq.zero_state(n_qubits=3)
+
+        # Apply the CSWAP gate to the zero state
+        result = cswap_gate(swap_state)
+        print(result)
+        """
+        super().__init__("CSWAP", qubits, n_qubits)
