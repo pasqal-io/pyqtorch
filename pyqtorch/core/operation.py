@@ -482,15 +482,15 @@ def CPHASE(
 def CSWAP(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     """Controlled SWAP gate with three-qubit support
 
-        Args:
-            state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
-            qubits (ArrayLike): list of qubit indices where the gate will operate
-            N_qubits (int): the number of qubits in the system
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
 
-        Returns:
+    Returns:
 
-            torch.Tensor: the resulting state after applying the gate
-        """
+        torch.Tensor: the resulting state after applying the gate
+    """
     if ops_cache.enabled:
         store_operation("CSWAP", qubits)
 
