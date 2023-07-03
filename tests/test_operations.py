@@ -17,6 +17,8 @@ from conftest import TestBatchedFM, TestFM, TestNetwork  # noqa: E402
 
 from pyqtorch.ansatz import AlternateLayerAnsatz  # noqa: E402
 from pyqtorch.core import operation  # noqa: E402
+from pyqtorch.modules import zero_state, X
+
 
 state_0 = torch.tensor([[1, 0]], dtype=torch.cdouble)
 state_1 = torch.tensor([[0, 1]], dtype=torch.cdouble)
