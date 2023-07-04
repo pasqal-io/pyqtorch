@@ -36,8 +36,10 @@ def Hamiltonian(batch_size: int = 1) -> torch.Tensor:
     H = torch.kron(Hbase, Hbase)
     if batch_size == 1:
         return H
-    else:
+    elif batch_size == 2:
         return torch.stack((H, H.conj()), dim=2)
+    else:
+        raise NotImplementedError
 
 
 def Hamiltonian_general(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
@@ -159,36 +161,58 @@ def test_hamevo_consistency(get_hamiltonians: Callable) -> None:
 @pytest.mark.parametrize(
     "ham_evo_type, ham_evo_class",
     [
-        # (pyq.HamEvoType.RK4, pyq.HamEvo),
-        # (pyq.HamEvoType.EIG, pyq.HamEvoEig),
+        (pyq.HamEvoType.RK4, pyq.HamEvo),
+        (pyq.HamEvoType.EIG, pyq.HamEvoEig),
         (pyq.HamEvoType.EXP, pyq.HamEvoExp),
         ("rk4", pyq.HamEvo),
         ("eig", pyq.HamEvoEig),
         ("exp", pyq.HamEvoExp),
     ],
 )
+@pytest.mark.parametrize(
+    "H, t_evo, target, batch_size",
+    [
+        (  # batchsize 1 | 1
+            Hamiltonian(1),
+            torch.tensor([torch.pi / 4], dtype=torch.cdouble),
+            torch.tensor([0.5]),
+            1,
+        ),
+        (  # batchsize 1 | 4
+            Hamiltonian(1),
+            torch.tensor([torch.pi / 4, 0.0, torch.pi / 2, torch.pi]),
+            torch.tensor([0.5, 1.0, 0.0, 1.0]),
+            4,
+        ),
+        (  # batchsize 2 | 1
+            Hamiltonian(2),
+            torch.tensor([torch.pi / 4], dtype=torch.cdouble),
+            torch.tensor([0.5, 0.5]),
+            2,
+        ),
+        (  # batchsize 2 | 2
+            Hamiltonian(2),
+            torch.tensor([torch.pi / 4, torch.pi]),
+            torch.tensor([0.5, 1.0]),
+            2,
+        ),
+    ],
+)
 def test_hamiltonianevolution_with_types(
-    ham_evo_type: pyq.HamEvoType, ham_evo_class: torch.nn.Module
+    ham_evo_type: pyq.HamEvoType,
+    ham_evo_class: torch.nn.Module,
+    H: torch.Tensor,
+    t_evo: torch.Tensor,
+    target: torch.Tensor,
+    batch_size: int,
 ) -> None:
-    # n_qubits = 4
-    # H = Hamiltonian(1)
-    # t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
+    def overlap(state1: torch.Tensor, state2: torch.Tensor) -> torch.Tensor:
+        N = len(state1.shape) - 1
+        state1_T = torch.transpose(state1, N, 0)
+        overlap = torch.tensordot(state1_T, state2, dims=N)
+        return torch.abs(overlap**2).flatten()
 
-    # hamevo = pyq.HamiltonianEvolution(range(n_qubits), n_qubits, hamevo_type=ham_evo_type)
-    # ham_evo_instance = hamevo.get_hamevo_instance(H, t_evo)
-    # assert isinstance(ham_evo_instance, ham_evo_class)
-
-    # psi = pyq.uniform_state(n_qubits)
-    # psi_star = hamevo(H, t_evo, psi)
-    # result = overlap(psi_star, psi)
-    # result = result if isinstance(result, float) else result[0]
-    # assert isclose(result, 0.5)
-
-
-    n_qubits = 2
-    H = Hamiltonian(1)
-    t_evo = torch.tensor([torch.pi / 4]*3, dtype=torch.cdouble)
-
+    n_qubits = 4
     hamevo = pyq.HamiltonianEvolution(range(n_qubits), n_qubits, hamevo_type=ham_evo_type)
     ham_evo_instance = hamevo.get_hamevo_instance(H, t_evo)
     assert isinstance(ham_evo_instance, ham_evo_class)
@@ -196,6 +220,5 @@ def test_hamiltonianevolution_with_types(
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(H, t_evo, psi)
     result = overlap(psi_star, psi)
-    print(result)
-    raise
-    assert isclose(result, 0.5)
+    assert result.size() == (batch_size,)
+    assert torch.allclose(result, target)

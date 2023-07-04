@@ -36,8 +36,18 @@ class HamEvo(torch.nn.Module):
         self.qubits = qubits
         self.n_qubits = n_qubits
         self.n_steps = n_steps
-        self.register_buffer("H", H)
-        self.register_buffer("t", t)
+        if H.ndim == 2:
+            H = H.unsqueeze(2)
+        if H.size(-1) == t.size(0) or t.size(0) == 1:
+            self.register_buffer("H", H)
+            self.register_buffer("t", t)
+        elif H.size(-1) == 1:
+            (x, y, _) = H.size()
+            self.register_buffer("H", H.expand(x, y, t.size(0)))
+            self.register_buffer("t", t)
+        else:
+            msg = "H and t batchsizes either have to match or (one of them has to) be equal to one."
+            raise ValueError(msg)
 
     def apply(self, state: torch.Tensor) -> torch.Tensor:
         """
@@ -50,7 +60,10 @@ class HamEvo(torch.nn.Module):
             tensor: Output state after Hamiltonian evolution.
         """
 
-        batch_size = state.size(-1)
+        batch_size = max(state.size(-1), self.H.size(-1))
+        if state.size(-1) == 1:
+            state = state.repeat(*[1 for _ in range(len(state.size()) - 1)], batch_size)
+
         h = self.t.reshape((1, -1)) / self.n_steps
         for _ in range(self.n_qubits - 1):
             h = h.unsqueeze(0)
@@ -127,13 +140,21 @@ class HamEvoEig(HamEvo):
         if len(self.H.size()) < 3:
             self.H = self.H.unsqueeze(2)
         batch_size_h = self.H.size()[BATCH_DIM]
-        self.l_vec = []
-        self.l_val = []
-        for i in range(batch_size_h):
-            eig_values, eig_vectors = diagonalize(self.H[..., i])
+        batch_size_t = self.t.size(0)
 
-            self.l_vec.append(eig_vectors)
-            self.l_val.append(eig_values)
+        self._eigs = []
+        if batch_size_h == batch_size_t or batch_size_t == 1:
+            for i in range(batch_size_h):
+                eig_values, eig_vectors = diagonalize(self.H[..., i])
+                self._eigs.append((eig_values, eig_vectors))
+        elif batch_size_h == 1:
+            eig_values, eig_vectors = diagonalize(self.H[..., 0])
+            for i in range(batch_size_t):
+                self._eigs.append((eig_values, eig_vectors))
+        else:
+            msg = "H and t batchsizes either have to match or (one of them has to) be equal to one."
+            raise ValueError(msg)
+        self.batch_size = max(batch_size_h, batch_size_t)
 
     def apply(self, state: torch.Tensor) -> torch.Tensor:
         """
@@ -147,22 +168,11 @@ class HamEvoEig(HamEvo):
             tensor: Output state after Hamiltonian evolution.
         """
 
-        batch_size_t = len(self.t)
-        batch_size_h = self.H.size()[BATCH_DIM]
-        t_evo = torch.zeros(batch_size_h).to(torch.cdouble)
-        evol_operator = torch.zeros(self.H.size()).to(torch.cdouble)
+        (x, y, _) = self.H.size()
+        evol_operator = torch.zeros(x, y, self.batch_size).to(torch.cdouble)
+        t_evo = self.t.repeat(self.batch_size) if self.t.size(0) == 1 else self.t
 
-        if batch_size_t >= batch_size_h:
-            t_evo = self.t[:batch_size_h]
-        else:
-            if batch_size_t == 1:
-                t_evo[:] = self.t[0]
-            else:
-                t_evo[:batch_size_t] = self.t
-
-        for i in range(batch_size_h):
-            eig_values, eig_vectors = self.l_val[i], self.l_vec[i]
-
+        for i, (eig_values, eig_vectors) in enumerate(self._eigs):
             if eig_vectors is None:
                 # Compute e^(-i H t)
                 evol_operator[..., i] = torch.diag(torch.exp(-1j * eig_values * t_evo[i]))
@@ -176,7 +186,7 @@ class HamEvoEig(HamEvo):
                     torch.conj(eig_vectors.transpose(0, 1)),
                 )
 
-        return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
+        return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, self.batch_size)
 
 
 class HamEvoExp(HamEvo):
@@ -217,15 +227,7 @@ class HamEvoExp(HamEvo):
 
         batch_size_t = len(self.t)
         batch_size_h = self.H.size()[BATCH_DIM]
-        t_evo = torch.zeros(batch_size_h).to(torch.cdouble)
-
-        if batch_size_t >= batch_size_h:
-            t_evo = self.t[:batch_size_h]
-        else:
-            if batch_size_t == 1:
-                t_evo[:] = self.t[0]
-            else:
-                t_evo[:batch_size_t] = self.t
+        t_evo = self.t
 
         if self.batch_is_diag:
             # Skips the matrix exponential for diagonal hamiltonians
@@ -239,9 +241,8 @@ class HamEvoExp(HamEvo):
             evol_operator_T = torch.linalg.matrix_exp(evol_exp_arg)
             evol_operator = torch.transpose(evol_operator_T, 0, -1)
 
-        print(evol_operator.size())
-        raise
-        return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
+        batch_size = max(batch_size_h, batch_size_t)
+        return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size)
 
 
 class HamEvoType(Enum):
@@ -340,7 +341,5 @@ class HamiltonianEvolution(Module):
         Returns:
             The state (tensor) after Hamiltonian evolution.
         """
-        print(H.size())
-        print(t.size())
         ham_evo_instance = self.get_hamevo_instance(H, t)
         return ham_evo_instance.forward(state)
