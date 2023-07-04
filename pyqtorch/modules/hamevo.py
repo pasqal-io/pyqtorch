@@ -239,6 +239,8 @@ class HamEvoExp(HamEvo):
             evol_operator_T = torch.linalg.matrix_exp(evol_exp_arg)
             evol_operator = torch.transpose(evol_operator_T, 0, -1)
 
+        print(evol_operator.size())
+        raise
         return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size_h)
 
 
@@ -338,6 +340,7 @@ class HamiltonianEvolution(Module):
         Returns:
             The state (tensor) after Hamiltonian evolution.
         """
-
+        print(H.size())
+        print(t.size())
         ham_evo_instance = self.get_hamevo_instance(H, t)
         return ham_evo_instance.forward(state)
