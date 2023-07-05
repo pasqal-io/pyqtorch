@@ -13,7 +13,7 @@ state_101 = pyq.X(qubits=[2], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(pyq.zero
 state_110 = pyq.X(qubits=[1], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(pyq.zero_state(3)))
 
 
-@pytest.mark.parametrize("gate", ["X", "Y", "Z"])
+@pytest.mark.parametrize("gate", ["X", "Y", "Z", "H", "I", "S", "T", "Sdagger"])
 def test_constant_gates(gate: str) -> None:
     dtype = torch.cdouble
     device = "cpu"

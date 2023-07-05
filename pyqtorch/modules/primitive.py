@@ -232,6 +232,34 @@ class S(PrimitiveGate):
         super().__init__("S", qubits, n_qubits)
 
 
+class Sdagger(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        """
+        Represents an Sdagger gate (-PI/2 phase gate) in a quantum circuit.
+
+        Arguments:
+            qubits (ArrayLike): The qubits to which the S gate is applied.
+            n_qubits (int): The total number of qubits in the circuit.
+
+        Examples:
+        ```python exec="on" source="above" result="json"
+        import torch
+        import pyqtorch.modules as pyq
+
+        # Create an Sdagger gate
+        sdagger_gate = pyq.Sdagger(qubits=[0], n_qubits=1)
+
+        # Create a zero state
+        z_state = pyq.zero_state(n_qubits=1)
+
+        # Apply the Sdagger gate to the zero state
+        result = sdagger_gate(z_state)
+        print(result)
+        ```
+        """
+        super().__init__("SDAGGER", qubits, n_qubits)
+
+
 class SWAP(PrimitiveGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
