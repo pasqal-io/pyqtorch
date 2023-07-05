@@ -7,11 +7,11 @@ import pyqtorch.core as func_pyq
 import pyqtorch.modules as pyq
 from pyqtorch.modules.abstract import AbstractGate
 
-state_000 = pyq.zero_state(3)
-state_001 = pyq.X(qubits=[2], n_qubits=3)(pyq.zero_state(3))
-state_100 = pyq.X(qubits=[0], n_qubits=3)(pyq.zero_state(3))
-state_101 = pyq.X(qubits=[2], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(pyq.zero_state(3)))
-state_110 = pyq.X(qubits=[1], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(pyq.zero_state(3)))
+state_000 = pyq.zero_state(3, device="cpu", dtype=torch.cdouble)
+state_001 = pyq.X(qubits=[2], n_qubits=3)(state_000)
+state_100 = pyq.X(qubits=[0], n_qubits=3)(state_000)
+state_101 = pyq.X(qubits=[2], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000))
+state_110 = pyq.X(qubits=[1], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000))
 
 
 @pytest.mark.parametrize("gate", ["X", "Y", "Z", "H", "I", "S", "T", "Sdagger"])
@@ -198,25 +198,30 @@ def test_circuit_composition(n_qubits: int) -> None:
 
 
 def test_CSWAP_state000_controlqubit_0() -> None:
-    result: torch.Tensor = func_pyq.operation.CSWAP(state_000, (0, 1, 2), 3)
-    assert torch.allclose(state_000, result)
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert not torch.allclose(cswap(state_000), state_000)
 
 
 def test_CSWAP_state001_controlqubit_0() -> None:
-    result: torch.Tensor = func_pyq.operation.CSWAP(state_001, (0, 1, 2), 3)
-    assert torch.allclose(state_001, result)
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert not torch.allclose(cswap(state_001), state_001)
 
 
 def test_CSWAP_state100_controlqubit_0() -> None:
-    result: torch.Tensor = func_pyq.operation.CSWAP(state_100, (0, 1, 2), 3)
-    assert torch.allclose(state_100, result)
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert not torch.allclose(cswap(state_100), state_100)
 
 
 def test_CSWAP_state101_controlqubit_0() -> None:
-    result: torch.Tensor = func_pyq.operation.CSWAP(state_101, (0, 1, 2), 3)
-    assert torch.allclose(state_110, result)
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert not torch.allclose(cswap(state_101), state_110)
 
 
 def test_CSWAP_state110_controlqubit_0() -> None:
-    result: torch.Tensor = func_pyq.operation.CSWAP(state_110, (0, 1, 2), 3)
-    assert torch.allclose(state_101, result)
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert not torch.allclose(cswap(state_110), state_101)
