@@ -30,6 +30,7 @@ XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
 YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
 ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
+SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=torch.cdouble)
 TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]])
 SWAPMAT = torch.tensor(
     [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
@@ -43,6 +44,7 @@ OPERATIONS_DICT = {
     "Y": YMAT,
     "Z": ZMAT,
     "S": SMAT,
+    "SDAGGER": SDAGGERMAT,
     "T": TMAT,
     "H": HMAT,
     "SWAP": SWAPMAT,
