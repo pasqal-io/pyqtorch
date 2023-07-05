@@ -24,7 +24,7 @@ class AbstractGate(ABC, Module):
             ml = torch.nn.ModuleList([self]) + other.operations
             return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), ml)
         else:
-            return ValueError(f"Cannot compose {type(self)} with {type(other)}")
+            return TypeError(f"Cannot compose {type(self)} with {type(other)}")
 
     def __key(self) -> tuple:
         return (self.n_qubits, *self.qubits)
