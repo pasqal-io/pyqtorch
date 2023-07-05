@@ -7,7 +7,7 @@ import pyqtorch.core as func_pyq
 import pyqtorch.modules as pyq
 
 
-@pytest.mark.parametrize("gate", ["X", "Y", "Z"])
+@pytest.mark.parametrize("gate", ["X", "Y", "Z", "H", "I", "S", "T", "Sdagger"])
 def test_constant_gates(gate: str) -> None:
     dtype = torch.cdouble
     device = "cpu"
