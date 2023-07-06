@@ -54,7 +54,7 @@ def create_controlled_matrix_from_operation(
     """
     mat_size = len(operation_matrix)
     controlled_mat: torch.Tensor = torch.eye(2 * mat_size, dtype=torch.cdouble)
-    controlled_mat[mat_size:, mat_size:] = operation_matrix
+    controlled_mat[-mat_size:, -mat_size:] = operation_matrix
     return controlled_mat
 
 
