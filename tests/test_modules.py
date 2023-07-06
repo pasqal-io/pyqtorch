@@ -7,6 +7,12 @@ import pyqtorch.core as func_pyq
 import pyqtorch.modules as pyq
 from pyqtorch.modules.abstract import AbstractGate
 
+state_000 = pyq.zero_state(3, device="cpu", dtype=torch.cdouble)
+state_001 = pyq.X(qubits=[2], n_qubits=3)(state_000)
+state_100 = pyq.X(qubits=[0], n_qubits=3)(state_000)
+state_101 = pyq.X(qubits=[2], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000))
+state_110 = pyq.X(qubits=[1], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000))
+
 
 @pytest.mark.parametrize("gate", ["X", "Y", "Z", "H", "I", "S", "T", "Sdagger"])
 def test_constant_gates(gate: str) -> None:
@@ -189,3 +195,33 @@ def test_circuit_composition(n_qubits: int) -> None:
     )
     truth = pyq.QuantumCircuit(n_qubits, [pyq.X([0], 1), pyq.Y([0], 1), rx, pyq.RY([0], 1)])
     assert circ == truth
+
+
+def test_CSWAP_state000_controlqubit_0() -> None:
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert torch.allclose(cswap(state_000), state_000)
+
+
+def test_CSWAP_state001_controlqubit_0() -> None:
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert torch.allclose(cswap(state_001), state_001)
+
+
+def test_CSWAP_state100_controlqubit_0() -> None:
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert torch.allclose(cswap(state_100), state_100)
+
+
+def test_CSWAP_state101_controlqubit_0() -> None:
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert torch.allclose(cswap(state_101), state_110)
+
+
+def test_CSWAP_state110_controlqubit_0() -> None:
+    n_qubits = 3
+    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
+    assert torch.allclose(cswap(state_110), state_101)
