@@ -200,28 +200,28 @@ def test_circuit_composition(n_qubits: int) -> None:
 def test_CSWAP_state000_controlqubit_0() -> None:
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert not torch.allclose(cswap(state_000), state_000)
+    assert torch.allclose(cswap(state_000), state_000)
 
 
 def test_CSWAP_state001_controlqubit_0() -> None:
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert not torch.allclose(cswap(state_001), state_001)
+    assert torch.allclose(cswap(state_001), state_001)
 
 
 def test_CSWAP_state100_controlqubit_0() -> None:
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert not torch.allclose(cswap(state_100), state_100)
+    assert torch.allclose(cswap(state_100), state_100)
 
 
 def test_CSWAP_state101_controlqubit_0() -> None:
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert not torch.allclose(cswap(state_101), state_110)
+    assert torch.allclose(cswap(state_101), state_110)
 
 
 def test_CSWAP_state110_controlqubit_0() -> None:
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert not torch.allclose(cswap(state_110), state_101)
+    assert torch.allclose(cswap(state_110), state_101)

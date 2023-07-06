@@ -52,8 +52,9 @@ def create_controlled_matrix_from_operation(
 
         torch.Tensor: the resulting controlled gate populated by operation_matrix
     """
-    controlled_mat: torch.Tensor = torch.eye(4, dtype=torch.cdouble)
-    controlled_mat[2:, 2:] = operation_matrix
+    mat_size = len(operation_matrix)
+    controlled_mat: torch.Tensor = torch.eye(2 * mat_size, dtype=torch.cdouble)
+    controlled_mat[mat_size:, mat_size:] = operation_matrix
     return controlled_mat
 
 
@@ -511,12 +512,11 @@ def CSWAP(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor
 
         torch.Tensor: the resulting state after applying the gate
     """
+
     if ops_cache.enabled:
         store_operation("CSWAP", qubits)
 
-    dev = state.device
-    mat = OPERATIONS_DICT["CSWAP"].to(dev)
-    return _apply_gate(state, mat, qubits, N_qubits)
+    return ControlledOperationGate(state, qubits, N_qubits, OPERATIONS_DICT["SWAP"])
 
 
 def hamiltonian_evolution(

@@ -426,4 +426,4 @@ class CSWAP(ControlledOperationGate):
         result = cswap_gate(swap_state)
         print(result)
         """
-        super().__init__("CSWAP", qubits, n_qubits)
+        super().__init__("SWAP", qubits, n_qubits)
