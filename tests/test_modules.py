@@ -197,6 +197,22 @@ def test_circuit_composition(n_qubits: int) -> None:
     assert circ == truth
 
 
+def test_N_state0() -> None:
+    n_qubits = 1
+    state0 = pyq.zero_state(n_qubits, device="cpu", dtype=torch.cdouble)
+    state0 = pyq.X([0], n_qubits)(state0)
+    n = pyq.N([0], n_qubits)
+
+    assert torch.allclose(n(state0), state0)
+
+    n_state = n(state0)
+    composite_n_state = torch.zeros_like(state0)
+    composite_n_state += 0.5 * pyq.I([0], n_qubits)(state0)
+    composite_n_state += -0.5 * pyq.Z([0], n_qubits)(state0)
+
+    assert torch.allclose(composite_n_state, n_state)
+
+
 def test_CSWAP_state000_controlqubit_0() -> None:
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
