@@ -278,7 +278,7 @@ class N(PrimitiveGate):
         n_gate = pyq.N(qubits=[0], n_qubits=1)
 
         # Create a zero state
-        z_state = pyq.zero_state(n_qubits=1)
+        n_state = pyq.zero_state(n_qubits=1)
 
         # Apply the N gate to the zero state
         result = n_gate(n_state)
