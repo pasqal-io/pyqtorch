@@ -232,6 +232,34 @@ class S(PrimitiveGate):
         super().__init__("S", qubits, n_qubits)
 
 
+class Sdagger(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        """
+        Represents an Sdagger gate (-PI/2 phase gate) in a quantum circuit.
+
+        Arguments:
+            qubits (ArrayLike): The qubits to which the S gate is applied.
+            n_qubits (int): The total number of qubits in the circuit.
+
+        Examples:
+        ```python exec="on" source="above" result="json"
+        import torch
+        import pyqtorch.modules as pyq
+
+        # Create an Sdagger gate
+        sdagger_gate = pyq.Sdagger(qubits=[0], n_qubits=1)
+
+        # Create a zero state
+        z_state = pyq.zero_state(n_qubits=1)
+
+        # Apply the Sdagger gate to the zero state
+        result = sdagger_gate(z_state)
+        print(result)
+        ```
+        """
+        super().__init__("SDAGGER", qubits, n_qubits)
+
+
 class SWAP(PrimitiveGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
@@ -369,3 +397,33 @@ class CZ(ControlledOperationGate):
         ```
         """
         super().__init__("Z", qubits, n_qubits)
+
+
+class CSWAP(ControlledOperationGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        """
+        Represents a controlled-SWAP (CSWAP) gate in a quantum circuit.
+        The CSWAP gate class creates a controlled SWAP gate, applying
+        the SWAP gate according to the control qubit state.
+
+
+        Arguments:
+            qubits (ArrayLike): The control and targets qubits for the CSWAP gate.
+            n_qubits (int): The total number of qubits in the circuit.
+
+        Examples:
+        ```python exec="on" source="above" result="json"
+        import torch
+        import pyqtorch.modules as pyq
+
+        # Create a CSWAP gate
+        cswap_gate = pyq.CSWAP(qubits=[0, 1, 2], n_qubits=3)
+
+        # Create a zero state
+        swap_state = pyq.zero_state(n_qubits=3)
+
+        # Apply the CSWAP gate to the zero state
+        result = cswap_gate(swap_state)
+        print(result)
+        """
+        super().__init__("SWAP", qubits, n_qubits)
