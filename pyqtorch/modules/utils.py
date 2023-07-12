@@ -17,6 +17,14 @@ def is_real(H: torch.Tensor) -> bool:
     return len(torch.imag(H).to_sparse().coalesce().values()) == 0
 
 
+def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
+    n_qubits = len(state.size()) - 1
+    batch_size = state.size(-1)
+    state = state.reshape((2**n_qubits, batch_size))
+    other = other.reshape((2**n_qubits, batch_size))
+    return torch.real(torch.sum(torch.conj(state) * other, dim=0))
+
+
 def rot_matrices(
     theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
 ) -> torch.Tensor:
