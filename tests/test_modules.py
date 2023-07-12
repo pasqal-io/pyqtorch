@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 import pytest
 import torch
 
@@ -225,3 +227,31 @@ def test_CSWAP_state110_controlqubit_0() -> None:
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
     assert torch.allclose(cswap(state_110), state_101)
+
+
+@pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
+@pytest.mark.parametrize("n_qubits", [i for i in range(1, 8)])
+@pytest.mark.parametrize("batch_size", [i for i in range(1, 8)])
+def test_isnormalized_states(state_fn: Callable, n_qubits: int, batch_size: int) -> None:
+    state = state_fn(n_qubits, batch_size)
+    assert pyq.is_normalized(state)
+
+
+@pytest.mark.parametrize("n_qubits", [i for i in range(1, 8)])
+@pytest.mark.parametrize("batch_size", [i for i in range(1, 8)])
+def test_state_shapes(n_qubits: int, batch_size: int) -> None:
+    zero = pyq.zero_state(n_qubits, batch_size)
+    uni = pyq.uniform_state(n_qubits, batch_size)
+    rand = pyq.random_state(n_qubits, batch_size)
+    assert zero.shape == rand.shape and uni.shape == rand.shape
+
+
+@pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
+@pytest.mark.parametrize("n_qubits", [i for i in range(1, 8)])
+@pytest.mark.parametrize("batch_size", [i for i in range(1, 8)])
+def test_overlap_states_batch_nqubits(state_fn: Callable, n_qubits: int, batch_size: int) -> None:
+    state = state_fn(n_qubits, batch_size)
+    assert torch.allclose(
+        pyq.overlap(state, state),
+        torch.ones(batch_size),
+    )
