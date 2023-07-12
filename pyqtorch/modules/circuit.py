@@ -162,15 +162,13 @@ class QuantumCircuit(Module):
 
         """
 
-        from functools import partial
-
         from torch.utils.checkpoint import checkpoint
 
-        # SEGMENTS = 1
+        SEGMENTS = 1
         # ms = [m for k, m in model._modules.items()]
-        # model.forward = partial(checkpoint_sequential, ms, SEGMENTS)
+        # _forward = partial(checkpoint_sequential, self.operations, SEGMENTS)
         for op in self.operations:
-            state = checkpoint(op,state, thetas, use_reentrant=False)
+            state = checkpoint(op, state, thetas, use_reentrant=False)
         return state
 
     @property
