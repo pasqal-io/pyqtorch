@@ -225,3 +225,12 @@ def test_CSWAP_state110_controlqubit_0() -> None:
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
     assert torch.allclose(cswap(state_110), state_101)
+    
+
+@pytest.mark.parametrize("n_qubits", [1, 2, 4, 6])
+@pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
+def test_overlap_nqubits(n_qubits: int, batch_size: int) -> None:
+    assert torch.allclose(
+        pyq.overlap(pyq.zero_state(n_qubits, batch_size), pyq.zero_state(n_qubits, batch_size)),
+        torch.ones(batch_size),
+    )
