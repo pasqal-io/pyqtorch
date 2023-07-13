@@ -7,18 +7,13 @@ def normalize(wf: torch.Tensor) -> torch.Tensor:
     return wf / torch.sqrt((wf.abs() ** 2).sum())
 
 
-def is_normalized(state: torch.Tensor, atol: float = 1e-07) -> bool:
+def is_normalized(state: torch.Tensor, atol: float = 1e-15) -> bool:
     n_qubits = len(state.size()) - 1
     batch_size = state.size()[-1]
     state = state.reshape((2**n_qubits, batch_size))
-
-    def _is_normalized(state: torch.Tensor) -> torch.Tensor:
-        sum_probs: torch.Tensor = (state.abs() ** 2).sum(dim=0)
-        if not torch.allclose(sum_probs, torch.ones(batch_size), rtol=0.0, atol=atol):
-            breakpoint()
-        return True
-
-    return _is_normalized(state)  # type: ignore[no-any-return]
+    sum_probs = (state.abs() ** 2).sum(dim=0)
+    ones = torch.ones(batch_size)
+    return torch.allclose(sum_probs, ones, rtol=0.0, atol=atol)  # type:ignore[no-any-return]
 
 
 def is_diag(H: torch.Tensor) -> bool:
@@ -42,11 +37,9 @@ def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
     other = other.reshape((2**n_qubits, batch_size))
     res = []
     for i in range(batch_size):
-        s = state[:, i]
-        o = other[:, i]
-        ovrlp = torch.real(torch.sum(torch.conj(s) * o))
+        ovrlp = torch.real(torch.sum(torch.conj(state[:, i]) * other[:, i]))
         res.append(ovrlp)
-    return torch.tensor(res)
+    return torch.stack(res)
 
 
 def rot_matrices(
@@ -155,7 +148,9 @@ def random_state(
         x = -torch.log(torch.rand(N))
         sumx = torch.sum(x)
         phases = torch.rand(N) * 2.0 * torch.pi
-        return (torch.sqrt(x / sumx) * torch.exp(1j * phases)).reshape(N, 1).type(dtype).to(device)
+        return normalize(
+            (torch.sqrt(x / sumx) * torch.exp(1j * phases)).reshape(N, 1).type(dtype).to(device)
+        )
 
     _state = torch.concat(tuple(_rand(n_qubits) for _ in range(batch_size)), dim=1)
     return _state.reshape([2] * n_qubits + [batch_size])
