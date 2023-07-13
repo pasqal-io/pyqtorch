@@ -42,11 +42,9 @@ def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
     other = other.reshape((2**n_qubits, batch_size))
     res = []
     for i in range(batch_size):
-        s = state[:, i]
-        o = other[:, i]
-        ovrlp = torch.real(torch.sum(torch.conj(s) * o))
+        ovrlp = torch.real(torch.sum(torch.conj(state[:, i]) * other[:, i]))
         res.append(ovrlp)
-    return torch.tensor(res)
+    return torch.stack(res)
 
 
 def rot_matrices(
