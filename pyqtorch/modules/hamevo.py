@@ -343,3 +343,20 @@ class HamiltonianEvolution(Module):
         """
         ham_evo_instance = self.get_hamevo_instance(H, t)
         return ham_evo_instance.forward(state)
+
+
+class HamEvoSparseAnalog(Module):
+    def __init__(self, H: torch.Tensor, t: torch.Tensor):
+        super().__init__()
+        self.register_buffer("H", H.to_sparse())
+        self.register_buffer("H_T", torch.transpose(H, 0, -1).to_sparse())
+        self.register_buffer("t", t)
+        self.register_buffer("evol_exp_arg", self.H_T * (-1j * self.t).view((-1, 1)))
+
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        # https://discuss.pytorch.org/t/exponential-of-sparse-tensor/119910/2
+        evol_operator_T = torch.sparse_coo_tensor(
+            self.evol_exp_arg.indices(), self.evol_exp_arg.values().exp(), self.evol_exp_arg.shape
+        )
+        evol_operator = torch.transpose(evol_operator_T, 0, -1)
+        return torch.sparse.mm(evol_operator, state)

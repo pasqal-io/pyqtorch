@@ -222,3 +222,20 @@ def test_hamiltonianevolution_with_types(
     result = overlap(psi_star, psi)
     assert result.size() == (batch_size,)
     assert torch.allclose(result, target)
+
+
+@pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
+@pytest.mark.parametrize("n_qubits", [i for i in range(1, 8)])
+def test_sparse_analog_hamevo(state_fn: Callable, n_qubits: int) -> None:
+    # H = pyq.Z([0],1).matrices({})
+    t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
+    # for _ in range(n_qubits):
+    #     H = torch.kron(H,H)
+    # assert H.shape[0] == 2**n_qubits
+    from pyqtorch.modules.hamevo import HamEvoSparseAnalog
+
+    H = Hamiltonian_general(n_qubits).squeeze(2)
+
+    hamevo = HamEvoSparseAnalog(H, t_evo)
+    state = state_fn(n_qubits).reshape(2**n_qubits, 1).to_sparse()
+    assert all(hamevo(state))
