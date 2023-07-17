@@ -71,9 +71,9 @@ def test_controlled_parametrized_gates(batch_size: int, n_qubits: int, gate: str
     phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE)
 
     Op = getattr(pyq, gate)
-    FuncOp = getattr(func_pyq.batched_operation, f"batched{gate}")
+    BatchedOP = getattr(func_pyq.batched_operation, f"batched{gate}")
 
-    func_out = FuncOp(phi, state, qubits, n_qubits)
+    func_out = BatchedOP(phi, state, qubits, n_qubits)
     op = Op(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
     mod_out = op(state, phi)
 
