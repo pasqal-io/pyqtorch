@@ -9,80 +9,97 @@ import pyqtorch.core as func_pyq
 import pyqtorch.modules as pyq
 from pyqtorch.modules.abstract import AbstractGate
 
-state_000 = pyq.zero_state(3, device="cpu", dtype=torch.cdouble)
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DTYPE = torch.cdouble
+
+state_000 = pyq.zero_state(3, device=DEVICE, dtype=DTYPE)
 state_001 = pyq.X(qubits=[2], n_qubits=3)(state_000)
 state_100 = pyq.X(qubits=[0], n_qubits=3)(state_000)
 state_101 = pyq.X(qubits=[2], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000))
 state_110 = pyq.X(qubits=[1], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000))
 
 
+@pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
+@pytest.mark.parametrize("n_qubits", [i for i in range(1, 6)])
 @pytest.mark.parametrize("gate", ["X", "Y", "Z", "H", "I", "S", "T", "Sdagger"])
-def test_constant_gates(gate: str) -> None:
+def test_constant_gates(batch_size: int, n_qubits: int, gate: str) -> None:
     dtype = torch.cdouble
-    device = "cpu"
-    batch_size = 100
-    qubits = [0]
-    n_qubits = 2
+    qubits = [torch.randint(low=0, high=n_qubits, size=(1,)).item()]
 
-    state = pyq.zero_state(n_qubits, batch_size=batch_size, device=device, dtype=dtype)
-    phi = torch.rand(batch_size, device=device, dtype=dtype)
-
+    state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
     Op = getattr(pyq, gate)
     FuncOp = getattr(func_pyq.operation, gate)
 
     func_out = FuncOp(state, qubits, n_qubits)
-    op = Op(qubits, n_qubits).to(device=device, dtype=dtype)
+    op = Op(qubits, n_qubits).to(device=DEVICE, dtype=dtype)
     mod_out = op(state)
 
     assert torch.allclose(func_out, mod_out)
 
 
+@pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
+@pytest.mark.parametrize("n_qubits", [i for i in range(1, 6)])
 @pytest.mark.parametrize("gate", ["RX", "RY", "RZ"])
-def test_parametrized_gates(gate: str) -> None:
-    dtype = torch.cdouble
-    device = "cpu"
-    batch_size = 100
-    qubits = [0]
-    n_qubits = 2
+def test_parametrized_gates(batch_size: int, n_qubits: int, gate: str) -> None:
+    qubits = [torch.randint(low=0, high=n_qubits, size=(1,)).item()]
 
-    state = pyq.zero_state(n_qubits, batch_size=batch_size, device=device, dtype=dtype)
-    phi = torch.rand(batch_size, device=device, dtype=dtype)
+    state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
+    phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE)
 
     Op = getattr(pyq, gate)
     FuncOp = getattr(func_pyq.batched_operation, f"batched{gate}")
 
     func_out = FuncOp(phi, state, qubits, n_qubits)
-    op = Op(qubits, n_qubits).to(device=device, dtype=dtype)
+    op = Op(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
     mod_out = op(state, phi)
 
     assert torch.allclose(func_out, mod_out)
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
-def test_circuit(batch_size: int) -> None:
-    n_qubits = 2
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype = torch.cdouble
+@pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
+@pytest.mark.parametrize("n_qubits", [i for i in range(2, 6)])
+@pytest.mark.parametrize("gate", ["CRX", "CRY", "CRZ"])
+def test_controlled_parametrized_gates(batch_size: int, n_qubits: int, gate: str) -> None:
+    qubits = torch.randint(low=0, high=n_qubits, size=(2,))
 
+    while qubits[0] == qubits[1]:
+        qubits[1] = torch.randint(low=0, high=n_qubits, size=(1,))
+
+    qubits = [qubits[0].item(), qubits[1].item()]
+
+    state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
+    phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE)
+
+    Op = getattr(pyq, gate)
+    FuncOp = getattr(func_pyq.batched_operation, f"batched{gate}")
+
+    func_out = FuncOp(phi, state, qubits, n_qubits)
+    op = Op(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
+    mod_out = op(state, phi)
+
+    assert torch.allclose(func_out, mod_out)
+
+
+@pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
+@pytest.mark.parametrize("n_qubits", [i for i in range(2, 6)])
+def test_circuit(batch_size: int, n_qubits: int) -> None:
     ops = [
         pyq.X([0], n_qubits),
         pyq.X([1], n_qubits),
         pyq.RX([1], n_qubits),
         pyq.CNOT([0, 1], n_qubits),
     ]
-    circ = pyq.QuantumCircuit(n_qubits, ops).to(device=device, dtype=dtype)
+    circ = pyq.QuantumCircuit(n_qubits, ops).to(device=DEVICE, dtype=DTYPE)
 
-    state = circ.init_state(batch_size)
-    phi = torch.rand(batch_size, device=device, dtype=dtype, requires_grad=True)
+    state = pyq.random_state(n_qubits, batch_size)
+    phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE, requires_grad=True)
 
-    assert circ(state, phi).size() == (2, 2, batch_size)
+    assert circ(state, phi).size() == tuple(2 for _ in range(n_qubits)) + (batch_size,)
 
-    state = pyq.zero_state(n_qubits, batch_size=batch_size, device=device, dtype=dtype)
+    state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
 
     res = circ(state, phi)
     assert not torch.all(torch.isnan(res))
-
-    # g = torch.autograd.grad(circ, thetas)
     dres_theta = torch.autograd.grad(res, phi, torch.ones_like(res), create_graph=True)[0]
     assert not torch.all(torch.isnan(dres_theta))
 
@@ -90,18 +107,15 @@ def test_circuit(batch_size: int) -> None:
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
 def test_empty_circuit(batch_size: int) -> None:
     n_qubits = 2
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype = torch.cdouble
-
     ops: list = []
-    circ = pyq.QuantumCircuit(n_qubits, ops).to(device=device, dtype=dtype)
+    circ = pyq.QuantumCircuit(n_qubits, ops).to(device=DEVICE, dtype=DTYPE)
 
     state = circ.init_state(batch_size)
-    phi = torch.rand(batch_size, device=device, dtype=dtype, requires_grad=True)
+    phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE, requires_grad=True)
 
     assert circ(state, phi).size() == (2, 2, batch_size)
 
-    state = pyq.zero_state(n_qubits, batch_size=batch_size, device=device, dtype=dtype)
+    state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
 
     res = circ(state, phi)
     assert not torch.all(torch.isnan(res))
@@ -112,7 +126,7 @@ def test_U_gate(batch_size: int) -> None:
     n_qubits = 1
     u = pyq.U([0], n_qubits)
     x = torch.rand(3, batch_size)
-    state = pyq.zero_state(n_qubits, batch_size=batch_size, device="cpu", dtype=torch.cdouble)
+    state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
     assert not torch.all(torch.isnan(u(state, x)))
 
 
@@ -233,16 +247,16 @@ def test_CSWAP_state110_controlqubit_0() -> None:
 @pytest.mark.parametrize("n_qubits", [i for i in range(1, 8)])
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 8)])
 def test_isnormalized_states(state_fn: Callable, n_qubits: int, batch_size: int) -> None:
-    state = state_fn(n_qubits, batch_size)
+    state = state_fn(n_qubits, batch_size, device=DEVICE, dtype=DTYPE)
     assert pyq.is_normalized(state)
 
 
 @pytest.mark.parametrize("n_qubits", [i for i in range(1, 8)])
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 8)])
 def test_state_shapes(n_qubits: int, batch_size: int) -> None:
-    zero = pyq.zero_state(n_qubits, batch_size)
-    uni = pyq.uniform_state(n_qubits, batch_size)
-    rand = pyq.random_state(n_qubits, batch_size)
+    zero = pyq.zero_state(n_qubits, batch_size, device=DEVICE, dtype=DTYPE)
+    uni = pyq.uniform_state(n_qubits, batch_size, device=DEVICE, dtype=DTYPE)
+    rand = pyq.random_state(n_qubits, batch_size, device=DEVICE, dtype=DTYPE)
     assert zero.shape == rand.shape and uni.shape == rand.shape
 
 
@@ -250,7 +264,7 @@ def test_state_shapes(n_qubits: int, batch_size: int) -> None:
 @pytest.mark.parametrize("n_qubits", [i for i in range(1, 8)])
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 8)])
 def test_overlap_states_batch_nqubits(state_fn: Callable, n_qubits: int, batch_size: int) -> None:
-    state = state_fn(n_qubits, batch_size)
+    state = state_fn(n_qubits, batch_size, device=DEVICE, dtype=DTYPE)
     assert torch.allclose(
         pyq.overlap(state, state),
         torch.ones(batch_size),
