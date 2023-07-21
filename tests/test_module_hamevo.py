@@ -224,10 +224,6 @@ def test_hamiltonianevolution_with_types(
 
 
 def test_hamevo_endianness() -> None:
-    # m = torch.rand(2,2)
-    # i = torch.eye(2)
-    # h = torch.kron(m, i)
-
     t = torch.ones(1)
     h = torch.tensor(
         [
