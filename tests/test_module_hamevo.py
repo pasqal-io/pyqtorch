@@ -224,16 +224,33 @@ def test_hamiltonianevolution_with_types(
 
 
 def test_hamevo_endianness() -> None:
-    m = torch.rand(2,2)
-    i = torch.eye(2)
-    h = torch.kron(m, i)
-    t = torch.ones(1)
+    # m = torch.rand(2,2)
+    # i = torch.eye(2)
+    # h = torch.kron(m, i)
 
-    op = pyq.HamEvoExp(h, t, qubits=[0,1], n_qubits=2)
+    t = torch.ones(1)
+    h = torch.tensor(
+        [
+            [0.9701, 0.0000, 0.7078, 0.0000],
+            [0.0000, 0.9701, 0.0000, 0.7078],
+            [0.4594, 0.0000, 0.9207, 0.0000],
+            [0.0000, 0.4594, 0.0000, 0.9207],
+        ]
+    )
+    iszero = torch.tensor([False, True, False, True])
+    op = pyq.HamEvoExp(h, t, qubits=[0, 1], n_qubits=2)
     st = op(pyq.zero_state(2)).flatten()
-    print(st)
-    mask = torch.isclose(st, torch.zero(1))
-    print(mask)
-    raise
-    assert not torch.allclose(st[0,2], 0)
-    raise
+    assert torch.allclose(st[iszero], torch.zeros(1, dtype=torch.cdouble))
+
+    h = torch.tensor(
+        [
+            [0.9701, 0.7078, 0.0000, 0.0000],
+            [0.4594, 0.9207, 0.0000, 0.0000],
+            [0.0000, 0.0000, 0.9701, 0.7078],
+            [0.0000, 0.0000, 0.4594, 0.9207],
+        ]
+    )
+    iszero = torch.tensor([False, False, True, True])
+    op = pyq.HamEvoExp(h, t, qubits=[0, 1], n_qubits=2)
+    st = op(pyq.zero_state(2)).flatten()
+    assert torch.allclose(st[iszero], torch.zeros(1, dtype=torch.cdouble))
