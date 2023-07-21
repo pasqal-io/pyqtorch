@@ -33,7 +33,7 @@ class HamEvo(torch.nn.Module):
         super().__init__()
         self.H: torch.Tensor
         self.t: torch.Tensor
-        self.qubits = qubits
+        self.qubits = [n_qubits - i - 1 for i in qubits]
         self.n_qubits = n_qubits
         self.n_steps = n_steps
         if H.ndim == 2:
