@@ -437,8 +437,8 @@ class TOFFOLI(ControlledOperationGate):
         Represents a multi qubit controlled toffoli gate in a quantum circuit.
         This gate performs a NOT operation only if all the control qubits are in state 1.
         Arguments:
-            qubits (ArrayLike): The first n-1 qubits will be considered as the control qubits and the last one will be
-            the target qubit of the Toffoli gate.
+            qubits (ArrayLike): The first n-1 qubits will be considered as the control
+            qubits and the last one will be the target qubit of the Toffoli gate.
 
         Examples:
         ```python exec="on" source="above" result="json"
