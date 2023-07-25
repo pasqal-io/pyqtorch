@@ -4,6 +4,7 @@ from typing import Callable
 
 import pytest
 import torch
+from torch import Tensor
 
 import pyqtorch.core as func_pyq
 import pyqtorch.modules as pyq
@@ -214,34 +215,20 @@ def test_circuit_composition(n_qubits: int) -> None:
     assert circ == truth
 
 
-def test_CSWAP_state000_controlqubit_0() -> None:
+@pytest.mark.parametrize(
+    "initial_state,expected_state",
+    [
+        (state_000, state_000),
+        (state_001, state_001),
+        (state_100, state_100),
+        (state_101, state_110),
+        (state_110, state_101),
+    ],
+)
+def test_CSWAP_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_000), state_000)
-
-
-def test_CSWAP_state001_controlqubit_0() -> None:
-    n_qubits = 3
-    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_001), state_001)
-
-
-def test_CSWAP_state100_controlqubit_0() -> None:
-    n_qubits = 3
-    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_100), state_100)
-
-
-def test_CSWAP_state101_controlqubit_0() -> None:
-    n_qubits = 3
-    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_101), state_110)
-
-
-def test_CSWAP_state110_controlqubit_0() -> None:
-    n_qubits = 3
-    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_110), state_101)
+    assert torch.allclose(cswap(initial_state), expected_state)
 
 
 @pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
