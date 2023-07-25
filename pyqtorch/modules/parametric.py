@@ -233,12 +233,9 @@ class PHASE(RotationGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
         Represents a PHASE rotation gate in a quantum circuit.
-        The PHASE gate class creates a single-qubit RZ gate that performs
-        a given rotation around the Z axis.
-
 
         Arguments:
-            qubits (ArrayLike): The qubit index or list of qubit indices to apply the RZ gate to.
+            qubits (ArrayLike): The qubit index or list of qubit indices.
             n_qubits (int): The total number of qubits in the circuit.
 
         Examples:
@@ -272,9 +269,9 @@ class PHASE(RotationGate):
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
-        batch_imat = self.imat.unsqueeze(2).repeat(1, 1, len(theta))
-        batch_imat[1, 1, :] = torch.exp(torch.tensor(1.0j * thetas)).unsqueeze(0).unsqueeze(1)
-        return batch_imat
+        batch_mat = self.imat.unsqueeze(2).repeat(1, 1, len(theta))
+        batch_mat[1, 1, :] = torch.exp(torch.tensor(1.0j * thetas)).unsqueeze(0).unsqueeze(1)
+        return batch_mat
 
 
 class CRX(ControlledRotationGate):
