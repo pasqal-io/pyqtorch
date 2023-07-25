@@ -7,6 +7,7 @@ import torch
 
 import pyqtorch.core as func_pyq
 import pyqtorch.modules as pyq
+from pyqtorch.core.utils import OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -269,3 +270,28 @@ def test_overlap_states_batch_nqubits(state_fn: Callable, n_qubits: int, batch_s
         pyq.overlap(state, state),
         torch.ones(batch_size),
     )
+
+
+@pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
+@pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
+@pytest.mark.parametrize("n_qubits", [i for i in range(1, 6)])
+def test_parametrized_phase_gate(state_fn: Callable, batch_size: int, n_qubits: int) -> None:
+    qubits = [torch.randint(low=0, high=n_qubits, size=(1,)).item()]
+    state = state_fn(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
+    phi = torch.tensor([torch.pi / 2], dtype=torch.cdouble)
+    phase = pyq.PHASE(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
+    constant_phase = pyq.S(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
+    assert torch.allclose(phase(state, phi), constant_phase(state, phi))
+
+
+@pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
+def test_parametric_phase_hamevo(
+    state_fn: Callable, batch_size: int = 1, n_qubits: int = 1
+) -> None:
+    qubits = [0]
+    state = state_fn(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
+    phi = torch.rand(1, dtype=torch.cdouble)
+    H = (OPERATIONS_DICT["Z"] - OPERATIONS_DICT["I"]) / 2
+    hamevo = pyq.HamEvoExp(H, phi, qubits=qubits, n_qubits=n_qubits)
+    phase = pyq.PHASE(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
+    assert torch.allclose(phase(state, phi), hamevo(state))
