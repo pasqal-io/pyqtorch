@@ -260,7 +260,23 @@ class PHASE(RotationGate):
         print(result)
         ```
         """
-        super().__init__("S", qubits, n_qubits)
+        super().__init__("I", qubits, n_qubits)
+
+    def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        batch_size = matrices.size(-1)
+        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+
+    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+        mats = self.matrices(thetas)
+        return self.apply(mats, state)
+
+    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
+        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+        batch_size = len(theta)
+        c = torch.exp(torch.tensor(1.0j * thetas)).unsqueeze(0).unsqueeze(1)
+        batch_imat = self.imat.unsqueeze(2).repeat(1, 1, batch_size)
+        batch_imat[1, 1, :] = c
+        return batch_imat
 
 
 class CRX(ControlledRotationGate):
