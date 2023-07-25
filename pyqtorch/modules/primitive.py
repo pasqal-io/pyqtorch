@@ -295,7 +295,9 @@ class ControlledOperationGate(AbstractGate):
         super().__init__(qubits, n_qubits)
         self.gate = gate
         mat = OPERATIONS_DICT[gate]
-        self.register_buffer("matrix", create_controlled_matrix_from_operation(mat, n_control_qubits=len(qubits)-1))
+        self.register_buffer(
+            "matrix", create_controlled_matrix_from_operation(mat, n_control_qubits=len(qubits) - 1)
+        )
 
     def matrices(self, _: torch.Tensor) -> torch.Tensor:
         return self.matrix
@@ -427,6 +429,7 @@ class CSWAP(ControlledOperationGate):
         print(result)
         """
         super().__init__("SWAP", qubits, n_qubits)
+
 
 class TOFFOLI(ControlledOperationGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
