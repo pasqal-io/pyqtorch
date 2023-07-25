@@ -273,15 +273,14 @@ def test_overlap_states_batch_nqubits(state_fn: Callable, n_qubits: int, batch_s
 
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
 @pytest.mark.parametrize("n_qubits", [i for i in range(1, 6)])
-@pytest.mark.parametrize("gate", ["PHASE"])
-def test_parametrized_phase_gate(batch_size: int, n_qubits: int, gate: str) -> None:
+def test_parametrized_phase_gate(batch_size: int, n_qubits: int) -> None:
     qubits = [torch.randint(low=0, high=n_qubits, size=(1,)).item()]
 
     state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
-    phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE)
+    phi = torch.tensor([torch.pi / 2], dtype=torch.cdouble)
 
-    Op = getattr(pyq, gate)
+    phase = pyq.PHASE(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
 
-    op = Op(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
+    constant_phase = pyq.S(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
 
-    assert not torch.any(torch.isnan(op(state, phi)))
+    assert torch.allclose(phase(state, phi), constant_phase(state, phi))
