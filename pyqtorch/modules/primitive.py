@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import torch
 from numpy.typing import ArrayLike
 
@@ -296,7 +298,7 @@ class ControlledOperationGate(AbstractGate):
         self.gate = gate
         mat = OPERATIONS_DICT[gate]
         self.register_buffer(
-            "matrix", create_controlled_matrix_from_operation(mat, n_control_qubits=len(qubits) - 1)
+            "matrix", create_controlled_matrix_from_operation(mat, n_control_qubits=len(qubits) - (int)(math.log2(mat.shape[0])))
         )
 
     def matrices(self, _: torch.Tensor) -> torch.Tensor:

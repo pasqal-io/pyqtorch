@@ -22,9 +22,9 @@ state_110 = pyq.X(qubits=[1], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_00
 state_111 = pyq.X(qubits=[2], n_qubits=3)(pyq.X(qubits=[1], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000)))
 
 state_0000 = pyq.zero_state(4, device=DEVICE, dtype=DTYPE)
-state_1110=pyq.X(qubits=[3], n_qubits=4)(pyq.X(qubits=[2], n_qubits=4)(pyq.X(qubits=[1], n_qubits=4)(state_0000)))
-state_1111=pyq.X(qubits=[3], n_qubits=4)(pyq.X(qubits=[2], n_qubits=4)(pyq.X(qubits=[1], n_qubits=4)
-                                                                       (pyq.X(qubits=[0], n_qubits=4)(state_0000))))
+state_1110=pyq.X(qubits=[0], n_qubits=4)(pyq.X(qubits=[1], n_qubits=4)(pyq.X(qubits=[2], n_qubits=4)(state_0000)))
+state_1111=pyq.X(qubits=[0], n_qubits=4)(pyq.X(qubits=[1], n_qubits=4)(pyq.X(qubits=[2], n_qubits=4)
+                                                                       (pyq.X(qubits=[3], n_qubits=4)(state_0000))))
 
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
 @pytest.mark.parametrize("n_qubits", [i for i in range(1, 6)])
@@ -231,6 +231,8 @@ def test_circuit_composition(n_qubits: int) -> None:
     ],
 )
 def test_CSWAP_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:
+    print(initial_state.shape)
+    print(expected_state.shape)
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
     assert torch.allclose(cswap(initial_state), expected_state)
