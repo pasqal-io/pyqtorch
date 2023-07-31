@@ -298,7 +298,10 @@ class ControlledOperationGate(AbstractGate):
         self.gate = gate
         mat = OPERATIONS_DICT[gate]
         self.register_buffer(
-            "matrix", create_controlled_matrix_from_operation(mat, n_control_qubits=len(qubits) - (int)(math.log2(mat.shape[0])))
+            "matrix",
+            create_controlled_matrix_from_operation(
+                mat, n_control_qubits=len(qubits) - (int)(math.log2(mat.shape[0]))
+            ),
         )
 
     def matrices(self, _: torch.Tensor) -> torch.Tensor:
@@ -433,7 +436,7 @@ class CSWAP(ControlledOperationGate):
         super().__init__("SWAP", qubits, n_qubits)
 
 
-class TOFFOLI(ControlledOperationGate):
+class Toffoli(ControlledOperationGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
         Represents a multi qubit controlled toffoli gate in a quantum circuit.
@@ -447,8 +450,8 @@ class TOFFOLI(ControlledOperationGate):
         import torch
         import pyqtorch.modules as pyq
 
-        # Create a TOFFOLI gate with 3 control qubits.
-        toffoli_gate = pyq.TOFFOLI(qubits=[0, 1, 2, 3], n_qubits=4)
+        # Create a Toffoli gate with 3 control qubits.
+        toffoli_gate = pyq.Toffoli(qubits=[0, 1, 2, 3], n_qubits=4)
 
         # Create a zero state
         toffoli_state = pyq.zero_state(n_qubits=4)
