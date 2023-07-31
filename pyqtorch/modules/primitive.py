@@ -450,13 +450,14 @@ class Toffoli(ControlledOperationGate):
         import torch
         import pyqtorch.modules as pyq
 
-        # Create a Toffoli gate with 3 control qubits.
-        toffoli_gate = pyq.Toffoli(qubits=[0, 1, 2, 3], n_qubits=4)
+        # Create a Toffoli gate with 2 control qubits.
+        toffoli_gate = pyq.Toffoli(qubits=[0, 1, 2], n_qubits=3)
 
-        # Create a zero state
-        toffoli_state = pyq.zero_state(n_qubits=4)
+        # Create a one state
+        state_1111 = pyq.X(qubits=[0], n_qubits=3)(pyq.X(qubits=[1], n_qubits=3)
+        (pyq.X(qubits=[2], n_qubits=3)(pyq.zero_state(n_qubits=3)))
 
-        # Apply the CSWAP gate to the zero state
+        # Apply the Toffoli gate to the zero state
         result = toffoli_gate(toffoli_state)
         print(result)
         """

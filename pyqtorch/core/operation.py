@@ -42,12 +42,13 @@ def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tens
 def create_controlled_matrix_from_operation(
     operation_matrix: torch.Tensor, n_control_qubits: int = 1
 ) -> torch.Tensor:
-    """Method which takes a 2x2 torch.Tensor and transforms it into a Controlled Operation Gate
+    """Method which takes a torch.Tensor and transforms it into a Controlled Operation Gate
 
     Args:
 
-        operation_matrix (torch.Tensor): the type of operation which should be performed (RX,RY,RZ)
-        n_control_qubits (int): The number of control qubits used
+        operation_matrix: (torch.Tensor): the type of operation which should be
+        performed (RX,RY,RZ,SWAP)
+        n_control_qubits: (int): The number of control qubits used
 
     Returns:
 
