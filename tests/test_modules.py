@@ -4,6 +4,7 @@ from typing import Callable
 
 import pytest
 import torch
+from torch import Tensor
 
 import pyqtorch.core as func_pyq
 import pyqtorch.modules as pyq
@@ -18,6 +19,19 @@ state_001 = pyq.X(qubits=[2], n_qubits=3)(state_000)
 state_100 = pyq.X(qubits=[0], n_qubits=3)(state_000)
 state_101 = pyq.X(qubits=[2], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000))
 state_110 = pyq.X(qubits=[1], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000))
+state_111 = pyq.X(qubits=[2], n_qubits=3)(
+    pyq.X(qubits=[1], n_qubits=3)(pyq.X(qubits=[0], n_qubits=3)(state_000))
+)
+
+state_0000 = pyq.zero_state(4, device=DEVICE, dtype=DTYPE)
+state_1110 = pyq.X(qubits=[0], n_qubits=4)(
+    pyq.X(qubits=[1], n_qubits=4)(pyq.X(qubits=[2], n_qubits=4)(state_0000))
+)
+state_1111 = pyq.X(qubits=[0], n_qubits=4)(
+    pyq.X(qubits=[1], n_qubits=4)(
+        pyq.X(qubits=[2], n_qubits=4)(pyq.X(qubits=[3], n_qubits=4)(state_0000))
+    )
+)
 
 
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
@@ -214,34 +228,44 @@ def test_circuit_composition(n_qubits: int) -> None:
     assert circ == truth
 
 
-def test_CSWAP_state000_controlqubit_0() -> None:
+@pytest.mark.parametrize(
+    "initial_state,expected_state",
+    [
+        (state_000, state_000),
+        (state_001, state_001),
+        (state_100, state_100),
+        (state_101, state_110),
+        (state_110, state_101),
+    ],
+)
+def test_CSWAP_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:
+    print(initial_state.shape)
+    print(expected_state.shape)
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_000), state_000)
+    assert torch.allclose(cswap(initial_state), expected_state)
 
 
-def test_CSWAP_state001_controlqubit_0() -> None:
+@pytest.mark.parametrize(
+    "initial_state,expected_state",
+    [
+        (state_000, state_000),
+        (state_001, state_001),
+        (state_100, state_100),
+        (state_101, state_101),
+        (state_110, state_111),
+    ],
+)
+def test_Toffoli_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:
     n_qubits = 3
-    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_001), state_001)
+    toffoli = pyq.Toffoli([0, 1, 2], n_qubits)
+    assert torch.allclose(toffoli(initial_state), expected_state)
 
 
-def test_CSWAP_state100_controlqubit_0() -> None:
-    n_qubits = 3
-    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_100), state_100)
-
-
-def test_CSWAP_state101_controlqubit_0() -> None:
-    n_qubits = 3
-    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_101), state_110)
-
-
-def test_CSWAP_state110_controlqubit_0() -> None:
-    n_qubits = 3
-    cswap = pyq.CSWAP([0, 1, 2], n_qubits)
-    assert torch.allclose(cswap(state_110), state_101)
+def test_4qubit_Toffoli() -> None:
+    n_qubits = 4
+    toffoli = pyq.Toffoli([0, 1, 2, 3], n_qubits)
+    assert torch.allclose(toffoli(state_1110), state_1111)
 
 
 @pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
