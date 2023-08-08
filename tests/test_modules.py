@@ -273,9 +273,9 @@ def test_Toffoli_controlqubits0(initial_state: Tensor, expected_state: Tensor) -
         (state_1110, True),
     ],
 )
-@pytest.mark.parametrize("gate", ["RX", "RY", "RZ"])
+@pytest.mark.parametrize("gate", ["RX", "RY", "RZ", "PHASE"])
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
-def test_multi_controlled_rotation(
+def test_multi_controlled_gates(
     initial_state: Tensor, expects_rotation: bool, batch_size: int, gate: str
 ) -> None:
     rot_gate = getattr(pyq, gate)
