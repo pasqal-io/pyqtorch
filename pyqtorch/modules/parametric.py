@@ -422,7 +422,7 @@ class CPHASE(AbstractGate):
 
         super().__init__(qubits, n_qubits)
 
-        self.register_buffer("imat", torch.eye(2**len(qubits), dtype=torch.cdouble))
+        self.register_buffer("imat", torch.eye(2 ** len(qubits), dtype=torch.cdouble))
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -430,7 +430,7 @@ class CPHASE(AbstractGate):
         mat = self.imat.repeat((batch_size, 1, 1))
         mat = torch.permute(mat, (1, 2, 0))
         phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
-        mat[-1,-1, :] = phase_rotation_angles
+        mat[-1, -1, :] = phase_rotation_angles
         return mat
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
