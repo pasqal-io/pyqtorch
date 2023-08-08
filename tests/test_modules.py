@@ -273,16 +273,22 @@ def test_Toffoli_controlqubits0(initial_state: Tensor, expected_state: Tensor) -
         (state_1110, True),
     ],
 )
-@pytest.mark.parametrize("gate",["RX","RY","RZ"])
+@pytest.mark.parametrize("gate", ["RX", "RY", "RZ"])
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
-def test_multi_controlled_rotation(initial_state:Tensor, expects_rotation:bool,batch_size:int,gate: str) -> None:
-    rot_gate=getattr(pyq,gate)
-    controlled_rot_gate=getattr(pyq,"C"+gate)
+def test_multi_controlled_rotation(
+    initial_state: Tensor, expects_rotation: bool, batch_size: int, gate: str
+) -> None:
+    rot_gate = getattr(pyq, gate)
+    controlled_rot_gate = getattr(pyq, "C" + gate)
     phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE)
     n_qubits = int(math.log2(torch.numel(initial_state)))
     op = controlled_rot_gate(range(n_qubits), n_qubits).to(device=DEVICE, dtype=DTYPE)
     out = op(initial_state, phi)
-    expected_state=  rot_gate([n_qubits-1],n_qubits)(initial_state,phi) if expects_rotation else initial_state
+    expected_state = (
+        rot_gate([n_qubits - 1], n_qubits)(initial_state, phi)
+        if expects_rotation
+        else initial_state
+    )
     assert torch.allclose(out, expected_state)
 
 

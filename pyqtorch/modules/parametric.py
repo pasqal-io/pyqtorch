@@ -108,7 +108,7 @@ class ControlledRotationGate(AbstractGate):
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
         super().__init__(qubits, n_qubits)
         self.gate = gate
-        self.register_buffer("imat",OPERATIONS_DICT["I"])
+        self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
@@ -118,7 +118,9 @@ class ControlledRotationGate(AbstractGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        controlled_mats = create_controlled_batch_from_operation(matrices, batch_size,len(self.qubits)-1)
+        controlled_mats = create_controlled_batch_from_operation(
+            matrices, batch_size, len(self.qubits) - 1
+        )
         return _apply_batch_gate(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
