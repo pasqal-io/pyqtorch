@@ -108,7 +108,7 @@ class ControlledRotationGate(AbstractGate):
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
         super().__init__(qubits, n_qubits)
         self.gate = gate
-        self.register_buffer("imat", torch.eye(2**n_qubits - 2))
+        self.register_buffer("imat", torch.eye(2**len(qubits) - 2))
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
