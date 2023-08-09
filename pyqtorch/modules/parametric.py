@@ -272,7 +272,7 @@ class PHASE(RotationGate):
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_mat = self.imat.unsqueeze(2).repeat(1, 1, len(theta))
-        batch_mat[1, 1, :] = torch.exp(torch.tensor(1.0j * thetas)).unsqueeze(0).unsqueeze(1)
+        batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
 
 
