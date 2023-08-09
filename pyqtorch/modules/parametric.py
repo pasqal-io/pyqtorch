@@ -118,7 +118,9 @@ class ControlledRotationGate(AbstractGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        controlled_mats = create_controlled_batch_from_operation(matrices, batch_size)
+        controlled_mats = create_controlled_batch_from_operation(
+            matrices, batch_size, len(self.qubits) - 1
+        )
         return _apply_batch_gate(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
@@ -420,7 +422,7 @@ class CPHASE(AbstractGate):
 
         super().__init__(qubits, n_qubits)
 
-        self.register_buffer("imat", torch.eye(4, dtype=torch.cdouble))
+        self.register_buffer("imat", torch.eye(2 ** len(qubits), dtype=torch.cdouble))
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -428,7 +430,7 @@ class CPHASE(AbstractGate):
         mat = self.imat.repeat((batch_size, 1, 1))
         mat = torch.permute(mat, (1, 2, 0))
         phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
-        mat[3, 3, :] = phase_rotation_angles
+        mat[-1, -1, :] = phase_rotation_angles
         return mat
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:

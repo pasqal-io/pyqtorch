@@ -63,7 +63,7 @@ def get_parametrized_batch_for_operation(
 
 
 def create_controlled_batch_from_operation(
-    operation_batch: torch.Tensor, batch_size: int
+    operation_batch: torch.Tensor, batch_size: int, n_control_qubits: int = 1
 ) -> torch.Tensor:
     """Method which takes a 2x2 torch.Tensor and transforms it into a Controlled Operation Gate
 
@@ -77,9 +77,13 @@ def create_controlled_batch_from_operation(
         torch.Tensor: the resulting controlled gate populated by operation_matrix
     """
     controlled_batch: torch.Tensor = (
-        torch.eye(4, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size)
+        torch.eye(2 ** (n_control_qubits + 1), dtype=torch.cdouble)
+        .unsqueeze(2)
+        .repeat(1, 1, batch_size)
     )
-    controlled_batch[2:, 2:, :] = torch.clone(operation_batch)
+    controlled_batch[
+        2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :
+    ] = torch.clone(operation_batch)
     return controlled_batch
 
 

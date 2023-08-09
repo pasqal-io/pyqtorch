@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Callable
 
 import pytest
@@ -239,8 +240,6 @@ def test_circuit_composition(n_qubits: int) -> None:
     ],
 )
 def test_CSWAP_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:
-    print(initial_state.shape)
-    print(expected_state.shape)
     n_qubits = 3
     cswap = pyq.CSWAP([0, 1, 2], n_qubits)
     assert torch.allclose(cswap(initial_state), expected_state)
@@ -254,18 +253,43 @@ def test_CSWAP_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> 
         (state_100, state_100),
         (state_101, state_101),
         (state_110, state_111),
+        (state_1110, state_1111),
     ],
 )
 def test_Toffoli_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:
-    n_qubits = 3
-    toffoli = pyq.Toffoli([0, 1, 2], n_qubits)
+    n_qubits = int(math.log2(torch.numel(initial_state)))
+    toffoli = pyq.Toffoli(range(n_qubits), n_qubits)
     assert torch.allclose(toffoli(initial_state), expected_state)
 
 
-def test_4qubit_Toffoli() -> None:
-    n_qubits = 4
-    toffoli = pyq.Toffoli([0, 1, 2, 3], n_qubits)
-    assert torch.allclose(toffoli(state_1110), state_1111)
+@pytest.mark.parametrize(
+    "initial_state,expects_rotation",
+    [
+        (state_000, False),
+        (state_001, False),
+        (state_100, False),
+        (state_101, False),
+        (state_110, True),
+        (state_1110, True),
+    ],
+)
+@pytest.mark.parametrize("gate", ["RX", "RY", "RZ", "PHASE"])
+@pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
+def test_multi_controlled_gates(
+    initial_state: Tensor, expects_rotation: bool, batch_size: int, gate: str
+) -> None:
+    rot_gate = getattr(pyq, gate)
+    controlled_rot_gate = getattr(pyq, "C" + gate)
+    phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE)
+    n_qubits = int(math.log2(torch.numel(initial_state)))
+    op = controlled_rot_gate(range(n_qubits), n_qubits).to(device=DEVICE, dtype=DTYPE)
+    out = op(initial_state, phi)
+    expected_state = (
+        rot_gate([n_qubits - 1], n_qubits)(initial_state, phi)
+        if expects_rotation
+        else initial_state
+    )
+    assert torch.allclose(out, expected_state)
 
 
 @pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
