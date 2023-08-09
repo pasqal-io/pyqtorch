@@ -86,20 +86,18 @@ def _apply_gate(
     - state (torch.Tensor): the quantum state after application of the gate.
     Same shape as `ìnput_state`
     """
-    # breakpoint()
-    # mat = mat.reshape([2] * len(qubits) * 2 + [mat.size(-1)])
+    mat = mat.reshape([2] * len(qubits) * 2)
     mat_dims = list(range(len(qubits), 2 * len(qubits)))
     state_dims = [N_qubits - i - 1 for i in list(qubits)]
     axes = (mat_dims, state_dims)
 
     state = torch.tensordot(mat, state, dims=axes)
-    # breakpoint()
-    # inv_perm = torch.argsort(
-    #     torch.tensor(
-    #         state_dims + [j for j in range(N_qubits + 1) if j not in state_dims], dtype=torch.int
-    #     )
-    # )
-    # state = torch.permute(state, tuple(inv_perm))
+    inv_perm = torch.argsort(
+        torch.tensor(
+            state_dims + [j for j in range(N_qubits + 1) if j not in state_dims], dtype=torch.int
+        )
+    )
+    state = torch.permute(state, tuple(inv_perm))
     return state
 
 
@@ -194,30 +192,27 @@ def _apply_batch_gate(
 def _apply_map_gate(
     state: torch.Tensor, mat: torch.Tensor, qubits: Any, n_qubits: int, batch_size: int
 ) -> torch.Tensor:
-    """
-    Apply a batch execution of gates to a circuit.
-    Given an tensor of states [state_0, ... state_b] and
-    an tensor of gates [G_0, ... G_b] it will return the
-    tensor [G_0 * state_0, ... G_b * state_b]. All gates
-    are applied to the same qubit.
+    def _apply(
+        state: torch.Tensor,
+        mat: torch.Tensor,
+        qubits: Any,
+        n_qubits: int,
+    ) -> torch.Tensor:
+        mat = mat.reshape([2] * len(qubits) * 2)
+        mat_dims = list(range(len(qubits), 2 * len(qubits)))
+        state_dims = [n_qubits - i - 1 for i in list(qubits)]
+        axes = (mat_dims, state_dims)
+        state = torch.tensordot(mat, state, dims=axes)
+        inv_perm = torch.argsort(
+            torch.tensor(
+                state_dims + [j for j in range(n_qubits) if j not in state_dims], dtype=torch.int
+            )
+        )
+        state = torch.permute(state, tuple(inv_perm))
+        return state
 
-    Inputs:
-    - state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
-    - mat (torch.Tensor): the tensor representing the gates. The last dimension
-    is the batch dimension. It has to be the sam eas the last dimension of
-    `state`
-    - qubits (list, tuple, array): Sized iterator containing the qubits
-    the gate is applied to
-    - N_qubits (int): the total number of qubits of the system
-    - batch_size (int): the size of the batch
-
-    Output:
-    - state (torch.Tensor): the quantum state after application of the gate.
-    Same shape as `input_state`
-    """
-    mat = mat.reshape([2] * len(qubits) * 2 + [batch_size])
     return torch.vmap(
-        lambda s, m: _apply_gate(state=s, mat=m, qubits=qubits, N_qubits=n_qubits),
+        lambda s, m: _apply(state=s, mat=m, qubits=qubits, n_qubits=n_qubits),
         in_dims=(len(state.size()) - 1, len(mat.size()) - 1),
         out_dims=len(state.size()) - 1,
     )(state, mat)
