@@ -86,18 +86,20 @@ def _apply_gate(
     - state (torch.Tensor): the quantum state after application of the gate.
     Same shape as `ìnput_state`
     """
-    mat = mat.reshape([2] * len(qubits) * 2)
+    # breakpoint()
+    # mat = mat.reshape([2] * len(qubits) * 2 + [mat.size(-1)])
     mat_dims = list(range(len(qubits), 2 * len(qubits)))
     state_dims = [N_qubits - i - 1 for i in list(qubits)]
     axes = (mat_dims, state_dims)
 
     state = torch.tensordot(mat, state, dims=axes)
-    inv_perm = torch.argsort(
-        torch.tensor(
-            state_dims + [j for j in range(N_qubits + 1) if j not in state_dims], dtype=torch.int
-        )
-    )
-    state = torch.permute(state, tuple(inv_perm))
+    # breakpoint()
+    # inv_perm = torch.argsort(
+    #     torch.tensor(
+    #         state_dims + [j for j in range(N_qubits + 1) if j not in state_dims], dtype=torch.int
+    #     )
+    # )
+    # state = torch.permute(state, tuple(inv_perm))
     return state
 
 
@@ -190,7 +192,7 @@ def _apply_batch_gate(
 
 
 def _apply_map_gate(
-    state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int
+    state: torch.Tensor, mat: torch.Tensor, qubits: Any, n_qubits: int, batch_size: int
 ) -> torch.Tensor:
     """
     Apply a batch execution of gates to a circuit.
@@ -213,10 +215,9 @@ def _apply_map_gate(
     - state (torch.Tensor): the quantum state after application of the gate.
     Same shape as `input_state`
     """
-    # assert state.size(-1) == 1, 'Batching is only allowed for matrices'
-
+    mat = mat.reshape([2] * len(qubits) * 2 + [batch_size])
     return torch.vmap(
-        lambda s: _apply_gate(state=s, mat=mat, qubits=qubits, N_qubits=N_qubits),
-        in_dims=len(state.size())-1,
-        out_dims=len(state.size())-1,
-    )(state)
+        lambda s, m: _apply_gate(state=s, mat=m, qubits=qubits, N_qubits=n_qubits),
+        in_dims=(len(state.size()) - 1, len(mat.size()) - 1),
+        out_dims=len(state.size()) - 1,
+    )(state, mat)
