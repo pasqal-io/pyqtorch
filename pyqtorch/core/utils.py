@@ -187,3 +187,36 @@ def _apply_batch_gate(
     state = torch.einsum(einsum_indices, mat, state)
 
     return state
+
+
+def _apply_map_gate(
+    state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int
+) -> torch.Tensor:
+    """
+    Apply a batch execution of gates to a circuit.
+    Given an tensor of states [state_0, ... state_b] and
+    an tensor of gates [G_0, ... G_b] it will return the
+    tensor [G_0 * state_0, ... G_b * state_b]. All gates
+    are applied to the same qubit.
+
+    Inputs:
+    - state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
+    - mat (torch.Tensor): the tensor representing the gates. The last dimension
+    is the batch dimension. It has to be the sam eas the last dimension of
+    `state`
+    - qubits (list, tuple, array): Sized iterator containing the qubits
+    the gate is applied to
+    - N_qubits (int): the total number of qubits of the system
+    - batch_size (int): the size of the batch
+
+    Output:
+    - state (torch.Tensor): the quantum state after application of the gate.
+    Same shape as `input_state`
+    """
+    # assert state.size(-1) == 1, 'Batching is only allowed for matrices'
+
+    return torch.vmap(
+        lambda s: _apply_gate(state=s, mat=mat, qubits=qubits, N_qubits=N_qubits),
+        in_dims=len(state.size())-1,
+        out_dims=len(state.size())-1,
+    )(state)
