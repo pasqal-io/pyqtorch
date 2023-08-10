@@ -85,8 +85,11 @@ class QuantumCircuit(Module):
             torch.Tensor: The output quantum state tensor after applying the circuit operations.
 
         """
-        for op in self.operations:
+
+        def fn(op: torch.nn.Module) -> torch.Tensor:
             state = op(state, thetas)
+
+        map(fn, self.operations)
         return state
 
     @property
