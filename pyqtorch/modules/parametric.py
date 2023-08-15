@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import torch
 from numpy.typing import ArrayLike
+from torch.utils.checkpoint import checkpoint
 
 from pyqtorch.core.batched_operation import (
     _apply_batch_gate,
@@ -17,8 +18,8 @@ torch.set_default_dtype(torch.float64)
 class RotationGate(AbstractGate):
     n_params = 1
 
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__(qubits, n_qubits)
+    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
+        super().__init__(qubits, n_qubits, ckpt_grad)
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
@@ -34,7 +35,10 @@ class RotationGate(AbstractGate):
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
-        return self.apply(mats, state)
+        if self.ckpt_grad:
+            return checkpoint(self.apply, mats, state, use_reentrant=False)
+        else:
+            return self.apply(mats, state)
 
     def extra_repr(self) -> str:
         return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
@@ -43,7 +47,7 @@ class RotationGate(AbstractGate):
 class U(AbstractGate):
     n_params = 3
 
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         """
         Represents a parametrized arbitrary rotation along the axes of the Bloch sphere.
 
@@ -54,10 +58,11 @@ class U(AbstractGate):
         Arguments:
             qubits (ArrayLike): The target qubits for the U gate. It should be a list of qubits.
             n_qubits (int): The total number of qubits in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         """
 
-        super().__init__(qubits, n_qubits)
+        super().__init__(qubits, n_qubits, ckpt_grad)
 
         self.register_buffer("a", torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
         self.register_buffer("b", torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
@@ -99,14 +104,17 @@ class U(AbstractGate):
             torch.Tensor: the resulting state after applying the gate
         """
         mats = self.matrices(thetas)
-        return self.apply(mats, state)
+        if self.ckpt_grad:
+            return checkpoint(self.apply, mats, state, use_reentrant=False)
+        else:
+            return self.apply(mats, state)
 
 
 class ControlledRotationGate(AbstractGate):
     n_params = 1
 
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__(qubits, n_qubits)
+    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
+        super().__init__(qubits, n_qubits, ckpt_grad)
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
@@ -125,11 +133,14 @@ class ControlledRotationGate(AbstractGate):
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
-        return self.apply(mats, state)
+        if self.ckpt_grad:
+            return checkpoint(self.apply, mats, state, use_reentrant=False)
+        else:
+            return self.apply(mats, state)
 
 
 class RX(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         """
         Represents an X-axis rotation (RX) gate in a quantum circuit.
         The RX gate class creates a single-qubit RX gate that performs
@@ -138,6 +149,7 @@ class RX(RotationGate):
         Arguments:
             qubits (ArrayLike):The list of qubits the controlled RX gate acts on.
             n_qubits (int): The total number of qubits in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         Examples:
         ```python exec="on" source="above" result="json"
@@ -161,11 +173,11 @@ class RX(RotationGate):
 
         ```
         """
-        super().__init__("X", qubits, n_qubits)
+        super().__init__("X", qubits, n_qubits, ckpt_grad)
 
 
 class RY(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         """
         Represents a Y-axis rotation (RY) gate in a quantum circuit.
         The RY gate class creates a single-qubit RY gate that performs
@@ -174,6 +186,7 @@ class RY(RotationGate):
         Arguments:
             qubits (ArrayLike): The qubit index to apply the RY gate to.
             n_qubits (int): The total number of qubits in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         Examples:
         ```python exec="on" source="above" result="json"
@@ -194,11 +207,11 @@ class RY(RotationGate):
         print(result)
         ```
         """
-        super().__init__("Y", qubits, n_qubits)
+        super().__init__("Y", qubits, n_qubits, ckpt_grad)
 
 
 class RZ(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         """
         Represents a Z-axis rotation (RZ) gate in a quantum circuit.
         The RZ gate class creates a single-qubit RZ gate that performs
@@ -208,6 +221,7 @@ class RZ(RotationGate):
         Arguments:
             qubits (ArrayLike): The qubit index or list of qubit indices to apply the RZ gate to.
             n_qubits (int): The total number of qubits in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         Examples:
         ```python exec="on" source="above" result="json"
@@ -228,17 +242,18 @@ class RZ(RotationGate):
         print(result)
         ```
         """
-        super().__init__("Z", qubits, n_qubits)
+        super().__init__("Z", qubits, n_qubits, ckpt_grad)
 
 
 class PHASE(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         """
         Represents a PHASE rotation gate in a quantum circuit.
 
         Arguments:
             qubits (ArrayLike): The qubit index or list of qubit indices.
             n_qubits (int): The total number of qubits in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         Examples:
         ```python exec="on" source="above" result="json"
@@ -259,7 +274,7 @@ class PHASE(RotationGate):
         print(result)
         ```
         """
-        super().__init__("I", qubits, n_qubits)
+        super().__init__("I", qubits, n_qubits, ckpt_grad)
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
@@ -267,7 +282,10 @@ class PHASE(RotationGate):
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
-        return self.apply(mats, state)
+        if self.ckpt_grad:
+            return checkpoint(self.apply, mats, state, use_reentrant=False)
+        else:
+            return self.apply(mats, state)
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -277,7 +295,7 @@ class PHASE(RotationGate):
 
 
 class CRX(ControlledRotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         """
         Represents a controlled-X-axis rotation (CRX) gate in a quantum circuit.
         The CRX gate class creates a controlled RX gate, applying the RX according
@@ -287,6 +305,7 @@ class CRX(ControlledRotationGate):
         Arguments:
             qubits (ArrayLike):The list of qubits the controlled CRX gate acts on.
             n_qubits (int): The total number of qubits in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         Examples:
         ```python exec="on" source="above" result="json"
@@ -317,11 +336,11 @@ class CRX(ControlledRotationGate):
 
         ```
         """
-        super().__init__("X", qubits, n_qubits)
+        super().__init__("X", qubits, n_qubits, ckpt_grad)
 
 
 class CRY(ControlledRotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         """
         Represents a controlled-Y-axis rotation (CRY) gate in a quantum circuit.
         The CRY gate class creates a controlled RY gate, applying the RY according
@@ -331,6 +350,7 @@ class CRY(ControlledRotationGate):
         Arguments:
             qubits (ArrayLike):The list of qubits the controlled CRY gate acts on.
             n_qubits (int): The total number of qubits in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         Examples:
         ```python exec="on" source="above" result="json"
@@ -360,11 +380,11 @@ class CRY(ControlledRotationGate):
         print(result)
         ```
         """
-        super().__init__("Y", qubits, n_qubits)
+        super().__init__("Y", qubits, n_qubits, ckpt_grad)
 
 
 class CRZ(ControlledRotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         """
         Represents a controlled-Z-axis rotation (CRZ) gate in a quantum circuit.
         The CRZ gate class creates a controlled RZ gate, applying the RZ according
@@ -373,6 +393,7 @@ class CRZ(ControlledRotationGate):
         Arguments:
             qubits (ArrayLike):The list of qubits the controlled CRZ gate acts on.
             n_qubits (int): The total number of qubits in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         Examples:
         ```python exec="on" source="above" result="json"
@@ -402,13 +423,13 @@ class CRZ(ControlledRotationGate):
         print(result)
         ```
         """
-        super().__init__("Z", qubits, n_qubits)
+        super().__init__("Z", qubits, n_qubits, ckpt_grad)
 
 
 class CPHASE(AbstractGate):
     n_params = 1
 
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         """
         Represents a controlled-phase (CPHASE) gate in a quantum circuit.
         The CPhase gate class creates a controlled Phase gate, applying the PhaseGate
@@ -417,10 +438,11 @@ class CPHASE(AbstractGate):
         Arguments:
             qubits (ArrayLike): The control and target qubits for the CPHASE gate.
             n_qubits (int): The total number of qubits in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         """
 
-        super().__init__(qubits, n_qubits)
+        super().__init__(qubits, n_qubits, ckpt_grad)
 
         self.register_buffer("imat", torch.eye(2 ** len(qubits), dtype=torch.cdouble))
 
@@ -439,4 +461,7 @@ class CPHASE(AbstractGate):
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
-        return self.apply(mats, state)
+        if self.ckpt_grad:
+            return checkpoint(self.apply, mats, state, use_reentrant=False)
+        else:
+            return self.apply(mats, state)

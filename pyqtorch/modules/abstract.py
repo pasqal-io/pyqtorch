@@ -11,10 +11,11 @@ import pyqtorch.modules as pyq
 
 
 class AbstractGate(ABC, Module):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, ckpt_grad: bool = False):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
+        self.ckpt_grad = ckpt_grad
 
     def __mul__(self, other: AbstractGate | pyq.QuantumCircuit) -> pyq.QuantumCircuit:
         if isinstance(other, AbstractGate):

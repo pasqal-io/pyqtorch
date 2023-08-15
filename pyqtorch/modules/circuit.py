@@ -4,6 +4,7 @@ from typing import Any
 
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
+from torch.utils.checkpoint import checkpoint
 
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.primitive import CNOT
@@ -13,7 +14,7 @@ PI = 2.0 * torch.asin(torch.Tensor([1.0]).double()).item()
 
 
 class QuantumCircuit(Module):
-    def __init__(self, n_qubits: int, operations: list):
+    def __init__(self, n_qubits: int, operations: list, ckpt_grad: bool = False):
         """
         Creates a QuantumCircuit that can be used to compose multiple gates
         from a list of operations.
@@ -21,6 +22,7 @@ class QuantumCircuit(Module):
         Arguments:
             n_qubits (int): The total number of qubits in the circuit.
             operations (list): A list of gate operations to be applied in the circuit.
+            ckpt_grad (bool): Use gradient-checkpointing.
 
         Example:
         ```python exec="on" source="above" result="json"
@@ -49,6 +51,7 @@ class QuantumCircuit(Module):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
+        self.ckpt_grad = ckpt_grad
 
     def __mul__(self, other: AbstractGate | QuantumCircuit) -> QuantumCircuit:
         if isinstance(other, QuantumCircuit):
@@ -85,8 +88,12 @@ class QuantumCircuit(Module):
             torch.Tensor: The output quantum state tensor after applying the circuit operations.
 
         """
-        for op in self.operations:
-            state = op(state, thetas)
+        if self.ckpt_grad:
+            for op in self.operations:
+                state = checkpoint(op, state, thetas, use_reentrant=False)
+        else:
+            for op in self.operations:
+                state = op(state, thetas)
         return state
 
     @property

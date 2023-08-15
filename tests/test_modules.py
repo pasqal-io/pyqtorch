@@ -53,10 +53,11 @@ def test_constant_gates(batch_size: int, n_qubits: int, gate: str) -> None:
     assert torch.allclose(func_out, mod_out)
 
 
+@pytest.mark.parametrize("ckpt_grad", [True, False])
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
 @pytest.mark.parametrize("n_qubits", [i for i in range(1, 6)])
 @pytest.mark.parametrize("gate", ["RX", "RY", "RZ"])
-def test_parametrized_gates(batch_size: int, n_qubits: int, gate: str) -> None:
+def test_parametrized_gates(ckpt_grad: bool, batch_size: int, n_qubits: int, gate: str) -> None:
     qubits = [torch.randint(low=0, high=n_qubits, size=(1,)).item()]
 
     state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
@@ -66,16 +67,19 @@ def test_parametrized_gates(batch_size: int, n_qubits: int, gate: str) -> None:
     FuncOp = getattr(func_pyq.batched_operation, f"batched{gate}")
 
     func_out = FuncOp(phi, state, qubits, n_qubits)
-    op = Op(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
+    op = Op(qubits, n_qubits, ckpt_grad).to(device=DEVICE, dtype=DTYPE)
     mod_out = op(state, phi)
 
     assert torch.allclose(func_out, mod_out)
 
 
+@pytest.mark.parametrize("ckpt_grad", [True, False])
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
 @pytest.mark.parametrize("n_qubits", [i for i in range(2, 6)])
 @pytest.mark.parametrize("gate", ["CRX", "CRY", "CRZ"])
-def test_controlled_parametrized_gates(batch_size: int, n_qubits: int, gate: str) -> None:
+def test_controlled_parametrized_gates(
+    ckpt_grad: bool, batch_size: int, n_qubits: int, gate: str
+) -> None:
     qubits = torch.randint(low=0, high=n_qubits, size=(2,))
 
     while qubits[0] == qubits[1]:
@@ -90,22 +94,23 @@ def test_controlled_parametrized_gates(batch_size: int, n_qubits: int, gate: str
     BatchedOP = getattr(func_pyq.batched_operation, f"batched{gate}")
 
     func_out = BatchedOP(phi, state, qubits, n_qubits)
-    op = Op(qubits, n_qubits).to(device=DEVICE, dtype=DTYPE)
+    op = Op(qubits, n_qubits, ckpt_grad).to(device=DEVICE, dtype=DTYPE)
     mod_out = op(state, phi)
 
     assert torch.allclose(func_out, mod_out)
 
 
+@pytest.mark.parametrize("ckpt_grad", [True, False])
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
 @pytest.mark.parametrize("n_qubits", [i for i in range(2, 6)])
-def test_circuit(batch_size: int, n_qubits: int) -> None:
+def test_circuit(ckpt_grad: bool, batch_size: int, n_qubits: int) -> None:
     ops = [
         pyq.X([0], n_qubits),
         pyq.X([1], n_qubits),
         pyq.RX([1], n_qubits),
         pyq.CNOT([0, 1], n_qubits),
     ]
-    circ = pyq.QuantumCircuit(n_qubits, ops).to(device=DEVICE, dtype=DTYPE)
+    circ = pyq.QuantumCircuit(n_qubits, ops, ckpt_grad).to(device=DEVICE, dtype=DTYPE)
 
     state = pyq.random_state(n_qubits, batch_size)
     phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE, requires_grad=True)
@@ -137,10 +142,11 @@ def test_empty_circuit(batch_size: int) -> None:
     assert not torch.all(torch.isnan(res))
 
 
+@pytest.mark.parametrize("ckpt_grad", [True, False])
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 6])
-def test_U_gate(batch_size: int) -> None:
+def test_U_gate(ckpt_grad: bool, batch_size: int) -> None:
     n_qubits = 1
-    u = pyq.U([0], n_qubits)
+    u = pyq.U([0], n_qubits, ckpt_grad)
     x = torch.rand(3, batch_size)
     state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
     assert not torch.all(torch.isnan(u(state, x)))

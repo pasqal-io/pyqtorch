@@ -6,6 +6,7 @@ from typing import Any, Optional, Tuple, Union
 
 import torch
 from torch.nn import Module
+from torch.utils.checkpoint import checkpoint
 
 from pyqtorch.core.utils import _apply_batch_gate
 from pyqtorch.modules.utils import is_diag, is_real
@@ -274,6 +275,7 @@ class HamiltonianEvolution(Module):
         hamevo_type (Enum or str): The type of Hamiltonian evolution to be performed.
                      Must be a member of the `HamEvoType` enum or equivalent string.
                      Defaults to HamEvoExp.
+        ckpt_grad (bool): Use gradient-checkpointing.
 
     Examples:
     (1)
@@ -296,11 +298,13 @@ class HamiltonianEvolution(Module):
         n_qubits: int,
         n_steps: int = 100,
         hamevo_type: Union[HamEvoType, str] = HamEvoType.EXP,
+        ckpt_grad: bool = False,
     ):
         super().__init__()
         self.qubits = qubits
         self.n_qubits = n_qubits
         self.n_steps = n_steps
+        self.ckpt_grad = ckpt_grad
 
         # Handles the case where the Hamiltonian Evolution type is provided as a string
         if isinstance(hamevo_type, str):
@@ -342,4 +346,7 @@ class HamiltonianEvolution(Module):
             The state (tensor) after Hamiltonian evolution.
         """
         ham_evo_instance = self.get_hamevo_instance(H, t)
-        return ham_evo_instance.forward(state)
+        if self.ckpt_grad:
+            return checkpoint(ham_evo_instance.forward, state, use_reentrant=False)
+        else:
+            return ham_evo_instance.forward(state)
