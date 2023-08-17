@@ -88,7 +88,7 @@ def _apply_gate(
     """
     mat = mat.reshape([2] * len(qubits) * 2)
     mat_dims = list(range(len(qubits), 2 * len(qubits)))
-    state_dims = [N_qubits - i - 1 for i in list(qubits)]
+    state_dims = list(qubits)
     axes = (mat_dims, state_dims)
 
     state = torch.tensordot(mat, state, dims=axes)
@@ -168,7 +168,7 @@ def _apply_batch_gate(
     Same shape as `input_state`
     """
     mat = mat.reshape([2] * len(qubits) * 2 + [batch_size])
-    qubits = np.array(N_qubits - 1 - np.array(qubits), dtype=np.int64)
+    qubits = np.array(qubits)
 
     state_indices = ABC_ARRAY[0 : N_qubits + 1].copy()
     mat_indices = ABC_ARRAY[N_qubits + 2 : N_qubits + 2 + 2 * len(qubits) + 1].copy()
