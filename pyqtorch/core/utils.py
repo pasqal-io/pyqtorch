@@ -119,7 +119,7 @@ def _apply_einsum_gate(
     Same shape as `ìnput_state`
     """
     mat = mat.reshape([2] * len(qubits) * 2)
-    qubits = N_qubits - 1 - np.array(qubits)
+    qubits = qubits
 
     state_indices = ABC_ARRAY[0 : N_qubits + 1]
     # Create new indices for the matrix indices
