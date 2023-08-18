@@ -95,7 +95,7 @@ def test_controlled_parametrized_gates(batch_size: int, n_qubits: int, gate: str
 
     assert torch.allclose(func_out, mod_out)
 
-@pytest.mark.skip
+
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
 @pytest.mark.parametrize("n_qubits", [i for i in range(2, 6)])
 def test_circuit(batch_size: int, n_qubits: int) -> None:
