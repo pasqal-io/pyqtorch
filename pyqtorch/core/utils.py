@@ -189,7 +189,7 @@ def _apply_batch_gate(
     return state
 
 
-def _apply_map_gate(
+def _vmap_gate(
     state: torch.Tensor, mat: torch.Tensor, qubits: Any, n_qubits: int, batch_size: int
 ) -> torch.Tensor:
     def _apply(
