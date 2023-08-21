@@ -116,6 +116,7 @@ def _apply_einsum_gate(
     """
     mat = mat.reshape([2] * len(qubits) * 2)
     state_indices = ABC_ARRAY[0 : N_qubits + 1]
+    qubits = list(qubits)
     # Create new indices for the matrix indices
     mat_indices = ABC_ARRAY[N_qubits + 2 : N_qubits + 2 + 2 * len(qubits)]
     mat_indices[len(qubits) : 2 * len(qubits)] = state_indices[qubits]
@@ -168,6 +169,7 @@ def _apply_batch_gate(
     mat = mat.view([2] * len(qubits) * 2 + [batch_size])
 
     state_indices = ABC_ARRAY[0 : N_qubits + 1].copy()
+    qubits = list(qubits)
     mat_indices = ABC_ARRAY[N_qubits + 2 : N_qubits + 2 + 2 * len(qubits) + 1].copy()
     mat_indices[len(qubits) : 2 * len(qubits)] = state_indices[qubits]
     mat_indices[-1] = state_indices[-1]
