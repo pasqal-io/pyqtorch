@@ -165,7 +165,7 @@ def _apply_batch_gate(
     - state (torch.Tensor): the quantum state after application of the gate.
     Same shape as `input_state`
     """
-    mat = mat.reshape([2] * len(qubits) * 2 + [batch_size])
+    mat = mat.view([2] * len(qubits) * 2 + [batch_size])
 
     state_indices = ABC_ARRAY[0 : N_qubits + 1].copy()
     mat_indices = ABC_ARRAY[N_qubits + 2 : N_qubits + 2 + 2 * len(qubits) + 1].copy()
