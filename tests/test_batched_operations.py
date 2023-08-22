@@ -9,8 +9,8 @@ state_0 = torch.tensor([[1, 0]], dtype=torch.cdouble)
 state_1 = torch.tensor([[0, 1]], dtype=torch.cdouble)
 
 state_00 = torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
-state_10 = torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
-state_01 = torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble).unsqueeze(2)
+state_01 = torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2)
+state_10 = torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble).unsqueeze(2)
 state_11 = torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).unsqueeze(2)
 
 pi = torch.tensor(torch.pi, dtype=torch.cdouble)
