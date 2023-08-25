@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import torch
+from numpy import log2
 
 
 def normalize(wf: torch.Tensor) -> torch.Tensor:
@@ -154,3 +155,27 @@ def random_state(
 
     _state = torch.concat(tuple(_rand(n_qubits) for _ in range(batch_size)), dim=1)
     return _state.reshape([2] * n_qubits + [batch_size])
+
+
+def flatten_wf(wf: torch.Tensor) -> torch.Tensor:
+    return torch.flatten(wf, start_dim=0, end_dim=-2).t()
+
+
+def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
+    """
+    Inverts the endianness of a wave function.
+
+    Args:
+        wf (Tensor): the target wf as a torch Tensor of shape batch_size X 2**n_qubits
+
+    Returns:
+        The inverted wave function.
+    """
+    try:
+        wf = flatten_wf(wf)
+    except RuntimeError:
+        wf = wf
+    n_qubits = int(log2(wf.shape[1]))
+    ls = list(range(2**n_qubits))
+    permute_ind = torch.tensor([int(f"{num:0{n_qubits}b}"[::-1], 2) for num in ls])
+    return wf[:, permute_ind]

@@ -25,6 +25,8 @@ from pyqtorch.modules.primitive import (
     Z,
 )
 from pyqtorch.modules.utils import (
+    flatten_wf,
+    invert_endianness,
     is_normalized,
     normalize,
     overlap,

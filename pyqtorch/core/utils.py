@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 from string import ascii_letters as ABC
-from typing import Any
 
 import numpy as np
 import torch
@@ -68,7 +67,7 @@ OPERATIONS_DICT = {
 def _apply_gate(
     state: torch.Tensor,
     mat: torch.Tensor,
-    qubits: Any,
+    qubits: list[int] | tuple[int],
     N_qubits: int,
 ) -> torch.Tensor:
     """
@@ -86,23 +85,20 @@ def _apply_gate(
     - state (torch.Tensor): the quantum state after application of the gate.
     Same shape as `ìnput_state`
     """
-    mat = mat.reshape([2] * len(qubits) * 2)
+    mat = mat.view([2] * len(qubits) * 2)
     mat_dims = list(range(len(qubits), 2 * len(qubits)))
-    state_dims = [N_qubits - i - 1 for i in list(qubits)]
-    axes = (mat_dims, state_dims)
-
+    qubits = list(qubits)
+    axes = (mat_dims, qubits)
     state = torch.tensordot(mat, state, dims=axes)
     inv_perm = torch.argsort(
-        torch.tensor(
-            state_dims + [j for j in range(N_qubits + 1) if j not in state_dims], dtype=torch.int
-        )
+        torch.tensor(qubits + [j for j in range(N_qubits + 1) if j not in qubits], dtype=torch.int)
     )
     state = torch.permute(state, tuple(inv_perm))
     return state
 
 
 def _apply_einsum_gate(
-    state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int
+    state: torch.Tensor, mat: torch.Tensor, qubits: list[int] | tuple[int], N_qubits: int
 ) -> torch.Tensor:
     """
     Same as `apply_gate` but with the `torch.einsum` function
@@ -119,9 +115,8 @@ def _apply_einsum_gate(
     Same shape as `ìnput_state`
     """
     mat = mat.reshape([2] * len(qubits) * 2)
-    qubits = N_qubits - 1 - np.array(qubits)
-
     state_indices = ABC_ARRAY[0 : N_qubits + 1]
+    qubits = list(qubits)
     # Create new indices for the matrix indices
     mat_indices = ABC_ARRAY[N_qubits + 2 : N_qubits + 2 + 2 * len(qubits)]
     mat_indices[len(qubits) : 2 * len(qubits)] = state_indices[qubits]
@@ -144,7 +139,11 @@ def _apply_einsum_gate(
 
 
 def _apply_batch_gate(
-    state: torch.Tensor, mat: torch.Tensor, qubits: Any, N_qubits: int, batch_size: int
+    state: torch.Tensor,
+    mat: torch.Tensor,
+    qubits: list[int] | tuple[int],
+    N_qubits: int,
+    batch_size: int,
 ) -> torch.Tensor:
     """
     Apply a batch execution of gates to a circuit.
@@ -167,10 +166,10 @@ def _apply_batch_gate(
     - state (torch.Tensor): the quantum state after application of the gate.
     Same shape as `input_state`
     """
-    mat = mat.reshape([2] * len(qubits) * 2 + [batch_size])
-    qubits = np.array(N_qubits - 1 - np.array(qubits), dtype=np.int64)
+    mat = mat.view([2] * len(qubits) * 2 + [batch_size])
 
     state_indices = ABC_ARRAY[0 : N_qubits + 1].copy()
+    qubits = list(qubits)
     mat_indices = ABC_ARRAY[N_qubits + 2 : N_qubits + 2 + 2 * len(qubits) + 1].copy()
     mat_indices[len(qubits) : 2 * len(qubits)] = state_indices[qubits]
     mat_indices[-1] = state_indices[-1]
