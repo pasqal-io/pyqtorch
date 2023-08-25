@@ -23,6 +23,7 @@ from pyqtorch.modules.primitive import (
     X,
     Y,
     Z,
+    N,
 )
 from pyqtorch.modules.utils import (
     flatten_wf,
