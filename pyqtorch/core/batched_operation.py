@@ -21,7 +21,8 @@ from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.operation import RX, H, diagonalize
-from pyqtorch.core.utils import OPERATIONS_DICT, _apply_batch_gate
+from pyqtorch.core.utils import _apply_batch_gate
+from pyqtorch.matrices import OPERATIONS_DICT
 
 IMAT = OPERATIONS_DICT["I"]
 XMAT = OPERATIONS_DICT["X"]

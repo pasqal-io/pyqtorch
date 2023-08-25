@@ -24,46 +24,6 @@ torch.set_default_dtype(torch.float64)
 ABC_ARRAY: NDArray = np.array(list(ABC))
 
 
-IMAT = torch.eye(2, dtype=torch.cdouble)
-XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
-YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
-ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
-SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
-SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=torch.cdouble)
-TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]])
-SWAPMAT = torch.tensor(
-    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
-)
-CSWAPMAT = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 1, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1],
-    ],
-    dtype=torch.cdouble,
-)
-HMAT = 1 / torch.sqrt(torch.tensor(2)) * torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble)
-
-
-OPERATIONS_DICT = {
-    "I": IMAT,
-    "X": XMAT,
-    "Y": YMAT,
-    "Z": ZMAT,
-    "S": SMAT,
-    "SDAGGER": SDAGGERMAT,
-    "T": TMAT,
-    "H": HMAT,
-    "SWAP": SWAPMAT,
-    "CSWAP": CSWAPMAT,
-}
-
-
 def _apply_gate(
     state: torch.Tensor,
     mat: torch.Tensor,

@@ -7,7 +7,7 @@ from pyqtorch.core.batched_operation import (
     _apply_batch_gate,
     create_controlled_batch_from_operation,
 )
-from pyqtorch.core.utils import OPERATIONS_DICT
+from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.utils import rot_matrices
 
@@ -17,16 +17,27 @@ torch.set_default_dtype(torch.float64)
 class RotationGate(AbstractGate):
     n_params = 1
 
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
+    def __init__(
+        self,
+        gate: str,
+        qubits: ArrayLike,
+        n_qubits: int,
+        imat: torch.Tensor = None,
+        pauli_mat: torch.Tensor = None,
+    ):
         super().__init__(qubits, n_qubits)
         self.gate = gate
-        self.register_buffer("imat", OPERATIONS_DICT["I"])
-        self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+        if imat is None and pauli_mat is None:
+            self.register_buffer("imat", OPERATIONS_DICT["I"])
+            self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+        else:
+            self.register_buffer("I", imat)
+            self.register_buffer(self.gate, pauli_mat)
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
-        return rot_matrices(theta, self.paulimat, self.imat, batch_size)
+        return rot_matrices(theta, getattr(self, self.gate), getattr(self, "I"), batch_size)
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
@@ -105,16 +116,27 @@ class U(AbstractGate):
 class ControlledRotationGate(AbstractGate):
     n_params = 1
 
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
+    def __init__(
+        self,
+        gate: str,
+        qubits: ArrayLike,
+        n_qubits: int,
+        imat: torch.Tensor = None,
+        pauli_mat: torch.Tensor = None,
+    ):
         super().__init__(qubits, n_qubits)
         self.gate = gate
-        self.register_buffer("imat", OPERATIONS_DICT["I"])
-        self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+        if imat is None and pauli_mat is None:
+            self.register_buffer("imat", OPERATIONS_DICT["I"])
+            self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+        else:
+            self.register_buffer("I", imat)
+            self.register_buffer(self.gate, pauli_mat)
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
-        return rot_matrices(theta, self.paulimat, self.imat, batch_size)
+        return rot_matrices(theta, getattr(self, self.gate), getattr(self, "I"), batch_size)
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
@@ -129,7 +151,13 @@ class ControlledRotationGate(AbstractGate):
 
 
 class RX(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(
+        self,
+        qubits: ArrayLike,
+        n_qubits: int,
+        imat: torch.Tensor = None,
+        pauli_mat: torch.Tensor = None,
+    ):
         """
         Represents an X-axis rotation (RX) gate in a quantum circuit.
         The RX gate class creates a single-qubit RX gate that performs
@@ -161,11 +189,17 @@ class RX(RotationGate):
 
         ```
         """
-        super().__init__("X", qubits, n_qubits)
+        super().__init__("X", qubits, n_qubits, imat, pauli_mat)
 
 
 class RY(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(
+        self,
+        qubits: ArrayLike,
+        n_qubits: int,
+        imat: torch.Tensor = None,
+        pauli_mat: torch.Tensor = None,
+    ):
         """
         Represents a Y-axis rotation (RY) gate in a quantum circuit.
         The RY gate class creates a single-qubit RY gate that performs
@@ -194,11 +228,17 @@ class RY(RotationGate):
         print(result)
         ```
         """
-        super().__init__("Y", qubits, n_qubits)
+        super().__init__("Y", qubits, n_qubits, imat, pauli_mat)
 
 
 class RZ(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(
+        self,
+        qubits: ArrayLike,
+        n_qubits: int,
+        imat: torch.Tensor = None,
+        pauli_mat: torch.Tensor = None,
+    ):
         """
         Represents a Z-axis rotation (RZ) gate in a quantum circuit.
         The RZ gate class creates a single-qubit RZ gate that performs
@@ -228,7 +268,7 @@ class RZ(RotationGate):
         print(result)
         ```
         """
-        super().__init__("Z", qubits, n_qubits)
+        super().__init__("Z", qubits, n_qubits, imat, pauli_mat)
 
 
 class PHASE(RotationGate):

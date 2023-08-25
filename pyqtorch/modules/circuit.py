@@ -5,6 +5,7 @@ from typing import Any
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
+from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.primitive import CNOT
 from pyqtorch.modules.utils import zero_state
@@ -13,7 +14,12 @@ PI = 2.0 * torch.asin(torch.Tensor([1.0]).double()).item()
 
 
 class QuantumCircuit(Module):
-    def __init__(self, n_qubits: int, operations: list):
+    def __init__(
+        self,
+        n_qubits: int,
+        operations: list,
+        named_buffers: dict[str, list[torch.Tensor]] = OPERATIONS_DICT,
+    ):
         """
         Creates a QuantumCircuit that can be used to compose multiple gates
         from a list of operations.
@@ -49,6 +55,12 @@ class QuantumCircuit(Module):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
+        for name, mat in named_buffers.items():
+            self.register_buffer(name, mat)
+
+    def assign_buffers(self) -> None:
+        for op in self.operations:
+            pass
 
     def __mul__(self, other: AbstractGate | QuantumCircuit) -> QuantumCircuit:
         if isinstance(other, QuantumCircuit):

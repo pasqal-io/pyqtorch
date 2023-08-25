@@ -17,9 +17,53 @@ from typing import Any, Optional, Union
 
 import torch
 
-IMAT = torch.tensor([1, 1], dtype=torch.cdouble)
-ZMAT = torch.tensor([1, -1], dtype=torch.cdouble)
-NMAT = torch.tensor([0, 1], dtype=torch.cdouble)
+IMAT = torch.eye(2, dtype=torch.cdouble, requires_grad=False)
+XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble, requires_grad=False)
+YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble, requires_grad=False)
+ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble, requires_grad=False)
+SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble, requires_grad=False)
+SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=torch.cdouble, requires_grad=False)
+TMAT = torch.tensor(
+    [[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]], requires_grad=False
+)
+SWAPMAT = torch.tensor(
+    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]],
+    dtype=torch.cdouble,
+    requires_grad=False,
+)
+CSWAPMAT = torch.tensor(
+    [
+        [1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1],
+    ],
+    dtype=torch.cdouble,
+    requires_grad=False,
+)
+HMAT = (
+    1
+    / torch.sqrt(torch.tensor(2))
+    * torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble, requires_grad=False)
+)
+NMAT = torch.tensor([0, 1], dtype=torch.cdouble, requires_grad=False)
+
+OPERATIONS_DICT = {
+    "I": IMAT,
+    "X": XMAT,
+    "Y": YMAT,
+    "Z": ZMAT,
+    "S": SMAT,
+    "SDAGGER": SDAGGERMAT,
+    "T": TMAT,
+    "H": HMAT,
+    "SWAP": SWAPMAT,
+    "CSWAP": CSWAPMAT,
+}
 
 
 def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
