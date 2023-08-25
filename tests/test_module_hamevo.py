@@ -126,7 +126,6 @@ def test_hamevo_modules_batch(ham_evo: torch.nn.Module) -> None:
     psi = pyq.uniform_state(n_qubits, batch_size)
     psi_star = hamevo.forward(psi)
     result = overlap(psi_star, psi)
-    print(result)
 
     assert map(isclose, zip(result, [0.5, 0.5]))  # type: ignore [arg-type]
 
@@ -222,3 +221,32 @@ def test_hamiltonianevolution_with_types(
     result = overlap(psi_star, psi)
     assert result.size() == (batch_size,)
     assert torch.allclose(result, target)
+
+
+def test_hamevo_endianness() -> None:
+    t = torch.ones(1)
+    h = torch.tensor(
+        [
+            [0.9701, 0.0000, 0.7078, 0.0000],
+            [0.0000, 0.9701, 0.0000, 0.7078],
+            [0.4594, 0.0000, 0.9207, 0.0000],
+            [0.0000, 0.4594, 0.0000, 0.9207],
+        ]
+    )
+    iszero = torch.tensor([False, True, False, True])
+    op = pyq.HamEvoExp(h, t, qubits=[0, 1], n_qubits=2)
+    st = op(pyq.zero_state(2)).flatten()
+    assert torch.allclose(st[iszero], torch.zeros(1, dtype=torch.cdouble))
+
+    h = torch.tensor(
+        [
+            [0.9701, 0.7078, 0.0000, 0.0000],
+            [0.4594, 0.9207, 0.0000, 0.0000],
+            [0.0000, 0.0000, 0.9701, 0.7078],
+            [0.0000, 0.0000, 0.4594, 0.9207],
+        ]
+    )
+    iszero = torch.tensor([False, False, True, True])
+    op = pyq.HamEvoExp(h, t, qubits=[0, 1], n_qubits=2)
+    st = op(pyq.zero_state(2)).flatten()
+    assert torch.allclose(st[iszero], torch.zeros(1, dtype=torch.cdouble))
