@@ -41,6 +41,7 @@ features = [
   "dev",
   "converters",
 ]
+dependencies = ["memory_profiler"]
 
 [tool.hatch.envs.tests.scripts]
 test = "pytest -n auto {args} && hatch -e docs run mkdocs build --clean --strict"

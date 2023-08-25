@@ -4,15 +4,22 @@ import time
 from typing import Any, Callable, no_type_check
 
 import torch
+from memory_profiler import profile
 
 import pyqtorch.modules as pyq
 from pyqtorch.core.batched_operation import batchedRX, batchedRY, batchedRZ
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DTYPE = torch.cdouble
+BATCH_SIZE = 1
+N_EPOCHS = 1
+N_QUBITS = 4
 
 
-def speed_test_module_circuit(batch_size: int = 10, n_qubits: int = 8, n_epochs: int = 100) -> None:
+@profile
+def speed_test_module_circuit(
+    batch_size: int = BATCH_SIZE, n_qubits: int = N_QUBITS, n_epochs: int = N_EPOCHS
+) -> None:
     ops = (
         [pyq.RX([i], n_qubits) for i in range(n_qubits)]
         + [pyq.RY([i], n_qubits) for i in range(n_qubits)]
@@ -26,7 +33,10 @@ def speed_test_module_circuit(batch_size: int = 10, n_qubits: int = 8, n_epochs:
         state = circ(state, phi)
 
 
-def speed_test_func_circuit(batch_size: int = 10, n_qubits: int = 8, n_epochs: int = 100) -> None:
+@profile
+def speed_test_func_circuit(
+    batch_size: int = BATCH_SIZE, n_qubits: int = N_QUBITS, n_epochs: int = N_EPOCHS
+) -> None:
     ops = [batchedRX, batchedRY, batchedRZ]
 
     # circ = pyq.QuantumCircuit(n_qubits, ops).to(device=DEVICE, dtype=DTYPE)
@@ -35,7 +45,8 @@ def speed_test_func_circuit(batch_size: int = 10, n_qubits: int = 8, n_epochs: i
     for _ in range(n_epochs):
         for op in ops:
             # state = circ(state, phi)
-            state = op(phi, state, [i for i in range(n_qubits)], n_qubits)
+            for i in range(n_qubits):
+                state = op(phi, state, [i], n_qubits)
 
 
 @no_type_check
