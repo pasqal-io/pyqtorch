@@ -46,6 +46,13 @@ def test_identity() -> None:
     assert torch.allclose(state_1, result1)
 
 
+def test_N() -> None:
+    result0: torch.Tensor = operation.N(state_0, (0,), 1)
+    assert torch.allclose(torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble), result0)
+    result1: torch.Tensor = operation.N(state_1, (0,), 1)
+    assert torch.allclose(torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble), result1)
+
+
 # TODO: these are all the same test, would be better to parameterize a test
 def test_batched_network() -> None:
     ansatz = AlternateLayerAnsatz(n_qubits=4, n_layers=4)
