@@ -4,10 +4,9 @@ import torch
 from numpy.typing import ArrayLike
 
 from pyqtorch.core.batched_operation import (
-    _apply_batch_gate,
     create_controlled_batch_from_operation,
 )
-from pyqtorch.core.utils import OPERATIONS_DICT
+from pyqtorch.core.utils import OPERATIONS_DICT, _apply_batch_gate
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.utils import rot_matrices
 

@@ -21,7 +21,7 @@ from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.operation import RX, H, diagonalize
-from pyqtorch.core.utils import OPERATIONS_DICT, _apply_batch_gate
+from pyqtorch.core.utils import OPERATIONS_DICT, _vmap_gate
 
 IMAT = OPERATIONS_DICT["I"]
 XMAT = OPERATIONS_DICT["X"]
@@ -138,7 +138,7 @@ def batchedRX(
 
     mat = get_parametrized_batch_for_operation("X", theta, batch_size, dev)
 
-    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
+    return _vmap_gate(state, mat, qubits, N_qubits, batch_size)
 
 
 def batchedRY(
@@ -192,7 +192,7 @@ def batchedRY(
 
     mat = get_parametrized_batch_for_operation("Y", theta, batch_size, dev)
 
-    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
+    return _vmap_gate(state, mat, qubits, N_qubits, batch_size)
 
 
 def batchedRZ(
@@ -246,7 +246,7 @@ def batchedRZ(
 
     mat = get_parametrized_batch_for_operation("Z", theta, batch_size, dev)
 
-    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
+    return _vmap_gate(state, mat, qubits, N_qubits, batch_size)
 
 
 def batchedRZZ(
@@ -291,7 +291,7 @@ def batchedRZZ(
 
     mat = cos_t * imat + 1j * sin_t * xmat
 
-    return _apply_batch_gate(state, mat, qubits, N_qubits, batch_size)
+    return _vmap_gate(state, mat, qubits, N_qubits, batch_size)
 
 
 def batchedRXX(
@@ -402,7 +402,7 @@ def batchedCPHASE(
     phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
     mat[3, 3, :] = phase_rotation_angles
 
-    return _apply_batch_gate(state, mat.to(dev), qubits, N_qubits, batch_size)
+    return _vmap_gate(state, mat.to(dev), qubits, N_qubits, batch_size)
 
 
 def batchedCRX(
@@ -438,7 +438,7 @@ def batchedCRX(
     operations_batch = get_parametrized_batch_for_operation("X", theta, batch_size, dev)
     controlledX_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
-    return _apply_batch_gate(state, controlledX_batch.to(dev), qubits, N_qubits, batch_size)
+    return _vmap_gate(state, controlledX_batch.to(dev), qubits, N_qubits, batch_size)
 
 
 def batchedCRY(
@@ -474,7 +474,7 @@ def batchedCRY(
     operations_batch = get_parametrized_batch_for_operation("Y", theta, batch_size, dev)
     controlledY_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
-    return _apply_batch_gate(state, controlledY_batch.to(dev), qubits, N_qubits, batch_size)
+    return _vmap_gate(state, controlledY_batch.to(dev), qubits, N_qubits, batch_size)
 
 
 def batchedCRZ(
@@ -510,7 +510,7 @@ def batchedCRZ(
     operations_batch = get_parametrized_batch_for_operation("Z", theta, batch_size, dev)
     controlledZ_batch = create_controlled_batch_from_operation(operations_batch, batch_size)
 
-    return _apply_batch_gate(state, controlledZ_batch.to(dev), qubits, N_qubits, batch_size)
+    return _vmap_gate(state, controlledZ_batch.to(dev), qubits, N_qubits, batch_size)
 
 
 def batched_hamiltonian_evolution(
@@ -556,10 +556,10 @@ def batched_hamiltonian_evolution(
     h = h.expand_as(state)
 
     for _ in range(n_steps):
-        k1 = -1j * _apply_batch_gate(_state, H, qubits, N_qubits, batch_size)
-        k2 = -1j * _apply_batch_gate(_state + h / 2 * k1, H, qubits, N_qubits, batch_size)
-        k3 = -1j * _apply_batch_gate(_state + h / 2 * k2, H, qubits, N_qubits, batch_size)
-        k4 = -1j * _apply_batch_gate(_state + h * k3, H, qubits, N_qubits, batch_size)
+        k1 = -1j * _vmap_gate(_state, H, qubits, N_qubits, batch_size)
+        k2 = -1j * _vmap_gate(_state + h / 2 * k1, H, qubits, N_qubits, batch_size)
+        k3 = -1j * _vmap_gate(_state + h / 2 * k2, H, qubits, N_qubits, batch_size)
+        k4 = -1j * _vmap_gate(_state + h * k3, H, qubits, N_qubits, batch_size)
         # k1 = -1j * torch.matmul(H, state)
         # k2 = -1j * torch.matmul(H, state + h/2 * k1)
         # k3 = -1j * torch.matmul(H, state + h/2 * k2)
@@ -629,4 +629,4 @@ def batched_hamiltonian_evolution_eig(
                 torch.conj(eig_vectors.transpose(0, 1)),
             )
 
-    return _apply_batch_gate(state, evol_operator, qubits, N_qubits, batch_size_h)
+    return _vmap_gate(state, evol_operator, qubits, N_qubits, batch_size_h)
