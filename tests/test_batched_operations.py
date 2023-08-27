@@ -35,6 +35,6 @@ def test_batched_cphase() -> None:
     n_qubits: int = 2
     psi = torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).unsqueeze(2)
     psi_target = torch.tensor([[0, 0], [0, -1]], dtype=torch.cdouble).unsqueeze(2)
-    angle = pi.unsqueeze(0)
+    angle = torch.pi.unsqueeze(0)
     res = batchedCPHASE(angle, psi, [i for i in range(n_qubits)], n_qubits)
     assert torch.allclose(res, psi_target, atol=1e-16)
