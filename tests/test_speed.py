@@ -11,9 +11,9 @@ from pyqtorch.core.batched_operation import batchedRX, batchedRY, batchedRZ
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DTYPE = torch.cdouble
-BATCH_SIZE = 1
-N_EPOCHS = 1
-N_QUBITS = 4
+BATCH_SIZE = 10
+N_EPOCHS = 10
+N_QUBITS = 1
 
 
 @profile
@@ -49,6 +49,29 @@ def speed_test_func_circuit(
                 state = op(phi, state, [i], n_qubits)
 
 
+@profile
+def multi_dot_circ(
+    batch_size: int = BATCH_SIZE, n_qubits: int = N_QUBITS, n_epochs: int = N_EPOCHS
+) -> None:
+    ops = (
+        [pyq.RX([i], n_qubits) for i in range(n_qubits)]
+        + [pyq.RY([i], n_qubits) for i in range(n_qubits)]
+        + [pyq.RZ([i], n_qubits) for i in range(n_qubits)]
+    )
+
+    # circ = pyq.QuantumCircuit(n_qubits, ops).to(device=DEVICE, dtype=DTYPE)
+    state = pyq.random_state(n_qubits, batch_size)
+    phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE, requires_grad=True)
+    tensors = [op.matrices(phi) for op in ops]
+    # breakpoint()
+    for i in range(n_epochs):
+        in_dims = (0,)
+        out_dims = (0,)
+        state = torch.vmap(torch.linalg.multi_dot, in_dims=in_dims, out_dims=out_dims)(
+            [state] + tensors
+        )
+
+
 @no_type_check
 def timeit(func: Callable) -> Any:
     def wrapper(*args, **kwargs):
@@ -64,7 +87,7 @@ def timeit(func: Callable) -> Any:
 @no_type_check
 @timeit
 def time_fn():
-    speed_test_module_circuit()
+    multi_dot_circ()
 
 
 if __name__ == "__main__":
