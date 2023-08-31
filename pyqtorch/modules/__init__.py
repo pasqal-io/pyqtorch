@@ -16,6 +16,7 @@ from pyqtorch.modules.primitive import (
     SWAP,
     H,
     I,
+    N,
     S,
     Sdagger,
     T,

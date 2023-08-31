@@ -452,6 +452,26 @@ def T(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
+def N(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """N (projector) single-qubit gate (I-Z)/2
+
+    Args:
+        state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
+        qubits (ArrayLike): list of qubit indices where the gate will operate
+        N_qubits (int): the number of qubits in the system
+
+    Returns:
+        torch.Tensor: the resulting state after applying the gate
+    """
+
+    if ops_cache.enabled:
+        store_operation("N", qubits)
+
+    dev = state.device
+    mat = OPERATIONS_DICT["N"].to(dev)
+    return _apply_gate(state, mat, qubits, N_qubits)
+
+
 def SWAP(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     """SWAP 2-qubit gate
 

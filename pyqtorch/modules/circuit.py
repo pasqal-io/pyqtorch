@@ -9,8 +9,6 @@ from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.primitive import CNOT
 from pyqtorch.modules.utils import zero_state
 
-PI = 2.0 * torch.asin(torch.Tensor([1.0]).double()).item()
-
 
 class QuantumCircuit(Module):
     def __init__(self, n_qubits: int, operations: list):
@@ -166,7 +164,7 @@ class VariationalLayer(QuantumCircuit):
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
-        init.uniform_(self.thetas, -2 * PI, 2 * PI)
+        init.uniform_(self.thetas, -2 * torch.pi, 2 * torch.pi)
 
     def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
         for op, t in zip(self.operations, self.thetas):

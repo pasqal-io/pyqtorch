@@ -31,6 +31,7 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
 SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
 SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=torch.cdouble)
 TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]])
+NMAT = torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble)
 SWAPMAT = torch.tensor(
     [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
 )
@@ -58,6 +59,7 @@ OPERATIONS_DICT = {
     "S": SMAT,
     "SDAGGER": SDAGGERMAT,
     "T": TMAT,
+    "N": NMAT,
     "H": HMAT,
     "SWAP": SWAPMAT,
     "CSWAP": CSWAPMAT,
@@ -127,9 +129,9 @@ def _apply_einsum_gate(
     new_state_indices[qubits] = mat_indices[0 : len(qubits)]
 
     # Transform the arrays into strings
-    state_indices = "".join(list(state_indices))  # type: ignore
-    new_state_indices = "".join(list(new_state_indices))  # type: ignore
-    mat_indices = "".join(list(mat_indices))  # type: ignore
+    state_indices = "".join(list(state_indices))
+    new_state_indices = "".join(list(new_state_indices))
+    mat_indices = "".join(list(mat_indices))
 
     einsum_indices = f"{mat_indices},{state_indices}->{new_state_indices}"
 
@@ -177,9 +179,9 @@ def _apply_batch_gate(
     new_state_indices = state_indices.copy()
     new_state_indices[qubits] = mat_indices[0 : len(qubits)]
 
-    state_indices = "".join(list(state_indices))  # type: ignore
-    new_state_indices = "".join(list(new_state_indices))  # type: ignore
-    mat_indices = "".join(list(mat_indices))  # type: ignore
+    state_indices = "".join(list(state_indices))
+    new_state_indices = "".join(list(new_state_indices))
+    mat_indices = "".join(list(mat_indices))
 
     einsum_indices = f"{mat_indices},{state_indices}->{new_state_indices}"
 

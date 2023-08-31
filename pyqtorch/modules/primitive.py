@@ -262,6 +262,34 @@ class Sdagger(PrimitiveGate):
         super().__init__("SDAGGER", qubits, n_qubits)
 
 
+class N(PrimitiveGate):
+    def __init__(self, qubits: ArrayLike, n_qubits: int):
+        """
+        Represents an N gate ((I-Z)/2 projector gate) in a quantum circuit.
+
+        Arguments:
+            qubits (ArrayLike): The qubits to which the S gate is applied.
+            n_qubits (int): The total number of qubits in the circuit.
+
+        Examples:
+        ```python exec="on" source="above" result="json"
+        import torch
+        import pyqtorch.modules as pyq
+
+        # Create an N gate
+        n_gate = pyq.N(qubits=[0], n_qubits=1)
+
+        # Create a zero state
+        n_state = pyq.zero_state(n_qubits=1)
+
+        # Apply the N gate to the zero state
+        result = n_gate(n_state)
+        print(result)
+        ```
+        """
+        super().__init__("N", qubits, n_qubits)
+
+
 class SWAP(PrimitiveGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
