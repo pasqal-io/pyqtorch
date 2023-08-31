@@ -70,7 +70,7 @@ class RotationGate(AbstractGate):
 class U(AbstractGate):
     n_params = 3
 
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
         """
         Represents a parametrized arbitrary rotation along the axes of the Bloch sphere.
 
