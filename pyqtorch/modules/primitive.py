@@ -6,7 +6,7 @@ import torch
 from numpy.typing import ArrayLike
 
 from pyqtorch.core.operation import _apply_gate, create_controlled_matrix_from_operation
-from pyqtorch.core.utils import OPERATIONS_DICT
+from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
 
 

@@ -20,7 +20,8 @@ import torch
 from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
-from pyqtorch.core.utils import OPERATIONS_DICT, _apply_gate
+from pyqtorch.core.utils import _apply_gate
+from pyqtorch.matrices import OPERATIONS_DICT
 
 
 def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tensor) -> torch.Tensor:

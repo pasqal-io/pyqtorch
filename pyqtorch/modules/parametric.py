@@ -6,8 +6,10 @@ from numpy.typing import ArrayLike
 from pyqtorch.core.batched_operation import (
     create_controlled_batch_from_operation,
 )
-from pyqtorch.core.utils import OPERATIONS_DICT, _vmap_gate
+from pyqtorch.core.utils import _apply_batch_gate
+from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
+from pyqtorch.modules.ops import _vmap_gate
 from pyqtorch.modules.utils import rot_matrices
 
 torch.set_default_dtype(torch.float64)
@@ -83,7 +85,7 @@ class U(AbstractGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _vmap_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         """

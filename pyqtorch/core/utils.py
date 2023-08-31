@@ -19,51 +19,7 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-torch.set_default_dtype(torch.float64)
-
 ABC_ARRAY: NDArray = np.array(list(ABC))
-
-
-IMAT = torch.eye(2, dtype=torch.cdouble)
-XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
-YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
-ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
-SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
-SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=torch.cdouble)
-TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]])
-NMAT = torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble)
-SWAPMAT = torch.tensor(
-    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
-)
-CSWAPMAT = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 1, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1],
-    ],
-    dtype=torch.cdouble,
-)
-HMAT = 1 / torch.sqrt(torch.tensor(2)) * torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble)
-
-
-OPERATIONS_DICT = {
-    "I": IMAT,
-    "X": XMAT,
-    "Y": YMAT,
-    "Z": ZMAT,
-    "S": SMAT,
-    "SDAGGER": SDAGGERMAT,
-    "T": TMAT,
-    "N": NMAT,
-    "H": HMAT,
-    "SWAP": SWAPMAT,
-    "CSWAP": CSWAPMAT,
-}
 
 
 def _apply_gate(
@@ -188,36 +144,3 @@ def _apply_batch_gate(
     state = torch.einsum(einsum_indices, mat, state)
 
     return state
-
-
-def _vmap_gate(
-    state: torch.Tensor,
-    mat: torch.Tensor,
-    qubits: list[int] | tuple[int],
-    n_qubits: int,
-    batch_size: int,
-) -> torch.Tensor:
-    def _apply(
-        state: torch.Tensor,
-        mat: torch.Tensor,
-        qubits: list[int] | tuple[int],
-        n_qubits: int,
-    ) -> torch.Tensor:
-        mat = mat.view([2] * len(qubits) * 2)
-        mat_dims = list(range(len(qubits), 2 * len(qubits)))
-        state_dims = list(qubits)
-        axes = (mat_dims, state_dims)
-        state = torch.tensordot(mat, state, dims=axes)
-        inv_perm = torch.argsort(
-            torch.tensor(
-                state_dims + [j for j in range(n_qubits) if j not in state_dims], dtype=torch.int
-            )
-        )
-        state = torch.permute(state, tuple(inv_perm))
-        return state
-
-    return torch.vmap(
-        lambda s, m: _apply(state=s, mat=m, qubits=qubits, n_qubits=n_qubits),
-        in_dims=(len(state.size()) - 1, len(mat.size()) - 1),
-        out_dims=len(state.size()) - 1,
-    )(state, mat)
