@@ -1,10 +1,10 @@
 # How to Contribute
 
-We're grateful for your interest in participating in PyQ! Please follow our guidelines to ensure a smooth contribution process.
+We're grateful for your interest in participating in pyqtorch! Please follow our guidelines to ensure a smooth contribution process.
 
 ## Reporting an Issue or Proposing a Feature
 
-Your course of action will depend on your objective, but generally, you should start by creating an issue. If you've discovered a bug or have a feature you'd like to see added to **PyQ**, feel free to create an issue on [PyQ's GitHub issue tracker](https://github.com/pasqal-io/PyQ/issues). Here are some steps to take:
+Your course of action will depend on your objective, but generally, you should start by creating an issue. If you've discovered a bug or have a feature you'd like to see added to **PyQ**, feel free to create an issue on [pyqtorch's GitHub issue tracker](https://github.com/pasqal-io/pyqtorch/issues). Here are some steps to take:
 
 1. Quickly search the existing issues using relevant keywords to ensure your issue hasn't been addressed already.
 2. If your issue is not listed, create a new one. Try to be as detailed and clear as possible in your description.
@@ -14,33 +14,33 @@ Your course of action will depend on your objective, but generally, you should s
 
 ## Submitting a Pull Request
 
-We're excited that you're eager to contribute to PyQ! To contribute, fork the `main` branch of PyQ repository and once you are satisfied with your feature and all the tests pass create a [Pull Request](https://github.com/pasqal-io/PyQ/pulls).
+We're excited that you're eager to contribute to pyqtorch! To contribute, fork the `main` branch of pyqtorch repository and once you are satisfied with your feature and all the tests pass create a [Pull Request](https://github.com/pasqal-io/pyqtorch/pulls).
 
 Here's the process for making a contribution:
 
-Click the "Fork" button at the upper right corner of the [repo page](https://github.com/pasqal-io/PyQ) to create a new GitHub repo at `https://github.com/USERNAME/PyQ`, where `USERNAME` is your GitHub ID. Then, `cd` into the directory where you want to place your new fork and clone it:
+Click the "Fork" button at the upper right corner of the [repo page](https://github.com/pasqal-io/pyqtorch) to create a new GitHub repo at `https://github.com/USERNAME/pyqtorch`, where `USERNAME` is your GitHub ID. Then, `cd` into the directory where you want to place your new fork and clone it:
 
 ```shell
-git clone https://github.com/USERNAME/PyQ.git
+git clone https://github.com/USERNAME/pyqtorch.git
 ```
 
-Next, navigate to your new PyQ fork directory and mark the main PyQ repository as the `upstream`:
+Next, navigate to your new pyqtorch fork directory and mark the main pyqtorch repository as the `upstream`:
 
 ```shell
-git remote add upstream https://github.com/pasqal-io/PyQ.git
+git remote add upstream https://github.com/pasqal-io/pyqtorch.git
 ```
 
 ## Setting up your development environment
 
 We recommended to use `hatch` for managing the environments:
 
-To develop within PyQ, use:
+To develop within pyqtorch, use:
 ```shell
 pip install hatch
 hatch -v shell
 ```
 
-To run PyQ tests, use:
+To run pyqtorch tests, use:
 
 ```shell
 hatch -e tests run test
