@@ -14,7 +14,7 @@ authors = [
 ]
 requires-python = ">=3.8,<3.12"
 license = {text = "Proprietary"}
-version = "0.4.4"
+version = "0.5.0"
 classifiers=[
     "License :: Other/Proprietary License",
     "Programming Language :: Python",
@@ -41,7 +41,6 @@ features = [
   "dev",
   "converters",
 ]
-dependencies = ["memory_profiler"]
 
 [tool.hatch.envs.tests.scripts]
 test = "pytest -n auto {args} && hatch -e docs run mkdocs build --clean --strict"
