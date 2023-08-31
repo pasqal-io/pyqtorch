@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from enum import Enum
+
 import torch
 from numpy.typing import ArrayLike
 
@@ -15,14 +17,38 @@ from pyqtorch.modules.utils import rot_matrices
 torch.set_default_dtype(torch.float64)
 
 
+class StrEnum(str, Enum):
+    def __str__(self) -> str:
+        """Used when dumping enum fields in a schema."""
+        ret: str = self.value
+        return ret
+
+    @classmethod
+    def list(cls) -> list[str]:
+        return list(map(lambda c: c.value, cls))  # type: ignore
+
+
+class ApplyFn(StrEnum):
+    """Which function to use to perform matmul between gate and state."""
+
+    VMAP = "vmap"
+    EINSUM = "einsum"
+
+
+APPLY_FN_DICT = {ApplyFn.VMAP: _vmap_gate, ApplyFn.EINSUM: _apply_batch_gate}
+
+
 class RotationGate(AbstractGate):
     n_params = 1
 
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
+    def __init__(
+        self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP
+    ):
         super().__init__(qubits, n_qubits)
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -31,7 +57,7 @@ class RotationGate(AbstractGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _vmap_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return self.apply_fn(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
@@ -106,11 +132,14 @@ class U(AbstractGate):
 class ControlledRotationGate(AbstractGate):
     n_params = 1
 
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
+    def __init__(
+        self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP
+    ):
         super().__init__(qubits, n_qubits)
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -122,7 +151,7 @@ class ControlledRotationGate(AbstractGate):
         controlled_mats = create_controlled_batch_from_operation(
             matrices, batch_size, len(self.qubits) - 1
         )
-        return _vmap_gate(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
+        return self.apply_fn(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
