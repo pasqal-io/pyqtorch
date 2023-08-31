@@ -6,7 +6,7 @@ from numpy.typing import ArrayLike
 from pyqtorch.core.batched_operation import (
     create_controlled_batch_from_operation,
 )
-from pyqtorch.core.utils import OPERATIONS_DICT, _apply_batch_gate
+from pyqtorch.core.utils import OPERATIONS_DICT, _vmap_gate
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.utils import rot_matrices
 
@@ -29,7 +29,7 @@ class RotationGate(AbstractGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return _vmap_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
@@ -83,7 +83,7 @@ class U(AbstractGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return _vmap_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         """
@@ -120,7 +120,7 @@ class ControlledRotationGate(AbstractGate):
         controlled_mats = create_controlled_batch_from_operation(
             matrices, batch_size, len(self.qubits) - 1
         )
-        return _apply_batch_gate(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
+        return _vmap_gate(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
@@ -262,7 +262,7 @@ class PHASE(RotationGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return _vmap_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
@@ -434,7 +434,7 @@ class CPHASE(AbstractGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return _vmap_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)

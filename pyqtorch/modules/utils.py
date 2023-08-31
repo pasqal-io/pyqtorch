@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+from functools import reduce
+from typing import Tuple
+
 import torch
 from numpy import log2
+
+from pyqtorch.core.utils import _apply_gate
+from pyqtorch.modules.abstract import AbstractGate
 
 
 def normalize(wf: torch.Tensor) -> torch.Tensor:
@@ -179,3 +185,19 @@ def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
     ls = list(range(2**n_qubits))
     permute_ind = torch.tensor([int(f"{num:0{n_qubits}b}"[::-1], 2) for num in ls])
     return wf[:, permute_ind]
+
+
+def _apply_parallel(
+    state: torch.Tensor,
+    thetas: torch.Tensor,
+    gates: Tuple[AbstractGate] | list[AbstractGate],
+    n_qubits: int,
+) -> torch.Tensor:
+    qubits_list: list[Tuple] = [g.qubits for g in gates]
+    mats = [g.matrices(thetas) for g in gates]
+
+    return reduce(
+        lambda state, inputs: _apply_gate(state, *inputs, N_qubits=n_qubits),  # type: ignore
+        zip(mats, qubits_list),
+        state,
+    )

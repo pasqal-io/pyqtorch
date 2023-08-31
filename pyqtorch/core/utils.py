@@ -201,6 +201,7 @@ def _vmap_gate(
         qubits: list[int] | tuple[int],
         n_qubits: int,
     ) -> torch.Tensor:
+        mat = mat.view([2] * len(qubits) * 2)
         mat_dims = list(range(len(qubits), 2 * len(qubits)))
         state_dims = list(qubits)
         axes = (mat_dims, state_dims)
