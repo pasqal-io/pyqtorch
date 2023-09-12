@@ -237,7 +237,7 @@ class S(PrimitiveGate):
 class SDagger(PrimitiveGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
-        Represents an Sdagger gate (-PI/2 phase gate) in a quantum circuit.
+        Represents an SDagger gate (-PI/2 phase gate) in a quantum circuit.
 
         Arguments:
             qubits (ArrayLike): The qubits to which the S gate is applied.
@@ -248,13 +248,13 @@ class SDagger(PrimitiveGate):
         import torch
         import pyqtorch.modules as pyq
 
-        # Create an Sdagger gate
-        sdagger_gate = pyq.Sdagger(qubits=[0], n_qubits=1)
+        # Create an SDagger gate
+        sdagger_gate = pyq.SDagger(qubits=[0], n_qubits=1)
 
         # Create a zero state
         z_state = pyq.zero_state(n_qubits=1)
 
-        # Apply the Sdagger gate to the zero state
+        # Apply the SDagger gate to the zero state
         result = sdagger_gate(z_state)
         print(result)
         ```
