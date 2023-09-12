@@ -412,8 +412,8 @@ def S(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     return _apply_gate(state, mat, qubits, N_qubits)
 
 
-def Sdagger(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
-    """Sdagger single-qubit gate
+def SDagger(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
+    """SDagger single-qubit gate
 
     Args:
         state (torch.Tensor): the input quantum state, of shape `(N_0, N_1,..., N_N, batch_size)`
@@ -425,7 +425,7 @@ def Sdagger(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tens
     """
 
     if ops_cache.enabled:
-        store_operation("Sdagger", qubits)
+        store_operation("SDagger", qubits)
 
     dev = state.device
     mat = OPERATIONS_DICT["SDAGGER"].to(dev)
