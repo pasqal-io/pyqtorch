@@ -65,8 +65,6 @@ plugins:
           filters:
             - "!^_"  # exlude all members starting with _
             - "^__init__$"  # but always include __init__ modules and methods
-    watch:
-      - pyqtorch
 
 - mkdocs-jupyter:
     theme: light
@@ -81,3 +79,6 @@ extra_javascript:
   - javascripts/mathjax.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+watch:
+  - pyqtorch
