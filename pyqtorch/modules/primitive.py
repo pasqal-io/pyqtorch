@@ -234,7 +234,7 @@ class S(PrimitiveGate):
         super().__init__("S", qubits, n_qubits)
 
 
-class Sdagger(PrimitiveGate):
+class SDagger(PrimitiveGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):
         """
         Represents an Sdagger gate (-PI/2 phase gate) in a quantum circuit.
