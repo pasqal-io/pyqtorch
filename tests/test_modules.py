@@ -37,7 +37,7 @@ state_1111 = pyq.X(qubits=[0], n_qubits=4)(
 
 @pytest.mark.parametrize("batch_size", [i for i in range(1, 2, 10)])
 @pytest.mark.parametrize("n_qubits", [i for i in range(1, 6)])
-@pytest.mark.parametrize("gate", ["X", "Y", "Z", "H", "I", "N", "S", "T", "Sdagger"])
+@pytest.mark.parametrize("gate", ["X", "Y", "Z", "H", "I", "N", "S", "T", "SDagger"])
 def test_constant_gates(batch_size: int, n_qubits: int, gate: str) -> None:
     dtype = torch.cdouble
     qubits = [torch.randint(low=0, high=n_qubits, size=(1,)).item()]
