@@ -22,7 +22,7 @@ from numpy.typing import ArrayLike
 from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.operation import RX, H, diagonalize
 from pyqtorch.core.utils import _apply_batch_gate
-from pyqtorch.matrices import OPERATIONS_DICT
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, OPERATIONS_DICT
 
 IMAT = OPERATIONS_DICT["I"]
 XMAT = OPERATIONS_DICT["X"]
@@ -78,7 +78,7 @@ def create_controlled_batch_from_operation(
         torch.Tensor: the resulting controlled gate populated by operation_matrix
     """
     controlled_batch: torch.Tensor = (
-        torch.eye(2 ** (n_control_qubits + 1), dtype=torch.cdouble)
+        torch.eye(2 ** (n_control_qubits + 1), dtype=DEFAULT_MATRIX_DTYPE)
         .unsqueeze(2)
         .repeat(1, 1, batch_size)
     )
@@ -285,9 +285,9 @@ def batchedRZZ(
     sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
     sin_t = sin_t.repeat((4, 4, 1))
 
-    mat = torch.diag(torch.tensor([1, -1, -1, 1], dtype=torch.cdouble).to(dev))
+    mat = torch.diag(torch.tensor([1, -1, -1, 1], dtype=DEFAULT_MATRIX_DTYPE).to(dev))
 
-    imat = torch.eye(4, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size).to(dev)
+    imat = torch.eye(4, dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2).repeat(1, 1, batch_size).to(dev)
     xmat = mat.unsqueeze(2).repeat(1, 1, batch_size).to(dev)
 
     mat = cos_t * imat + 1j * sin_t * xmat
@@ -398,7 +398,7 @@ def batchedCPHASE(
 
     dev = state.device
     batch_size = len(theta)
-    mat = torch.eye(4, dtype=torch.cdouble).repeat((batch_size, 1, 1))
+    mat = torch.eye(4, dtype=DEFAULT_MATRIX_DTYPE).repeat((batch_size, 1, 1))
     mat = torch.permute(mat, (1, 2, 0))
     phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
     mat[3, 3, :] = phase_rotation_angles
@@ -600,9 +600,9 @@ def batched_hamiltonian_evolution_eig(
     batch_size_h = H.size()[BATCH_DIM]
     batch_size_t = len(t)
 
-    evol_operator = torch.zeros(H.size()).to(torch.cdouble)
+    evol_operator = torch.zeros(H.size()).to(dtype=DEFAULT_MATRIX_DTYPE)
 
-    t_evo = torch.zeros(batch_size_h).to(torch.cdouble)
+    t_evo = torch.zeros(batch_size_h).to(dtype=DEFAULT_MATRIX_DTYPE)
 
     if batch_size_t >= batch_size_h:
         t_evo = t[:batch_size_h]

@@ -7,6 +7,7 @@ import torch
 from numpy import log2
 
 from pyqtorch.core.utils import _apply_gate
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
 from pyqtorch.modules.abstract import AbstractGate
 
 
@@ -71,7 +72,7 @@ def zero_state(
     n_qubits: int,
     batch_size: int = 1,
     device: str | torch.device = "cpu",
-    dtype: torch.dtype = torch.cdouble,
+    dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
     """
     Generates the zero state for a specified number of qubits.
@@ -80,7 +81,7 @@ def zero_state(
         n_qubits (int): The number of qubits for which the zero state is to be generated.
         batch_size (int): The batch size for the zero state.
         device (str): The device on which the zero state tensor is to be allocated eg cpu or gpu.
-        dtype (torch.cdouble): The data type of the zero state tensor.
+        dtype (DEFAULT_MATRIX_DTYPE): The data type of the zero state tensor.
 
     Returns:
         torch.Tensor: A tensor representing the zero state.
@@ -107,7 +108,7 @@ def uniform_state(
     n_qubits: int,
     batch_size: int = 1,
     device: str | torch.device = "cpu",
-    dtype: torch.dtype = torch.cdouble,
+    dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
     """
     Generates the uniform state for a specified number of qubits.
@@ -122,7 +123,7 @@ def uniform_state(
         n_qubits (int): The number of qubits for which the uniform state is to be generated.
         batch_size (int): The batch size for the uniform state.
         device (str): The device on which the uniform state tensor is to be allocated.
-        dtype (torch.cdouble): The data type of the uniform state tensor.
+        dtype (DEFAULT_MATRIX_DTYPE): The data type of the uniform state tensor.
 
     Returns:
         torch.Tensor: A tensor representing the uniform state.
@@ -148,7 +149,7 @@ def random_state(
     n_qubits: int,
     batch_size: int = 1,
     device: str | torch.device = "cpu",
-    dtype: torch.dtype = torch.cdouble,
+    dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
     def _rand(n_qubits: int) -> torch.Tensor:
         N = 2**n_qubits

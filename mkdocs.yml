@@ -19,6 +19,7 @@ nav:
         - Matrices : matrices.md
         - Parametric : parametric.md
         - Primitive : primitive.md
+        - Utils : utils.md
 
 
 theme:

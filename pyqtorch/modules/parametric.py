@@ -9,7 +9,7 @@ from pyqtorch.core.batched_operation import (
     create_controlled_batch_from_operation,
 )
 from pyqtorch.core.utils import _apply_batch_gate
-from pyqtorch.matrices import OPERATIONS_DICT
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.ops import _vmap_gate
 from pyqtorch.modules.utils import rot_matrices
@@ -87,10 +87,18 @@ class U(AbstractGate):
 
         super().__init__(qubits, n_qubits)
 
-        self.register_buffer("a", torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
-        self.register_buffer("b", torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
-        self.register_buffer("c", torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble).unsqueeze(2))
-        self.register_buffer("d", torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).unsqueeze(2))
+        self.register_buffer(
+            "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+        )
+        self.register_buffer(
+            "b", torch.tensor([[0, 1], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+        )
+        self.register_buffer(
+            "c", torch.tensor([[0, 0], [1, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+        )
+        self.register_buffer(
+            "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+        )
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         if thetas.ndim == 1:
@@ -454,7 +462,7 @@ class CPHASE(AbstractGate):
 
         super().__init__(qubits, n_qubits)
 
-        self.register_buffer("imat", torch.eye(2 ** len(qubits), dtype=torch.cdouble))
+        self.register_buffer("imat", torch.eye(2 ** len(qubits), dtype=DEFAULT_MATRIX_DTYPE))
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:

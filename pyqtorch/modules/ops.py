@@ -10,6 +10,23 @@ def _vmap_gate(
     n_qubits: int,
     batch_size: int,
 ) -> torch.Tensor:
+    """
+    Vmap a batched gate over a batched state and
+    apply the matrix 'mat' to `state`.
+
+    Arguments:
+        state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
+        mat (torch.Tensor): the matrix representing the gate
+        qubits (list, tuple, array): iterator containing the qubits
+        the gate is applied to
+        n_qubits (int): the total number of qubits of the system
+        batch
+
+    Returns:
+     state (torch.Tensor): the quantum state after application of the gate.
+            Same shape as `ìnput_state`
+    """
+
     def _apply(
         state: torch.Tensor,
         mat: torch.Tensor,

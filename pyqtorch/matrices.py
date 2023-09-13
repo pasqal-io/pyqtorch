@@ -19,19 +19,23 @@ import torch
 
 torch.set_default_dtype(torch.float64)
 
-IMAT = torch.eye(2, dtype=torch.cdouble)
-XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
-YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
-ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
-SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
-SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=torch.cdouble)
-TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]])
-NMAT = torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble)
-NVEC = torch.tensor([0, 1], dtype=torch.cdouble)
-ZVEC = torch.tensor([1, -1], dtype=torch.cdouble)
-IVEC = torch.tensor([1, 1], dtype=torch.cdouble)
+DEFAULT_MATRIX_DTYPE = torch.cdouble
+
+IMAT = torch.eye(2, dtype=DEFAULT_MATRIX_DTYPE)
+XMAT = torch.tensor([[0, 1], [1, 0]], dtype=DEFAULT_MATRIX_DTYPE)
+YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=DEFAULT_MATRIX_DTYPE)
+ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=DEFAULT_MATRIX_DTYPE)
+SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=DEFAULT_MATRIX_DTYPE)
+SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=DEFAULT_MATRIX_DTYPE)
+TMAT = torch.tensor(
+    [[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]], dtype=DEFAULT_MATRIX_DTYPE
+)
+NMAT = torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE)
+NVEC = torch.tensor([0, 1], dtype=DEFAULT_MATRIX_DTYPE)
+ZVEC = torch.tensor([1, -1], dtype=DEFAULT_MATRIX_DTYPE)
+IVEC = torch.tensor([1, 1], dtype=DEFAULT_MATRIX_DTYPE)
 SWAPMAT = torch.tensor(
-    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
+    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=DEFAULT_MATRIX_DTYPE
 )
 CSWAPMAT = torch.tensor(
     [
@@ -44,9 +48,9 @@ CSWAPMAT = torch.tensor(
         [0, 0, 0, 0, 0, 1, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 1],
     ],
-    dtype=torch.cdouble,
+    dtype=DEFAULT_MATRIX_DTYPE,
 )
-HMAT = 1 / torch.sqrt(torch.tensor(2)) * torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble)
+HMAT = 1 / torch.sqrt(torch.tensor(2)) * torch.tensor([[1, 1], [1, -1]], dtype=DEFAULT_MATRIX_DTYPE)
 
 
 OPERATIONS_DICT = {
@@ -118,7 +122,7 @@ def NN(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
     ```
     """
     if i == j:
-        return torch.ones(2**N, dtype=torch.cdouble).to(device)
+        return torch.ones(2**N, dtype=DEFAULT_MATRIX_DTYPE).to(device)
 
     op_list = [NVEC.to(device) if k in [i, j] else IVEC.to(device) for k in range(N)]
     operator = op_list[0]
@@ -168,7 +172,7 @@ def generate_ising_from_graph(
 ) -> torch.Tensor:
     N = graph.number_of_nodes()
     # construct the hamiltonian
-    H = torch.zeros(2**N, dtype=torch.cdouble).to(device)
+    H = torch.zeros(2**N, dtype=DEFAULT_MATRIX_DTYPE).to(device)
 
     for edge in graph.edges.data():
         if precomputed_zz is not None:
