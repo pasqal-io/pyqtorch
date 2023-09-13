@@ -36,13 +36,14 @@ class ApplyFn(StrEnum):
 
 
 APPLY_FN_DICT = {ApplyFn.VMAP: _vmap_gate, ApplyFn.EINSUM: _apply_batch_gate}
+DEFAULT_APPLY_FN = ApplyFn.EINSUM
 
 
 class RotationGate(AbstractGate):
     n_params = 1
 
     def __init__(
-        self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP
+        self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN
     ):
         super().__init__(qubits, n_qubits)
         self.gate = gate
@@ -70,7 +71,7 @@ class RotationGate(AbstractGate):
 class U(AbstractGate):
     n_params = 3
 
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a parametrized arbitrary rotation along the axes of the Bloch sphere.
 
@@ -133,7 +134,7 @@ class ControlledRotationGate(AbstractGate):
     n_params = 1
 
     def __init__(
-        self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP
+        self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN
     ):
         super().__init__(qubits, n_qubits)
         self.gate = gate
@@ -159,7 +160,7 @@ class ControlledRotationGate(AbstractGate):
 
 
 class RX(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents an X-axis rotation (RX) gate in a quantum circuit.
         The RX gate class creates a single-qubit RX gate that performs
@@ -195,7 +196,7 @@ class RX(RotationGate):
 
 
 class RY(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a Y-axis rotation (RY) gate in a quantum circuit.
         The RY gate class creates a single-qubit RY gate that performs
@@ -228,7 +229,7 @@ class RY(RotationGate):
 
 
 class RZ(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a Z-axis rotation (RZ) gate in a quantum circuit.
         The RZ gate class creates a single-qubit RZ gate that performs
@@ -262,7 +263,7 @@ class RZ(RotationGate):
 
 
 class PHASE(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a PHASE rotation gate in a quantum circuit.
 
@@ -308,7 +309,7 @@ class PHASE(RotationGate):
 
 
 class CRX(ControlledRotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a controlled-X-axis rotation (CRX) gate in a quantum circuit.
         The CRX gate class creates a controlled RX gate, applying the RX according
@@ -352,7 +353,7 @@ class CRX(ControlledRotationGate):
 
 
 class CRY(ControlledRotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a controlled-Y-axis rotation (CRY) gate in a quantum circuit.
         The CRY gate class creates a controlled RY gate, applying the RY according
@@ -395,7 +396,7 @@ class CRY(ControlledRotationGate):
 
 
 class CRZ(ControlledRotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a controlled-Z-axis rotation (CRZ) gate in a quantum circuit.
         The CRZ gate class creates a controlled RZ gate, applying the RZ according
@@ -439,7 +440,7 @@ class CRZ(ControlledRotationGate):
 class CPHASE(AbstractGate):
     n_params = 1
 
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = ApplyFn.VMAP):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a controlled-phase (CPHASE) gate in a quantum circuit.
         The CPhase gate class creates a controlled Phase gate, applying the PhaseGate
