@@ -31,9 +31,9 @@ TMAT = torch.tensor(
     [[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]], dtype=DEFAULT_MATRIX_DTYPE
 )
 NMAT = torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE)
-NVEC = torch.tensor([0, 1], dtype=DEFAULT_MATRIX_DTYPE)
-ZVEC = torch.tensor([1, -1], dtype=DEFAULT_MATRIX_DTYPE)
-IVEC = torch.tensor([1, 1], dtype=DEFAULT_MATRIX_DTYPE)
+NDIAG = torch.tensor([0, 1], dtype=DEFAULT_MATRIX_DTYPE)
+ZDIAG = torch.tensor([1, -1], dtype=DEFAULT_MATRIX_DTYPE)
+IDIAG = torch.tensor([1, 1], dtype=DEFAULT_MATRIX_DTYPE)
 SWAPMAT = torch.tensor(
     [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=DEFAULT_MATRIX_DTYPE
 )
@@ -92,7 +92,7 @@ def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
     if i == j:
         return torch.ones(2**N).to(device)
 
-    op_list = [ZVEC.to(device) if k in [i, j] else IVEC.to(device) for k in range(N)]
+    op_list = [ZDIAG.to(device) if k in [i, j] else IDIAG.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
         operator = torch.kron(operator, op)
@@ -124,7 +124,7 @@ def NN(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
     if i == j:
         return torch.ones(2**N, dtype=DEFAULT_MATRIX_DTYPE).to(device)
 
-    op_list = [NVEC.to(device) if k in [i, j] else IVEC.to(device) for k in range(N)]
+    op_list = [NDIAG.to(device) if k in [i, j] else IDIAG.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
         operator = torch.kron(operator, op)
@@ -133,7 +133,7 @@ def NN(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
 
 
 def single_Z(N: int, i: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
-    op_list = [ZVEC.to(device) if k == i else IVEC.to(device) for k in range(N)]
+    op_list = [ZDIAG.to(device) if k == i else IDIAG.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
         operator = torch.kron(operator, op)
@@ -142,7 +142,7 @@ def single_Z(N: int, i: int = 0, device: Union[str, torch.device] = "cpu") -> to
 
 
 def single_N(N: int, i: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
-    op_list = [NVEC.to(device) if k == i else IVEC.to(device) for k in range(N)]
+    op_list = [NDIAG.to(device) if k == i else IDIAG.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
         operator = torch.kron(operator, op)
