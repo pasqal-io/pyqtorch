@@ -32,7 +32,7 @@ git remote add upstream https://github.com/pasqal-io/pyqtorch.git
 
 ## Setting up your development environment
 
-We recommended to use `hatch` for managing the environments:
+We recommended to use `hatch` for managing environments:
 
 To develop within pyqtorch, use:
 ```shell
