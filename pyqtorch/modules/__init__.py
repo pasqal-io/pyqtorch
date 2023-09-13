@@ -26,6 +26,7 @@ from pyqtorch.modules.primitive import (
     Z,
 )
 from pyqtorch.modules.utils import (
+    _apply_parallel,
     flatten_wf,
     invert_endianness,
     is_normalized,

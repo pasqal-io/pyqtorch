@@ -20,7 +20,8 @@ import torch
 from numpy.typing import ArrayLike
 
 from pyqtorch.converters.store_ops import ops_cache, store_operation
-from pyqtorch.core.utils import OPERATIONS_DICT, _apply_gate
+from pyqtorch.core.utils import _apply_gate
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, OPERATIONS_DICT
 
 
 def get_parametrized_matrix_for_operation(operation_type: str, theta: torch.Tensor) -> torch.Tensor:
@@ -55,7 +56,9 @@ def create_controlled_matrix_from_operation(
         torch.Tensor: the resulting controlled gate populated by operation_matrix
     """
     mat_size = len(operation_matrix)
-    controlled_mat: torch.Tensor = torch.eye(2**n_control_qubits * mat_size, dtype=torch.cdouble)
+    controlled_mat: torch.Tensor = torch.eye(
+        2**n_control_qubits * mat_size, dtype=DEFAULT_MATRIX_DTYPE
+    )
     controlled_mat[-mat_size:, -mat_size:] = operation_matrix
     return controlled_mat
 
@@ -136,9 +139,9 @@ def RZZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
         store_operation("RZZ", qubits, param=theta)
 
     dev = state.device
-    mat = torch.diag(torch.tensor([1, -1, -1, 1], dtype=torch.cdouble).to(dev))
+    mat = torch.diag(torch.tensor([1, -1, -1, 1], dtype=DEFAULT_MATRIX_DTYPE).to(dev))
     mat = 1j * torch.sin(theta / 2) * mat + torch.cos(theta / 2) * torch.eye(
-        4, dtype=torch.cdouble
+        4, dtype=DEFAULT_MATRIX_DTYPE
     ).to(dev)
     return _apply_gate(state, torch.diag(mat), qubits, N_qubits)
 
@@ -175,14 +178,16 @@ def U(
     t_plus = torch.exp(-1j * (phi + omega) / 2)
     t_minus = torch.exp(-1j * (phi - omega) / 2)
     mat = (
-        torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).to(dev) * torch.cos(theta / 2) * t_plus
-        - torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).to(dev)
+        torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).to(dev)
+        * torch.cos(theta / 2)
+        * t_plus
+        - torch.tensor([[0, 1], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).to(dev)
         * torch.sin(theta / 2)
         * torch.conj(t_minus)
-        + torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble).to(dev)
+        + torch.tensor([[0, 0], [1, 0]], dtype=DEFAULT_MATRIX_DTYPE).to(dev)
         * torch.sin(theta / 2)
         * t_minus
-        + torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).to(dev)
+        + torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).to(dev)
         * torch.cos(theta / 2)
         * torch.conj(t_plus)
     )
@@ -517,7 +522,7 @@ def CPHASE(
             [0, 0, 1, 0],
             [0, 0, 0, torch.exp(torch.tensor(1j * theta))],
         ],
-        dtype=torch.cdouble,
+        dtype=DEFAULT_MATRIX_DTYPE,
     ).to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
 
@@ -610,8 +615,8 @@ def diagonalize(H: torch.Tensor) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
     else:
         if is_real(H):
             eig_values, eig_vectors = torch.linalg.eigh(H.real)
-            eig_values = eig_values.to(torch.cdouble)
-            eig_vectors = eig_vectors.to(torch.cdouble)
+            eig_values = eig_values.to(DEFAULT_MATRIX_DTYPE)
+            eig_vectors = eig_vectors.to(DEFAULT_MATRIX_DTYPE)
         else:
             eig_values, eig_vectors = torch.linalg.eigh(H)
 
@@ -647,7 +652,7 @@ def hamiltonian_evolution_eig(
     batch_size_s = state.size()[-1]
     batch_size_t = len(t)
 
-    t_evo = torch.zeros(batch_size_s).to(torch.cdouble)
+    t_evo = torch.zeros(batch_size_s).to(DEFAULT_MATRIX_DTYPE)
 
     if batch_size_t >= batch_size_s:
         t_evo = t[:batch_size_s]

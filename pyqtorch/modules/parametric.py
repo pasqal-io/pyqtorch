@@ -1,27 +1,55 @@
 from __future__ import annotations
 
+from enum import Enum
+
 import torch
 from numpy.typing import ArrayLike
 
 from pyqtorch.core.batched_operation import (
-    _apply_batch_gate,
     create_controlled_batch_from_operation,
 )
-from pyqtorch.core.utils import OPERATIONS_DICT
+from pyqtorch.core.utils import _apply_batch_gate
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
+from pyqtorch.modules.ops import _vmap_gate
 from pyqtorch.modules.utils import rot_matrices
 
 torch.set_default_dtype(torch.float64)
 
 
+class StrEnum(str, Enum):
+    def __str__(self) -> str:
+        """Used when dumping enum fields in a schema."""
+        ret: str = self.value
+        return ret
+
+    @classmethod
+    def list(cls) -> list[str]:
+        return list(map(lambda c: c.value, cls))  # type: ignore
+
+
+class ApplyFn(StrEnum):
+    """Which function to use to perform matmul between gate and state."""
+
+    VMAP = "vmap"
+    EINSUM = "einsum"
+
+
+APPLY_FN_DICT = {ApplyFn.VMAP: _vmap_gate, ApplyFn.EINSUM: _apply_batch_gate}
+DEFAULT_APPLY_FN = ApplyFn.EINSUM
+
+
 class RotationGate(AbstractGate):
     n_params = 1
 
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
+    def __init__(
+        self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN
+    ):
         super().__init__(qubits, n_qubits)
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -30,7 +58,7 @@ class RotationGate(AbstractGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return self.apply_fn(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
@@ -43,7 +71,7 @@ class RotationGate(AbstractGate):
 class U(AbstractGate):
     n_params = 3
 
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a parametrized arbitrary rotation along the axes of the Bloch sphere.
 
@@ -59,10 +87,18 @@ class U(AbstractGate):
 
         super().__init__(qubits, n_qubits)
 
-        self.register_buffer("a", torch.tensor([[1, 0], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
-        self.register_buffer("b", torch.tensor([[0, 1], [0, 0]], dtype=torch.cdouble).unsqueeze(2))
-        self.register_buffer("c", torch.tensor([[0, 0], [1, 0]], dtype=torch.cdouble).unsqueeze(2))
-        self.register_buffer("d", torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble).unsqueeze(2))
+        self.register_buffer(
+            "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+        )
+        self.register_buffer(
+            "b", torch.tensor([[0, 1], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+        )
+        self.register_buffer(
+            "c", torch.tensor([[0, 0], [1, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+        )
+        self.register_buffer(
+            "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+        )
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         if thetas.ndim == 1:
@@ -105,11 +141,14 @@ class U(AbstractGate):
 class ControlledRotationGate(AbstractGate):
     n_params = 1
 
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
+    def __init__(
+        self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN
+    ):
         super().__init__(qubits, n_qubits)
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
+        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -121,7 +160,7 @@ class ControlledRotationGate(AbstractGate):
         controlled_mats = create_controlled_batch_from_operation(
             matrices, batch_size, len(self.qubits) - 1
         )
-        return _apply_batch_gate(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
+        return self.apply_fn(state, controlled_mats, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
@@ -129,7 +168,7 @@ class ControlledRotationGate(AbstractGate):
 
 
 class RX(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents an X-axis rotation (RX) gate in a quantum circuit.
         The RX gate class creates a single-qubit RX gate that performs
@@ -161,11 +200,11 @@ class RX(RotationGate):
 
         ```
         """
-        super().__init__("X", qubits, n_qubits)
+        super().__init__("X", qubits, n_qubits, apply_fn_type)
 
 
 class RY(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a Y-axis rotation (RY) gate in a quantum circuit.
         The RY gate class creates a single-qubit RY gate that performs
@@ -194,11 +233,11 @@ class RY(RotationGate):
         print(result)
         ```
         """
-        super().__init__("Y", qubits, n_qubits)
+        super().__init__("Y", qubits, n_qubits, apply_fn_type)
 
 
 class RZ(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a Z-axis rotation (RZ) gate in a quantum circuit.
         The RZ gate class creates a single-qubit RZ gate that performs
@@ -228,11 +267,11 @@ class RZ(RotationGate):
         print(result)
         ```
         """
-        super().__init__("Z", qubits, n_qubits)
+        super().__init__("Z", qubits, n_qubits, apply_fn_type)
 
 
 class PHASE(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a PHASE rotation gate in a quantum circuit.
 
@@ -260,10 +299,11 @@ class PHASE(RotationGate):
         ```
         """
         super().__init__("I", qubits, n_qubits)
+        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return self.apply_fn(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
@@ -277,7 +317,7 @@ class PHASE(RotationGate):
 
 
 class CRX(ControlledRotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a controlled-X-axis rotation (CRX) gate in a quantum circuit.
         The CRX gate class creates a controlled RX gate, applying the RX according
@@ -317,11 +357,11 @@ class CRX(ControlledRotationGate):
 
         ```
         """
-        super().__init__("X", qubits, n_qubits)
+        super().__init__("X", qubits, n_qubits, apply_fn_type)
 
 
 class CRY(ControlledRotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a controlled-Y-axis rotation (CRY) gate in a quantum circuit.
         The CRY gate class creates a controlled RY gate, applying the RY according
@@ -360,11 +400,11 @@ class CRY(ControlledRotationGate):
         print(result)
         ```
         """
-        super().__init__("Y", qubits, n_qubits)
+        super().__init__("Y", qubits, n_qubits, apply_fn_type)
 
 
 class CRZ(ControlledRotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a controlled-Z-axis rotation (CRZ) gate in a quantum circuit.
         The CRZ gate class creates a controlled RZ gate, applying the RZ according
@@ -402,13 +442,13 @@ class CRZ(ControlledRotationGate):
         print(result)
         ```
         """
-        super().__init__("Z", qubits, n_qubits)
+        super().__init__("Z", qubits, n_qubits, apply_fn_type)
 
 
 class CPHASE(AbstractGate):
     n_params = 1
 
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a controlled-phase (CPHASE) gate in a quantum circuit.
         The CPhase gate class creates a controlled Phase gate, applying the PhaseGate
@@ -422,7 +462,8 @@ class CPHASE(AbstractGate):
 
         super().__init__(qubits, n_qubits)
 
-        self.register_buffer("imat", torch.eye(2 ** len(qubits), dtype=torch.cdouble))
+        self.register_buffer("imat", torch.eye(2 ** len(qubits), dtype=DEFAULT_MATRIX_DTYPE))
+        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
@@ -435,7 +476,7 @@ class CPHASE(AbstractGate):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return self.apply_fn(state, matrices, self.qubits, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)

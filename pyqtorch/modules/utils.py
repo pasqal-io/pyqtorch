@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+from functools import reduce
+from typing import Tuple
+
 import torch
 from numpy import log2
+
+from pyqtorch.core.utils import _apply_gate
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
+from pyqtorch.modules.abstract import AbstractGate
 
 
 def normalize(wf: torch.Tensor) -> torch.Tensor:
@@ -65,7 +72,7 @@ def zero_state(
     n_qubits: int,
     batch_size: int = 1,
     device: str | torch.device = "cpu",
-    dtype: torch.dtype = torch.cdouble,
+    dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
     """
     Generates the zero state for a specified number of qubits.
@@ -74,7 +81,7 @@ def zero_state(
         n_qubits (int): The number of qubits for which the zero state is to be generated.
         batch_size (int): The batch size for the zero state.
         device (str): The device on which the zero state tensor is to be allocated eg cpu or gpu.
-        dtype (torch.cdouble): The data type of the zero state tensor.
+        dtype (DEFAULT_MATRIX_DTYPE): The data type of the zero state tensor.
 
     Returns:
         torch.Tensor: A tensor representing the zero state.
@@ -101,7 +108,7 @@ def uniform_state(
     n_qubits: int,
     batch_size: int = 1,
     device: str | torch.device = "cpu",
-    dtype: torch.dtype = torch.cdouble,
+    dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
     """
     Generates the uniform state for a specified number of qubits.
@@ -116,7 +123,7 @@ def uniform_state(
         n_qubits (int): The number of qubits for which the uniform state is to be generated.
         batch_size (int): The batch size for the uniform state.
         device (str): The device on which the uniform state tensor is to be allocated.
-        dtype (torch.cdouble): The data type of the uniform state tensor.
+        dtype (DEFAULT_MATRIX_DTYPE): The data type of the uniform state tensor.
 
     Returns:
         torch.Tensor: A tensor representing the uniform state.
@@ -142,7 +149,7 @@ def random_state(
     n_qubits: int,
     batch_size: int = 1,
     device: str | torch.device = "cpu",
-    dtype: torch.dtype = torch.cdouble,
+    dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
     def _rand(n_qubits: int) -> torch.Tensor:
         N = 2**n_qubits
@@ -179,3 +186,19 @@ def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
     ls = list(range(2**n_qubits))
     permute_ind = torch.tensor([int(f"{num:0{n_qubits}b}"[::-1], 2) for num in ls])
     return wf[:, permute_ind]
+
+
+def _apply_parallel(
+    state: torch.Tensor,
+    thetas: torch.Tensor,
+    gates: Tuple[AbstractGate] | list[AbstractGate],
+    n_qubits: int,
+) -> torch.Tensor:
+    qubits_list: list[Tuple] = [g.qubits for g in gates]
+    mats = [g.matrices(thetas) for g in gates]
+
+    return reduce(
+        lambda state, inputs: _apply_gate(state, *inputs, N_qubits=n_qubits),  # type: ignore
+        zip(mats, qubits_list),
+        state,
+    )

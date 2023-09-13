@@ -17,9 +17,55 @@ from typing import Any, Optional, Union
 
 import torch
 
-IMAT = torch.tensor([1, 1], dtype=torch.cdouble)
-ZMAT = torch.tensor([1, -1], dtype=torch.cdouble)
-NMAT = torch.tensor([0, 1], dtype=torch.cdouble)
+torch.set_default_dtype(torch.float64)
+
+DEFAULT_MATRIX_DTYPE = torch.cdouble
+
+IMAT = torch.eye(2, dtype=DEFAULT_MATRIX_DTYPE)
+XMAT = torch.tensor([[0, 1], [1, 0]], dtype=DEFAULT_MATRIX_DTYPE)
+YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=DEFAULT_MATRIX_DTYPE)
+ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=DEFAULT_MATRIX_DTYPE)
+SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=DEFAULT_MATRIX_DTYPE)
+SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=DEFAULT_MATRIX_DTYPE)
+TMAT = torch.tensor(
+    [[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]], dtype=DEFAULT_MATRIX_DTYPE
+)
+NMAT = torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE)
+NDIAG = torch.tensor([0, 1], dtype=DEFAULT_MATRIX_DTYPE)
+ZDIAG = torch.tensor([1, -1], dtype=DEFAULT_MATRIX_DTYPE)
+IDIAG = torch.tensor([1, 1], dtype=DEFAULT_MATRIX_DTYPE)
+SWAPMAT = torch.tensor(
+    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=DEFAULT_MATRIX_DTYPE
+)
+CSWAPMAT = torch.tensor(
+    [
+        [1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1],
+    ],
+    dtype=DEFAULT_MATRIX_DTYPE,
+)
+HMAT = 1 / torch.sqrt(torch.tensor(2)) * torch.tensor([[1, 1], [1, -1]], dtype=DEFAULT_MATRIX_DTYPE)
+
+
+OPERATIONS_DICT = {
+    "I": IMAT,
+    "X": XMAT,
+    "Y": YMAT,
+    "Z": ZMAT,
+    "S": SMAT,
+    "SDAGGER": SDAGGERMAT,
+    "T": TMAT,
+    "N": NMAT,
+    "H": HMAT,
+    "SWAP": SWAPMAT,
+    "CSWAP": CSWAPMAT,
+}
 
 
 def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
@@ -46,7 +92,7 @@ def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
     if i == j:
         return torch.ones(2**N).to(device)
 
-    op_list = [ZMAT.to(device) if k in [i, j] else IMAT.to(device) for k in range(N)]
+    op_list = [ZDIAG.to(device) if k in [i, j] else IDIAG.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
         operator = torch.kron(operator, op)
@@ -76,9 +122,9 @@ def NN(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
     ```
     """
     if i == j:
-        return torch.ones(2**N, dtype=torch.cdouble).to(device)
+        return torch.ones(2**N, dtype=DEFAULT_MATRIX_DTYPE).to(device)
 
-    op_list = [NMAT.to(device) if k in [i, j] else IMAT.to(device) for k in range(N)]
+    op_list = [NDIAG.to(device) if k in [i, j] else IDIAG.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
         operator = torch.kron(operator, op)
@@ -87,7 +133,7 @@ def NN(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu")
 
 
 def single_Z(N: int, i: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
-    op_list = [ZMAT.to(device) if k == i else IMAT.to(device) for k in range(N)]
+    op_list = [ZDIAG.to(device) if k == i else IDIAG.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
         operator = torch.kron(operator, op)
@@ -96,7 +142,7 @@ def single_Z(N: int, i: int = 0, device: Union[str, torch.device] = "cpu") -> to
 
 
 def single_N(N: int, i: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:
-    op_list = [NMAT.to(device) if k == i else IMAT.to(device) for k in range(N)]
+    op_list = [NDIAG.to(device) if k == i else IDIAG.to(device) for k in range(N)]
     operator = op_list[0]
     for op in op_list[1::]:
         operator = torch.kron(operator, op)
@@ -126,7 +172,7 @@ def generate_ising_from_graph(
 ) -> torch.Tensor:
     N = graph.number_of_nodes()
     # construct the hamiltonian
-    H = torch.zeros(2**N, dtype=torch.cdouble).to(device)
+    H = torch.zeros(2**N, dtype=DEFAULT_MATRIX_DTYPE).to(device)
 
     for edge in graph.edges.data():
         if precomputed_zz is not None:

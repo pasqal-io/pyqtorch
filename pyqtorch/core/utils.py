@@ -19,51 +19,7 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-torch.set_default_dtype(torch.float64)
-
 ABC_ARRAY: NDArray = np.array(list(ABC))
-
-
-IMAT = torch.eye(2, dtype=torch.cdouble)
-XMAT = torch.tensor([[0, 1], [1, 0]], dtype=torch.cdouble)
-YMAT = torch.tensor([[0, -1j], [1j, 0]], dtype=torch.cdouble)
-ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=torch.cdouble)
-SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=torch.cdouble)
-SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=torch.cdouble)
-TMAT = torch.tensor([[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]])
-NMAT = torch.tensor([[0, 0], [0, 1]], dtype=torch.cdouble)
-SWAPMAT = torch.tensor(
-    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=torch.cdouble
-)
-CSWAPMAT = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 1, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1],
-    ],
-    dtype=torch.cdouble,
-)
-HMAT = 1 / torch.sqrt(torch.tensor(2)) * torch.tensor([[1, 1], [1, -1]], dtype=torch.cdouble)
-
-
-OPERATIONS_DICT = {
-    "I": IMAT,
-    "X": XMAT,
-    "Y": YMAT,
-    "Z": ZMAT,
-    "S": SMAT,
-    "SDAGGER": SDAGGERMAT,
-    "T": TMAT,
-    "N": NMAT,
-    "H": HMAT,
-    "SWAP": SWAPMAT,
-    "CSWAP": CSWAPMAT,
-}
 
 
 def _apply_gate(
@@ -73,19 +29,18 @@ def _apply_gate(
     N_qubits: int,
 ) -> torch.Tensor:
     """
-    Apply a gate represented by its matrix `mat` to the quantum state
-    `state`
+    Apply the matrix 'mat' corresponding to a gate to `state`.
 
-    Inputs:
-    - state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
-    - mat (torch.Tensor): the matrix representing the gate
-    - qubits (list, tuple, array): iterator containing the qubits
-    the gate is applied to
-    - N_qubits: the total number of qubits of the system
+    Arguments:
+        state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
+        mat (torch.Tensor): the matrix representing the gate
+        qubits (list, tuple, array): iterator containing the qubits
+        the gate is applied to
+        N_qubits (int): the total number of qubits of the system
 
-    Output:
-    - state (torch.Tensor): the quantum state after application of the gate.
-    Same shape as `ìnput_state`
+    Returns:
+     state (torch.Tensor): the quantum state after application of the gate.
+            Same shape as `ìnput_state`
     """
     mat = mat.view([2] * len(qubits) * 2)
     mat_dims = list(range(len(qubits), 2 * len(qubits)))
@@ -105,16 +60,16 @@ def _apply_einsum_gate(
     """
     Same as `apply_gate` but with the `torch.einsum` function
 
-    Inputs:
-    - state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
-    - mat (torch.Tensor): the matrix representing the gate
-    - qubits (list, tuple, array): Sized iterator containing the qubits
-    the gate is applied to
-    - N_qubits: the total number of qubits of the system
+    Arguments:
+        state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
+        mat (torch.Tensor): the matrix representing the gate
+        qubits (list, tuple, array): Sized iterator containing the qubits
+                                     the gate is applied to
+        N_qubits (int): the total number of qubits of the system
 
-    Output:
-    - state (torch.Tensor): the quantum state after application of the gate.
-    Same shape as `ìnput_state`
+    Returns:
+        state (torch.Tensor): The state after application of the gate.
+                              Same shape as `ìnput_state`
     """
     mat = mat.reshape([2] * len(qubits) * 2)
     state_indices = ABC_ARRAY[0 : N_qubits + 1]
@@ -154,19 +109,27 @@ def _apply_batch_gate(
     tensor [G_0 * state_0, ... G_b * state_b]. All gates
     are applied to the same qubit.
 
-    Inputs:
-    - state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
-    - mat (torch.Tensor): the tensor representing the gates. The last dimension
-    is the batch dimension. It has to be the sam eas the last dimension of
-    `state`
-    - qubits (list, tuple, array): Sized iterator containing the qubits
-    the gate is applied to
-    - N_qubits (int): the total number of qubits of the system
-    - batch_size (int): the size of the batch
+    Arguments:
+        state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
+        mat (torch.Tensor): the tensor representing the gates.
+            The last dimension is the batch dimension.
+            It has to be the sam eas the last dimension of `state`
+        qubits (list, tuple, array): Sized iterator containing the qubits
+                                        the gate is applied to.
+        N_qubits (int): the total number of qubits of the system
+        batch_size (int): the size of the batch
 
-    Output:
-    - state (torch.Tensor): the quantum state after application of the gate.
-    Same shape as `input_state`
+    Returns:
+        torch.Tensor: The state after application of the gate.
+                                Same shape as `input_state`.
+    Examples:
+    ```python exec="on" source="above" result="json"
+    import torch
+    import pyqtorch.modules as pyq
+
+    state = pyq.zero_state(n_qubits=2)
+    print(state)  #tensor([[[1.+0.j],[0.+0.j]],[[0.+0.j],[0.+0.j]]], dtype=torch.complex128)
+    ```
     """
     mat = mat.view([2] * len(qubits) * 2 + [batch_size])
 

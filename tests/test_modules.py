@@ -9,7 +9,7 @@ from torch import Tensor
 
 import pyqtorch.core as func_pyq
 import pyqtorch.modules as pyq
-from pyqtorch.core.utils import OPERATIONS_DICT
+from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"

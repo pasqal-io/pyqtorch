@@ -1,6 +1,6 @@
 site_name: pyqtorch
-repo_url: "https://github.com/pasqal-io/PyQ"
-repo_name: "PyQ"
+repo_url: "https://github.com/pasqal-io/pyqtorch"
+repo_name: "pyqtorch"
 
 nav:
 
@@ -19,6 +19,7 @@ nav:
         - Matrices : matrices.md
         - Parametric : parametric.md
         - Primitive : primitive.md
+        - Utils : utils.md
 
 
 theme:
