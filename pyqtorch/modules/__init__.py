@@ -18,7 +18,7 @@ from pyqtorch.modules.primitive import (
     I,
     N,
     S,
-    Sdagger,
+    SDagger,
     T,
     Toffoli,
     X,
