@@ -51,3 +51,27 @@ def _vmap_gate(
         in_dims=(len(state.size()) - 1, len(mat.size()) - 1),
         out_dims=len(state.size()) - 1,
     )(state, mat)
+
+
+def basis_state_indices(n_qubits: int, target: int) -> torch.LongTensor:
+    n_target = 1
+    target = torch.tensor(target)
+    index_base = torch.arange(0, 2 ** (n_qubits - n_target))
+    t = n_qubits - 1 - target
+    zero_index = index_base + ((index_base >> t) << t)
+    one_index = index_base + (((index_base >> t) + 1) << t)
+    return torch.cat([zero_index.long(), one_index.long()])
+
+
+def apply_kjd_gate(
+    state: torch.Tensor, mat: torch.Tensor, qubit: int, n_qubits: int, batch_size: int
+) -> torch.Tensor:
+    batch_size = state.size(-1)
+    state = state.flatten()
+    indices = basis_state_indices(n_qubits, qubit)
+    _, sorted_indices = torch.sort(indices)
+    return (
+        (mat @ state[indices].view(2, 2**n_qubits // 2))
+        .flatten()[sorted_indices]
+        .reshape([2] * n_qubits + [batch_size])
+    )
