@@ -1,0 +1,1 @@
+diff_rules = {'RX': lambda x: x}
