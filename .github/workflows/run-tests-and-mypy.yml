@@ -13,7 +13,7 @@ jobs:
     if: |
       github.event_name == 'push' || github.event_name == 'pull_request'
     name: Unit testing
-    runs-on: docker.io/seitzdom/qadence:latest
+    runs-on: docker.io/pytorch/torchserve
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
