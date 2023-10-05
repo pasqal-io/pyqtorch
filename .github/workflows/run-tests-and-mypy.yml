@@ -13,9 +13,9 @@ jobs:
     if: |
       github.event_name == 'push' || github.event_name == 'pull_request'
     name: Unit testing
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container: 
-        image: docker.io/pytorch/torchserve
+        image: docker.io/pytorch/torchserve:latest
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
