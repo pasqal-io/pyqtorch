@@ -15,7 +15,7 @@ jobs:
     name: Unit testing
     runs-on: ubuntu-22.04
     container: 
-        image: docker.io/pytorch/torchserve:latest
+        image: pytorch/pytorch:latest
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
