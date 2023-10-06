@@ -35,6 +35,7 @@ jobs:
             apt-get update -y && apt-get install -y libglpk-dev glpk-utils git
             python -m pip install --upgrade pip
             python -m pip install hatch
+            git --version
 
         - name: Install main dependencies
           run: |
