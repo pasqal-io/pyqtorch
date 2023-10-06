@@ -42,8 +42,8 @@ jobs:
 
         - name: Lint
           run: |
-            python -m hatch -e tests run pre-commit run --all-files
+            python -m hatch -v -e tests run pre-commit run --all-files
 
         - name: Perform unit tests
           run: |
-            python -m hatch -e tests run pytest -n auto && hatch -e docs run mkdocs build --clean --strict
+            python -m hatch -v -e tests run pytest -n auto && hatch -e docs run mkdocs build --clean --strict
