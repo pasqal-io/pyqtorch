@@ -13,9 +13,9 @@ jobs:
     if: |
       github.event_name == 'push' || github.event_name == 'pull_request'
     name: Unit testing
-    runs-on: ubuntu-20.04
+    runs-on: macos-latest
     container:
-        image: pytorch/pytorch:latest
+        image: seitzdom/qadence:latest
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
