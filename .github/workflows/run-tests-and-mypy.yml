@@ -29,17 +29,14 @@ jobs:
             git --version
         - name: Set up Python
           uses: actions/setup-python@v2
-        - name: Checkout main code and submodules
+        - name: Checkout
           uses: actions/checkout@v2
         - name: Install main dependencies
           shell: bash
           run: |
             python -m hatch -v -e tests
-
         - name: Lint
-          shell: bash
-          run: |
-            python -m hatch -v -e tests run pre-commit run --all-files
+          uses: pre-commit/action@v3.0.0
 
         - name: Perform unit tests
           shell: bash
