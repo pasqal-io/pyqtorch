@@ -20,15 +20,6 @@ jobs:
     #   matrix:
     #     python-version: ["3.9", "3.10"]
     steps:
-
-        - name: Checkout main code and submodules
-          uses: actions/checkout@v2
-
-        # - name: Set up Python ${{ matrix.python-version }}
-        #   uses: actions/setup-python@v2
-        #   with:
-        #     python-version: ${{ matrix.python-version }}
-
         - name: Install hatch
           shell: bash
           run: |
@@ -36,7 +27,12 @@ jobs:
             python -m pip install --upgrade pip
             python -m pip install hatch
             git --version
-
+        - name: Set up Python ${{ matrix.python-version }}
+          uses: actions/setup-python@v2
+        #   with:
+        #     python-version: ${{ matrix.python-version }}
+        - name: Checkout main code and submodules
+          uses: actions/checkout@v2
         - name: Install main dependencies
           shell: bash
           run: |
