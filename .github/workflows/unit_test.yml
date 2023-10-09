@@ -9,7 +9,7 @@ on:
 
 jobs:
 
-  unit_tests:
+  test:
     if: |
       github.event_name == 'push' || github.event_name == 'pull_request'
     name: Unit testing
@@ -30,8 +30,11 @@ jobs:
             apt-get update -y && apt-get install -y libglpk-dev glpk-utils git
             python -m pip install --upgrade pip
             python -m pip install hatch
-            git --version
         - name: Perform unit tests
           shell: bash
           run: |
-            python -m hatch -v -e tests run pytest -n auto && hatch -e docs run mkdocs build --clean --strict
+            python -m hatch -v -e tests run pytest -n auto
+        - name: Test docs
+          shell: bash
+          run: |
+            hatch -e docs run mkdocs build --clean --strict
