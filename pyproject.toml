@@ -13,10 +13,10 @@ authors = [
     { name = "Niklas Heim", email = "niklas.heim@pasqal.com" },
 ]
 requires-python = ">=3.8,<3.12"
-license = {text = "Proprietary"}
+license = {text = "Apache 2.0"}
 version = "0.5.0"
 classifiers=[
-    "License :: Other/Proprietary License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
