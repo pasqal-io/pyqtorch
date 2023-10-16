@@ -51,7 +51,7 @@ choice (e.g. Conda) and execute the following:
 
 ```shell
 pip install pytest
-pip install qiskit
+
 pip install -e .
 pytest
 ```
@@ -64,7 +64,7 @@ Without `hatch`:
 
 ```shell
 pip install pytest
-pip install qiskit
+
 pip install -e .
 pip install pre-commit
 pre-commit install
