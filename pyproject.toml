@@ -53,6 +53,7 @@ dependencies = [
   "mkdocs-jupyter",
   "mkdocs-exclude",
   "markdown-exec",
+  "mike",
 ]
 
 [tool.hatch.envs.docs.scripts]
