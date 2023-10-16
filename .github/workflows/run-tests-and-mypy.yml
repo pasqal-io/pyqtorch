@@ -64,7 +64,7 @@ jobs:
       - name: Build and publish package
         run: |
           hatch build
-          hatch publish -u pasqal-io -a ${{ secrets.PYPI_API_TOKEN }}
+          hatch publish -u __token__ -a ${{ secrets.PYPI_API_TOKEN }}
       - name: Confirm deployment
         timeout-minutes: 5
         run: |
