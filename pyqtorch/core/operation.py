@@ -19,7 +19,6 @@ from typing import Any, Optional, Tuple
 import torch
 from numpy.typing import ArrayLike
 
-from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.utils import _apply_gate
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, OPERATIONS_DICT
 
@@ -75,8 +74,6 @@ def RX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: in
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("RX", qubits, param=theta)
 
     dev = state.device
     mat: torch.Tensor = get_parametrized_matrix_for_operation("X", theta).to(dev)
@@ -95,8 +92,6 @@ def RY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: in
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("RY", qubits, param=theta)
 
     dev = state.device
     mat: torch.Tensor = get_parametrized_matrix_for_operation("Y", theta).to(dev)
@@ -115,8 +110,6 @@ def RZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: in
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("RZ", qubits, param=theta)
 
     dev = state.device
     mat: torch.Tensor = get_parametrized_matrix_for_operation("Z", theta).to(dev)
@@ -135,8 +128,6 @@ def RZZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("RZZ", qubits, param=theta)
 
     dev = state.device
     mat = torch.diag(torch.tensor([1, -1, -1, 1], dtype=DEFAULT_MATRIX_DTYPE).to(dev))
@@ -171,9 +162,6 @@ def U(
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("U", qubits, param=[phi, theta, omega])  # type: ignore[list-item]
-
     dev = state.device
     t_plus = torch.exp(-1j * (phi + omega) / 2)
     t_minus = torch.exp(-1j * (phi - omega) / 2)
@@ -206,9 +194,6 @@ def I(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:  #
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("I", qubits)
-
     dev = state.device
     mat = OPERATIONS_DICT["I"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
@@ -225,9 +210,6 @@ def X(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-
-    if ops_cache.enabled:
-        store_operation("X", qubits)
 
     dev = state.device
     mat = OPERATIONS_DICT["X"].to(dev)
@@ -246,9 +228,6 @@ def Z(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("Z", qubits)
-
     dev = state.device
     mat = OPERATIONS_DICT["Z"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
@@ -266,9 +245,6 @@ def Y(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("Y", qubits)
-
     dev = state.device
     mat = OPERATIONS_DICT["Y"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
@@ -285,9 +261,6 @@ def H(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-
-    if ops_cache.enabled:
-        store_operation("H", qubits)
 
     dev = state.device
     mat = OPERATIONS_DICT["H"].to(dev)
@@ -332,9 +305,6 @@ def CNOT(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("CNOT", qubits)
-
     return ControlledOperationGate(state, qubits, N_qubits, OPERATIONS_DICT["X"])
 
 
@@ -350,8 +320,6 @@ def CRX(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("CRX", qubits, param=theta)
 
     operation_matrix: torch.Tensor = get_parametrized_matrix_for_operation("X", theta)
     return ControlledOperationGate(state, qubits, N_qubits, operation_matrix)
@@ -370,9 +338,6 @@ def CRY(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("CRY", qubits, param=theta)
-
     operation_matrix: torch.Tensor = get_parametrized_matrix_for_operation("Y", theta)
     return ControlledOperationGate(state, qubits, N_qubits, operation_matrix)
 
@@ -390,9 +355,6 @@ def CRZ(theta: torch.Tensor, state: torch.Tensor, qubits: ArrayLike, N_qubits: i
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("CRZ", qubits, param=theta)
-
     operation_matrix: torch.Tensor = get_parametrized_matrix_for_operation("Z", theta)
     return ControlledOperationGate(state, qubits, N_qubits, operation_matrix)
 
@@ -408,9 +370,6 @@ def S(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-
-    if ops_cache.enabled:
-        store_operation("S", qubits)
 
     dev = state.device
     mat = OPERATIONS_DICT["S"].to(dev)
@@ -429,9 +388,6 @@ def SDagger(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tens
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("SDagger", qubits)
-
     dev = state.device
     mat = OPERATIONS_DICT["SDAGGER"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
@@ -448,9 +404,6 @@ def T(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-
-    if ops_cache.enabled:
-        store_operation("T", qubits)
 
     dev = state.device
     mat = OPERATIONS_DICT["T"].to(dev)
@@ -469,9 +422,6 @@ def N(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("N", qubits)
-
     dev = state.device
     mat = OPERATIONS_DICT["N"].to(dev)
     return _apply_gate(state, mat, qubits, N_qubits)
@@ -488,9 +438,6 @@ def SWAP(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor:
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-
-    if ops_cache.enabled:
-        store_operation("SWAP", qubits)
 
     dev = state.device
     mat = OPERATIONS_DICT["SWAP"].to(dev)
@@ -511,8 +458,6 @@ def CPHASE(
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("CPHASE", qubits, param=theta)
 
     dev = state.device
     mat: torch.Tensor = torch.tensor(
@@ -539,9 +484,6 @@ def CSWAP(state: torch.Tensor, qubits: ArrayLike, N_qubits: int) -> torch.Tensor
 
         torch.Tensor: the resulting state after applying the gate
     """
-
-    if ops_cache.enabled:
-        store_operation("CSWAP", qubits)
 
     return ControlledOperationGate(state, qubits, N_qubits, OPERATIONS_DICT["SWAP"])
 
@@ -576,8 +518,6 @@ def hamiltonian_evolution(
             processing on it)
     """
     _state = state.clone()
-    if ops_cache.enabled:
-        store_operation("hevo", qubits, param=t)
 
     h = t.reshape((1, -1)) / n_steps
     for _ in range(N_qubits - 1):
@@ -661,9 +601,6 @@ def hamiltonian_evolution_eig(
             t_evo[:] = t[0]
         else:
             t_evo[:batch_size_t] = t
-
-    if ops_cache.enabled:
-        store_operation("hevo", qubits, param=t)
 
     eig_values, eig_vectors = diagonalize(H)
 

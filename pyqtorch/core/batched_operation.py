@@ -19,7 +19,6 @@ import numpy as np
 import torch
 from numpy.typing import ArrayLike
 
-from pyqtorch.converters.store_ops import ops_cache, store_operation
 from pyqtorch.core.operation import RX, H, diagonalize
 from pyqtorch.core.utils import _apply_batch_gate
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, OPERATIONS_DICT
@@ -130,9 +129,6 @@ def batchedRX(
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("RX", qubits, param=theta)
-
     dev = state.device
 
     batch_size = len(theta)
@@ -183,9 +179,6 @@ def batchedRY(
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-
-    if ops_cache.enabled:
-        store_operation("RY", qubits, param=theta)
 
     dev = state.device
 
@@ -238,9 +231,6 @@ def batchedRZ(
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("RZ", qubits, param=theta)
-
     dev = state.device
 
     batch_size = len(theta)
@@ -274,8 +264,6 @@ def batchedRZZ(
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("RZZ", qubits, param=theta)
 
     dev = state.device
     batch_size = len(theta)
@@ -320,9 +308,6 @@ def batchedRXX(
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("RXX", qubits, param=theta)
-
     for q in qubits:
         state = H(state, [q], N_qubits)
     state = batchedRZZ(theta, state, qubits, N_qubits)
@@ -357,9 +342,6 @@ def batchedRYY(
         torch.Tensor: the resulting state after applying the gate
     """
 
-    if ops_cache.enabled:
-        store_operation("RYY", qubits, param=theta)
-
     for q in qubits:
         state = RX(torch.tensor(np.pi / 2), state, [q], N_qubits)
     state = batchedRZZ(theta, state, qubits, N_qubits)
@@ -393,8 +375,6 @@ def batchedCPHASE(
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("CPHASE", qubits, param=theta)
 
     dev = state.device
     batch_size = len(theta)
@@ -430,8 +410,6 @@ def batchedCRX(
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("CRX", qubits, param=theta)
 
     dev = state.device
     batch_size = len(theta)
@@ -466,8 +444,6 @@ def batchedCRY(
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("CRY", qubits, param=theta)
 
     dev = state.device
     batch_size = len(theta)
@@ -502,8 +478,6 @@ def batchedCRZ(
     Returns:
         torch.Tensor: the resulting state after applying the gate
     """
-    if ops_cache.enabled:
-        store_operation("CRZ", qubits, param=theta)
 
     dev = state.device
     batch_size = len(theta)
@@ -547,8 +521,6 @@ def batched_hamiltonian_evolution(
     """
     _state = state.clone()
     batch_size = H.size()[BATCH_DIM]
-    if ops_cache.enabled:
-        store_operation("hevo", qubits, param=t)
 
     h = t.reshape((1, -1)) / n_steps
     for _ in range(N_qubits - 1):
@@ -612,8 +584,6 @@ def batched_hamiltonian_evolution_eig(
         else:
             t_evo[:batch_size_t] = t
 
-    if ops_cache.enabled:
-        store_operation("hevo", qubits, param=t)
     for i in range(batch_size_h):
         eig_values, eig_vectors = diagonalize(H[..., i])
 
