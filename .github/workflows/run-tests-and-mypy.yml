@@ -12,7 +12,7 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  group: fast-${{ github.head_ref || github.run_id }}
+  group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -64,7 +64,7 @@ jobs:
       - name: Build and publish package
         run: |
           hatch build
-          hatch publish -u ${{ secrets.HATCH_PYPI_USER }} -a ${{ secrets.HATCH_PYPI_AUTH }}
+          hatch publish -u pasqal-io -a ${{ secrets.PYPI_API_TOKEN }}
       - name: Confirm deployment
         timeout-minutes: 5
         run: |
