@@ -1,45 +1,98 @@
-name: Run tests and mypy
+name: Tests
 
 on:
   push:
-      branches: [ main ]
+    branches:
+      - main
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - main
+  workflow_dispatch: {}
 
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
 
   unit_tests:
-    if: |
-      github.event_name == 'push' || github.event_name == 'pull_request'
     name: Unit testing
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.8","3.9", "3.10", "3.11"]
-
     steps:
-
         - name: Checkout main code and submodules
-          uses: actions/checkout@v2
-
+          uses: actions/checkout@v4
         - name: Set up Python ${{ matrix.python-version }}
-          uses: actions/setup-python@v2
+          uses: actions/setup-python@v4
           with:
             python-version: ${{ matrix.python-version }}
-
         - name: Install hatch
           run: |
             python -m pip install hatch
-
         - name: Install main dependencies
           run: |
             python -m hatch -v -e tests
-
         - name: Lint
           run: |
             python -m hatch -e tests run pre-commit run --all-files
-
         - name: Perform unit tests
           run: |
-            python -m hatch -e tests run pytest -n auto && hatch -e docs run mkdocs build --clean --strict
+            python -m hatch -e tests run pytest -n auto
+
+  publish:
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: unit_tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main code and submodules
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+      - name: Build and publish package
+        run: |
+          hatch build
+          hatch publish -u __token__ -a ${{ secrets.PYPI_API_TOKEN }}
+      - name: Confirm deployment
+        timeout-minutes: 5
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          until pip download pyqtorch==$VERSION
+          do
+            echo "Failed to download from PyPI, will wait for upload and retry."
+            sleep 1
+          done
+
+  deploy_docs:
+    name: Deploy documentation
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: unit_tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout main code and submodules
+      uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Install Hatch
+      run: |
+        pip install hatch
+    - name: Deploy docs
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git fetch origin gh-pages
+        hatch -v run docs:mike deploy --push --update-aliases ${{ github.ref_name }} latest
