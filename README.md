@@ -1,6 +1,6 @@
 # pyqtorch
 
-**pyqtorch** is a [PyTorch](https://pytorch.org/)-based state vector simulator designed for quantum machine learning. 
+**pyqtorch** is a [PyTorch](https://pytorch.org/)-based state vector simulator designed for quantum machine learning.
 It acts as the main backend for [`Qadence`](https://github.com/pasqal-io/qadence), a digital-analog quantum programming interface.
 `pyqtorch` allows for writing fully differentiable quantum programs using both digital and analog operations; enabled via a intuitive, torch-based syntax.
 
