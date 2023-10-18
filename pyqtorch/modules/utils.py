@@ -50,7 +50,7 @@ def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
     return torch.stack(res)
 
 
-def rot_matrices(
+def unitary_matrices(
     theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
 ) -> torch.Tensor:
     """
@@ -66,6 +66,24 @@ def rot_matrices(
     batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
 
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
+
+
+def jacobian_matrices(
+    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
+) -> torch.Tensor:
+    """
+    Returns:
+        torch.Tensor
+    """
+    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
+    cos_t = cos_t.repeat((2, 2, 1))
+    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
+    sin_t = sin_t.repeat((2, 2, 1))
+
+    batch_imat = I.unsqueeze(2).repeat(1, 1, batch_size)
+    batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
+
+    return -1 / 2 * (sin_t * batch_imat + 1j * cos_t * batch_operation_mat)
 
 
 def zero_state(

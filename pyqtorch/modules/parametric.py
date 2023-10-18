@@ -12,7 +12,7 @@ from pyqtorch.core.utils import _apply_batch_gate
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.ops import _vmap_gate
-from pyqtorch.modules.utils import rot_matrices
+from pyqtorch.modules.utils import jacobian_matrices, unitary_matrices
 
 torch.set_default_dtype(torch.float64)
 
@@ -54,7 +54,12 @@ class RotationGate(AbstractGate):
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
-        return rot_matrices(theta, self.paulimat, self.imat, batch_size)
+        return unitary_matrices(theta, self.paulimat, self.imat, batch_size)
+
+    def jacobian(self, thetas: torch.Tensor) -> torch.Tensor:
+        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+        batch_size = len(theta)
+        return jacobian_matrices(theta, self.paulimat, self.imat, batch_size)
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
@@ -153,7 +158,7 @@ class ControlledRotationGate(AbstractGate):
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
-        return rot_matrices(theta, self.paulimat, self.imat, batch_size)
+        return unitary_matrices(theta, self.paulimat, self.imat, batch_size)
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)

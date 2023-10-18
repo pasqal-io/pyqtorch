@@ -38,10 +38,11 @@ class AbstractGate(ABC, Module):
         return hash(self.__key())
 
     @abstractmethod
-    def matrices(self, tensors: torch.Tensor) -> torch.Tensor:
-        # NOTE: thetas are assumed to be of shape (1,batch_size) or (batch_size,) because we
-        # want to allow e.g. (3,batch_size) in the U gate.
+    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         ...
+
+    def dagger(self, thetas: torch.Tensor) -> torch.Tensor:
+        return torch.permute(self.matrices(thetas).conj(), (1, 0, 2))
 
     @abstractmethod
     def apply(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
