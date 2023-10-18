@@ -7,8 +7,6 @@ from torch import Tensor
 
 import pyqtorch.modules as pyq
 
-from .diff_rules import diff_rules
-
 
 def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tensor]:
     return {key: val for key, val in zip(keys, values)}
@@ -27,25 +25,20 @@ class AdjointExpectation(torch.autograd.Function):
         ctx.observable = observable
         ctx.thetas = thetas
         ctx.save_for_backward(thetas)
-        return circuit(state, thetas, observable)
+        out_state = circuit(state, thetas)
+        projected_state = observable(out_state, thetas)
+        ctx.save_for_backward(out_state)
+        ctx.save_for_backward(projected_state)
+        return pyq.overlap(out_state, projected_state)
 
     @staticmethod
-    def backward(ctx: Any, grad_out: Tensor) -> tuple:
-        values = param_dict(ctx.param_keys, ctx.saved_tensors)
-        AdjointExpectation.phi = AdjointExpectation.circuit(values)
+    def backward(ctx: Any, state: torch.Tensor, grad_out: Tensor) -> tuple:
+        thetas, state, projected_state = ctx.saved_tensors
         grads = []
-        for op in reversed(ctx.circuit.operations):
-            adj_mat = op.matrices(values).adjoint()
-            AdjointExpectation.lmda = op.apply(adj_mat, AdjointExpectation.phi)  ## undo gate
-            AdjointExpectation.mu = AdjointExpectation.lmda.clone()
-            AdjointExpectation.mu = diff_rules[op.name](values[op.param_name])(
-                AdjointExpectation.mu
-            )
-            grad = (
-                2
-                * AdjointExpectation.R
-                * pyq.overlap(AdjointExpectation.lmda, AdjointExpectation.mu)
-            )
-            grads.append(grad)
+        for op in ctx.circuit.reverse():
+            state = op.apply_dagger(thetas, state)
+            mu = op.apply_jacobian(thetas, state)
+            grads.append(grad_out * 2 * pyq.overlap(projected_state, mu))
+            projected_state = op.apply_dagger(thetas, projected_state)
 
         return (None, None, None, *grads)
