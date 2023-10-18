@@ -35,6 +35,7 @@ class AdjointExpectation(torch.autograd.Function):
             if isinstance(op, RotationGate):
                 mu = op.apply_jacobian(state, thetas)
                 grads.append(grad_out * 2 * pyq.overlap(projected_state, mu))
+            else:
+                grads.append(None)
             projected_state = op.apply_dagger(projected_state, thetas)
-        print(grads)
-        return (None, None, None, *grads)
+        return (None, None, *grads)
