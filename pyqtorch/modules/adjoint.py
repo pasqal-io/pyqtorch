@@ -29,7 +29,6 @@ class AdjointExpectation(torch.autograd.Function):
         values = param_dict(param_names, param_values)
         out_state = circuit(state, values)
         projected_state = observable(out_state, values)
-        print(param_values)
         ctx.save_for_backward(torch.cat(param_values), out_state, projected_state)
         return pyq.overlap(out_state, projected_state)
 
