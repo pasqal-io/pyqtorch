@@ -38,4 +38,4 @@ class AdjointExpectation(torch.autograd.Function):
             else:
                 grads.append(None)
             projected_state = op.apply_dagger(projected_state, thetas)
-        return (None, None, None, *grads)
+        return (None, None, None, *reversed(grads))
