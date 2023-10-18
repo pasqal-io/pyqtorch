@@ -1,17 +1,35 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
 
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
 from pyqtorch.modules.abstract import AbstractGate
+from pyqtorch.modules.adjoint import AdjointExpectation
 from pyqtorch.modules.primitive import CNOT
 from pyqtorch.modules.utils import overlap, zero_state
 
 
+class StrEnum(str, Enum):
+    def __str__(self) -> str:
+        """Used when dumping enum fields in a schema."""
+        ret: str = self.value
+        return ret
+
+    @classmethod
+    def list(cls) -> list[str]:
+        return list(map(lambda c: c.value, cls))  # type: ignore
+
+
+class DiffMode(StrEnum):
+    AD = "ad"
+    ADJOINT = "adjoint"
+
+
 class QuantumCircuit(Module):
-    def __init__(self, n_qubits: int, operations: list):
+    def __init__(self, n_qubits: int, operations: list, diff_mode: DiffMode = DiffMode.AD):
         """
         Creates a QuantumCircuit that can be used to compose multiple gates
         from a list of operations.
@@ -47,6 +65,7 @@ class QuantumCircuit(Module):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
+        self.diff_mode = DiffMode
 
     def __mul__(self, other: AbstractGate | QuantumCircuit) -> QuantumCircuit:
         if isinstance(other, QuantumCircuit):
@@ -90,8 +109,11 @@ class QuantumCircuit(Module):
     def expectation(
         self, state: torch.Tensor, thetas: torch.Tensor, observable: QuantumCircuit
     ) -> torch.Tensor:
-        state = self.forward(state, thetas)
-        return overlap(state, observable.forward(state, thetas))
+        if self.diff_mode == DiffMode.AD:
+            state = self.forward(state, thetas)
+            return overlap(state, observable.forward(state, thetas))
+        else:
+            return AdjointExpectation.apply(self, observable, state, thetas)
 
     @property
     def _device(self) -> torch.device:
