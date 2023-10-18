@@ -6,6 +6,7 @@ import torch
 from torch import Tensor
 
 import pyqtorch.modules as pyq
+from pyqtorch.modules.parametric import RotationGate
 
 
 def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tensor]:
@@ -37,8 +38,8 @@ class AdjointExpectation(torch.autograd.Function):
         grads = []
         for op in ctx.circuit.reverse():
             state = op.apply_dagger(thetas, state)
-            mu = op.apply_jacobian(thetas, state)
-            grads.append(grad_out * 2 * pyq.overlap(projected_state, mu))
+            if isinstance(op, RotationGate):
+                mu = op.apply_jacobian(thetas, state)
+                grads.append(grad_out * 2 * pyq.overlap(projected_state, mu))
             projected_state = op.apply_dagger(thetas, projected_state)
-
         return (None, None, None, *grads)
