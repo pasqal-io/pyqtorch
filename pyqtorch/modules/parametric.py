@@ -12,7 +12,7 @@ from pyqtorch.core.utils import _apply_batch_gate
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.ops import _vmap_gate
-from pyqtorch.modules.utils import jacobian_matrices, unitary_matrices
+from pyqtorch.modules.utils import dagger_matrices, jacobian_matrices, unitary_matrices
 
 torch.set_default_dtype(torch.float64)
 
@@ -56,6 +56,11 @@ class RotationGate(AbstractGate):
         batch_size = len(theta)
         return unitary_matrices(theta, self.paulimat, self.imat, batch_size)
 
+    def dagger(self, thetas: torch.Tensor) -> torch.Tensor:
+        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+        batch_size = len(theta)
+        return dagger_matrices(thetas, self.paulimat, self.imat, batch_size)
+
     def jacobian(self, thetas: torch.Tensor) -> torch.Tensor:
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_size = len(theta)
@@ -69,8 +74,8 @@ class RotationGate(AbstractGate):
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
-    def apply_dagger(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-        return self.apply(self.dagger_matrices(thetas), state)
+    def apply_dagger(self, state: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
+        return self.apply(self.dagger(theta), state)
 
     def apply_jacobian(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         return self.apply(self.jacobian(thetas), state)

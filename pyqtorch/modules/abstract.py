@@ -41,8 +41,13 @@ class AbstractGate(ABC, Module):
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
         ...
 
-    def dagger_matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        return torch.permute(self.matrices(thetas).conj(), (1, 0, 2))
+    @abstractmethod
+    def dagger(self, thetas: torch.Tensor) -> torch.Tensor:
+        ...
+
+    @abstractmethod
+    def jacobian(self, thetas: torch.Tensor) -> torch.Tensor:
+        ...
 
     @abstractmethod
     def apply_dagger(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:

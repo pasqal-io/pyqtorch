@@ -68,6 +68,12 @@ def unitary_matrices(
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
 
 
+def dagger_matrices(
+    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
+) -> torch.Tensor:
+    return torch.permute(unitary_matrices(theta, P, I, batch_size).conj(), (1, 0, 2))
+
+
 def jacobian_matrices(
     theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
 ) -> torch.Tensor:
