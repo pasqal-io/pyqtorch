@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any
 
 import torch
 from torch import Tensor
 
 import pyqtorch.modules as pyq
 from pyqtorch.modules.parametric import RotationGate
-
-
-def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tensor]:
-    return {key: val for key, val in zip(keys, values)}
 
 
 class AdjointExpectation(torch.autograd.Function):
