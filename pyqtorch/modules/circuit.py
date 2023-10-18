@@ -7,7 +7,7 @@ from torch.nn import Module, ModuleList, Parameter, init
 
 from pyqtorch.modules.abstract import AbstractGate
 from pyqtorch.modules.primitive import CNOT
-from pyqtorch.modules.utils import zero_state
+from pyqtorch.modules.utils import zero_state, overlap
 
 
 class QuantumCircuit(Module):
@@ -86,6 +86,12 @@ class QuantumCircuit(Module):
         for op in self.operations:
             state = op(state, thetas)
         return state
+    
+    def expectation(self, state: torch.Tensor, thetas: torch.Tensor, observable: QuantumCircuit) -> torch.Tensor:
+        state = self.forward(state, thetas)
+        _state = observable.forward(state, thetas)
+        return overlap(state, _state)
+
 
     @property
     def _device(self) -> torch.device:
