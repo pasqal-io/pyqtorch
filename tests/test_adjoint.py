@@ -26,13 +26,17 @@ def test_adjoint_diff() -> None:
     epsilon_ad = torch.tensor([epsilon_value], requires_grad=True)
     epsilon_adjoint = torch.tensor([epsilon_value], requires_grad=True)
 
-    exp_ad = ad_circ.expectation(state, thetas_ad, obs)
+    exp_ad = ad_circ.expectation(state, {"theta": thetas_ad, "epsilon": epsilon_ad}, obs)
     exp_adjoint = adjoint_circ.expectation(
         state, {"theta": thetas_adjoint, "epsilon": epsilon_adjoint}, obs
     )
 
-    grad_ad = torch.autograd.grad(exp_ad, thetas_ad, torch.ones_like(exp_ad))
-    grad_adjoint = torch.autograd.grad(exp_adjoint, thetas_adjoint, torch.ones_like(exp_adjoint))
+    grad_ad = torch.autograd.grad(exp_ad, (thetas_ad, epsilon_ad), torch.ones_like(exp_ad))
+    grad_adjoint = torch.autograd.grad(
+        exp_adjoint, (thetas_adjoint, epsilon_adjoint), torch.ones_like(exp_adjoint)
+    )
 
     assert torch.allclose(grad_ad[0], grad_adjoint[0])
+    assert torch.allclose(grad_ad[1], grad_adjoint[1])
+
     assert torch.autograd.gradcheck(lambda thetas: adjoint_circ(state, thetas), thetas_adjoint)
