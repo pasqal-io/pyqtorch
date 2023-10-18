@@ -107,13 +107,15 @@ class QuantumCircuit(Module):
         return state
 
     def expectation(
-        self, state: torch.Tensor, thetas: torch.Tensor, observable: QuantumCircuit
+        self, state: torch.Tensor, thetas: torch.Tensor | dict, observable: QuantumCircuit
     ) -> torch.Tensor:
         if self.diff_mode == DiffMode.AD:
             state = self.forward(state, thetas)
             return overlap(state, observable.forward(state, thetas))
         else:
-            return AdjointExpectation.apply(self, observable, state, thetas)
+            return AdjointExpectation.apply(
+                self, observable, state, thetas.keys(), *thetas.values()
+            )
 
     @property
     def _device(self) -> torch.device:

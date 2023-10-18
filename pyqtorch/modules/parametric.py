@@ -43,41 +43,55 @@ class RotationGate(AbstractGate):
     n_params = 1
 
     def __init__(
-        self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN
+        self,
+        gate: str,
+        qubits: ArrayLike,
+        n_qubits: int,
+        param_name: str = "",
+        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
         super().__init__(qubits, n_qubits)
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]
+        self.param_name = param_name
 
-    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+    def _thetas(self, thetas: dict[str, torch.Tensor] | torch.Tensor) -> torch.Tensor:
+        if isinstance(thetas, dict):
+            return thetas[self.param_name]
+        else:
+            return thetas
+
+    def matrices(self, thetas: torch.Tensor | dict) -> torch.Tensor:
+        theta = self._thetas(thetas)
+        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas  # type: ignore[union-attr]
         batch_size = len(theta)
         return unitary_matrices(theta, self.paulimat, self.imat, batch_size)
 
-    def dagger(self, thetas: torch.Tensor) -> torch.Tensor:
+    def dagger(self, thetas: torch.Tensor | dict) -> torch.Tensor:
+        thetas = self._thetas(thetas)
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
-        batch_size = len(theta)
-        return dagger_matrices(thetas, self.paulimat, self.imat, batch_size)
+        batch_size = 1
+        return dagger_matrices(theta, self.paulimat, self.imat, batch_size)
 
-    def jacobian(self, thetas: torch.Tensor) -> torch.Tensor:
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
-        batch_size = len(theta)
+    def jacobian(self, thetas: torch.Tensor | dict) -> torch.Tensor:
+        theta = self._thetas(thetas)
+        theta = theta.squeeze(0) if theta.ndim == 2 else theta
+        batch_size = 1
         return jacobian_matrices(theta, self.paulimat, self.imat, batch_size)
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
         return self.apply_fn(state, matrices, self.qubits, self.n_qubits, batch_size)
 
-    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-        mats = self.matrices(thetas)
-        return self.apply(mats, state)
+    def forward(self, state: torch.Tensor, thetas: torch.Tensor | dict) -> torch.Tensor:
+        return self.apply(self.matrices(self._thetas(thetas)), state)
 
-    def apply_dagger(self, state: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
+    def apply_dagger(self, state: torch.Tensor, theta: torch.Tensor | dict) -> torch.Tensor:
         return self.apply(self.dagger(theta), state)
 
-    def apply_jacobian(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+    def apply_jacobian(self, state: torch.Tensor, thetas: torch.Tensor | dict) -> torch.Tensor:
         return self.apply(self.jacobian(thetas), state)
 
     def extra_repr(self) -> str:
@@ -184,7 +198,13 @@ class ControlledRotationGate(RotationGate):
 
 
 class RX(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
+    def __init__(
+        self,
+        qubits: ArrayLike,
+        n_qubits: int,
+        param_name: str = "",
+        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
+    ):
         """
         Represents an X-axis rotation (RX) gate in a quantum circuit.
         The RX gate class creates a single-qubit RX gate that performs
@@ -216,11 +236,17 @@ class RX(RotationGate):
 
         ```
         """
-        super().__init__("X", qubits, n_qubits, apply_fn_type)
+        super().__init__("X", qubits, n_qubits, param_name, apply_fn_type)
 
 
 class RY(RotationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
+    def __init__(
+        self,
+        qubits: ArrayLike,
+        n_qubits: int,
+        param_name: str = "",
+        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
+    ):
         """
         Represents a Y-axis rotation (RY) gate in a quantum circuit.
         The RY gate class creates a single-qubit RY gate that performs
@@ -249,7 +275,7 @@ class RY(RotationGate):
         print(result)
         ```
         """
-        super().__init__("Y", qubits, n_qubits, apply_fn_type)
+        super().__init__("Y", qubits, n_qubits, param_name, apply_fn_type)
 
 
 class RZ(RotationGate):

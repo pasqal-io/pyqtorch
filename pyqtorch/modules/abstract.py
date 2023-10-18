@@ -38,23 +38,23 @@ class AbstractGate(ABC, Module):
         return hash(self.__key())
 
     @abstractmethod
-    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
+    def matrices(self, thetas: torch.Tensor | dict) -> torch.Tensor:
         ...
 
     @abstractmethod
-    def dagger(self, thetas: torch.Tensor) -> torch.Tensor:
+    def dagger(self, thetas: torch.Tensor | dict) -> torch.Tensor:
         ...
 
     @abstractmethod
-    def jacobian(self, thetas: torch.Tensor) -> torch.Tensor:
+    def jacobian(self, thetas: torch.Tensor | dict) -> torch.Tensor:
         ...
 
     @abstractmethod
-    def apply_dagger(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+    def apply_dagger(self, state: torch.Tensor, thetas: torch.Tensor | dict) -> torch.Tensor:
         ...
 
     @abstractmethod
-    def apply_jacobian(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+    def apply_jacobian(self, state: torch.Tensor, thetas: torch.Tensor | dict) -> torch.Tensor:
         ...
 
     @abstractmethod
@@ -62,7 +62,7 @@ class AbstractGate(ABC, Module):
         ...
 
     @abstractmethod
-    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, thetas: torch.Tensor | dict) -> torch.Tensor:
         ...
 
     def extra_repr(self) -> str:
