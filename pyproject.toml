@@ -13,10 +13,10 @@ authors = [
     { name = "Niklas Heim", email = "niklas.heim@pasqal.com" },
 ]
 requires-python = ">=3.8,<3.12"
-license = {text = "Proprietary"}
-version = "0.5.0"
+license = {text = "Apache 2.0"}
+version = "0.5.1"
 classifiers=[
-    "License :: Other/Proprietary License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -27,19 +27,17 @@ classifiers=[
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    "openfermion>=1.5",
-    "torch"
+    "numpy",
+    "torch",
 ]
 
 [project.optional-dependencies]
 dev = ["black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert",
-  "ipykernel"]
-converters = ["qiskit"]
+  "ipykernel", "matplotlib"]
 
 [tool.hatch.envs.tests]
 features = [
   "dev",
-  "converters",
 ]
 
 [tool.hatch.envs.tests.scripts]
@@ -55,6 +53,7 @@ dependencies = [
   "mkdocs-jupyter",
   "mkdocs-exclude",
   "markdown-exec",
+  "mike",
 ]
 
 [tool.hatch.envs.docs.scripts]

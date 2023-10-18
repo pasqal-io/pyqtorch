@@ -13,8 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Any
-
 import torch
 
 from pyqtorch.core.operation import X, Y, Z
@@ -32,19 +30,3 @@ def total_magnetization(state: torch.Tensor, N_qubits: int, batch_size: int) -> 
 
     ret = torch.real(torch.sum(torch.conj(state) * new_state, dim=0))
     return ret
-
-
-def measure_openfermion(
-    state: torch.Tensor, operator: Any, N_qubits: int, batch_size: int
-) -> torch.Tensor:
-    new_state: torch.Tensor = torch.zeros_like(state)
-
-    for op, coef in operator.terms.items():
-        for qubit, pauli in op:
-            state_bis = qubit_operators[pauli](state, [qubit], N_qubits)
-            new_state += state_bis * coef
-
-    state = state.reshape((2**N_qubits, batch_size))
-    new_state = new_state.reshape((2**N_qubits, batch_size))
-
-    return torch.real(torch.sum(torch.conj(state) * new_state, dim=0))
