@@ -69,6 +69,12 @@ class RotationGate(AbstractGate):
         mats = self.matrices(thetas)
         return self.apply(mats, state)
 
+    def apply_dagger(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+        return self.apply(self.dagger_matrices(thetas), state)
+
+    def apply_jacobian(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+        return self.apply(self.jacobian(thetas), state)
+
     def extra_repr(self) -> str:
         return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 

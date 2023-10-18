@@ -91,8 +91,7 @@ class QuantumCircuit(Module):
         self, state: torch.Tensor, thetas: torch.Tensor, observable: QuantumCircuit
     ) -> torch.Tensor:
         state = self.forward(state, thetas)
-        _state = observable.forward(state, thetas)
-        return overlap(state, _state)
+        return overlap(state, observable.forward(state, thetas))
 
     @property
     def _device(self) -> torch.device:

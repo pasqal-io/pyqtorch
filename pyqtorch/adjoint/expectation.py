@@ -4,7 +4,6 @@ from typing import Any, Sequence
 
 import torch
 from torch import Tensor
-from torch.autograd import Function
 
 import pyqtorch.modules as pyq
 
@@ -15,26 +14,20 @@ def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tenso
     return {key: val for key, val in zip(keys, values)}
 
 
-class AdjointExpectation(Function):
-    lmda: torch.Tensor
-    phi: torch.Tensor
-    mu: torch.Tensor
-    circuit: pyq.QuantumCircuit
-    R: torch.Tensor
-
+class AdjointExpectation(torch.autograd.Function):
     @staticmethod
     def forward(
         ctx: Any,
+        circuit: pyq.QuantumCircuit,
+        observable: pyq.QuantumCircuit,
         state: Tensor,
-        param_keys: Sequence[str],
-        *param_values: Tensor,
+        thetas: Tensor,
     ) -> Tensor:
-        ctx.param_keys = param_keys
-        ctx.save_for_backward(*param_values)
-        AdjointExpectation.lmda = AdjointExpectation.circuit(
-            state, param_dict(param_keys, param_values)
-        )
-        return pyq.overlap(state, AdjointExpectation.lmda)
+        ctx.circuit = circuit
+        ctx.observable = observable
+        ctx.thetas = thetas
+        ctx.save_for_backward(thetas)
+        return circuit(state, thetas, observable)
 
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> tuple:
