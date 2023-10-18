@@ -84,7 +84,7 @@ class RotationGate(AbstractGate):
         return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 
-class U(AbstractGate):
+class U(RotationGate):
     n_params = 3
 
     def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
@@ -101,7 +101,7 @@ class U(AbstractGate):
 
         """
 
-        super().__init__(qubits, n_qubits)
+        super().__init__("X", qubits, n_qubits)
 
         self.register_buffer(
             "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
@@ -154,13 +154,13 @@ class U(AbstractGate):
         return self.apply(mats, state)
 
 
-class ControlledRotationGate(AbstractGate):
+class ControlledRotationGate(RotationGate):
     n_params = 1
 
     def __init__(
         self, gate: str, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN
     ):
-        super().__init__(qubits, n_qubits)
+        super().__init__(gate, qubits, n_qubits)
         self.gate = gate
         self.register_buffer("imat", OPERATIONS_DICT["I"])
         self.register_buffer("paulimat", OPERATIONS_DICT[gate])
@@ -461,7 +461,7 @@ class CRZ(ControlledRotationGate):
         super().__init__("Z", qubits, n_qubits, apply_fn_type)
 
 
-class CPHASE(AbstractGate):
+class CPHASE(RotationGate):
     n_params = 1
 
     def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
@@ -476,7 +476,7 @@ class CPHASE(AbstractGate):
 
         """
 
-        super().__init__(qubits, n_qubits)
+        super().__init__("S", qubits, n_qubits)
 
         self.register_buffer("imat", torch.eye(2 ** len(qubits), dtype=DEFAULT_MATRIX_DTYPE))
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]

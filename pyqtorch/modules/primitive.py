@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 from pyqtorch.core.operation import _apply_gate, create_controlled_matrix_from_operation
 from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.modules.abstract import AbstractGate
+from pyqtorch.modules.parametric import RotationGate
 
 
 class PrimitiveGate(AbstractGate):
@@ -332,9 +333,9 @@ class SWAP(PrimitiveGate):
         super().__init__("SWAP", qubits, n_qubits)
 
 
-class ControlledOperationGate(AbstractGate):
+class ControlledOperationGate(RotationGate):
     def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__(qubits, n_qubits)
+        super().__init__("X", qubits, n_qubits)
         self.gate = gate
         mat = OPERATIONS_DICT[gate]
         self.register_buffer(
