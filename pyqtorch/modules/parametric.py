@@ -39,7 +39,7 @@ APPLY_FN_DICT = {ApplyFn.VMAP: _vmap_gate, ApplyFn.EINSUM: _apply_batch_gate}
 DEFAULT_APPLY_FN = ApplyFn.EINSUM
 
 
-class RotationGate(AbstractGate):
+class ParametricGate(AbstractGate):
     n_params = 1
 
     def __init__(
@@ -98,7 +98,7 @@ class RotationGate(AbstractGate):
         return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
 
 
-class U(RotationGate):
+class U(ParametricGate):
     n_params = 3
 
     def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
@@ -168,7 +168,7 @@ class U(RotationGate):
         return self.apply(mats, state)
 
 
-class ControlledRotationGate(RotationGate):
+class ControlledRotationGate(ParametricGate):
     n_params = 1
 
     def __init__(
@@ -197,7 +197,7 @@ class ControlledRotationGate(RotationGate):
         return self.apply(mats, state)
 
 
-class RX(RotationGate):
+class RX(ParametricGate):
     def __init__(
         self,
         qubits: ArrayLike,
@@ -239,7 +239,7 @@ class RX(RotationGate):
         super().__init__("X", qubits, n_qubits, param_name, apply_fn_type)
 
 
-class RY(RotationGate):
+class RY(ParametricGate):
     def __init__(
         self,
         qubits: ArrayLike,
@@ -278,7 +278,7 @@ class RY(RotationGate):
         super().__init__("Y", qubits, n_qubits, param_name, apply_fn_type)
 
 
-class RZ(RotationGate):
+class RZ(ParametricGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a Z-axis rotation (RZ) gate in a quantum circuit.
@@ -312,7 +312,7 @@ class RZ(RotationGate):
         super().__init__("Z", qubits, n_qubits, apply_fn_type)
 
 
-class PHASE(RotationGate):
+class PHASE(ParametricGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
         """
         Represents a PHASE rotation gate in a quantum circuit.
@@ -487,7 +487,7 @@ class CRZ(ControlledRotationGate):
         super().__init__("Z", qubits, n_qubits, apply_fn_type)
 
 
-class CPHASE(RotationGate):
+class CPHASE(ParametricGate):
     n_params = 1
 
     def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
