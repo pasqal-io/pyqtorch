@@ -25,6 +25,18 @@ class PrimitiveGate(AbstractGate):
     def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
         return self.apply(self.matrix, state)
 
+    def dagger(self, thetas: torch.Tensor) -> torch.Tensor:
+        return torch.permute(self.matrix.conj(), (1, 0, 2))
+
+    def jacobian(self, thetas: torch.Tensor) -> torch.Tensor:
+        return torch.eye(2, dtype=torch.complex128)
+
+    def apply_dagger(self, state: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
+        return self.apply(self.dagger(theta), state)
+
+    def apply_jacobian(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
+        return self.apply(self.jacobian(thetas), state)
+
 
 class X(PrimitiveGate):
     def __init__(self, qubits: ArrayLike, n_qubits: int):

@@ -21,21 +21,20 @@ class AdjointExpectation(torch.autograd.Function):
         ctx.circuit = circuit
         ctx.observable = observable
         ctx.thetas = thetas
-        ctx.save_for_backward(thetas)
         out_state = circuit(state, thetas)
         projected_state = observable(out_state, thetas)
-        ctx.save_for_backward(out_state)
-        ctx.save_for_backward(projected_state)
+        ctx.save_for_backward(thetas, out_state, projected_state)
         return pyq.overlap(out_state, projected_state)
 
     @staticmethod
-    def backward(ctx: Any, state: torch.Tensor, grad_out: Tensor) -> tuple:
+    def backward(ctx: Any, grad_out: Tensor) -> tuple:
         thetas, state, projected_state = ctx.saved_tensors
         grads = []
-        for op in ctx.circuit.reverse():
-            state = op.apply_dagger(thetas, state)
+        for op in ctx.circuit.reverse().operations:
+            state = op.apply_dagger(state, thetas)
             if isinstance(op, RotationGate):
-                mu = op.apply_jacobian(thetas, state)
+                mu = op.apply_jacobian(state, thetas)
                 grads.append(grad_out * 2 * pyq.overlap(projected_state, mu))
-            projected_state = op.apply_dagger(thetas, projected_state)
+            projected_state = op.apply_dagger(projected_state, thetas)
+        print(grads)
         return (None, None, None, *grads)

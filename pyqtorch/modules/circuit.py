@@ -65,7 +65,7 @@ class QuantumCircuit(Module):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
-        self.diff_mode = DiffMode
+        self.diff_mode = diff_mode
 
     def __mul__(self, other: AbstractGate | QuantumCircuit) -> QuantumCircuit:
         if isinstance(other, QuantumCircuit):
