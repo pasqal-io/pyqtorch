@@ -1,32 +1,15 @@
-# Copyright 2022 PyQ Development Team
-
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-
-#     http://www.apache.org/licenses/LICENSE-2.0
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+# # Copyright 2022 PyQ Development Team
 from __future__ import annotations
 
-import torch
-
-from pyqtorch.apply import overlap
-from pyqtorch.utils import (
-    flatten_wf,
-    invert_endianness,
-    is_normalized,
-    normalize,
-    random_state,
-    uniform_state,
-    zero_state,
-)
-
+# # Licensed under the Apache License, Version 2.0 (the "License");
+# # you may not use this file except in compliance with the License.
+# # You may obtain a copy of the License at
+# #     http://www.apache.org/licenses/LICENSE-2.0
+# # Unless required by applicable law or agreed to in writing, software
+# # distributed under the License is distributed on an "AS IS" BASIS,
+# # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# # See the License for the specific language governing permissions and
+# # limitations under the License.
 from .analog import HamEvo, HamEvoEig, HamEvoExp, HamEvoType, HamiltonianEvolution
 from .circuit import (
     EntanglingLayer,
@@ -51,4 +34,14 @@ from .primitive import (
     X,
     Y,
     Z,
+)
+from .utils import (
+    flatten_wf,
+    invert_endianness,
+    is_normalized,
+    normalize,
+    overlap,
+    random_state,
+    uniform_state,
+    zero_state,
 )

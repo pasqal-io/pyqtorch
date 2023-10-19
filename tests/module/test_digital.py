@@ -7,10 +7,10 @@ import pytest
 import torch
 from torch import Tensor
 
-import pyqtorch as pyq
 import pyqtorch.core as func_pyq
-from pyqtorch.abstract_operator import AbstractOperator
+import pyqtorch.modules as pyq
 from pyqtorch.matrices import OPERATIONS_DICT
+from pyqtorch.modules.operator import Operator
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DTYPE = torch.cdouble
@@ -166,7 +166,7 @@ def test_N_gate(batch_size: int) -> None:
         (pyq.RX([1], 1), pyq.RX([0], 1), False),
     ],
 )
-def test_gate_equality(a: AbstractOperator, b: AbstractOperator, val: bool) -> None:
+def test_gate_equality(a: Operator, b: Operator, val: bool) -> None:
     x = a == b
     assert x == val
 

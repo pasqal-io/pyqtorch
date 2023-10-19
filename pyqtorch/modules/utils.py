@@ -8,6 +8,18 @@ from numpy import log2
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
 
 
+def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
+    n_qubits = len(state.size()) - 1
+    batch_size = state.size()[-1]
+    state = state.reshape((2**n_qubits, batch_size))
+    other = other.reshape((2**n_qubits, batch_size))
+    res = []
+    for i in range(batch_size):
+        ovrlp = torch.real(torch.sum(torch.conj(state[:, i]) * other[:, i]))
+        res.append(ovrlp)
+    return torch.stack(res)
+
+
 class StrEnum(str, Enum):
     def __str__(self) -> str:
         """Used when dumping enum fields in a schema."""

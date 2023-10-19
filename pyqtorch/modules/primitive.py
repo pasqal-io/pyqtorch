@@ -6,11 +6,11 @@ import torch
 
 from pyqtorch.apply import _apply_gate
 from pyqtorch.matrices import OPERATIONS_DICT, make_controlled
-from pyqtorch.modules.abstract import AbstractOperator
+from pyqtorch.modules.operator import Operator
 
 
-class Primitive(AbstractOperator):
-    def __init__(self, pauli: torch.Tensor, target: int):
+class Primitive(Operator):
+    def __init__(self, pauli: torch.Tensor, target: int | list[int]):
         super().__init__(target)
         self.register_buffer("pauli", pauli)
 

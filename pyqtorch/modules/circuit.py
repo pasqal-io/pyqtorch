@@ -5,17 +5,16 @@ from typing import Any
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
-from pyqtorch.apply import overlap
-from pyqtorch.modules.abstract import AbstractOperator
 from pyqtorch.modules.adjoint import AdjointExpectation
 from pyqtorch.modules.composite import Composite
+from pyqtorch.modules.operator import Operator
 from pyqtorch.modules.primitive import CNOT, Primitive
-from pyqtorch.utils import DiffMode, zero_state
+from pyqtorch.modules.utils import DiffMode, overlap, zero_state
 
 
 class QuantumCircuit(Module):
     def __init__(
-        self, n_qubits: int, operations: list[AbstractOperator], diff_mode: DiffMode = DiffMode.AD
+        self, n_qubits: int, operations: list[Operator], diff_mode: DiffMode = DiffMode.AD
     ):
         """
         Creates a QuantumCircuit that can be used to compose multiple gates
@@ -54,12 +53,12 @@ class QuantumCircuit(Module):
         self.operations = torch.nn.ModuleList(operations)
         self.diff_mode = diff_mode
 
-    def __mul__(self, other: AbstractOperator | QuantumCircuit) -> QuantumCircuit:
+    def __mul__(self, other: Operator | QuantumCircuit) -> QuantumCircuit:
         if isinstance(other, QuantumCircuit):
             n_qubits = max(self.n_qubits, other.n_qubits)
             return QuantumCircuit(n_qubits, self.operations.extend(other.operations))
 
-        if isinstance(other, AbstractOperator):
+        if isinstance(other, Operator):
             n_qubits = max(self.n_qubits, other.n_qubits)
             return QuantumCircuit(n_qubits, self.operations.append(other))
 

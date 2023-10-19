@@ -6,11 +6,11 @@ from typing import List
 
 import torch
 
-from pyqtorch.modules.abstract import AbstractOperator
+from pyqtorch.modules.operator import Operator
 
 
 class Composite(torch.nn.Module):
-    def __init__(self, operators: List[AbstractOperator]):
+    def __init__(self, operators: List[Operator]):
         self.operations = operators
 
     def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -20,7 +20,7 @@ class Composite(torch.nn.Module):
 
 
 class Add(Composite):
-    def __init__(self, operators: List[AbstractOperator]):
+    def __init__(self, operators: List[Operator]):
         super().__init__(operators)
 
     def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:

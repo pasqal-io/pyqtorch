@@ -21,7 +21,7 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from pyqtorch.modules.abstract import AbstractOperator
+from pyqtorch.modules.operator import Operator
 
 ABC_ARRAY: NDArray = np.array(list(ABC))
 
@@ -211,7 +211,7 @@ def _vmap_operator(
 def _apply_parallel(
     state: torch.Tensor,
     thetas: torch.Tensor,
-    gates: Tuple[AbstractOperator] | list[AbstractOperator],
+    gates: Tuple[Operator] | list[Operator],
     n_qubits: int,
 ) -> torch.Tensor:
     qubits_list: list[Tuple] = [g.qubits for g in gates]
@@ -222,15 +222,3 @@ def _apply_parallel(
         zip(mats, qubits_list),
         state,
     )
-
-
-def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
-    n_qubits = len(state.size()) - 1
-    batch_size = state.size()[-1]
-    state = state.reshape((2**n_qubits, batch_size))
-    other = other.reshape((2**n_qubits, batch_size))
-    res = []
-    for i in range(batch_size):
-        ovrlp = torch.real(torch.sum(torch.conj(state[:, i]) * other[:, i]))
-        res.append(ovrlp)
-    return torch.stack(res)

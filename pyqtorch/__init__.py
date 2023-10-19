@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import torch
 
-from pyqtorch.apply import overlap
 from pyqtorch.modules.analog import HamEvo, HamEvoEig, HamEvoExp, HamEvoType, HamiltonianEvolution
 from pyqtorch.modules.circuit import (
     EntanglingLayer,
@@ -41,15 +40,6 @@ from pyqtorch.modules.primitive import (
     X,
     Y,
     Z,
-)
-from pyqtorch.utils import (
-    flatten_wf,
-    invert_endianness,
-    is_normalized,
-    normalize,
-    random_state,
-    uniform_state,
-    zero_state,
 )
 
 torch.set_default_dtype(torch.float64)

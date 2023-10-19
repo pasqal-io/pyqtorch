@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import torch
 
-import pyqtorch as pyq
-from pyqtorch.circuit import DiffMode
+import pyqtorch.modules as pyq
+from pyqtorch.modules.circuit import DiffMode
 
 
 def test_adjoint_diff() -> None:
@@ -69,9 +69,9 @@ def _adjoint_diff_multiparam() -> None:
     epsilon_ad = torch.tensor([values], requires_grad=True)
     epsilon_adjoint = torch.tensor([values], requires_grad=True)
 
-    exp_ad = ad_circ.expectation(state, {"theta": thetas_ad, "epsilon": epsilon_ad}, obs)
+    exp_ad = ad_circ.expectation({"theta": thetas_ad, "epsilon": epsilon_ad}, obs, state)
     exp_adjoint = adjoint_circ.expectation(
-        state, {"theta": thetas_adjoint, "epsilon": epsilon_adjoint}, obs
+        {"theta": thetas_adjoint, "epsilon": epsilon_adjoint}, obs, state
     )
 
     grad_ad = torch.autograd.grad(exp_ad, (thetas_ad, epsilon_ad), torch.ones_like(exp_ad))

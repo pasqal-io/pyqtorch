@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import torch
 from numpy.typing import ArrayLike
 
@@ -13,7 +15,7 @@ from pyqtorch.matrices import (
     make_controlled,
 )
 from pyqtorch.modules.primitive import Primitive
-from pyqtorch.utils import ApplyFn
+from pyqtorch.modules.utils import ApplyFn
 
 APPLY_FN_DICT = {ApplyFn.VMAP: _vmap_operator, ApplyFn.EINSUM: _apply_batch_gate}
 DEFAULT_APPLY_FN = ApplyFn.EINSUM
@@ -214,8 +216,8 @@ class PHASE(Parametric):
         mats = self.unitary(thetas)
         return self.apply_unitary(mats, state)
 
-    def unitary(self, thetas: torch.Tensor) -> torch.Tensor:
-        thetas = thetas[self.param_name]
+    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        thetas = values[self.param_name]
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_mat = self.identity.unsqueeze(2).repeat(1, 1, len(theta))
         batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
@@ -228,40 +230,34 @@ class ControlledRotationGate(Parametric):
     def __init__(
         self,
         gate: str,
-        qubits: ArrayLike,
-        n_qubits: int,
+        control: int,
+        target: int,
         param_name: str = "",
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        super().__init__(gate, qubits, n_qubits)
-        self.gate = gate
-        self.register_buffer("identity", OPERATIONS_DICT["I"])
-        self.register_buffer("pauli", OPERATIONS_DICT[gate])
-        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
-        self.param_name = param_name
+        control = [control]
+        self.control = control
+        super().__init__(gate, target, param_name, apply_fn_type)
 
-    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
-        batch_size = len(theta)
-        rot_mats = _unitary(theta, self.pauli, self.identity, batch_size)
-        return make_controlled(rot_mats, batch_size, len(self.qubits) - 1)
+    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        thetas = values[self.param_name]
+        batch_size = len(thetas)
+        mat = _unitary(thetas, self.pauli, self.identity, batch_size)
+        return make_controlled(
+            mat, batch_size, len(self.control) - (int)(math.log2(mat.shape[0])) + 1
+        )
 
-    # def apply(self, thetas: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-    #     batch_size = 1
-    #     return self.apply_fn(
-    #         state, self.matrices(self._thetas(thetas)), self.qubits, self.n_qubits, batch_size
-    #     )
-
-    # def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-    #     mats = self.matrices(thetas)
-    #     return self.apply(mats, state)
+    def apply_unitary(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        return _apply_batch_gate(
+            state, matrix, self.control + [self.target], len(state.size()) - 1, state.size(-1)
+        )
 
 
 class CRX(ControlledRotationGate):
     def __init__(
         self,
-        qubits: ArrayLike,
-        n_qubits: int,
+        control: int,
+        target: int,
         param_name: str,
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
@@ -304,14 +300,14 @@ class CRX(ControlledRotationGate):
 
         ```
         """
-        super().__init__("X", qubits, n_qubits, param_name, apply_fn_type)
+        super().__init__("X", control, target, param_name, apply_fn_type)
 
 
 class CRY(ControlledRotationGate):
     def __init__(
         self,
-        qubits: ArrayLike,
-        n_qubits: int,
+        control: list[int],
+        target: int,
         param_name: str = "",
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
@@ -353,14 +349,14 @@ class CRY(ControlledRotationGate):
         print(result)
         ```
         """
-        super().__init__("Y", qubits, n_qubits, param_name, apply_fn_type)
+        super().__init__("Y", control, target, param_name, apply_fn_type)
 
 
 class CRZ(ControlledRotationGate):
     def __init__(
         self,
-        qubits: ArrayLike,
-        n_qubits: int,
+        control: list[int],
+        target: int,
         param_name: str = "",
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
@@ -401,13 +397,19 @@ class CRZ(ControlledRotationGate):
         print(result)
         ```
         """
-        super().__init__("Z", qubits, n_qubits, param_name, apply_fn_type)
+        super().__init__("Z", control, target, param_name, apply_fn_type)
 
 
 class CPHASE(Parametric):
     n_params = 1
 
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
+    def __init__(
+        self,
+        control: ArrayLike,
+        target: int,
+        param_name: str,
+        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
+    ):
         """
         Represents a controlled-phase (CPHASE) gate in a quantum circuit.
         The CPhase gate class creates a controlled Phase gate, applying the PhaseGate
@@ -419,7 +421,7 @@ class CPHASE(Parametric):
 
         """
 
-        super().__init__("S", qubits, n_qubits)
+        super().__init__("S", control, target, param_name, apply_fn_type)
 
         self.register_buffer("identity", torch.eye(2 ** len(qubits), dtype=DEFAULT_MATRIX_DTYPE))
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]

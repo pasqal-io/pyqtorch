@@ -5,7 +5,7 @@ from typing import Any, Sequence
 import torch
 from torch import Tensor
 
-import pyqtorch as pyq
+import pyqtorch.modules as pyq
 from pyqtorch.modules.parametric import Parametric
 
 

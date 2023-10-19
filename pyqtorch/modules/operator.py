@@ -9,18 +9,18 @@ from torch.nn import Module
 import pyqtorch.modules as pyq
 
 
-class AbstractOperator(ABC, Module):
-    def __init__(self, target: int):
+class Operator(ABC, Module):
+    def __init__(self, target: int | list[int]):
         super().__init__()
         self.target = target
 
-    def __mul__(self, other: AbstractOperator | pyq.QuantumCircuit) -> pyq.QuantumCircuit:
-        if isinstance(other, AbstractOperator):
+    def __mul__(self, other: Operator | pyq.QuantumCircuit) -> pyq.QuantumCircuit:
+        if isinstance(other, Operator):
             ops = torch.nn.ModuleList([self, other])
-            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), ops)
+            return pyq.QuantumCircuit(max(self.target, other.target), ops)
         elif isinstance(other, pyq.QuantumCircuit):
             ops = torch.nn.ModuleList([self]) + other.operations
-            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), ops)
+            return pyq.QuantumCircuit(max(self.target, other.target), ops)
         else:
             raise TypeError(f"Unable to compose {type(self)} with {type(other)}")
 

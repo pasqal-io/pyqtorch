@@ -8,7 +8,7 @@ import torch
 from torch.nn import Module
 
 from pyqtorch.apply import _apply_batch_gate
-from pyqtorch.utils import is_diag, is_real
+from pyqtorch.modules.utils import is_diag, is_real
 
 BATCH_DIM = 2
 
