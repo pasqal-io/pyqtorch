@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 
-import pyqtorch.modules as pyq
+import pyqtorch as pyq
 
 random.seed(0)
 np.random.seed(0)

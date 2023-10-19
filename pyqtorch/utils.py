@@ -1,14 +1,36 @@
 from __future__ import annotations
 
-from functools import reduce
-from typing import Tuple
+from enum import Enum
 
 import torch
 from numpy import log2
 
-from pyqtorch.core.utils import _apply_gate
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
-from pyqtorch.modules.abstract import AbstractGate
+
+
+class StrEnum(str, Enum):
+    def __str__(self) -> str:
+        """Used when dumping enum fields in a schema."""
+        ret: str = self.value
+        return ret
+
+    @classmethod
+    def list(cls) -> list[str]:
+        return list(map(lambda c: c.value, cls))  # type: ignore
+
+
+class ApplyFn(StrEnum):
+    """Which function to use to perform matmul between operator and state."""
+
+    VMAP = "vmap"
+    EINSUM = "einsum"
+
+
+class DiffMode(StrEnum):
+    """Which DiffMode to use."""
+
+    AD = "ad"
+    ADJOINT = "adjoint"
 
 
 def normalize(wf: torch.Tensor) -> torch.Tensor:
@@ -36,60 +58,6 @@ def is_real(H: torch.Tensor) -> bool:
     Returns True if Hamiltonian H is real.
     """
     return len(torch.imag(H).to_sparse().coalesce().values()) == 0
-
-
-def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
-    n_qubits = len(state.size()) - 1
-    batch_size = state.size()[-1]
-    state = state.reshape((2**n_qubits, batch_size))
-    other = other.reshape((2**n_qubits, batch_size))
-    res = []
-    for i in range(batch_size):
-        ovrlp = torch.real(torch.sum(torch.conj(state[:, i]) * other[:, i]))
-        res.append(ovrlp)
-    return torch.stack(res)
-
-
-def unitary_matrices(
-    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
-) -> torch.Tensor:
-    """
-    Returns:
-        torch.Tensor: a batch of gates after applying theta
-    """
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-
-    batch_imat = I.unsqueeze(2).repeat(1, 1, batch_size)
-    batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
-
-    return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
-
-
-def dagger_matrices(
-    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
-) -> torch.Tensor:
-    return torch.permute(unitary_matrices(theta, P, I, batch_size).conj(), (1, 0, 2))
-
-
-def jacobian_matrices(
-    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
-) -> torch.Tensor:
-    """
-    Returns:
-        torch.Tensor
-    """
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
-
-    batch_imat = I.unsqueeze(2).repeat(1, 1, batch_size)
-    batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
-
-    return -1 / 2 * (sin_t * batch_imat + 1j * cos_t * batch_operation_mat)
 
 
 def zero_state(
@@ -210,19 +178,3 @@ def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
     ls = list(range(2**n_qubits))
     permute_ind = torch.tensor([int(f"{num:0{n_qubits}b}"[::-1], 2) for num in ls])
     return wf[:, permute_ind]
-
-
-def _apply_parallel(
-    state: torch.Tensor,
-    thetas: torch.Tensor,
-    gates: Tuple[AbstractGate] | list[AbstractGate],
-    n_qubits: int,
-) -> torch.Tensor:
-    qubits_list: list[Tuple] = [g.qubits for g in gates]
-    mats = [g.matrices(thetas) for g in gates]
-
-    return reduce(
-        lambda state, inputs: _apply_gate(state, *inputs, N_qubits=n_qubits),  # type: ignore
-        zip(mats, qubits_list),
-        state,
-    )

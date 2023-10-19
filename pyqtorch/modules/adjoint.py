@@ -5,8 +5,8 @@ from typing import Any, Sequence
 import torch
 from torch import Tensor
 
-import pyqtorch.modules as pyq
-from pyqtorch.modules.parametric import ParametricGate
+import pyqtorch as pyq
+from pyqtorch.modules.parametric import Parametric
 
 
 def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tensor]:
@@ -27,8 +27,8 @@ class AdjointExpectation(torch.autograd.Function):
         ctx.observable = observable
         ctx.param_names = param_names
         values = param_dict(param_names, param_values)
-        ctx.out_state = circuit(state, values)
-        ctx.projected_state = observable(ctx.out_state, values)
+        ctx.out_state = circuit.run(state, values)
+        ctx.projected_state = observable.run(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
         return pyq.overlap(ctx.out_state, ctx.projected_state)
 
@@ -37,9 +37,9 @@ class AdjointExpectation(torch.autograd.Function):
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)
         grads: list = []
-        for op in ctx.circuit.reverse().operations:
+        for op in ctx.circuit.dagger().operations:
             ctx.out_state = op.apply_dagger(ctx.out_state, values)
-            if isinstance(op, ParametricGate):
+            if isinstance(op, Parametric):
                 mu = op.apply_jacobian(ctx.out_state, values)
                 grads = [grad_out * 2 * pyq.overlap(ctx.projected_state, mu)] + grads
             else:

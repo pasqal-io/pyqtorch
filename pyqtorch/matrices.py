@@ -1,16 +1,3 @@
-# Copyright 2022 PyQ Development Team
-
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-
-#     http://www.apache.org/licenses/LICENSE-2.0
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 from __future__ import annotations
 
 from typing import Any, Optional, Union
@@ -66,6 +53,69 @@ OPERATIONS_DICT = {
     "SWAP": SWAPMAT,
     "CSWAP": CSWAPMAT,
 }
+
+
+def _unitary(
+    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
+) -> torch.Tensor:
+    """
+    Generate a unitary parametrized by theta for a pauli operation P.
+    """
+    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
+    cos_t = cos_t.repeat((2, 2, 1))
+    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
+    sin_t = sin_t.repeat((2, 2, 1))
+
+    batch_imat = I.unsqueeze(2).repeat(1, 1, batch_size)
+    batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
+
+    return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
+
+
+def _dagger(matrices: torch.Tensor) -> torch.Tensor:  # noqa: E741
+    """Perform the dagger operation on matrices."""
+    return torch.permute(matrices.conj(), (1, 0, 2))
+
+
+def _jacobian(
+    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
+) -> torch.Tensor:
+    """
+    Compute the jacobian.
+    """
+    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
+    cos_t = cos_t.repeat((2, 2, 1))
+    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
+    sin_t = sin_t.repeat((2, 2, 1))
+
+    batch_imat = I.unsqueeze(2).repeat(1, 1, batch_size)
+    batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
+
+    return -1 / 2 * (sin_t * batch_imat + 1j * cos_t * batch_operation_mat)
+
+
+def make_controlled(
+    matrices: torch.Tensor, batch_size: int, n_control_qubits: int = 1
+) -> torch.Tensor:
+    """Transform a 2x2 unitary into a controlled unitary.
+
+    Args:
+
+        matrices (torch.Tensor): the matrix representing the unitary which should be performed.
+        batch_size (int): the batch size
+        n_control_qubits (int): The number of control qubits.
+
+    Returns:
+
+        torch.Tensor: the resulting controlled gate populated by operation_matrix
+    """
+    _controlled: torch.Tensor = (
+        torch.eye(2 ** (n_control_qubits + 1), dtype=DEFAULT_MATRIX_DTYPE)
+        .unsqueeze(2)
+        .repeat(1, 1, batch_size)
+    )
+    _controlled[2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :] = matrices
+    return _controlled
 
 
 def ZZ(N: int, i: int = 0, j: int = 0, device: Union[str, torch.device] = "cpu") -> torch.Tensor:

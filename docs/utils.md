@@ -1,1 +1,1 @@
-::: pyqtorch.modules.utils
+::: pyqtorch.utils

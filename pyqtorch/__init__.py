@@ -11,9 +11,45 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
-from .core import measurement, utils
-from .core.batched_operation import *  # noqa: F403
-from .core.circuit import *  # noqa: F403
-from .core.operation import *  # noqa: F403
+import torch
+
+from pyqtorch.apply import overlap
+from pyqtorch.modules.analog import HamEvo, HamEvoEig, HamEvoExp, HamEvoType, HamiltonianEvolution
+from pyqtorch.modules.circuit import (
+    EntanglingLayer,
+    FeaturemapLayer,
+    QuantumCircuit,
+    VariationalLayer,
+)
+from pyqtorch.modules.parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
+from pyqtorch.modules.primitive import (
+    CNOT,
+    CSWAP,
+    CY,
+    CZ,
+    SWAP,
+    H,
+    I,
+    N,
+    S,
+    SDagger,
+    T,
+    Toffoli,
+    X,
+    Y,
+    Z,
+)
+from pyqtorch.utils import (
+    flatten_wf,
+    invert_endianness,
+    is_normalized,
+    normalize,
+    random_state,
+    uniform_state,
+    zero_state,
+)
+
+torch.set_default_dtype(torch.float64)

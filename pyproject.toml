@@ -11,10 +11,12 @@ authors = [
     { name = "Mario Dagrada", email = "mario.dagrada@pasqal.com" },
     { name = "Dominik Seitz", email = "dominik.seitz@pasqal.com" },
     { name = "Niklas Heim", email = "niklas.heim@pasqal.com" },
+    { name = "Roland Guichard", email = "roland.guichard@pasqal.com" },
+    { name = "Joao P. Moutinho", email = "joao.moutinho@pasqal.com"},
 ]
 requires-python = ">=3.8,<3.12"
 license = {text = "Apache 2.0"}
-version = "0.5.1"
+version = "0.6.0"
 classifiers=[
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",

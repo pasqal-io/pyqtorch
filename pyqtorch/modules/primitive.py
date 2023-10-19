@@ -3,44 +3,35 @@ from __future__ import annotations
 import math
 
 import torch
-from numpy.typing import ArrayLike
 
-from pyqtorch.core.operation import _apply_gate, create_controlled_matrix_from_operation
-from pyqtorch.matrices import OPERATIONS_DICT
-from pyqtorch.modules.abstract import AbstractGate
-from pyqtorch.modules.parametric import ParametricGate
+from pyqtorch.apply import _apply_gate
+from pyqtorch.matrices import OPERATIONS_DICT, make_controlled
+from pyqtorch.modules.abstract import AbstractOperator
 
 
-class PrimitiveGate(AbstractGate):
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__(qubits, n_qubits)
-        self.gate = gate
-        self.register_buffer("matrix", OPERATIONS_DICT[gate])
+class Primitive(AbstractOperator):
+    def __init__(self, pauli: torch.Tensor, target: int):
+        super().__init__(target)
+        self.register_buffer("pauli", pauli)
 
-    def matrices(self, _: torch.Tensor) -> torch.Tensor:
-        return self.matrix
+    def unitary(self, _: torch.Tensor) -> torch.Tensor:
+        return self.pauli
 
-    def apply(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        return _apply_gate(state, matrix, self.qubits, self.n_qubits)
+    def apply_unitary(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        return _apply_gate(state, matrix, [self.target], len(state.size()) - 1)
 
     def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
-        return self.apply(self.matrix, state)
+        return self.apply_unitary(self.unitary(_), state)
 
     def dagger(self, thetas: torch.Tensor) -> torch.Tensor:
-        return torch.permute(self.matrix.conj(), (1, 0, 2))
-
-    def jacobian(self, thetas: torch.Tensor) -> torch.Tensor:
-        return torch.eye(2, dtype=torch.complex128)
+        return torch.permute(self.pauli.conj(), (1, 0, 2))
 
     def apply_dagger(self, state: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
         return self.apply(self.dagger(theta), state)
 
-    def apply_jacobian(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-        return self.apply(self.jacobian(thetas), state)
 
-
-class X(PrimitiveGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class X(Primitive):
+    def __init__(self, target: int):
         """
         Represents an X gate (Pauli-X gate) in a quantum circuit.
         The X gate class creates a  X gate that performs a PI rotation around the X axis
@@ -65,11 +56,11 @@ class X(PrimitiveGate):
         print(result)
         ```
         """
-        super().__init__("X", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["X"], target)
 
 
-class Y(PrimitiveGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class Y(Primitive):
+    def __init__(self, target: int):
         """
         Represents a Y gate (Pauli-Y gate) in a quantum circuit.
         The Y gate class creates a  Y gate that performs a PI rotation around the Y axis.
@@ -95,11 +86,11 @@ class Y(PrimitiveGate):
         print(result)
         ```
         """
-        super().__init__("Y", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["Y"], target)
 
 
-class Z(PrimitiveGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class Z(Primitive):
+    def __init__(self, target: int):
         """
         Represents a Z gate (Pauli-Z gate) in a quantum circuit.
         The ZGate class creates a Z gate that performs a PI rotation around the Z axis.
@@ -125,13 +116,11 @@ class Z(PrimitiveGate):
         print(result)
         ```
         """
-        super().__init__("Z", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["Z"], target)
 
 
-# FIXME: do we really have to apply a matrix here?
-# can't we just return the identical state?
-class I(PrimitiveGate):  # noqa: E742
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class I(Primitive):  # noqa: E742
+    def __init__(self, target: int):
         """
         Represents an I gate (identity gate) in a quantum circuit.
         The I gate class creates a I gate, which has no effect on the state of a qubit.
@@ -156,11 +145,14 @@ class I(PrimitiveGate):  # noqa: E742
         print(result)
         ```
         """
-        super().__init__("I", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["I"], target)
+
+    def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
+        return state
 
 
-class H(PrimitiveGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class H(Primitive):
+    def __init__(self, target: int):
         """
         Represents an H gate (Hadamard gate) in a quantum circuit.
         The H Gate class creates a H gate. It performs a PI rotation
@@ -188,11 +180,11 @@ class H(PrimitiveGate):
         print(result)  # tensor([[0.7071+0.j],[0.7071+0.j]], dtype=torch.complex128)
         ```
         """
-        super().__init__("H", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["H"], target)
 
 
-class T(PrimitiveGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class T(Primitive):
+    def __init__(self, target: int):
         """
         Represents a T gate (PI/4 phase gate) in a quantum circuit.
 
@@ -216,11 +208,11 @@ class T(PrimitiveGate):
         print(result)
         ```
         """
-        super().__init__("T", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["T"], target)
 
 
-class S(PrimitiveGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class S(Primitive):
+    def __init__(self, target: int):
         """
         Represents an S gate (PI/2 phase gate) in a quantum circuit.
 
@@ -244,11 +236,11 @@ class S(PrimitiveGate):
         print(result)
         ```
         """
-        super().__init__("S", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["S"], target)
 
 
-class SDagger(PrimitiveGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class SDagger(Primitive):
+    def __init__(self, target: int):
         """
         Represents an SDagger gate (-PI/2 phase gate) in a quantum circuit.
 
@@ -272,11 +264,11 @@ class SDagger(PrimitiveGate):
         print(result)
         ```
         """
-        super().__init__("SDAGGER", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["SDAGGER"], target)
 
 
-class N(PrimitiveGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class N(Primitive):
+    def __init__(self, target: int):
         """
         Represents an N gate ((I-Z)/2 projector gate) in a quantum circuit.
 
@@ -300,11 +292,12 @@ class N(PrimitiveGate):
         print(result)
         ```
         """
-        super().__init__("N", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["N"], target)
 
 
-class SWAP(PrimitiveGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class SWAP(Primitive):
+    # FIXME
+    def __init__(self, control: int, target: int):
         """
         Represents a SWAP gate in a quantum circuit.
         The SwapGate swaps the qubit states of two quantum wires.
@@ -330,33 +323,27 @@ class SWAP(PrimitiveGate):
         print(result)
         ```
         """
-        super().__init__("SWAP", qubits, n_qubits)
+        super().__init__(OPERATIONS_DICT["SWAP"], [control, target])
 
 
-class ControlledOperationGate(ParametricGate):
-    def __init__(self, gate: str, qubits: ArrayLike, n_qubits: int):
-        super().__init__("X", qubits, n_qubits)
-        self.gate = gate
+class ControlledOperationGate(Primitive):
+    def __init__(self, gate: str, control: int | list[int] | tuple[int], target: int):
+        control = [control]
         mat = OPERATIONS_DICT[gate]
-        self.register_buffer(
-            "matrix",
-            create_controlled_matrix_from_operation(
-                mat, n_control_qubits=len(qubits) - (int)(math.log2(mat.shape[0]))
-            ),
-        )
+        mat = make_controlled(
+            matrices=mat.unsqueeze(2),
+            batch_size=1,
+            n_control_qubits=len(control) - (int)(math.log2(mat.shape[0])) + 1,
+        ).squeeze(2)
+        super().__init__(mat, target)
+        self.control = control
 
-    def matrices(self, _: torch.Tensor) -> torch.Tensor:
-        return self.matrix
-
-    def apply(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        return _apply_gate(state, matrix, self.qubits, self.n_qubits)
-
-    def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
-        return self.apply(self.matrix, state)
+    def apply_unitary(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        return _apply_gate(state, matrix, self.control + [self.target], len(state.size()) - 1)
 
 
 class CNOT(ControlledOperationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, control: int | list[int], target: int):
         """
         Represents a controlled NOT (CNOT) gate in a quantum circuit.
 
@@ -380,14 +367,14 @@ class CNOT(ControlledOperationGate):
         print(result)
         ```
         """
-        super().__init__("X", qubits, n_qubits)
+        super().__init__("X", control, target)
 
 
 CX = CNOT
 
 
 class CY(ControlledOperationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, control: int | list[int], target: int):
         """
         Represents a controlled-Y (CY) gate in a quantum circuit.
         The CY Gate class creates a controlled Y gate, applying the Y gate
@@ -413,11 +400,11 @@ class CY(ControlledOperationGate):
         print(result)
         ```
         """
-        super().__init__("Y", qubits, n_qubits)
+        super().__init__("Y", control, target)
 
 
 class CZ(ControlledOperationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, control: int | list[int], target: int):
         """
         Represents a controlled-Z (CZ) gate in a quantum circuit.
         The CZ gate class creates a controlled Z gate, applying
@@ -444,11 +431,11 @@ class CZ(ControlledOperationGate):
         print(result)
         ```
         """
-        super().__init__("Z", qubits, n_qubits)
+        super().__init__("Z", control, target)
 
 
 class CSWAP(ControlledOperationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, control: list[int], target: int):
         """
         Represents a controlled-SWAP (CSWAP) gate in a quantum circuit.
         The CSWAP gate class creates a controlled SWAP gate, applying
@@ -474,11 +461,11 @@ class CSWAP(ControlledOperationGate):
         result = cswap_gate(swap_state)
         print(result)
         """
-        super().__init__("SWAP", qubits, n_qubits)
+        super().__init__("SWAP", control, target)
 
 
 class Toffoli(ControlledOperationGate):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+    def __init__(self, control: int | list[int], target: int):
         """
         Represents a multi qubit controlled toffoli gate in a quantum circuit.
         This gate performs a NOT operation only if all the control qubits are in state 1.
@@ -503,4 +490,4 @@ class Toffoli(ControlledOperationGate):
         result = toffoli_gate(toffoli_state)
         print(result)
         """
-        super().__init__("X", qubits, n_qubits)
+        super().__init__("X", control, target)

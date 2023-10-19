@@ -4,41 +4,40 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import torch
-from numpy.typing import ArrayLike
 from torch.nn import Module
 
 import pyqtorch.modules as pyq
 
 
-class AbstractGate(ABC, Module):
-    def __init__(self, qubits: ArrayLike, n_qubits: int):
+class AbstractOperator(ABC, Module):
+    def __init__(self, target: int):
         super().__init__()
-        self.qubits = qubits
-        self.n_qubits = n_qubits
+        self.target = target
 
-    def __mul__(self, other: AbstractGate | pyq.QuantumCircuit) -> pyq.QuantumCircuit:
-        if isinstance(other, AbstractGate):
-            ml = torch.nn.ModuleList([self, other])
-            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), ml)
+    def __mul__(self, other: AbstractOperator | pyq.QuantumCircuit) -> pyq.QuantumCircuit:
+        if isinstance(other, AbstractOperator):
+            ops = torch.nn.ModuleList([self, other])
+            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), ops)
         elif isinstance(other, pyq.QuantumCircuit):
-            ml = torch.nn.ModuleList([self]) + other.operations
-            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), ml)
+            ops = torch.nn.ModuleList([self]) + other.operations
+            return pyq.QuantumCircuit(max(self.n_qubits, other.n_qubits), ops)
         else:
-            return TypeError(f"Cannot compose {type(self)} with {type(other)}")
+            raise TypeError(f"Unable to compose {type(self)} with {type(other)}")
 
     def __key(self) -> tuple:
-        return (self.n_qubits, *self.qubits)
+        return (self.target,)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, type(self)):
             return self.__key() == other.__key()
-        return NotImplemented
+        else:
+            raise NotImplementedError
 
     def __hash__(self) -> int:
         return hash(self.__key())
 
     @abstractmethod
-    def matrices(self, thetas: torch.Tensor | dict) -> torch.Tensor:
+    def unitary(self, thetas: torch.Tensor | dict) -> torch.Tensor:
         ...
 
     @abstractmethod
@@ -46,19 +45,11 @@ class AbstractGate(ABC, Module):
         ...
 
     @abstractmethod
-    def jacobian(self, thetas: torch.Tensor | dict) -> torch.Tensor:
-        ...
-
-    @abstractmethod
     def apply_dagger(self, state: torch.Tensor, thetas: torch.Tensor | dict) -> torch.Tensor:
         ...
 
     @abstractmethod
-    def apply_jacobian(self, state: torch.Tensor, thetas: torch.Tensor | dict) -> torch.Tensor:
-        ...
-
-    @abstractmethod
-    def apply(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+    def apply_unitary(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         ...
 
     @abstractmethod
@@ -66,4 +57,4 @@ class AbstractGate(ABC, Module):
         ...
 
     def extra_repr(self) -> str:
-        return f"qubits={self.qubits}, n_qubits={self.n_qubits}"
+        return f"qubits={self.target}"

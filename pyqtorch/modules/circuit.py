@@ -1,35 +1,22 @@
 from __future__ import annotations
 
-from enum import Enum
 from typing import Any
 
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
-from pyqtorch.modules.abstract import AbstractGate
+from pyqtorch.apply import overlap
+from pyqtorch.modules.abstract import AbstractOperator
 from pyqtorch.modules.adjoint import AdjointExpectation
-from pyqtorch.modules.primitive import CNOT
-from pyqtorch.modules.utils import overlap, zero_state
-
-
-class StrEnum(str, Enum):
-    def __str__(self) -> str:
-        """Used when dumping enum fields in a schema."""
-        ret: str = self.value
-        return ret
-
-    @classmethod
-    def list(cls) -> list[str]:
-        return list(map(lambda c: c.value, cls))  # type: ignore
-
-
-class DiffMode(StrEnum):
-    AD = "ad"
-    ADJOINT = "adjoint"
+from pyqtorch.modules.composite import Composite
+from pyqtorch.modules.primitive import CNOT, Primitive
+from pyqtorch.utils import DiffMode, zero_state
 
 
 class QuantumCircuit(Module):
-    def __init__(self, n_qubits: int, operations: list, diff_mode: DiffMode = DiffMode.AD):
+    def __init__(
+        self, n_qubits: int, operations: list[AbstractOperator], diff_mode: DiffMode = DiffMode.AD
+    ):
         """
         Creates a QuantumCircuit that can be used to compose multiple gates
         from a list of operations.
@@ -67,12 +54,12 @@ class QuantumCircuit(Module):
         self.operations = torch.nn.ModuleList(operations)
         self.diff_mode = diff_mode
 
-    def __mul__(self, other: AbstractGate | QuantumCircuit) -> QuantumCircuit:
+    def __mul__(self, other: AbstractOperator | QuantumCircuit) -> QuantumCircuit:
         if isinstance(other, QuantumCircuit):
             n_qubits = max(self.n_qubits, other.n_qubits)
             return QuantumCircuit(n_qubits, self.operations.extend(other.operations))
 
-        if isinstance(other, AbstractGate):
+        if isinstance(other, AbstractOperator):
             n_qubits = max(self.n_qubits, other.n_qubits)
             return QuantumCircuit(n_qubits, self.operations.append(other))
 
@@ -90,7 +77,7 @@ class QuantumCircuit(Module):
     def __hash__(self) -> int:
         return hash(self.__key())
 
-    def forward(self, state: torch.Tensor, thetas: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
         """
         Forward pass of the quantum circuit.
 
@@ -103,18 +90,28 @@ class QuantumCircuit(Module):
 
         """
         for op in self.operations:
-            state = op(state, thetas)
+            state = op(state, values)
         return state
 
+    def run(self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
+        return self.forward(state, values)
+
     def expectation(
-        self, state: torch.Tensor, thetas: torch.Tensor | dict, observable: QuantumCircuit
+        self,
+        values: dict[str, torch.Tensor] = {},
+        observable: QuantumCircuit = None,
+        state: torch.Tensor = None,
     ) -> torch.Tensor:
+        if state is None:
+            state = self.init_state(batch_size=1)
+        if observable is None:
+            raise ValueError("Please provide an observable to compute expectation.")
         if self.diff_mode == DiffMode.AD:
-            state = self.forward(state, thetas)
-            return overlap(state, observable.forward(state, thetas))
+            state = self.run(state, values)
+            return overlap(state, observable.forward(state, values))
         else:
             return AdjointExpectation.apply(
-                self, observable, state, thetas.keys(), *thetas.values()
+                self, observable, state, values.keys(), *values.values()
             )
 
     @property
@@ -128,7 +125,7 @@ class QuantumCircuit(Module):
     def init_state(self, batch_size: int) -> torch.Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
 
-    def reverse(self) -> QuantumCircuit:
+    def dagger(self) -> QuantumCircuit:
         return QuantumCircuit(self.n_qubits, torch.nn.ModuleList(list(reversed(self.operations))))
 
 
@@ -226,4 +223,13 @@ class EntanglingLayer(QuantumCircuit):
         operations = ModuleList(
             [CNOT([i % n_qubits, (i + 1) % n_qubits], n_qubits) for i in range(n_qubits)]
         )
+        super().__init__(n_qubits, operations)
+
+
+class Observable(QuantumCircuit):
+    def __init__(self, n_qubits: int, operations: list[Primitive]):
+        """
+        Define an Observable.
+        """
+        assert all([isinstance(op, (Composite, Primitive)) for op in operations])
         super().__init__(n_qubits, operations)
