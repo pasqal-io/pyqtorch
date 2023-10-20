@@ -1,1 +1,1 @@
-::: pyqtorch.modules.primitive
+::: pyqtorch.primitive

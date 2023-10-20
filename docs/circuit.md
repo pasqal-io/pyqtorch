@@ -1,1 +1,1 @@
-::: pyqtorch.modules.circuit
+::: pyqtorch.circuit

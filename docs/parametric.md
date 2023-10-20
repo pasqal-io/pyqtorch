@@ -1,1 +1,1 @@
-::: pyqtorch.modules.parametric
+::: pyqtorch.parametric
