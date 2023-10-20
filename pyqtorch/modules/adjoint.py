@@ -33,12 +33,10 @@ class AdjointExpectation(torch.autograd.Function):
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)
         grads: list = []
-        for op in ctx.circuit.dagger().operations:
+        for op in ctx.circuit.reverse().operations:
             ctx.out_state = op.apply_dagger(ctx.out_state, values)
             if isinstance(op, Parametric):
                 mu = op.apply_jacobian(ctx.out_state, values)
                 grads = [grad_out * 2 * overlap(ctx.projected_state, mu)] + grads
-            else:
-                grads = [None] + grads
             ctx.projected_state = op.apply_dagger(ctx.projected_state, values)
         return (None, None, None, None, *grads)

@@ -124,7 +124,7 @@ class QuantumCircuit(Module):
     def init_state(self, batch_size: int) -> torch.Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
 
-    def dagger(self) -> QuantumCircuit:
+    def reverse(self) -> QuantumCircuit:
         return QuantumCircuit(self.n_qubits, torch.nn.ModuleList(list(reversed(self.operations))))
 
 
