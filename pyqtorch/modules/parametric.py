@@ -37,7 +37,9 @@ class Parametric(Primitive):
         self.param_name = param_name
 
     def apply_operator(self, operator: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        return self.apply_fn(state, operator, [self.target], len(state.size()) - 1, state.size(-1))
+        return self.apply_fn(
+            state, operator, self.qubit_support, len(state.size()) - 1, state.size(-1)
+        )
 
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         thetas = values[self.param_name]
@@ -53,7 +55,7 @@ class Parametric(Primitive):
         return _jacobian(thetas, self.pauli, self.identity, batch_size)
 
     def apply_jacobian(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
-        return self.apply(self.jacobian(values), state)
+        return self.apply_operator(self.jacobian(values), state)
 
 
 class RX(Parametric):
@@ -63,37 +65,6 @@ class RX(Parametric):
         param_name: str = "",
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        """
-        Represents an X-axis rotation (RX) gate in a quantum circuit.
-        The RX gate class creates a single-qubit RX gate that performs
-        a given rotation around the X axis.
-
-        Arguments:
-            qubits (ArrayLike):The list of qubits the controlled RX gate acts on.
-            n_qubits (int): The total number of qubits in the circuit.
-
-        Examples:
-        ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch.modules as pyq
-
-        # Create an RX gate
-        rx_gate = pyq.RX(qubits=[0], n_qubits=1)
-
-        # Create a zero state
-        z_state = pyq.zero_state(n_qubits=1)
-
-        #Create a random theta angle
-        theta = torch.rand(1)
-
-        # Every rotational gate accepts a second parameter that is expected to be a Theta angle.
-        # Apply the RX gate to the zero state with your random theta as a second parameter.
-
-        result=rx_gate(z_state, theta)
-        print(result)
-
-        ```
-        """
         super().__init__("X", target, param_name, apply_fn_type)
 
 
@@ -104,110 +75,19 @@ class RY(Parametric):
         param_name: str = "",
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        """
-        Represents a Y-axis rotation (RY) gate in a quantum circuit.
-        The RY gate class creates a single-qubit RY gate that performs
-        a given rotation around the Y axis.
-
-        Arguments:
-            qubits (ArrayLike): The qubit index to apply the RY gate to.
-            n_qubits (int): The total number of qubits in the circuit.
-
-        Examples:
-        ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch.modules as pyq
-
-        # Create an RY gate
-        ry_gate = pyq.RY(qubits=[0], n_qubits=1)
-
-        # Create a zero state
-        z_state = pyq.zero_state(n_qubits=1)
-
-        # Create a random theta angle
-        theta = torch.rand(1)
-
-        # Apply the RY gate to the zero state with the random theta angle
-        result = ry_gate(z_state, theta)
-        print(result)
-        ```
-        """
         super().__init__("Y", target, param_name, apply_fn_type)
 
 
 class RZ(Parametric):
     def __init__(self, target: int, param_name: str, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
-        """
-        Represents a Z-axis rotation (RZ) gate in a quantum circuit.
-        The RZ gate class creates a single-qubit RZ gate that performs
-        a given rotation around the Z axis.
-
-
-        Arguments:
-            qubits (ArrayLike): The qubit index or list of qubit indices to apply the RZ gate to.
-            n_qubits (int): The total number of qubits in the circuit.
-
-        Examples:
-        ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch.modules as pyq
-
-        # Create an RZ gate
-        rz_gate = pyq.RZ(qubits=[0], n_qubits=1)
-
-        # Create a zero state
-        z_state = pyq.zero_state(n_qubits=1)
-
-        # Create a random theta angle
-        theta = torch.rand(1)
-
-        # Apply the RZ gate to the zero state with the random theta angle
-        result = rz_gate(z_state, theta)
-        print(result)
-        ```
-        """
         super().__init__("Z", target, param_name, apply_fn_type)
 
 
 class PHASE(Parametric):
     def __init__(self, target: int, param_name: str, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
-        """
-        Represents a PHASE rotation gate in a quantum circuit.
-
-        Arguments:
-            qubits (ArrayLike): The qubit index or list of qubit indices.
-            n_qubits (int): The total number of qubits in the circuit.
-
-        Examples:
-        ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch.modules as pyq
-
-        # Create an PHASE gate
-        gate = pyq.PHASE(qubits=[0], n_qubits=1)
-
-        # Create a zero state
-        z_state = pyq.zero_state(n_qubits=1)
-
-        # Create a random theta angle
-        theta = torch.rand(1)
-
-        # Apply the PHASE gate to the zero state with the random theta angle
-        result = gate(z_state, theta)
-        print(result)
-        ```
-        """
         super().__init__("I", target, param_name)
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]
         self.param_name = param_name
-
-    def apply_unitary(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        batch_size = matrices.size(-1)
-        return self.apply_fn(state, matrices, [self.target], len(state.size()) - 1, batch_size)
-
-    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-        mats = self.unitary(thetas)
-        return self.apply_unitary(mats, state)
 
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         thetas = values[self.param_name]
@@ -240,6 +120,7 @@ class ControlledRotationGate(Parametric):
         control = [control]
         self.control = control
         super().__init__(gate, target, param_name, apply_fn_type)
+        self.qubit_support = [self.control, self.target]
 
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         thetas = values[self.param_name]
@@ -247,11 +128,6 @@ class ControlledRotationGate(Parametric):
         mat = _unitary(thetas, self.pauli, self.identity, batch_size)
         return make_controlled(
             mat, batch_size, len(self.control) - (int)(math.log2(mat.shape[0])) + 1
-        )
-
-    def apply_unitary(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        return _apply_batch_gate(
-            state, matrix, self.control + [self.target], len(state.size()) - 1, state.size(-1)
         )
 
     def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -278,45 +154,6 @@ class CRX(ControlledRotationGate):
         param_name: str,
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        """
-        Represents a controlled-X-axis rotation (CRX) gate in a quantum circuit.
-        The CRX gate class creates a controlled RX gate, applying the RX according
-        to the control qubit state.
-
-
-        Arguments:
-            qubits (ArrayLike):The list of qubits the controlled CRX gate acts on.
-            n_qubits (int): The total number of qubits in the circuit.
-
-        Examples:
-        ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch.modules as pyq
-        # Create a CRX gate
-        #The CRX gate is a controlled version of the RX gate.
-        #It applies an RX rotation to the target qubit based on the state of the control qubit.
-        #The gate takes two qubits as input: the control qubit and the target qubit.
-
-        crx_gate = pyq.CRX(qubits=[0, 1], n_qubits=2)
-
-        # Create a X gate
-        x_gate=pyq.X(qubits=[0], n_qubits=2)
-
-        # Create a zero state
-        z_state = pyq.zero_state(n_qubits=2)
-
-        #Apply an X gate to zero state to change its  state from 0 to 1
-        activation_state=x_gate(z_state)
-
-        # Create a random theta angle
-        theta = torch.rand(1)
-
-        # Apply the CRX gate to the activation state with the random theta angle
-        result = crx_gate(activation_state, theta)
-        print(result)
-
-        ```
-        """
         super().__init__("X", control, target, param_name, apply_fn_type)
 
 
@@ -328,44 +165,6 @@ class CRY(ControlledRotationGate):
         param_name: str = "",
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        """
-        Represents a controlled-Y-axis rotation (CRY) gate in a quantum circuit.
-        The CRY gate class creates a controlled RY gate, applying the RY according
-        to the control qubit state.
-
-
-        Arguments:
-            qubits (ArrayLike):The list of qubits the controlled CRY gate acts on.
-            n_qubits (int): The total number of qubits in the circuit.
-
-        Examples:
-        ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch.modules as pyq
-
-        # Create a CRY gate
-        # The CRY gate is a controlled version of the RY gate.
-        # It applies an RY rotation to the target qubit based on the state of the control qubit.
-        # The gate takes two qubits as input: the control qubit and the target qubit.
-        cry_gate = pyq.CRY(qubits=[0, 1], n_qubits=2)
-
-        # Create a Y gate
-        y_gate = pyq.Y(qubits=[0], n_qubits=2)
-
-        # Create a zero state
-        z_state = pyq.zero_state(n_qubits=2)
-
-        # Apply a Y gate to the zero state to change its state
-        activation_state = y_gate(z_state)
-
-        # Create a random theta angle
-        theta = torch.rand(1)
-
-        # Apply the CRY gate to the activation state with the random theta angle
-        result = cry_gate(activation_state, theta)
-        print(result)
-        ```
-        """
         super().__init__("Y", control, target, param_name, apply_fn_type)
 
 
@@ -377,43 +176,6 @@ class CRZ(ControlledRotationGate):
         param_name: str = "",
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        """
-        Represents a controlled-Z-axis rotation (CRZ) gate in a quantum circuit.
-        The CRZ gate class creates a controlled RZ gate, applying the RZ according
-        to the control qubit state.
-
-        Arguments:
-            qubits (ArrayLike):The list of qubits the controlled CRZ gate acts on.
-            n_qubits (int): The total number of qubits in the circuit.
-
-        Examples:
-        ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch.modules as pyq
-
-        # Create a CRZ gate
-        # The CRZ gate is a controlled version of the RZ gate.
-        # It applies an RZ rotation to the target qubit based on the state of the control qubit.
-        # The gate takes two qubits as input: the control qubit and the target qubit.
-        crz_gate = pyq.CRZ(qubits=[0, 1], n_qubits=2)
-
-        # Create a X gate
-        x_gate = pyq.X(qubits=[0], n_qubits=2)
-
-        # Create a zero state
-        z_state = pyq.zero_state(n_qubits=2)
-
-        # Apply a X gate to the zero state to change its state
-        activation_state = x_gate(z_state)
-
-        # Create a random theta angle
-        theta = torch.rand(1)
-
-        # Apply the CRZ gate to the activation state with the random theta angle
-        result = crz_gate(activation_state, theta)
-        print(result)
-        ```
-        """
         super().__init__("Z", control, target, param_name, apply_fn_type)
 
 
@@ -440,7 +202,7 @@ class CPHASE(Parametric):
 
         super().__init__("S", control, target, param_name, apply_fn_type)
 
-        self.register_buffer("identity", torch.eye(2 ** len(qubits), dtype=DEFAULT_MATRIX_DTYPE))
+        self.register_buffer("identity", torch.eye(2 ** self.n_qubits, dtype=DEFAULT_MATRIX_DTYPE))
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
@@ -454,11 +216,11 @@ class CPHASE(Parametric):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return self.apply_fn(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return self.apply_fn(state, matrices, self.qubit_support, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
         mats = self.matrices(thetas)
-        return self.apply(mats, state)
+        return self.apply_operator(mats, state)
 
 
 class U(Parametric):
@@ -513,19 +275,8 @@ class U(Parametric):
 
     def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubits, self.n_qubits, batch_size)
+        return _apply_batch_gate(state, matrices, self.qubit_support, self.n_qubits, batch_size)
 
     def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-        """
-        Represents batched state and theta forwarding  to the matrices
-        and apply functions that are part of the U gate implementation
-
-        Arguments:
-            state  (torch.Tensor): batched state
-            thetas (torch.Tensor): Tensor of size 3 ,contains values of `phi`/`theta`/`omega`
-
-        Returns:
-            torch.Tensor: the resulting state after applying the gate
-        """
         mats = self.matrices(thetas)
-        return self.apply(mats, state)
+        return self.apply_operator(mats, state)
