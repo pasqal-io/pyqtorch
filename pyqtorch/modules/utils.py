@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Sequence
 
 import torch
 from numpy import log2
@@ -190,3 +191,7 @@ def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
     ls = list(range(2**n_qubits))
     permute_ind = torch.tensor([int(f"{num:0{n_qubits}b}"[::-1], 2) for num in ls])
     return wf[:, permute_ind]
+
+
+def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tensor]:
+    return {key: val for key, val in zip(keys, values)}
