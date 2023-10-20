@@ -6,9 +6,8 @@ import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
 from pyqtorch.adjoint import AdjointExpectation
-from pyqtorch.composite import Composite
 from pyqtorch.operator import Operator
-from pyqtorch.primitive import CNOT, Primitive
+from pyqtorch.primitive import CNOT
 from pyqtorch.utils import DiffMode, overlap, zero_state
 
 
@@ -45,17 +44,6 @@ class QuantumCircuit(Module):
         return hash(self.__key())
 
     def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
-        """
-        Forward pass of the quantum circuit.
-
-        Arguments:
-            state (torch.Tensor): The input quantum state tensor.
-            thetas (torch.Tensor): Optional tensor of parameters for the circuit operations.
-
-        Returns:
-            torch.Tensor: The output quantum state tensor after applying the circuit operations.
-
-        """
         for op in self.operations:
             state = op(state, values)
         return state
@@ -97,63 +85,12 @@ class QuantumCircuit(Module):
 
 
 def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
-    """
-    Creates a feature map layer in a quantum neural network.
-    The FeaturemapLayer is a convenience constructor for a QuantumCircuit
-    which accepts an operation to put on every qubit.
-
-    Arguments:
-        n_qubits (int): The total number of qubits in the circuit.
-        Op (Any): The quantum operation to be applied in the feature map layer.
-
-    Returns:
-        QuantumCircuit: The feature map layer represented as a QuantumCircuit.
-
-    Example:
-    ```python exec="on" source="above" result="json"
-    import torch
-    import pyqtorch as pyq
-
-    #create a FeaturemapLayer to apply the RX operation on all 3 Qubits
-    circ = pyq.FeaturemapLayer(n_qubits=3, Op=pyq.RX)
-    print(circ)
-
-    states = pyq.zero_state(n_qubits=3, batch_size=4)
-    inputs = torch.rand(4)
-
-    # the same batch of inputs are passed to the operations
-    circ(states, inputs).shape
-    ```
-    """
     operations = [Op([i], n_qubits) for i in range(n_qubits)]
     return QuantumCircuit(n_qubits, operations)
 
 
 class VariationalLayer(QuantumCircuit):
     def __init__(self, n_qubits: int, Op: Any):
-        """
-        Represents a variational layer in a quantum neural network allowing you
-        to create a trainable QuantumCircuit.
-        If you want the angles of your circuit to be trainable you can use a VariationalLayer.
-        The VariationalLayer ignores the second input (because it has trainable angle parameters).
-
-        Arguments:
-            n_qubits (int): The total number of qubits in the circuit.
-            Op (Any): The quantum operation to be applied in the variational layer.
-
-
-        Example:
-        ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch as pyq
-        #create a variational layer with 3 qubits and operation of RX as the second parameter
-        circ = pyq.VariationalLayer(n_qubits=3, Op=pyq.RX)
-        state = pyq.zero_state(3)
-        this_argument_is_ignored = None
-        result=circ(state, this_argument_is_ignored)
-        print(result)
-        ```
-        """
         operations = ModuleList([Op([i], n_qubits) for i in range(n_qubits)])
         super().__init__(n_qubits, operations)
 
@@ -171,32 +108,7 @@ class VariationalLayer(QuantumCircuit):
 
 class EntanglingLayer(QuantumCircuit):
     def __init__(self, n_qubits: int):
-        """
-        Represents an entangling layer in a quantum neural network by entangling Qubits
-
-        Args:
-            n_qubits (int): The total number of qubits in the circuit.
-
-        Example:
-        ```python exec="on" source="above" result="json"
-        from pyqtorch.modules.circuit import EntanglingLayer
-
-        # Create an entangling layer with 4 qubits
-        entangling_layer = EntanglingLayer(n_qubits=4)
-
-        print(entangling_layer)
-        ```
-        """
         operations = ModuleList(
             [CNOT([i % n_qubits, (i + 1) % n_qubits], n_qubits) for i in range(n_qubits)]
         )
-        super().__init__(n_qubits, operations)
-
-
-class Observable(QuantumCircuit):
-    def __init__(self, n_qubits: int, operations: list[Primitive]):
-        """
-        Define an Observable.
-        """
-        assert all([isinstance(op, (Composite, Primitive)) for op in operations])
         super().__init__(n_qubits, operations)
