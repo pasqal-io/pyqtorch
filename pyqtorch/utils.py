@@ -9,6 +9,13 @@ from numpy import log2
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
 
 
+def reverse_permutation(state: torch.Tensor, qubits: list[int], n_qubits: int) -> torch.Tensor:
+    reverse_perm_indices = torch.argsort(
+        torch.tensor(qubits + [j for j in range(n_qubits + 1) if j not in qubits], dtype=torch.int)
+    )
+    return torch.permute(state, tuple(reverse_perm_indices))
+
+
 def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
     n_qubits = len(state.size()) - 1
     batch_size = state.size()[-1]
