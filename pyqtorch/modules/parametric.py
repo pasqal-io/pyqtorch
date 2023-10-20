@@ -120,7 +120,7 @@ class ControlledRotationGate(Parametric):
         control = [control]
         self.control = control
         super().__init__(gate, target, param_name, apply_fn_type)
-        self.qubit_support = [self.control, self.target]
+        self.qubit_support = self.control + [self.target]
 
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         thetas = values[self.param_name]
@@ -189,20 +189,8 @@ class CPHASE(Parametric):
         param_name: str,
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        """
-        Represents a controlled-phase (CPHASE) gate in a quantum circuit.
-        The CPhase gate class creates a controlled Phase gate, applying the PhaseGate
-        according to the control qubit state.
-
-        Arguments:
-            qubits (ArrayLike): The control and target qubits for the CPHASE gate.
-            n_qubits (int): The total number of qubits in the circuit.
-
-        """
-
         super().__init__("S", control, target, param_name, apply_fn_type)
-
-        self.register_buffer("identity", torch.eye(2 ** self.n_qubits, dtype=DEFAULT_MATRIX_DTYPE))
+        self.register_buffer("identity", torch.eye(2**self.n_qubits, dtype=DEFAULT_MATRIX_DTYPE))
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
