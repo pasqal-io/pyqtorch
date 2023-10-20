@@ -36,6 +36,9 @@ class Parametric(Primitive):
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]
         self.param_name = param_name
 
+    def apply_operator(self, operator: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        return self.apply_fn(state, operator, [self.target], len(state.size()) - 1, state.size(-1))
+
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         thetas = values[self.param_name]
         batch_size = len(thetas)
@@ -48,16 +51,6 @@ class Parametric(Primitive):
         thetas = values[self.param_name]
         batch_size = len(thetas)
         return _jacobian(thetas, self.pauli, self.identity, batch_size)
-
-    def apply_unitary(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        batch_size = matrices.size(-1)
-        return self.apply_fn(state, matrices, [self.target], len(state.size()) - 1, batch_size)
-
-    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
-        return self.apply_unitary(self.unitary(values), state)
-
-    def apply_dagger(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
-        return self.apply(self.dagger(values), state)
 
     def apply_jacobian(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.apply(self.jacobian(values), state)

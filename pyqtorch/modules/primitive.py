@@ -5,7 +5,7 @@ import math
 import torch
 
 from pyqtorch.apply import _apply_gate
-from pyqtorch.matrices import OPERATIONS_DICT, make_controlled
+from pyqtorch.matrices import OPERATIONS_DICT, _dagger, make_controlled
 from pyqtorch.modules.operator import Operator
 
 
@@ -14,20 +14,25 @@ class Primitive(Operator):
         super().__init__(target)
         self.register_buffer("pauli", pauli)
 
-    def unitary(self, _: torch.Tensor) -> torch.Tensor:
+    def unitary(self, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
         return self.pauli
 
-    def apply_unitary(self, matrix: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        return _apply_gate(state, matrix, [self.target], len(state.size()) - 1)
+    def apply_operator(self, operator: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        return _apply_gate(state, operator, [self.target], len(state.size()) - 1)
 
-    def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
-        return self.apply_unitary(self.unitary(_), state)
+    def apply_unitary(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        return self.apply_operator(self.unitary(values), state)
 
-    def dagger(self, thetas: torch.Tensor) -> torch.Tensor:
-        return torch.permute(self.pauli.conj(), (1, 0, 2))
+    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
+        return self.apply_unitary(state, values)
 
-    def apply_dagger(self, state: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
-        return self.apply(self.dagger(theta), state)
+    def dagger(self, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
+        return _dagger(self.unitary(values).unsqueeze(2)).squeeze(2)
+
+    def apply_dagger(
+        self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}
+    ) -> torch.Tensor:
+        return self.apply_operator(self.dagger(values), state)
 
 
 class X(Primitive):
