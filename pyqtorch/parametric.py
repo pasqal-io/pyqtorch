@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 
 import torch
-from numpy.typing import ArrayLike
 
 from pyqtorch.apply import _apply_batch_gate, _vmap_operator
 from pyqtorch.matrices import (
@@ -112,12 +111,12 @@ class ControlledRotationGate(Parametric):
     def __init__(
         self,
         gate: str,
-        control: int,
+        control: int | list[int],
         target: int,
         param_name: str = "",
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        control = [control]
+        control = [control] if isinstance(control, int) else control
         self.control = control
         super().__init__(gate, target, param_name, apply_fn_type)
         self.qubit_support = self.control + [self.target]
@@ -184,13 +183,14 @@ class CPHASE(Parametric):
 
     def __init__(
         self,
-        control: ArrayLike,
+        control: int | list[int],
         target: int,
         param_name: str,
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        super().__init__("S", control, target, param_name, apply_fn_type)
+        super().__init__("S", target, param_name, apply_fn_type)
         self.register_buffer("identity", torch.eye(2**self.n_qubits, dtype=DEFAULT_MATRIX_DTYPE))
+        self.control = [control]
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]
 
     def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
@@ -214,7 +214,9 @@ class CPHASE(Parametric):
 class U(Parametric):
     n_params = 3
 
-    def __init__(self, qubits: ArrayLike, n_qubits: int, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
+    def __init__(
+        self, target: int, param_names: list[str], apply_fn_type: ApplyFn = DEFAULT_APPLY_FN
+    ):
         """
         Represents a parametrized arbitrary rotation along the axes of the Bloch sphere.
 
@@ -227,8 +229,8 @@ class U(Parametric):
             n_qubits (int): The total number of qubits in the circuit.
 
         """
-
-        super().__init__("X", qubits, n_qubits)
+        self.param_names = param_names
+        super().__init__("X", target, param_name="")
 
         self.register_buffer(
             "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)

@@ -193,5 +193,5 @@ def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
     return wf[:, permute_ind]
 
 
-def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tensor]:
+def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str, torch.Tensor]:
     return {key: val for key, val in zip(keys, values)}

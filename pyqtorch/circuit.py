@@ -63,7 +63,7 @@ class QuantumCircuit(Module):
             return QuantumCircuit(n_qubits, self.operations.append(other))
 
         else:
-            return ValueError(f"Cannot compose {type(self)} with {type(other)}")
+            raise ValueError(f"Cannot compose {type(self)} with {type(other)}")
 
     def __key(self) -> tuple:
         return (self.n_qubits, *self.operations)
@@ -71,7 +71,7 @@ class QuantumCircuit(Module):
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, QuantumCircuit):
             return self.__key() == other.__key()
-        return NotImplemented
+        raise NotImplementedError
 
     def __hash__(self) -> int:
         return hash(self.__key())
