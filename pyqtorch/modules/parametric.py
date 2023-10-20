@@ -261,6 +261,21 @@ class ControlledRotationGate(Parametric):
             state, matrix, self.control + [self.target], len(state.size()) - 1, state.size(-1)
         )
 
+    def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        thetas = values[self.param_name]
+        batch_size = len(thetas)
+        n_control = len(self.control)
+        jU = _jacobian(thetas, self.pauli, self.identity, batch_size)
+        n_dim = 2 ** (n_control + 1)
+        jC = (
+            torch.zeros((n_dim, n_dim), dtype=torch.complex128)
+            .unsqueeze(2)
+            .repeat(1, 1, batch_size)
+        )
+        unitary_idx = 2 ** (n_control + 1) - 2
+        jC[unitary_idx:, unitary_idx:, :] = jU
+        return jC
+
 
 class CRX(ControlledRotationGate):
     def __init__(
