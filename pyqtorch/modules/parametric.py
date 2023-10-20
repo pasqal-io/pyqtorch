@@ -223,6 +223,15 @@ class PHASE(Parametric):
         batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
 
+    def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        thetas = values[self.param_name]
+        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+        batch_mat = (
+            torch.zeros((2, 2), dtype=torch.complex128).unsqueeze(2).repeat(1, 1, len(theta))
+        )
+        batch_mat[1, 1, :] = 1j * torch.exp(1j * thetas).unsqueeze(0).unsqueeze(1)
+        return batch_mat
+
 
 class ControlledRotationGate(Parametric):
     n_params = 1
