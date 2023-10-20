@@ -59,47 +59,6 @@ def _apply_gate(
     return state
 
 
-def _apply_einsum_gate(
-    state: torch.Tensor, mat: torch.Tensor, qubits: list[int] | tuple[int], N_qubits: int
-) -> torch.Tensor:
-    """
-    Same as `apply_gate` but with the `torch.einsum` function
-
-    Arguments:
-        state (torch.Tensor): input state of shape [2] * N_qubits + [batch_size]
-        mat (torch.Tensor): the matrix representing the gate
-        qubits (list, tuple, array): Sized iterator containing the qubits
-                                     the gate is applied to
-        N_qubits (int): the total number of qubits of the system
-
-    Returns:
-        state (torch.Tensor): The state after application of the gate.
-                              Same shape as `ìnput_state`
-    """
-    mat = mat.reshape([2] * len(qubits) * 2)
-    state_indices = ABC_ARRAY[0 : N_qubits + 1]
-    qubits = list(qubits)
-    # Create new indices for the matrix indices
-    mat_indices = ABC_ARRAY[N_qubits + 2 : N_qubits + 2 + 2 * len(qubits)]
-    mat_indices[len(qubits) : 2 * len(qubits)] = state_indices[qubits]
-
-    # Create the new state indices: same as input states but
-    # modified affected qubits
-    new_state_indices = state_indices.copy()
-    new_state_indices[qubits] = mat_indices[0 : len(qubits)]
-
-    # Transform the arrays into strings
-    state_indices = "".join(list(state_indices))
-    new_state_indices = "".join(list(new_state_indices))
-    mat_indices = "".join(list(mat_indices))
-
-    einsum_indices = f"{mat_indices},{state_indices}->{new_state_indices}"
-
-    state = torch.einsum(einsum_indices, mat, state)
-
-    return state
-
-
 def _apply_batch_gate(
     state: torch.Tensor,
     mat: torch.Tensor,
@@ -158,7 +117,7 @@ def _apply_batch_gate(
     return state
 
 
-def _vmap_operator(
+def _vmap_apply_gate(
     state: torch.Tensor,
     mat: torch.Tensor,
     qubits: list[int] | tuple[int],

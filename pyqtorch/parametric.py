@@ -4,7 +4,7 @@ import math
 
 import torch
 
-from pyqtorch.apply import _apply_batch_gate, _vmap_operator
+from pyqtorch.apply import _apply_batch_gate, _vmap_apply_gate
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
@@ -16,7 +16,7 @@ from pyqtorch.matrices import (
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import ApplyFn
 
-APPLY_FN_DICT = {ApplyFn.VMAP: _vmap_operator, ApplyFn.EINSUM: _apply_batch_gate}
+APPLY_FN_DICT = {ApplyFn.VMAP: _vmap_apply_gate, ApplyFn.EINSUM: _apply_batch_gate}
 DEFAULT_APPLY_FN = ApplyFn.EINSUM
 
 
