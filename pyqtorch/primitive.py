@@ -6,17 +6,17 @@ import torch
 
 from pyqtorch.apply import _apply_gate
 from pyqtorch.matrices import OPERATIONS_DICT, _dagger, make_controlled
-from pyqtorch.modules.operator import Operator
+from pyqtorch.operator import Operator
 
 
 class Primitive(Operator):
-    def __init__(self, pauli: torch.Tensor, target: int | list[int]):
+    def __init__(self, pauli: torch.Tensor, target: int):
         super().__init__(target)
         self.register_buffer("pauli", pauli)
         self.qubit_support = [self.target]
         self.n_qubits = len(self.qubit_support)
 
-    def unitary(self, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
+    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.pauli
 
     def apply_operator(self, operator: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
@@ -25,10 +25,10 @@ class Primitive(Operator):
     def apply_unitary(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.apply_operator(self.unitary(values), state)
 
-    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.apply_unitary(state, values)
 
-    def dagger(self, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
+    def dagger(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         return _dagger(self.unitary(values).unsqueeze(2)).squeeze(2)
 
     def apply_dagger(
@@ -86,14 +86,16 @@ class N(Primitive):
 
 
 class SWAP(Primitive):
-    # FIXME
     def __init__(self, control: int, target: int):
-        super().__init__(OPERATIONS_DICT["SWAP"], [control, target])
+        super().__init__(OPERATIONS_DICT["SWAP"], target)
+        self.control = [control]
+        self.qubit_support = self.control + [target]
+        self.n_qubits = len(self.qubit_support)
 
 
 class ControlledOperationGate(Primitive):
-    def __init__(self, gate: str, control: int | list[int] | tuple[int], target: int):
-        self.control = [control]
+    def __init__(self, gate: str, control: int | list[int], target: int):
+        self.control: list[int] = [control] if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
         mat = make_controlled(
             matrices=mat.unsqueeze(2),
@@ -101,7 +103,7 @@ class ControlledOperationGate(Primitive):
             n_control_qubits=len(self.control) - (int)(math.log2(mat.shape[0])) + 1,
         ).squeeze(2)
         super().__init__(mat, target)
-        self.qubit_support = [control, target]
+        self.qubit_support = self.control + [target]
 
 
 class CNOT(ControlledOperationGate):

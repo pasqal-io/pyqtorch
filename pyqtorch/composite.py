@@ -6,7 +6,7 @@ from typing import List
 
 import torch
 
-from pyqtorch.modules.operator import Operator
+from pyqtorch.operator import Operator
 
 
 class Composite(torch.nn.Module):

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import torch
 
-import pyqtorch.modules as pyq
-from pyqtorch.modules.circuit import DiffMode
+import pyqtorch as pyq
+from pyqtorch.circuit import DiffMode
 
 
 def test_adjoint_diff() -> None:

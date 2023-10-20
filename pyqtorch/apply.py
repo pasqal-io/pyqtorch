@@ -21,7 +21,7 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from pyqtorch.modules.operator import Operator
+from pyqtorch.operator import Operator
 
 ABC_ARRAY: NDArray = np.array(list(ABC))
 
@@ -130,7 +130,7 @@ def _apply_batch_gate(
     Examples:
     ```python exec="on" source="above" result="json"
     import torch
-    import pyqtorch.modules as pyq
+    import pyqtorch as pyq
 
     state = pyq.zero_state(n_qubits=2)
     print(state)  #tensor([[[1.+0.j],[0.+0.j]],[[0.+0.j],[0.+0.j]]], dtype=torch.complex128)

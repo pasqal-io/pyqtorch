@@ -4,9 +4,9 @@ from typing import Any
 
 import torch
 
-import pyqtorch.modules as pyq
-from pyqtorch.modules.parametric import Parametric
-from pyqtorch.modules.utils import overlap, param_dict
+import pyqtorch as pyq
+from pyqtorch.parametric import Parametric
+from pyqtorch.utils import overlap, param_dict
 
 
 class AdjointExpectation(torch.autograd.Function):

@@ -5,49 +5,17 @@ from typing import Any
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
-from pyqtorch.modules.adjoint import AdjointExpectation
-from pyqtorch.modules.composite import Composite
-from pyqtorch.modules.operator import Operator
-from pyqtorch.modules.primitive import CNOT, Primitive
-from pyqtorch.modules.utils import DiffMode, overlap, zero_state
+from pyqtorch.adjoint import AdjointExpectation
+from pyqtorch.composite import Composite
+from pyqtorch.operator import Operator
+from pyqtorch.primitive import CNOT, Primitive
+from pyqtorch.utils import DiffMode, overlap, zero_state
 
 
 class QuantumCircuit(Module):
     def __init__(
         self, n_qubits: int, operations: list[Operator], diff_mode: DiffMode = DiffMode.AD
     ):
-        """
-        Creates a QuantumCircuit that can be used to compose multiple gates
-        from a list of operations.
-
-        Arguments:
-            n_qubits (int): The total number of qubits in the circuit.
-            operations (list): A list of gate operations to be applied in the circuit.
-
-        Example:
-        ```python exec="on" source="above" result="json"
-        import torch
-        import pyqtorch.modules as pyq
-
-        #create a circuit with 2 qubits than provide a list of operations .
-        #in this example we apply a X gate followed by a CNOT gate.
-        circ = pyq.QuantumCircuit(
-                                    n_qubits=2,
-                                    operations=[
-                                        pyq.X([0], 2),
-                                        pyq.CNOT([0,1], 2)
-                                    ]
-                                )
-        #create a zero state
-        z = pyq.zero_state(2)
-
-        #apply the circuit and its list of operations onto the zero state
-        result=circ(z)
-
-        #print the result
-        print(result) #tensor([[[0.+0.j],[0.+0.j]],[[0.+0.j],[1.+0.j]]], dtype=torch.complex128)
-        ```
-        """
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
@@ -144,7 +112,7 @@ def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
     Example:
     ```python exec="on" source="above" result="json"
     import torch
-    import pyqtorch.modules as pyq
+    import pyqtorch as pyq
 
     #create a FeaturemapLayer to apply the RX operation on all 3 Qubits
     circ = pyq.FeaturemapLayer(n_qubits=3, Op=pyq.RX)
@@ -177,7 +145,7 @@ class VariationalLayer(QuantumCircuit):
         Example:
         ```python exec="on" source="above" result="json"
         import torch
-        import pyqtorch.modules as pyq
+        import pyqtorch as pyq
         #create a variational layer with 3 qubits and operation of RX as the second parameter
         circ = pyq.VariationalLayer(n_qubits=3, Op=pyq.RX)
         state = pyq.zero_state(3)

@@ -13,8 +13,8 @@ from pyqtorch.matrices import (
     _unitary,
     make_controlled,
 )
-from pyqtorch.modules.primitive import Primitive
-from pyqtorch.modules.utils import ApplyFn
+from pyqtorch.primitive import Primitive
+from pyqtorch.utils import ApplyFn
 
 APPLY_FN_DICT = {ApplyFn.VMAP: _vmap_operator, ApplyFn.EINSUM: _apply_batch_gate}
 DEFAULT_APPLY_FN = ApplyFn.EINSUM
@@ -148,7 +148,7 @@ class ControlledRotationGate(Parametric):
 class CRX(ControlledRotationGate):
     def __init__(
         self,
-        control: int,
+        control: int | list[int],
         target: int,
         param_name: str,
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
@@ -159,7 +159,7 @@ class CRX(ControlledRotationGate):
 class CRY(ControlledRotationGate):
     def __init__(
         self,
-        control: list[int],
+        control: int | list[int],
         target: int,
         param_name: str = "",
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
@@ -245,12 +245,11 @@ class U(Parametric):
             "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
         )
 
-    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        if thetas.ndim == 1:
-            thetas = thetas.unsqueeze(1)
-        assert thetas.size(0) == 3
-        phi, theta, omega = thetas[0, :], thetas[1, :], thetas[2, :]
-        batch_size = thetas.size(1)
+    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        phi = values[self.param_name[0]]
+        theta = values[self.param_name[1]]
+        omega = values[self.param_name[2]]
+        batch_size = phi.size(1)
 
         t_plus = torch.exp(-1j * (phi + omega) / 2)
         t_minus = torch.exp(-1j * (phi - omega) / 2)
@@ -267,6 +266,6 @@ class U(Parametric):
         batch_size = matrices.size(-1)
         return _apply_batch_gate(state, matrices, self.qubit_support, self.n_qubits, batch_size)
 
-    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-        mats = self.matrices(thetas)
+    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        mats = self.unitary(values)
         return self.apply_operator(mats, state)
