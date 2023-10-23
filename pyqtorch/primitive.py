@@ -92,6 +92,14 @@ class SWAP(Primitive):
         self.n_qubits = len(self.qubit_support)
 
 
+class CSWAP(Primitive):
+    def __init__(self, control: int | list[int], target: int):
+        super().__init__(OPERATIONS_DICT["CSWAP"], target)
+        self.control: list[int] = [control] if isinstance(control, int) else control
+        self.target = target
+        self.qubit_support = self.control + [target]
+
+
 class ControlledOperationGate(Primitive):
     def __init__(self, gate: str, control: int | list[int], target: int):
         self.control: list[int] = [control] if isinstance(control, int) else control
@@ -121,11 +129,6 @@ class CY(ControlledOperationGate):
 class CZ(ControlledOperationGate):
     def __init__(self, control: int | list[int], target: int):
         super().__init__("Z", control, target)
-
-
-class CSWAP(ControlledOperationGate):
-    def __init__(self, control: list[int], target: int):
-        super().__init__("SWAP", control, target)
 
 
 class Toffoli(ControlledOperationGate):

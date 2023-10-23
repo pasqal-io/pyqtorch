@@ -40,16 +40,16 @@ def _apply_batch_gate(
         batch_size = state.size(-1)
     n_support = len(qubits)
     operator = operator.view([2] * n_support * 2 + [batch_size])
-    state_indices = ABC_ARRAY[0 : n_qubits + 1].copy()
-    operator_indices = ABC_ARRAY[n_qubits + 2 : n_qubits + 2 + 2 * n_support + 1].copy()
-    operator_indices[n_support : 2 * n_support] = state_indices[qubits]
-    operator_indices[-1] = state_indices[-1]
-    new_state_indices = state_indices.copy()
-    new_state_indices[qubits] = operator_indices[0:n_support]
-    operator_indices, state_indices, new_state_indices = list(
-        map(lambda expr: "".join(list(expr)), [operator_indices, state_indices, new_state_indices])
+    in_state_dims = ABC_ARRAY[0 : n_qubits + 1].copy()
+    op_dims = ABC_ARRAY[n_qubits + 2 : n_qubits + 2 + 2 * n_support + 1].copy()
+    op_dims[n_support : 2 * n_support] = in_state_dims[qubits]
+    op_dims[-1] = in_state_dims[-1]
+    out_state_dims = in_state_dims.copy()
+    out_state_dims[qubits] = op_dims[0:n_support]
+    op_dims, in_state_dims, out_state_dims = list(
+        map(lambda e: "".join(list(e)), [op_dims, in_state_dims, out_state_dims])
     )
-    return torch.einsum(f"{operator_indices},{state_indices}->{new_state_indices}", operator, state)
+    return torch.einsum(f"{op_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
 def _vmap_apply_gate(
