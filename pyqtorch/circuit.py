@@ -7,7 +7,7 @@ from torch.nn import Module, ModuleList, Parameter, init
 
 from pyqtorch.abstract import AbstractOperator
 from pyqtorch.primitive import CNOT
-from pyqtorch.utils import DiffMode, overlap, zero_state
+from pyqtorch.utils import DiffMode, State, overlap, zero_state
 
 
 class QuantumCircuit(Module):
@@ -45,19 +45,19 @@ class QuantumCircuit(Module):
     def __hash__(self) -> int:
         return hash(self.__key())
 
-    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
+    def run(self, state: State, values: dict[str, torch.Tensor] = {}) -> State:
         for op in self.operations:
             state = op(state, values)
         return state
 
-    def run(self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}) -> torch.Tensor:
-        return self.forward(state, values)
+    def forward(self, state: State, values: dict[str, torch.Tensor] = {}) -> State:
+        return self.run(state, values)
 
     def expectation(
         self,
         values: dict[str, torch.Tensor] = {},
         observable: QuantumCircuit = None,
-        state: torch.Tensor = None,
+        state: State = None,
     ) -> torch.Tensor:
         if state is None:
             state = self.init_state(batch_size=1)
