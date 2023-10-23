@@ -15,12 +15,13 @@ class Primitive(Operator):
         self.register_buffer("pauli", pauli)
         self.qubit_support = [self.target]
         self.n_qubits = len(self.qubit_support)
+        self.apply_fn = _apply_gate
 
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.pauli
 
     def apply_operator(self, operator: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        return _apply_gate(state, operator, self.qubit_support, len(state.size()) - 1)
+        return self.apply_fn(state, operator, self.qubit_support, len(state.size()) - 1)
 
     def apply_unitary(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.apply_operator(self.unitary(values), state)

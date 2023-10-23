@@ -30,11 +30,6 @@ class Parametric(Primitive):
         self.apply_fn = DEFAULT_APPLY_FN
         self.param_name = param_name
 
-    def apply_operator(self, operator: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        return self.apply_fn(
-            state, operator, self.qubit_support, len(state.size()) - 1, state.size(-1)
-        )
-
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         thetas = values[self.param_name]
         batch_size = len(thetas)

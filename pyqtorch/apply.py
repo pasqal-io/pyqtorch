@@ -1,16 +1,3 @@
-# Copyright 2023 pyqtorch Development Team
-
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-
-#     http://www.apache.org/licenses/LICENSE-2.0
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 from __future__ import annotations
 
 from string import ascii_letters as ABC
@@ -47,8 +34,10 @@ def _apply_batch_gate(
     operator: torch.Tensor,
     qubits: list[int],
     n_qubits: int,
-    batch_size: int,
+    batch_size: int = None,
 ) -> torch.Tensor:
+    if batch_size is None:
+        batch_size = state.size(-1)
     n_support = len(qubits)
     operator = operator.view([2] * n_support * 2 + [batch_size])
     state_indices = ABC_ARRAY[0 : n_qubits + 1].copy()
@@ -68,7 +57,6 @@ def _vmap_apply_gate(
     operator: torch.Tensor,
     qubits: list[int] | tuple[int],
     n_qubits: int,
-    batch_size: int,
 ) -> torch.Tensor:
     def _apply(
         state: torch.Tensor,

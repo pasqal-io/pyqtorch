@@ -86,16 +86,6 @@ class HamEvo(torch.nn.Module):
         return _state
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass of the module, applies the Hamiltonian evolution operation.
-
-        Args:
-            state (tensor): Input quantum state.
-
-        Returns:
-            tensor: Output state after Hamiltonian evolution.
-        """
-
         return self.apply(state)
 
 
