@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import math
+from math import log2
 
 import torch
 
@@ -116,9 +116,7 @@ class ControlledRotationGate(Parametric):
         thetas = values[self.param_name]
         batch_size = len(thetas)
         mat = _unitary(thetas, self.pauli, self.identity, batch_size)
-        return make_controlled(
-            mat, batch_size, len(self.control) - (int)(math.log2(mat.shape[0])) + 1
-        )
+        return make_controlled(mat, batch_size, len(self.control) - (int)(log2(mat.shape[0])) + 1)
 
     def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         thetas = values[self.param_name]
