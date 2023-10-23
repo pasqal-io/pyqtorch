@@ -4,7 +4,7 @@ import math
 
 import torch
 
-from pyqtorch.apply import _apply_batch_gate, _vmap_apply_gate
+from pyqtorch.apply import DEFAULT_APPLY_FN
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
@@ -14,10 +14,6 @@ from pyqtorch.matrices import (
     make_controlled,
 )
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import ApplyFn
-
-APPLY_FN_DICT = {ApplyFn.VMAP: _vmap_apply_gate, ApplyFn.EINSUM: _apply_batch_gate}
-DEFAULT_APPLY_FN = ApplyFn.EINSUM
 
 
 class Parametric(Primitive):
@@ -31,7 +27,7 @@ class Parametric(Primitive):
     ):
         super().__init__(OPERATIONS_DICT[gate], target)
         self.register_buffer("identity", OPERATIONS_DICT["I"])
-        self.apply_fn = APPLY_FN_DICT[ApplyFn.EINSUM]
+        self.apply_fn = DEFAULT_APPLY_FN
         self.param_name = param_name
 
     def apply_operator(self, operator: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
