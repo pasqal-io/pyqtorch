@@ -178,7 +178,7 @@ class CRZ(ControlledRotationGate):
         super().__init__("Z", control, target, param_name, apply_fn_type)
 
 
-class CPHASE(Parametric):
+class CPHASE(ControlledRotationGate):
     n_params = 1
 
     def __init__(
@@ -188,27 +188,29 @@ class CPHASE(Parametric):
         param_name: str,
         apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        super().__init__("S", target, param_name, apply_fn_type)
-        self.register_buffer("identity", torch.eye(2**self.n_qubits, dtype=DEFAULT_MATRIX_DTYPE))
-        self.control = [control]
+        super().__init__("S", control, target, param_name, apply_fn_type)
         self.apply_fn = APPLY_FN_DICT[apply_fn_type]
+        self.phase = PHASE(target, param_name)
 
-    def matrices(self, thetas: torch.Tensor) -> torch.Tensor:
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
-        batch_size = len(theta)
-        mat = self.identity.repeat((batch_size, 1, 1))
-        mat = torch.permute(mat, (1, 2, 0))
-        phase_rotation_angles = torch.exp(torch.tensor(1j) * theta).unsqueeze(0).unsqueeze(1)
-        mat[-1, -1, :] = phase_rotation_angles
-        return mat
+    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        thetas = values[self.phase.param_name]
+        batch_size = len(thetas)
+        return make_controlled(self.phase.unitary(values), batch_size, len(self.control))
 
-    def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        batch_size = matrices.size(-1)
-        return self.apply_fn(state, matrices, self.qubit_support, self.n_qubits, batch_size)
-
-    def forward(self, state: torch.Tensor, thetas: torch.Tensor) -> torch.Tensor:
-        mats = self.matrices(thetas)
-        return self.apply_operator(mats, state)
+    def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        thetas = values[self.param_name]
+        batch_size = len(thetas)
+        n_control = len(self.control)
+        jU = self.phase.jacobian(values)
+        n_dim = 2 ** (n_control + 1)
+        jC = (
+            torch.zeros((n_dim, n_dim), dtype=torch.complex128)
+            .unsqueeze(2)
+            .repeat(1, 1, batch_size)
+        )
+        unitary_idx = 2 ** (n_control + 1) - 2
+        jC[unitary_idx:, unitary_idx:, :] = jU
+        return jC
 
 
 class U(Parametric):
@@ -217,20 +219,8 @@ class U(Parametric):
     def __init__(
         self, target: int, param_names: list[str], apply_fn_type: ApplyFn = DEFAULT_APPLY_FN
     ):
-        """
-        Represents a parametrized arbitrary rotation along the axes of the Bloch sphere.
-
-        The angles `phi, theta, omega` in tensor format, applied as:
-
-            U(phi, theta, omega) = RZ(omega)RY(theta)RZ(phi)
-
-        Arguments:
-            qubits (ArrayLike): The target qubits for the U gate. It should be a list of qubits.
-            n_qubits (int): The total number of qubits in the circuit.
-
-        """
         self.param_names = param_names
-        super().__init__("X", target, param_name="")
+        super().__init__("X", target, param_name="", apply_fn_type=apply_fn_type)
 
         self.register_buffer(
             "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
@@ -246,10 +236,10 @@ class U(Parametric):
         )
 
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
-        phi = values[self.param_name[0]]
-        theta = values[self.param_name[1]]
-        omega = values[self.param_name[2]]
-        batch_size = phi.size(1)
+        phi = values[self.param_names[0]]
+        theta = values[self.param_names[1]]
+        omega = values[self.param_names[2]]
+        batch_size = 1
 
         t_plus = torch.exp(-1j * (phi + omega) / 2)
         t_minus = torch.exp(-1j * (phi - omega) / 2)
@@ -261,11 +251,3 @@ class U(Parametric):
         c = self.c.repeat(1, 1, batch_size) * sin_t * t_minus
         d = self.d.repeat(1, 1, batch_size) * cos_t * torch.conj(t_plus)
         return a - b + c + d
-
-    def apply(self, matrices: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
-        batch_size = matrices.size(-1)
-        return _apply_batch_gate(state, matrices, self.qubit_support, self.n_qubits, batch_size)
-
-    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
-        mats = self.unitary(values)
-        return self.apply_operator(mats, state)
