@@ -37,7 +37,7 @@ class AbstractOperator(ABC, Module):
             return False
 
     def __hash__(self) -> int:
-        return hash(self.__key())
+        return hash((self.target,))
 
     @abstractmethod
     def unitary(self, values: dict[str, torch.Tensor]) -> Operator:

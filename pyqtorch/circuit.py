@@ -35,7 +35,7 @@ class QuantumCircuit(Module):
         return iter(self.operations)
 
     def __key(self) -> tuple:
-        return (self.n_qubits, *self.operations)
+        return (self.n_qubits,)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, QuantumCircuit):
@@ -104,30 +104,31 @@ class QuantumCircuit(Module):
 
 
 def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
-    operations = [Op([i], n_qubits) for i in range(n_qubits)]
+    operations = [Op([i]) for i in range(n_qubits)]
     return QuantumCircuit(n_qubits, operations)
 
 
 class VariationalLayer(QuantumCircuit):
-    def __init__(self, n_qubits: int, Op: Any):
-        operations = ModuleList([Op([i], n_qubits) for i in range(n_qubits)])
+    def __init__(self, n_qubits: int, Op: Any, param_name: str = "theta"):
+        operations = ModuleList([Op([i], f"{param_name}_{i}") for i in range(n_qubits)])
         super().__init__(n_qubits, operations)
-
+        self.param_name = param_name
         self.thetas = Parameter(torch.empty(n_qubits, Op.n_params))
+        self._params = {
+            f"theta_{i}": Parameter(torch.rand(1, requires_grad=True)) for i in range(n_qubits)
+        }
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
         init.uniform_(self.thetas, -2 * torch.pi, 2 * torch.pi)
 
-    def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
-        for op, t in zip(self.operations, self.thetas):
-            state = op(state, t)
+    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = None) -> torch.Tensor:
+        for op in self.operations:
+            state = op(state, self._params)
         return state
 
 
 class EntanglingLayer(QuantumCircuit):
     def __init__(self, n_qubits: int):
-        operations = ModuleList(
-            [CNOT([i % n_qubits, (i + 1) % n_qubits], n_qubits) for i in range(n_qubits)]
-        )
+        operations = ModuleList([CNOT(i % n_qubits, (i + 1) % n_qubits) for i in range(n_qubits)])
         super().__init__(n_qubits, operations)
