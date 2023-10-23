@@ -22,7 +22,7 @@ import torch
 from numpy.typing import NDArray
 
 from pyqtorch.operator import Operator
-from pyqtorch.utils import ApplyFn, reverse_permutation
+from pyqtorch.utils import reverse_permutation
 
 ABC_ARRAY: NDArray = np.array(list(ABC))
 
