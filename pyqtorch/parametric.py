@@ -8,7 +8,6 @@ from pyqtorch.apply import DEFAULT_APPLY_FN
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
-    _dagger,
     _jacobian,
     _unitary,
     make_controlled,
@@ -33,11 +32,9 @@ class Parametric(Primitive):
 
     def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
+        thetas = thetas.unsqueeze(0) if len(thetas.size()) == 0 else thetas
         batch_size = len(thetas)
         return _unitary(thetas, self.pauli, self.identity, batch_size)
-
-    def dagger(self, values: dict[str, torch.Tensor]) -> Operator:
-        return _dagger(self.unitary(values))
 
     def jacobian(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
@@ -71,12 +68,12 @@ class RZ(Parametric):
 class PHASE(Parametric):
     def __init__(self, target: int, param_name: str):
         super().__init__("I", target, param_name)
-        self.param_name = param_name
 
     def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
-        batch_mat = self.identity.unsqueeze(2).repeat(1, 1, len(theta))
+        thetas = thetas.unsqueeze(0) if len(thetas.size()) == 0 else thetas
+        batch_size = len(thetas)
+        batch_mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
         batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
 

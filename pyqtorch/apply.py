@@ -42,7 +42,7 @@ def _apply_einsum(
     if batch_size is None:
         batch_size = state.size(-1)
     n_support = len(qubits)
-    operator = operator.view([2] * n_support * 2 + [batch_size])
+    operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
     in_state_dims = ABC_ARRAY[0 : n_qubits + 1].copy()
     op_dims = ABC_ARRAY[n_qubits + 2 : n_qubits + 2 + 2 * n_support + 1].copy()
     op_dims[n_support : 2 * n_support] = in_state_dims[qubits]

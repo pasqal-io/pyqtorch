@@ -5,7 +5,7 @@ from math import log2
 import torch
 
 from pyqtorch.abstract import AbstractOperator
-from pyqtorch.apply import _apply_tensordot
+from pyqtorch.apply import _apply_einsum
 from pyqtorch.matrices import OPERATIONS_DICT, _dagger, make_controlled
 from pyqtorch.utils import Operator, State
 
@@ -16,16 +16,18 @@ class Primitive(AbstractOperator):
         self.register_buffer("pauli", pauli)
         self.qubit_support = [self.target]
         self.n_qubits = len(self.qubit_support)
-        self.apply_fn = _apply_tensordot
+        self.apply_fn = _apply_einsum
 
     def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         return self.pauli
 
     def forward(self, state: State, values: dict[str, torch.Tensor]) -> State:
-        return self.apply_fn(state, self.unitary(values), self.qubit_support, len(state.size()) - 1)
+        return self.apply_fn(
+            state, self.unitary(values).unsqueeze(2), self.qubit_support, len(state.size()) - 1
+        )
 
     def dagger(self, values: dict[str, torch.Tensor]) -> Operator:
-        return _dagger(self.unitary(values).unsqueeze(2)).squeeze(2)
+        return _dagger(self.unitary(values))
 
 
 class X(Primitive):
@@ -100,7 +102,7 @@ class ControlledOperationGate(Primitive):
             unitary=mat.unsqueeze(2),
             batch_size=1,
             n_control_qubits=len(self.control) - (int)(log2(mat.shape[0])) + 1,
-        ).squeeze(2)
+        )
         super().__init__(mat, target)
         self.qubit_support = self.control + [target]
 

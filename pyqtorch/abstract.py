@@ -34,7 +34,7 @@ class AbstractOperator(ABC, Module):
         if isinstance(other, type(self)):
             return self.__key() == other.__key()
         else:
-            raise NotImplementedError
+            return False
 
     def __hash__(self) -> int:
         return hash(self.__key())

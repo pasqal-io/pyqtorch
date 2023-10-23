@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import pytest
 import torch
 
 import pyqtorch as pyq
 from pyqtorch.circuit import DiffMode
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DTYPE = torch.cdouble
 
 
 def test_adjoint_diff() -> None:
@@ -50,3 +54,25 @@ def test_adjoint_diff() -> None:
     assert len(grad_ad) == len(grad_adjoint)
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_adjoint[i])
+
+
+@pytest.mark.parametrize("diff_mode", [DiffMode.AD, DiffMode.ADJOINT])
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("n_qubits", [2, 4])
+def test_differentiate_circuit(diff_mode: DiffMode, batch_size: int, n_qubits: int) -> None:
+    ops = [
+        pyq.X(0),
+        pyq.X(1),
+        pyq.RX(1, "phi"),
+        pyq.CNOT(0, 1),
+    ]
+    circ = pyq.QuantumCircuit(n_qubits, ops, diff_mode=diff_mode).to(device=DEVICE, dtype=DTYPE)
+    state = pyq.random_state(n_qubits, batch_size)
+    phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE, requires_grad=True)
+    values = {"phi": phi}
+    assert circ(state, values).size() == tuple(2 for _ in range(n_qubits)) + (batch_size,)
+    state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
+    res = circ(state, values)
+    assert not torch.all(torch.isnan(res))
+    dres_theta = torch.autograd.grad(res, phi, torch.ones_like(res), create_graph=True)[0]
+    assert not torch.all(torch.isnan(dres_theta))

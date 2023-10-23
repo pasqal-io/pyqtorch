@@ -198,3 +198,9 @@ def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
 
 def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str, torch.Tensor]:
     return {key: val for key, val in zip(keys, values)}
+
+
+def product_state(bitstring: str) -> torch.Tensor:
+    state = torch.zeros(2 ** len(bitstring), dtype=torch.complex128)
+    state[int(bitstring, 2)] = torch.tensor(1.0 + 0j, dtype=torch.complex128)
+    return state.reshape([2] * len(bitstring) + [1])
