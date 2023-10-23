@@ -65,6 +65,7 @@ class QuantumCircuit(Module):
             return overlap(state, observable.forward(state, values))
         else:
             from pyqtorch.adjoint import AdjointExpectation
+
             return AdjointExpectation.apply(
                 self, observable, state, values.keys(), *values.values()
             )

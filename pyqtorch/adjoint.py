@@ -5,9 +5,9 @@ from typing import Any
 from torch import Tensor
 from torch.autograd import Function
 
+from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import overlap, param_dict
-from pyqtorch.circuit import QuantumCircuit
 
 
 class AdjointExpectation(Function):

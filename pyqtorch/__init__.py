@@ -11,6 +11,13 @@ from __future__ import annotations
 # # See the License for the specific language governing permissions and
 # # limitations under the License.
 from .analog import HamEvo, HamEvoEig, HamEvoExp, HamEvoType, HamiltonianEvolution
+from .circuit import (
+    EntanglingLayer,
+    FeaturemapLayer,
+    QuantumCircuit,
+    VariationalLayer,
+)
+from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
 from .primitive import (
     CNOT,
     CSWAP,
@@ -27,13 +34,6 @@ from .primitive import (
     X,
     Y,
     Z,
-)
-from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
-from .circuit import (
-    EntanglingLayer,
-    FeaturemapLayer,
-    QuantumCircuit,
-    VariationalLayer,
 )
 from .utils import (
     flatten_wf,
