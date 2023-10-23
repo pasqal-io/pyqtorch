@@ -45,13 +45,28 @@ class QuantumCircuit(Module):
     def __hash__(self) -> int:
         return hash(self.__key())
 
-    def run(self, state: State, values: dict[str, torch.Tensor] = {}) -> State:
+    def run(self, state: State = None, values: dict[str, torch.Tensor] = {}) -> State:
+        if state is None:
+            state = self.init_state()
         for op in self.operations:
             state = op(state, values)
         return state
 
     def forward(self, state: State, values: dict[str, torch.Tensor] = {}) -> State:
         return self.run(state, values)
+
+    def sample(
+        self, state: State = None, values: dict[str, torch.Tensor] = {}, n_shots: int = 100
+    ) -> torch.Tensor:
+        with torch.no_grad():
+            probs = torch.abs(torch.pow(self.run(state, values), 2)).flatten()
+            return torch.bincount(
+                torch.multinomial(
+                    input=probs.flatten(),
+                    num_samples=n_shots,
+                    replacement=True,
+                )
+            )
 
     def expectation(
         self,
@@ -81,7 +96,7 @@ class QuantumCircuit(Module):
         except StopIteration:
             return torch.device("cpu")
 
-    def init_state(self, batch_size: int) -> torch.Tensor:
+    def init_state(self, batch_size: int = 1) -> torch.Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
 
     def reverse(self) -> QuantumCircuit:
