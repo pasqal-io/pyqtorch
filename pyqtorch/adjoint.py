@@ -34,7 +34,7 @@ class AdjointExpectation(Function):
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)
         grads: list = []
-        for op in ctx.circuit.reverse().operations:
+        for op in ctx.circuit.reverse():
             ctx.out_state = op.apply_dagger(ctx.out_state, values)
             if isinstance(op, Parametric):
                 mu = op.apply_jacobian(ctx.out_state, values)

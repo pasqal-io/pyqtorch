@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterator
 
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
@@ -30,6 +30,9 @@ class QuantumCircuit(Module):
 
         else:
             raise ValueError(f"Cannot compose {type(self)} with {type(other)}")
+
+    def __iter__(self) -> Iterator:
+        return iter(self.operations)
 
     def __key(self) -> tuple:
         return (self.n_qubits, *self.operations)
