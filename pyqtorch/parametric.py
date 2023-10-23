@@ -251,3 +251,6 @@ class U(Parametric):
         c = self.c.repeat(1, 1, batch_size) * sin_t * t_minus
         d = self.d.repeat(1, 1, batch_size) * cos_t * torch.conj(t_plus)
         return a - b + c + d
+
+    def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        raise NotImplementedError
