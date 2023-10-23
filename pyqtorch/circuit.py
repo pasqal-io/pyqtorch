@@ -62,7 +62,7 @@ class QuantumCircuit(Module):
             probs = torch.abs(torch.pow(self.run(state, values), 2)).flatten()
             return torch.bincount(
                 torch.multinomial(
-                    input=probs.flatten(),
+                    input=probs,
                     num_samples=n_shots,
                     replacement=True,
                 )
