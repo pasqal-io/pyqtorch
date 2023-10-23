@@ -32,9 +32,7 @@ class Primitive(Operator):
     def dagger(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
         return _dagger(self.unitary(values).unsqueeze(2)).squeeze(2)
 
-    def apply_dagger(
-        self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}
-    ) -> torch.Tensor:
+    def apply_dagger(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.apply_operator(self.dagger(values), state)
 
 
@@ -57,7 +55,7 @@ class I(Primitive):  # noqa: E742
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["I"], target)
 
-    def forward(self, state: torch.Tensor, _: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = None) -> torch.Tensor:
         return state
 
 
