@@ -14,6 +14,7 @@ from pyqtorch.matrices import (
     make_controlled,
 )
 from pyqtorch.primitive import Primitive
+from pyqtorch.utils import Operator, State
 
 
 class Parametric(Primitive):
@@ -30,20 +31,20 @@ class Parametric(Primitive):
         self.apply_fn = DEFAULT_APPLY_FN
         self.param_name = param_name
 
-    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
         batch_size = len(thetas)
         return _unitary(thetas, self.pauli, self.identity, batch_size)
 
-    def dagger(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def dagger(self, values: dict[str, torch.Tensor]) -> Operator:
         return _dagger(self.unitary(values))
 
-    def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def jacobian(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
         batch_size = len(thetas)
         return _jacobian(thetas, self.pauli, self.identity, batch_size)
 
-    def apply_jacobian(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def apply_jacobian(self, state: State, values: dict[str, torch.Tensor]) -> State:
         return self.apply_operator(self.jacobian(values), state)
 
 
@@ -75,14 +76,14 @@ class PHASE(Parametric):
         super().__init__("I", target, param_name)
         self.param_name = param_name
 
-    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_mat = self.identity.unsqueeze(2).repeat(1, 1, len(theta))
         batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
 
-    def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def jacobian(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
         theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
         batch_mat = (
@@ -107,13 +108,13 @@ class ControlledRotationGate(Parametric):
         super().__init__(gate, target, param_name)
         self.qubit_support = self.control + [self.target]
 
-    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
         batch_size = len(thetas)
         mat = _unitary(thetas, self.pauli, self.identity, batch_size)
         return make_controlled(mat, batch_size, len(self.control) - (int)(log2(mat.shape[0])) + 1)
 
-    def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def jacobian(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
         batch_size = len(thetas)
         n_control = len(self.control)
@@ -171,12 +172,12 @@ class CPHASE(ControlledRotationGate):
         super().__init__("S", control, target, param_name)
         self.phase = PHASE(target, param_name)
 
-    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.phase.param_name]
         batch_size = len(thetas)
         return make_controlled(self.phase.unitary(values), batch_size, len(self.control))
 
-    def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def jacobian(self, values: dict[str, torch.Tensor]) -> Operator:
         thetas = values[self.param_name]
         batch_size = len(thetas)
         n_control = len(self.control)
@@ -212,7 +213,7 @@ class U(Parametric):
             "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
         )
 
-    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         phi = values[self.param_names[0]]
         theta = values[self.param_names[1]]
         omega = values[self.param_names[2]]
@@ -229,5 +230,5 @@ class U(Parametric):
         d = self.d.repeat(1, 1, batch_size) * cos_t * torch.conj(t_plus)
         return a - b + c + d
 
-    def jacobian(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def jacobian(self, values: dict[str, torch.Tensor]) -> Operator:
         raise NotImplementedError

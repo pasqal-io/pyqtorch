@@ -8,6 +8,9 @@ from numpy import log2
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
 
+State = torch.Tensor
+Operator = torch.Tensor
+
 
 def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
     n_qubits = len(state.size()) - 1

@@ -5,26 +5,26 @@ from typing import Any, Iterator
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
-from pyqtorch.operator import Operator
+from pyqtorch.abstract import AbstractOperator
 from pyqtorch.primitive import CNOT
 from pyqtorch.utils import DiffMode, overlap, zero_state
 
 
 class QuantumCircuit(Module):
     def __init__(
-        self, n_qubits: int, operations: list[Operator], diff_mode: DiffMode = DiffMode.AD
+        self, n_qubits: int, operations: list[AbstractOperator], diff_mode: DiffMode = DiffMode.AD
     ):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
         self.diff_mode = diff_mode
 
-    def __mul__(self, other: Operator | QuantumCircuit) -> QuantumCircuit:
+    def __mul__(self, other: AbstractOperator | QuantumCircuit) -> QuantumCircuit:
         if isinstance(other, QuantumCircuit):
             n_qubits = max(self.n_qubits, other.n_qubits)
             return QuantumCircuit(n_qubits, self.operations.extend(other.operations))
 
-        if isinstance(other, Operator):
+        if isinstance(other, AbstractOperator):
             n_qubits = max(self.n_qubits, other.n_qubits)
             return QuantumCircuit(n_qubits, self.operations.append(other))
 

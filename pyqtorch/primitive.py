@@ -4,12 +4,13 @@ from math import log2
 
 import torch
 
+from pyqtorch.abstract import AbstractOperator
 from pyqtorch.apply import _apply_gate
 from pyqtorch.matrices import OPERATIONS_DICT, _dagger, make_controlled
-from pyqtorch.operator import Operator
+from pyqtorch.utils import Operator, State
 
 
-class Primitive(Operator):
+class Primitive(AbstractOperator):
     def __init__(self, pauli: torch.Tensor, target: int):
         super().__init__(target)
         self.register_buffer("pauli", pauli)
@@ -17,22 +18,22 @@ class Primitive(Operator):
         self.n_qubits = len(self.qubit_support)
         self.apply_fn = _apply_gate
 
-    def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         return self.pauli
 
-    def apply_operator(self, operator: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+    def apply_operator(self, operator: Operator, state: State) -> State:
         return self.apply_fn(state, operator, self.qubit_support, len(state.size()) - 1)
 
-    def apply_unitary(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def apply_unitary(self, state: State, values: dict[str, torch.Tensor]) -> State:
         return self.apply_operator(self.unitary(values), state)
 
-    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def forward(self, state: State, values: dict[str, torch.Tensor]) -> State:
         return self.apply_unitary(state, values)
 
-    def dagger(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def dagger(self, values: dict[str, torch.Tensor]) -> Operator:
         return _dagger(self.unitary(values).unsqueeze(2)).squeeze(2)
 
-    def apply_dagger(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> torch.Tensor:
+    def apply_dagger(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> State:
         return self.apply_operator(self.dagger(values), state)
 
 
@@ -55,7 +56,7 @@ class I(Primitive):  # noqa: E742
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["I"], target)
 
-    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, state: State, values: dict[str, torch.Tensor] = None) -> State:
         return state
 
 

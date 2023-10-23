@@ -6,15 +6,17 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
+from pyqtorch.utils import Operator, State
+
 ABC_ARRAY: NDArray = np.array(list(ABC))
 
 
 def _apply_gate(
-    state: torch.Tensor,
-    operator: torch.Tensor,
+    state: State,
+    operator: Operator,
     qubits: list[int],
     n_qubits: int,
-) -> torch.Tensor:
+) -> State:
     operator = operator.view([2] * len(qubits) * 2)
     operator_indices = list(range(len(qubits), 2 * len(qubits)))
     dims = (operator_indices, qubits)
@@ -30,12 +32,12 @@ def _apply_gate(
 
 
 def _apply_batch_gate(
-    state: torch.Tensor,
-    operator: torch.Tensor,
+    state: State,
+    operator: Operator,
     qubits: list[int],
     n_qubits: int,
     batch_size: int = None,
-) -> torch.Tensor:
+) -> State:
     if batch_size is None:
         batch_size = state.size(-1)
     n_support = len(qubits)
@@ -53,22 +55,22 @@ def _apply_batch_gate(
 
 
 def _vmap_apply_gate(
-    state: torch.Tensor,
-    operator: torch.Tensor,
+    state: State,
+    operator: Operator,
     qubits: list[int] | tuple[int],
     n_qubits: int,
-) -> torch.Tensor:
+) -> State:
     def _apply(
-        state: torch.Tensor,
-        mat: torch.Tensor,
+        state: State,
+        operator: Operator,
         qubits: list[int] | tuple[int],
         n_qubits: int,
-    ) -> torch.Tensor:
-        mat = mat.view([2] * len(qubits) * 2)
+    ) -> State:
+        operator = operator.view([2] * len(qubits) * 2)
         mat_dims = list(range(len(qubits), 2 * len(qubits)))
         state_dims = list(qubits)
         axes = (mat_dims, state_dims)
-        state = torch.tensordot(mat, state, dims=axes)
+        state = torch.tensordot(operator, state, dims=axes)
         inv_perm = torch.argsort(
             torch.tensor(
                 state_dims + [j for j in range(n_qubits) if j not in state_dims], dtype=torch.int
@@ -78,7 +80,7 @@ def _vmap_apply_gate(
         return state
 
     return torch.vmap(
-        lambda s, m: _apply(state=s, mat=m, qubits=qubits, n_qubits=n_qubits),
+        lambda s, m: _apply(state=s, operator=m, qubits=qubits, n_qubits=n_qubits),
         in_dims=(len(state.size()) - 1, len(operator.size()) - 1),
         out_dims=len(state.size()) - 1,
     )(state, operator)
