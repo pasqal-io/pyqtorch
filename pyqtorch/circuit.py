@@ -5,7 +5,6 @@ from typing import Any
 import torch
 from torch.nn import Module, ModuleList, Parameter, init
 
-from pyqtorch.adjoint import AdjointExpectation
 from pyqtorch.operator import Operator
 from pyqtorch.primitive import CNOT
 from pyqtorch.utils import DiffMode, overlap, zero_state
@@ -65,6 +64,7 @@ class QuantumCircuit(Module):
             state = self.run(state, values)
             return overlap(state, observable.forward(state, values))
         else:
+            from pyqtorch.adjoint import AdjointExpectation
             return AdjointExpectation.apply(
                 self, observable, state, values.keys(), *values.values()
             )
