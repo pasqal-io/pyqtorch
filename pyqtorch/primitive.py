@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import math
+from math import log2
 
 import torch
 
@@ -98,9 +98,9 @@ class ControlledOperationGate(Primitive):
         self.control: list[int] = [control] if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
         mat = make_controlled(
-            matrices=mat.unsqueeze(2),
+            unitary=mat.unsqueeze(2),
             batch_size=1,
-            n_control_qubits=len(self.control) - (int)(math.log2(mat.shape[0])) + 1,
+            n_control_qubits=len(self.control) - (int)(log2(mat.shape[0])) + 1,
         ).squeeze(2)
         super().__init__(mat, target)
         self.qubit_support = self.control + [target]

@@ -28,11 +28,10 @@ class Parametric(Primitive):
         gate: str,
         target: int,
         param_name: str = "",
-        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
         super().__init__(OPERATIONS_DICT[gate], target)
         self.register_buffer("identity", OPERATIONS_DICT["I"])
-        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
+        self.apply_fn = APPLY_FN_DICT[ApplyFn.EINSUM]
         self.param_name = param_name
 
     def apply_operator(self, operator: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
@@ -62,9 +61,8 @@ class RX(Parametric):
         self,
         target: int,
         param_name: str = "",
-        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        super().__init__("X", target, param_name, apply_fn_type)
+        super().__init__("X", target, param_name)
 
 
 class RY(Parametric):
@@ -72,20 +70,18 @@ class RY(Parametric):
         self,
         target: int,
         param_name: str = "",
-        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        super().__init__("Y", target, param_name, apply_fn_type)
+        super().__init__("Y", target, param_name)
 
 
 class RZ(Parametric):
-    def __init__(self, target: int, param_name: str, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
-        super().__init__("Z", target, param_name, apply_fn_type)
+    def __init__(self, target: int, param_name: str):
+        super().__init__("Z", target, param_name)
 
 
 class PHASE(Parametric):
-    def __init__(self, target: int, param_name: str, apply_fn_type: ApplyFn = DEFAULT_APPLY_FN):
+    def __init__(self, target: int, param_name: str):
         super().__init__("I", target, param_name)
-        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
         self.param_name = param_name
 
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -114,11 +110,10 @@ class ControlledRotationGate(Parametric):
         control: int | list[int],
         target: int,
         param_name: str = "",
-        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
         control = [control] if isinstance(control, int) else control
         self.control = control
-        super().__init__(gate, target, param_name, apply_fn_type)
+        super().__init__(gate, target, param_name)
         self.qubit_support = self.control + [self.target]
 
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -151,9 +146,8 @@ class CRX(ControlledRotationGate):
         control: int | list[int],
         target: int,
         param_name: str,
-        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        super().__init__("X", control, target, param_name, apply_fn_type)
+        super().__init__("X", control, target, param_name)
 
 
 class CRY(ControlledRotationGate):
@@ -162,9 +156,8 @@ class CRY(ControlledRotationGate):
         control: int | list[int],
         target: int,
         param_name: str = "",
-        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        super().__init__("Y", control, target, param_name, apply_fn_type)
+        super().__init__("Y", control, target, param_name)
 
 
 class CRZ(ControlledRotationGate):
@@ -173,9 +166,8 @@ class CRZ(ControlledRotationGate):
         control: list[int],
         target: int,
         param_name: str = "",
-        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        super().__init__("Z", control, target, param_name, apply_fn_type)
+        super().__init__("Z", control, target, param_name)
 
 
 class CPHASE(ControlledRotationGate):
@@ -186,10 +178,8 @@ class CPHASE(ControlledRotationGate):
         control: int | list[int],
         target: int,
         param_name: str,
-        apply_fn_type: ApplyFn = DEFAULT_APPLY_FN,
     ):
-        super().__init__("S", control, target, param_name, apply_fn_type)
-        self.apply_fn = APPLY_FN_DICT[apply_fn_type]
+        super().__init__("S", control, target, param_name)
         self.phase = PHASE(target, param_name)
 
     def unitary(self, values: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -216,11 +206,9 @@ class CPHASE(ControlledRotationGate):
 class U(Parametric):
     n_params = 3
 
-    def __init__(
-        self, target: int, param_names: list[str], apply_fn_type: ApplyFn = DEFAULT_APPLY_FN
-    ):
+    def __init__(self, target: int, param_names: list[str]):
         self.param_names = param_names
-        super().__init__("X", target, param_name="", apply_fn_type=apply_fn_type)
+        super().__init__("X", target, param_name="")
 
         self.register_buffer(
             "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)

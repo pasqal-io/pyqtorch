@@ -93,13 +93,13 @@ def _jacobian(
 
 
 def make_controlled(
-    matrices: torch.Tensor, batch_size: int, n_control_qubits: int = 1
+    unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 1
 ) -> torch.Tensor:
     """Transform a 2x2 unitary into a controlled unitary.
 
     Args:
 
-        matrices (torch.Tensor): the matrix representing the unitary which should be performed.
+        unitary (torch.Tensor): the matrix representing the unitary which should be performed.
         batch_size (int): the batch size
         n_control_qubits (int): The number of control qubits.
 
@@ -112,5 +112,5 @@ def make_controlled(
         .unsqueeze(2)
         .repeat(1, 1, batch_size)
     )
-    _controlled[2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :] = matrices
+    _controlled[2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :] = unitary
     return _controlled
