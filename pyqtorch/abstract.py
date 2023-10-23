@@ -48,14 +48,6 @@ class AbstractOperator(ABC, Module):
         ...
 
     @abstractmethod
-    def apply_dagger(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> State:
-        ...
-
-    @abstractmethod
-    def apply_unitary(self, matrix: torch.Tensor, values: dict[str, torch.Tensor]) -> State:
-        ...
-
-    @abstractmethod
     def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor]) -> State:
         ...
 

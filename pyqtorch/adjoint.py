@@ -5,6 +5,7 @@ from typing import Any
 from torch import Tensor
 from torch.autograd import Function
 
+from pyqtorch.apply import apply
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import overlap, param_dict
@@ -35,9 +36,9 @@ class AdjointExpectation(Function):
         values = param_dict(ctx.param_names, param_values)
         grads: list = []
         for op in ctx.circuit.reverse():
-            ctx.out_state = op.apply_dagger(ctx.out_state, values)
+            ctx.out_state = apply(ctx.out_state, op.dagger(values), op.qubit_support)
             if isinstance(op, Parametric):
-                mu = op.apply_jacobian(ctx.out_state, values)
+                mu = apply(ctx.out_state, op.jacobian(values), op.qubit_support)
                 grads = [grad_out * 2 * overlap(ctx.projected_state, mu)] + grads
-            ctx.projected_state = op.apply_dagger(ctx.projected_state, values)
+            ctx.projected_state = apply(ctx.projected_state, op.dagger(values), op.qubit_support)
         return (None, None, None, None, *grads)

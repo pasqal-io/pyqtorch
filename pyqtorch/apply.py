@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from string import ascii_letters as ABC
+from typing import Any
 
 import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from pyqtorch.utils import Operator, State
+from pyqtorch.utils import ApplyFn, Operator, State
 
 ABC_ARRAY: NDArray = np.array(list(ABC))
 
 
-def _apply_gate(
+def _apply_tensordot(
     state: State,
     operator: Operator,
     qubits: list[int],
@@ -31,7 +32,7 @@ def _apply_gate(
     return torch.permute(state, inverse_permutation)
 
 
-def _apply_batch_gate(
+def _apply_einsum(
     state: State,
     operator: Operator,
     qubits: list[int],
@@ -54,7 +55,7 @@ def _apply_batch_gate(
     return torch.einsum(f"{op_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
-def _vmap_apply_gate(
+def _apply_vmap(
     state: State,
     operator: Operator,
     qubits: list[int] | tuple[int],
@@ -86,4 +87,13 @@ def _vmap_apply_gate(
     )(state, operator)
 
 
-DEFAULT_APPLY_FN = _apply_batch_gate
+DEFAULT_APPLY_FN = _apply_einsum
+
+APPLY_FN_DICT = {ApplyFn.VMAP: _apply_vmap, ApplyFn.EINSUM: _apply_einsum}
+
+
+def apply(
+    state: State, operator: Operator, qubit_support: list[int], apply_fn: ApplyFn = ApplyFn.EINSUM
+) -> State:
+    fn: Any = APPLY_FN_DICT[apply_fn]
+    return fn(state, operator, qubit_support, len(state.size()) - 1)

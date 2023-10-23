@@ -7,7 +7,7 @@ from typing import Any, Optional, Tuple, Union
 import torch
 from torch.nn import Module
 
-from pyqtorch.apply import _apply_batch_gate
+from pyqtorch.apply import _apply_einsum
 from pyqtorch.utils import is_diag, is_real
 
 BATCH_DIM = 2
@@ -71,14 +71,14 @@ class HamEvo(torch.nn.Module):
         h = h.expand_as(state)
         _state = state.clone()
         for _ in range(self.n_steps):
-            k1 = -1j * _apply_batch_gate(_state, self.H, self.qubits, self.n_qubits, batch_size)
-            k2 = -1j * _apply_batch_gate(
+            k1 = -1j * _apply_einsum(_state, self.H, self.qubits, self.n_qubits, batch_size)
+            k2 = -1j * _apply_einsum(
                 _state + h / 2 * k1, self.H, self.qubits, self.n_qubits, batch_size
             )
-            k3 = -1j * _apply_batch_gate(
+            k3 = -1j * _apply_einsum(
                 _state + h / 2 * k2, self.H, self.qubits, self.n_qubits, batch_size
             )
-            k4 = -1j * _apply_batch_gate(
+            k4 = -1j * _apply_einsum(
                 _state + h * k3, self.H, self.qubits, self.n_qubits, batch_size
             )
             _state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
@@ -176,7 +176,7 @@ class HamEvoEig(HamEvo):
                     torch.conj(eig_vectors.transpose(0, 1)),
                 )
 
-        return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, self.batch_size)
+        return _apply_einsum(state, evol_operator, self.qubits, self.n_qubits, self.batch_size)
 
 
 class HamEvoExp(HamEvo):
@@ -232,7 +232,7 @@ class HamEvoExp(HamEvo):
             evol_operator = torch.transpose(evol_operator_T, 0, -1)
 
         batch_size = max(batch_size_h, batch_size_t)
-        return _apply_batch_gate(state, evol_operator, self.qubits, self.n_qubits, batch_size)
+        return _apply_einsum(state, evol_operator, self.qubits, self.n_qubits, batch_size)
 
 
 class HamEvoType(Enum):

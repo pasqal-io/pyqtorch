@@ -14,7 +14,7 @@ from pyqtorch.matrices import (
     make_controlled,
 )
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import Operator, State
+from pyqtorch.utils import Operator
 
 
 class Parametric(Primitive):
@@ -43,9 +43,6 @@ class Parametric(Primitive):
         thetas = values[self.param_name]
         batch_size = len(thetas)
         return _jacobian(thetas, self.pauli, self.identity, batch_size)
-
-    def apply_jacobian(self, state: State, values: dict[str, torch.Tensor]) -> State:
-        return self.apply_operator(self.jacobian(values), state)
 
 
 class RX(Parametric):
