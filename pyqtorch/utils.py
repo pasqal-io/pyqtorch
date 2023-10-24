@@ -36,7 +36,7 @@ class StrEnum(str, Enum):
 
 
 class ApplyFn(StrEnum):
-    """Which function to use to perform matmul between operator and state."""
+    """Which torch function to use to contract an operator over a state."""
 
     VMAP = "vmap"
     EINSUM = "einsum"
@@ -129,16 +129,6 @@ def flatten_wf(wf: torch.Tensor) -> torch.Tensor:
 
 
 def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
-    """
-    Inverts the endianness of a wave function.
-
-    Args:
-        wf (Tensor): the target wf as a torch Tensor of shape batch_size X 2**n_qubits
-
-    Returns:
-        The inverted wave function.
-    """
-
     wf = flatten_wf(wf)
     n_qubits = int(log2(wf.shape[1]))
     ls = list(range(2**n_qubits))
