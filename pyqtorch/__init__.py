@@ -11,12 +11,7 @@ from __future__ import annotations
 
 from .analog import HamEvo, HamEvoEig, HamEvoExp, HamEvoType, HamiltonianEvolution
 from .apply import apply_operator
-from .circuit import (
-    EntanglingLayer,
-    FeaturemapLayer,
-    QuantumCircuit,
-    VariationalLayer,
-)
+from .circuit import QuantumCircuit
 from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
 from .primitive import (
     CNOT,

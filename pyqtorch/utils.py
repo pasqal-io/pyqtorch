@@ -43,7 +43,7 @@ class ApplyFn(StrEnum):
 
 
 class DiffMode(StrEnum):
-    """Which DiffMode to use."""
+    """Which Differentiation engine to use."""
 
     AD = "ad"
     ADJOINT = "adjoint"

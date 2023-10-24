@@ -3,14 +3,12 @@ from __future__ import annotations
 from typing import Any, Iterator
 
 import torch
-from torch.nn import Module, ModuleList, Parameter, init
 
 from pyqtorch.abstract import AbstractOperator
-from pyqtorch.primitive import CNOT
 from pyqtorch.utils import DiffMode, State, overlap, zero_state
 
 
-class QuantumCircuit(Module):
+class QuantumCircuit(torch.nn.Module):
     def __init__(
         self, n_qubits: int, operations: list[AbstractOperator], diff_mode: DiffMode = DiffMode.AD
     ):
@@ -70,8 +68,8 @@ class QuantumCircuit(Module):
 
     def expectation(
         self,
-        values: dict[str, torch.Tensor] = {},
-        observable: QuantumCircuit = None,
+        values: dict[str, torch.Tensor],
+        observable: QuantumCircuit,
         state: State = None,
     ) -> torch.Tensor:
         if state is None:
@@ -101,34 +99,3 @@ class QuantumCircuit(Module):
 
     def reverse(self) -> QuantumCircuit:
         return QuantumCircuit(self.n_qubits, torch.nn.ModuleList(list(reversed(self.operations))))
-
-
-def FeaturemapLayer(n_qubits: int, Op: Any) -> QuantumCircuit:
-    operations = [Op([i]) for i in range(n_qubits)]
-    return QuantumCircuit(n_qubits, operations)
-
-
-class VariationalLayer(QuantumCircuit):
-    def __init__(self, n_qubits: int, Op: Any, param_name: str = "theta"):
-        operations = ModuleList([Op([i], f"{param_name}_{i}") for i in range(n_qubits)])
-        super().__init__(n_qubits, operations)
-        self.param_name = param_name
-        self.thetas = Parameter(torch.empty(n_qubits, Op.n_params))
-        self._params = {
-            f"theta_{i}": Parameter(torch.rand(1, requires_grad=True)) for i in range(n_qubits)
-        }
-        self.reset_parameters()
-
-    def reset_parameters(self) -> None:
-        init.uniform_(self.thetas, -2 * torch.pi, 2 * torch.pi)
-
-    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = None) -> torch.Tensor:
-        for op in self.operations:
-            state = op(state, self._params)
-        return state
-
-
-class EntanglingLayer(QuantumCircuit):
-    def __init__(self, n_qubits: int):
-        operations = ModuleList([CNOT(i % n_qubits, (i + 1) % n_qubits) for i in range(n_qubits)])
-        super().__init__(n_qubits, operations)
