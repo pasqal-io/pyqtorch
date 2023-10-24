@@ -8,7 +8,7 @@ import pyqtorch as pyq
 x = pyq.X(0)
 state = pyq.random_state(n_qubits=2)
 
-print(x(state))
+print(x(state, None))
 
 rx = pyq.RX(0, 'theta')
 theta = torch.rand(1)
@@ -16,7 +16,7 @@ values = {'theta':theta}
 print(rx(state, values ))
 
 cnot = pyq.CNOT(0,1)
-print(cnot(state))
+print(cnot(state,None))
 
 crx = pyq.CRX(0, 1, 'theta')
 print(crx(state,values))
