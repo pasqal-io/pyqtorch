@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 from .analog import HamEvo, HamEvoEig, HamEvoExp, HamEvoType, HamiltonianEvolution
-from .apply import apply
+from .apply import apply_operator
 from .circuit import (
     EntanglingLayer,
     FeaturemapLayer,

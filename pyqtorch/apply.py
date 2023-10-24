@@ -92,7 +92,7 @@ DEFAULT_APPLY_FN = _apply_einsum
 APPLY_FN_DICT = {ApplyFn.VMAP: _apply_vmap, ApplyFn.EINSUM: _apply_einsum}
 
 
-def apply(
+def apply_operator(
     state: State, operator: Operator, qubit_support: list[int], apply_fn: ApplyFn = ApplyFn.EINSUM
 ) -> State:
     fn: Any = APPLY_FN_DICT[apply_fn]
