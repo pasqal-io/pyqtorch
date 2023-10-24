@@ -139,20 +139,17 @@ def test_hamevo_consistency(get_hamiltonians: Callable) -> None:
 
     t_evo = torch.tensor([torch.pi / 8], dtype=torch.cdouble)
     psi_0 = pyq.uniform_state(batch_size=batch_size, n_qubits=n_qubits)
-
-    hamevo_rk4 = pyq.HamEvo(H_batch, t_evo, range(n_qubits), n_qubits)
+    full_support = [i for i in range(n_qubits)]
+    hamevo_rk4 = pyq.HamEvo(H_batch, t_evo, full_support, n_qubits)
     psi_rk4 = hamevo_rk4.forward(psi_0)
-    hamevo_eig = pyq.HamEvoEig(H_batch, t_evo, range(n_qubits), n_qubits)
+    hamevo_eig = pyq.HamEvoEig(H_batch, t_evo, full_support, n_qubits)
     psi_eig = hamevo_eig.forward(psi_0)
-    hamevo_exp = pyq.HamEvoExp(H_batch, t_evo, range(n_qubits), n_qubits)
+    hamevo_exp = pyq.HamEvoExp(H_batch, t_evo, full_support, n_qubits)
     psi_exp = hamevo_exp.forward(psi_0)
 
     hamiltonian_evolution = pyq.HamiltonianEvolution(range(n_qubits), n_qubits)
     psi_ham = hamiltonian_evolution(H_batch, t_evo, psi_0)
 
-    # assert torch.allclose(psi_rk4, psi_eig)
-    # assert torch.allclose(psi_rk4, psi_eig)
-    # assert torch.allclose(psi_eig, psi_exp)
     tensors = [psi_rk4, psi_eig, psi_exp, psi_ham]
     assert all(torch.allclose(tensors[i], tensors[0]) for i in range(1, len(tensors)))
 

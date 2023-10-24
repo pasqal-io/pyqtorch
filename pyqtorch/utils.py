@@ -76,40 +76,21 @@ def is_real(H: torch.Tensor) -> bool:
     return len(torch.imag(H).to_sparse().coalesce().values()) == 0
 
 
+def product_state(
+    bitstring: str, batch_size: int = 1, device: str | torch.device = "cpu"
+) -> torch.Tensor:
+    state = torch.zeros((2 ** len(bitstring), batch_size), dtype=DEFAULT_MATRIX_DTYPE)
+    state[int(bitstring, 2)] = torch.tensor(1.0 + 0j, dtype=DEFAULT_MATRIX_DTYPE)
+    return state.reshape([2] * len(bitstring) + [batch_size]).to(device=device)
+
+
 def zero_state(
     n_qubits: int,
     batch_size: int = 1,
     device: str | torch.device = "cpu",
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
-    """
-    Generates the zero state for a specified number of qubits.
-
-    Arguments:
-        n_qubits (int): The number of qubits for which the zero state is to be generated.
-        batch_size (int): The batch size for the zero state.
-        device (str): The device on which the zero state tensor is to be allocated eg cpu or gpu.
-        dtype (DEFAULT_MATRIX_DTYPE): The data type of the zero state tensor.
-
-    Returns:
-        torch.Tensor: A tensor representing the zero state.
-        The shape of the tensor is (batch_size, 2^n_qubits),
-        where 2^n_qubits is the total number of possible states for the given number of qubits.
-        The data type of the tensor is specified by the dtype parameter.
-
-    Examples:
-    ```python exec="on" source="above" result="json"
-    import torch
-    import pyqtorch as pyq
-
-    state = pyq.zero_state(n_qubits=2)
-    print(state)  #tensor([[[1.+0.j],[0.+0.j]],[[0.+0.j],[0.+0.j]]], dtype=torch.complex128)
-    ```
-    """
-    state = torch.zeros((2**n_qubits, batch_size), dtype=dtype, device=device)
-    state[0] = 1
-    state = state.reshape([2] * n_qubits + [batch_size])
-    return state
+    return product_state("0" * n_qubits, batch_size, device)
 
 
 def uniform_state(
@@ -118,35 +99,6 @@ def uniform_state(
     device: str | torch.device = "cpu",
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
-    """
-    Generates the uniform state for a specified number of qubits.
-    Returns a tensor representing the uniform state.
-    The shape of the tensor is (2^n_qubits, batch_size),
-    where 2^n_qubits is the total number of possible states for the given number of qubits.
-    The data type of the tensor is specified by the dtype parameter.
-    Each element of the tensor is initialized to 1/sqrt(2^n_qubits),
-    ensuring that the total probability of the state is equal to 1.
-
-    Arguments:
-        n_qubits (int): The number of qubits for which the uniform state is to be generated.
-        batch_size (int): The batch size for the uniform state.
-        device (str): The device on which the uniform state tensor is to be allocated.
-        dtype (DEFAULT_MATRIX_DTYPE): The data type of the uniform state tensor.
-
-    Returns:
-        torch.Tensor: A tensor representing the uniform state.
-
-
-    Examples:
-    ```python exec="on" source="above" result="json"
-    import torch
-    import pyqtorch.modules as pyq
-
-    state = pyq.uniform_state(n_qubits=2)
-    print(state)
-    #tensor([[[0.5000+0.j],[0.5000+0.j]],[[0.5000+0.j],[0.5000+0.j]]], dtype=torch.complex128)
-    ```
-    """
     state = torch.ones((2**n_qubits, batch_size), dtype=dtype, device=device)
     state = state / torch.sqrt(torch.tensor(2**n_qubits))
     state = state.reshape([2] * n_qubits + [batch_size])
@@ -186,10 +138,8 @@ def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
     Returns:
         The inverted wave function.
     """
-    try:
-        wf = flatten_wf(wf)
-    except RuntimeError:
-        wf = wf
+
+    wf = flatten_wf(wf)
     n_qubits = int(log2(wf.shape[1]))
     ls = list(range(2**n_qubits))
     permute_ind = torch.tensor([int(f"{num:0{n_qubits}b}"[::-1], 2) for num in ls])
@@ -198,9 +148,3 @@ def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
 
 def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str, torch.Tensor]:
     return {key: val for key, val in zip(keys, values)}
-
-
-def product_state(bitstring: str) -> torch.Tensor:
-    state = torch.zeros(2 ** len(bitstring), dtype=torch.complex128)
-    state[int(bitstring, 2)] = torch.tensor(1.0 + 0j, dtype=torch.complex128)
-    return state.reshape([2] * len(bitstring) + [1])

@@ -28,12 +28,17 @@ class HamEvo(torch.nn.Module):
     """
 
     def __init__(
-        self, H: torch.Tensor, t: torch.Tensor, qubits: Any, n_qubits: int, n_steps: int = 100
+        self,
+        H: torch.Tensor,
+        t: torch.Tensor,
+        qubit_support: list[int],
+        n_qubits: int,
+        n_steps: int = 100,
     ):
         super().__init__()
+        self.qubit_support = qubit_support
         self.H: torch.Tensor
         self.t: torch.Tensor
-        self.qubits = qubits
         self.n_qubits = n_qubits
         self.n_steps = n_steps
         if H.ndim == 2:
@@ -71,15 +76,15 @@ class HamEvo(torch.nn.Module):
         h = h.expand_as(state)
         _state = state.clone()
         for _ in range(self.n_steps):
-            k1 = -1j * _apply_einsum(_state, self.H, self.qubits, self.n_qubits, batch_size)
+            k1 = -1j * _apply_einsum(_state, self.H, self.qubit_support, self.n_qubits, batch_size)
             k2 = -1j * _apply_einsum(
-                _state + h / 2 * k1, self.H, self.qubits, self.n_qubits, batch_size
+                _state + h / 2 * k1, self.H, self.qubit_support, self.n_qubits, batch_size
             )
             k3 = -1j * _apply_einsum(
-                _state + h / 2 * k2, self.H, self.qubits, self.n_qubits, batch_size
+                _state + h / 2 * k2, self.H, self.qubit_support, self.n_qubits, batch_size
             )
             k4 = -1j * _apply_einsum(
-                _state + h * k3, self.H, self.qubits, self.n_qubits, batch_size
+                _state + h * k3, self.H, self.qubit_support, self.n_qubits, batch_size
             )
             _state += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
@@ -124,7 +129,7 @@ class HamEvoEig(HamEvo):
     """
 
     def __init__(
-        self, H: torch.Tensor, t: torch.Tensor, qubits: Any, n_qubits: int, n_steps: int = 100
+        self, H: torch.Tensor, t: torch.Tensor, qubits: list[int], n_qubits: int, n_steps: int = 100
     ):
         super().__init__(H, t, qubits, n_qubits, n_steps)
         if len(self.H.size()) < 3:
@@ -176,7 +181,9 @@ class HamEvoEig(HamEvo):
                     torch.conj(eig_vectors.transpose(0, 1)),
                 )
 
-        return _apply_einsum(state, evol_operator, self.qubits, self.n_qubits, self.batch_size)
+        return _apply_einsum(
+            state, evol_operator, self.qubit_support, self.n_qubits, self.batch_size
+        )
 
 
 class HamEvoExp(HamEvo):
@@ -232,7 +239,7 @@ class HamEvoExp(HamEvo):
             evol_operator = torch.transpose(evol_operator_T, 0, -1)
 
         batch_size = max(batch_size_h, batch_size_t)
-        return _apply_einsum(state, evol_operator, self.qubits, self.n_qubits, batch_size)
+        return _apply_einsum(state, evol_operator, self.qubit_support, self.n_qubits, batch_size)
 
 
 class HamEvoType(Enum):
