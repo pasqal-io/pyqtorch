@@ -50,9 +50,9 @@ sigmaz = torch.diag(torch.tensor([1.0, -1.0], dtype=torch.cdouble))
 Hbase = torch.kron(sigmaz, sigmaz)
 hamiltonian = torch.kron(Hbase, Hbase)
 t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
-hamevo = pyq.HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
+hamiltonian_evolution = pyq.HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
 psi = pyq.uniform_state(n_qubits)
-psi_star = hamevo(psi,hamiltonian=hamiltonian, time_evolution=t_evo)
+psi_star = hamiltonian_evolution(hamiltonian=hamiltonian, time_evolution=t_evo, state= psi)
 result = pyq.overlap(psi_star, psi)
 ```
 

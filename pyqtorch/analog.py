@@ -37,9 +37,9 @@ class HamiltonianEvolution(torch.nn.Module):
 
     def forward(
         self,
-        state: State,
         hamiltonian: Operator,
         time_evolution: torch.Tensor,
+        state: State,
     ) -> State:
         if len(hamiltonian.size()) < 3:
             hamiltonian = hamiltonian.unsqueeze(2)
