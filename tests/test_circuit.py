@@ -72,7 +72,8 @@ def test_differentiate_circuit(diff_mode: DiffMode, batch_size: int, n_qubits: i
     values = {"phi": phi}
     assert circ(state, values).size() == tuple(2 for _ in range(n_qubits)) + (batch_size,)
     state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
-    res = circ(state, values)
-    assert not torch.all(torch.isnan(res))
-    dres_theta = torch.autograd.grad(res, phi, torch.ones_like(res), create_graph=True)[0]
-    assert not torch.all(torch.isnan(dres_theta))
+
+    def _fwd(phi: torch.Tensor) -> torch.Tensor:
+        return circ(state, {"phi": phi})
+
+    assert torch.autograd.gradcheck(_fwd, phi)

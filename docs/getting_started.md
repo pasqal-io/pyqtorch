@@ -1,5 +1,6 @@
-## pyqtorch in a nutshell
+# pyqtorch in a nutshell
 
+## Digital
 
 ```python exec="on" source="material-block"
 import torch
@@ -22,12 +23,56 @@ crx = pyq.CRX(0, 1, 'theta')
 print(crx(state,values))
 ```
 
+## Analog
+
+```python exec="on" source="material-block" html="1"
+import torch
+import pyqtorch as pyq
+
+
+n_qubits = 4
+sigmaz = torch.diag(torch.tensor([1.0, -1.0], dtype=torch.cdouble))
+Hbase = torch.kron(sigmaz, sigmaz)
+hamiltonian = torch.kron(Hbase, Hbase)
+t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
+hamevo = pyq.HamiltonianEvolution(hamiltonian=hamiltonian, time_evolution=t_evo, qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
+psi = pyq.uniform_state(n_qubits)
+psi_star = hamevo(psi)
+result = overlap(psi_star, psi)
+```
+
+
+## QuantumCircuit
+
+```python exec="on" source="material-block"
+import torch
+import pyqtorch as pyq
+
+rx = pyq.RX(0, param_name="theta")
+y = pyq.Y(0)
+cnot = pyq.CNOT(0, 1)
+ops = [rx, y, cnot]
+n_qubits = 2
+circ = pyq.QuantumCircuit(n_qubits, ops)
+
+state = pyq.random_state(n_qubits)
+
+theta = torch.rand(1, requires_grad=True)
+
+def _fwd(phi: torch.Tensor) -> torch.Tensor:
+    return circ(state, {"theta": torch.rand()})
+
+assert torch.autograd.gradcheck(_fwd, phi)
+```
+
 ## Fitting a function
+
 ```python exec="on" source="material-block" html="1"
 from __future__ import annotations
 
 import torch
 import pyqtorch as pyq
+from pyqtorch.parametric import Parametric
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -62,8 +107,8 @@ class QNN(pyq.QuantumCircuit):
         self.embedding = pyq.QuantumCircuit(n_qubits, [pyq.RX(i, f'phi') for i in range(n_qubits)])
         self.hea1 = HEA(n_qubits, n_layers, 'epsilon')
         self.observable = pyq.Z(0)
-        self.param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea0.operations if not isinstance(op, pyq.CNOT)})
-        self.param_dict.update({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea1.operations if not isinstance(op, pyq.CNOT)})
+        self.param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea0.operations if isinstance(op, Parametric)})
+        self.param_dict.update({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea1.operations if isinstance(op, Parametric)})
     def forward(self, phi: torch.Tensor):
         batch_size = len(phi)
         state = self.hea0.init_state(batch_size)

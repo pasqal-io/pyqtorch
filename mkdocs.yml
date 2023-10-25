@@ -8,19 +8,7 @@ nav:
   - Contribute:
       - How to Contribute: CONTRIBUTING.md
       - Code of Conduct: CODE_OF_CONDUCT.md
-  - pyqtorch in a nutshell: getting_started.md
-
-  # - Tutorials:
-  #     - Fitting a function: fit_function.ipynb
-  #     - QAOA : QAOA.ipynb
-  # - Documentation:
-  #   - Modules:
-  #       - Circuit : circuit.md
-  #       - Matrices : matrices.md
-  #       - Parametric : parametric.md
-  #       - Primitive : primitive.md
-  #       - Utils : utils.md
-
+  - In a nutshell: getting_started.md
 
 theme:
   name: material
