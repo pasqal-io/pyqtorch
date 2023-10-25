@@ -9,18 +9,18 @@ import pyqtorch as pyq
 x = pyq.X(0)
 state = pyq.random_state(n_qubits=2)
 
-print(x(state, None))
+x(state, None)
 
 rx = pyq.RX(0, 'theta')
 theta = torch.rand(1)
 values = {'theta':theta}
-print(rx(state, values ))
+rx(state, values )
 
 cnot = pyq.CNOT(0,1)
-print(cnot(state,None))
+cnot(state,None)
 
 crx = pyq.CRX(0, 1, 'theta')
-print(crx(state,values))
+crx(state,values)
 ```
 
 ## Analog
@@ -38,7 +38,7 @@ t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
 hamevo = pyq.HamiltonianEvolution(hamiltonian=hamiltonian, time_evolution=t_evo, qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
 psi = pyq.uniform_state(n_qubits)
 psi_star = hamevo(psi)
-result = overlap(psi_star, psi)
+result = pyq.overlap(psi_star, psi)
 ```
 
 
@@ -60,9 +60,9 @@ state = pyq.random_state(n_qubits)
 theta = torch.rand(1, requires_grad=True)
 
 def _fwd(phi: torch.Tensor) -> torch.Tensor:
-    return circ(state, {"theta": torch.rand()})
+    return circ(state, {"theta": theta})
 
-assert torch.autograd.gradcheck(_fwd, phi)
+assert torch.autograd.gradcheck(_fwd, theta)
 ```
 
 ## Fitting a function
@@ -103,19 +103,16 @@ class QNN(pyq.QuantumCircuit):
     def __init__(self, n_qubits, n_layers):
         super().__init__(n_qubits, [])
         self.n_qubits = n_qubits
-        self.hea0 = HEA(n_qubits, n_layers, 'theta')
-        self.embedding = pyq.QuantumCircuit(n_qubits, [pyq.RX(i, f'phi') for i in range(n_qubits)])
-        self.hea1 = HEA(n_qubits, n_layers, 'epsilon')
+        self.feature_map = pyq.QuantumCircuit(n_qubits, [pyq.RX(i, f'phi') for i in range(n_qubits)])
+        self.hea = HEA(n_qubits, n_layers, 'theta')
         self.observable = pyq.Z(0)
-        self.param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea0.operations if isinstance(op, Parametric)})
-        self.param_dict.update({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea1.operations if isinstance(op, Parametric)})
+        self.param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea.operations if isinstance(op, Parametric)})
     def forward(self, phi: torch.Tensor):
         batch_size = len(phi)
-        state = self.hea0.init_state(batch_size)
-        state = self.hea0(state, self.param_dict)
-        state = self.embedding(state, {'phi': phi})
-        state = self.hea1(state, self.param_dict)
-        new_state = self.observable(state)
+        state = self.hea.init_state(batch_size)
+        state = self.feature_map(state, {'phi': phi})
+        state = self.hea(state, self.param_dict)
+        new_state = self.observable(state, self.param_dict)
         return pyq.overlap(state, new_state)
 
 n_qubits = 5
