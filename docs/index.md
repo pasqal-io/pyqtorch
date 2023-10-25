@@ -153,7 +153,6 @@ for epoch in range(epochs):
     loss = F.mse_loss(y, y_pred)
     loss.backward()
     optimizer.step()
-    print(f"Epoch {epoch+1:03d} | Loss {loss}")
 
 
 with torch.no_grad():
