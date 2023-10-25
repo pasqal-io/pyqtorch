@@ -4,11 +4,9 @@ repo_name: "pyqtorch"
 
 nav:
 
-  - Setup : index.md
-  - Contribute:
-      - How to Contribute: CONTRIBUTING.md
-      - Code of Conduct: CODE_OF_CONDUCT.md
-  - In a nutshell: getting_started.md
+  - pyqtorch : getting_started.md
+  - How to Contribute: CONTRIBUTING.md
+  - Code of Conduct: CODE_OF_CONDUCT.md
 
 theme:
   name: material

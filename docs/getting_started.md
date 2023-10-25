@@ -1,6 +1,19 @@
-# pyqtorch in a nutshell
+# Welcome to pyqtorch
+
+**pyqtorch** is a [PyTorch](https://pytorch.org/)-based state vector simulator designed for quantum machine learning.
+
+## Setup
+
+To install `pyqtorch` , you can go into any virtual environment of your
+choice and install it normally with `pip`:
+
+```
+pip install pyqtorch
+```
 
 ## Digital
+
+`pyqtorch` offers both primitive and parametric single to n-qubit, digital quantum gates.
 
 ```python exec="on" source="material-block"
 import torch
@@ -25,6 +38,8 @@ crx(state,values)
 
 ## Analog
 
+`pyqtorch`s analog module also offers global state evolution through the `HamiltonianEvolution` class.
+
 ```python exec="on" source="material-block" html="1"
 import torch
 import pyqtorch as pyq
@@ -43,6 +58,8 @@ result = pyq.overlap(psi_star, psi)
 
 
 ## QuantumCircuit
+
+Digital gates can be wrapped in a `QuantumCircuit`, which are fully differentiable.
 
 ```python exec="on" source="material-block"
 import torch
