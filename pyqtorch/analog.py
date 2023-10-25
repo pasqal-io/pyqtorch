@@ -11,26 +11,14 @@ BATCH_DIM = 2
 class HamiltonianEvolution(torch.nn.Module):
     def __init__(
         self,
-        hamiltonian: Operator,
-        time_evolution: torch.Tensor,
         qubit_support: list[int],
         n_qubits: int = None,
     ):
         super().__init__()
         self.qubit_support: list[int] = qubit_support
-        self.time_evolution: torch.Tensor = time_evolution
-        self.hamiltonian: Operator = hamiltonian
-
         if n_qubits is None:
             n_qubits = len(qubit_support)
         self.n_qubits: int = n_qubits
-        if len(self.hamiltonian.size()) < 3:
-            self.hamiltonian = self.hamiltonian.unsqueeze(2)
-        self.batch_size = max(self.hamiltonian.size()[2], len(self.time_evolution))
-        diag_check = torch.tensor(
-            [is_diag(self.hamiltonian[..., i]) for i in range(self.hamiltonian.size()[BATCH_DIM])]
-        )
-        batch_is_diag = bool(torch.prod(diag_check))
 
         def _diag_operator(hamiltonian: Operator, time_evolution: torch.Tensor) -> Operator:
             evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view((-1, 1))
@@ -44,12 +32,29 @@ class HamiltonianEvolution(torch.nn.Module):
             evol_operator = torch.linalg.matrix_exp(evol_operator)
             return torch.transpose(evol_operator, 0, -1)
 
-        self._evolve_operator = _diag_operator if batch_is_diag else _matrixexp_operator
+        self._evolve_diag_operator = _diag_operator
+        self._evolve_matrixexp_operator = _matrixexp_operator
 
-    def forward(self, state: State) -> State:
+    def forward(
+        self,
+        state: State,
+        hamiltonian: Operator,
+        time_evolution: torch.Tensor,
+    ) -> State:
+        if len(hamiltonian.size()) < 3:
+            hamiltonian = hamiltonian.unsqueeze(2)
+        self.batch_size = max(hamiltonian.size()[2], len(time_evolution))
+        diag_check = torch.tensor(
+            [is_diag(hamiltonian[..., i]) for i in range(hamiltonian.size()[BATCH_DIM])]
+        )
+        evolve_operator = (
+            self._evolve_diag_operator
+            if bool(torch.prod(diag_check))
+            else self._evolve_matrixexp_operator
+        )
         return _apply_einsum(
             state,
-            self._evolve_operator(self.hamiltonian, self.time_evolution),
+            evolve_operator(hamiltonian, time_evolution),
             self.qubit_support,
             self.n_qubits,
             self.batch_size,
