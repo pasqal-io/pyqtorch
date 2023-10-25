@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from math import log2
 from typing import Callable
 
@@ -7,7 +8,9 @@ import pytest
 import torch
 
 import pyqtorch as pyq
+from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import IMAT, ZMAT
+from pyqtorch.parametric import Parametric
 from pyqtorch.utils import product_state
 
 state_000 = product_state("000")
@@ -152,7 +155,7 @@ def test_parametric_phase_hamevo(
     H = (ZMAT - IMAT) / 2
     hamevo = pyq.HamiltonianEvolution(qubit_support=[target], n_qubits=n_qubits)
     phase = pyq.PHASE(target, "phi")
-    assert torch.allclose(phase(state, {"phi": phi}), hamevo(state, H, phi))
+    assert torch.allclose(phase(state, {"phi": phi}), hamevo(H, phi, state))
 
 
 @pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
@@ -165,3 +168,38 @@ def test_parametrized_phase_gate(state_fn: Callable, batch_size: int, n_qubits: 
     phase = pyq.PHASE(target, "phi")
     constant_phase = pyq.S(target)
     assert torch.allclose(phase(state, {"phi": phi}), constant_phase(state, None))
+
+
+def test_dagger_single_qubit() -> None:
+    for cls in [pyq.X, pyq.Y, pyq.Z, pyq.S, pyq.H, pyq.T, pyq.RX, pyq.RY, pyq.RZ, pyq.PHASE]:
+        n_qubits = torch.randint(low=1, high=4, size=(1,)).item()
+        target = random.choice([i for i in range(n_qubits)])
+        state = pyq.random_state(n_qubits)
+        if issubclass(cls, Parametric):
+            op = cls(target, "theta")  # type: ignore[arg-type]
+        else:
+            op = cls(target)  # type: ignore[misc]
+        values = {"theta": torch.rand(1)}
+        new_state = apply_operator(state, op.unitary(values), [target])
+        daggered_back = apply_operator(new_state, op.dagger(values), [target])
+        assert torch.allclose(daggered_back, state)
+
+
+def test_dagger_nqubit() -> None:
+    for cls in [pyq.SWAP, pyq.CNOT, pyq.CY, pyq.CZ, pyq.CRX, pyq.CRY, pyq.CRZ, pyq.CPHASE]:
+        n_qubits = torch.randint(low=3, high=8, size=(1,)).item()
+        target = random.choice([i for i in range(n_qubits - 2)])
+        state = pyq.random_state(n_qubits)
+        if isinstance(cls, (pyq.CSWAP, pyq.Toffoli)):
+            op = cls([target - 2, target - 1], target)
+            qubit_support = [target + 2, target + 1, target]
+        elif issubclass(cls, Parametric):
+            op = cls(target - 1, target, "theta")  # type: ignore[arg-type]
+            qubit_support = [target + 1, target]
+        else:
+            op = cls(target - 1, target)  # type: ignore[misc]
+            qubit_support = [target + 1, target]
+        values = {"theta": torch.rand(1)}
+        new_state = apply_operator(state, op.unitary(values), qubit_support)
+        daggered_back = apply_operator(new_state, op.dagger(values), qubit_support)
+        assert torch.allclose(daggered_back, state)
