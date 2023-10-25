@@ -31,10 +31,7 @@ from .primitive import (
     Z,
 )
 from .utils import (
-    flatten_wf,
-    invert_endianness,
     is_normalized,
-    normalize,
     overlap,
     random_state,
     uniform_state,

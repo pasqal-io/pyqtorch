@@ -44,6 +44,7 @@ features = [
 
 [tool.hatch.envs.tests.scripts]
 test = "pytest -n auto {args} && hatch -e docs run mkdocs build --clean --strict"
+test-cov = "pytest -n auto --cov=pyqtorch tests/"
 
 [tool.hatch.envs.docs]
 dependencies = [

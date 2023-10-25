@@ -4,7 +4,6 @@ from enum import Enum
 from typing import Sequence
 
 import torch
-from numpy import log2
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
 
@@ -49,10 +48,6 @@ class DiffMode(StrEnum):
     ADJOINT = "adjoint"
 
 
-def normalize(wf: torch.Tensor) -> torch.Tensor:
-    return wf / torch.sqrt((wf.abs() ** 2).sum())
-
-
 def is_normalized(state: torch.Tensor, atol: float = 1e-14) -> bool:
     n_qubits = len(state.size()) - 1
     batch_size = state.size()[-1]
@@ -67,13 +62,6 @@ def is_diag(H: torch.Tensor) -> bool:
     Returns True if Hamiltonian H is diagonal.
     """
     return len(torch.abs(torch.triu(H, diagonal=1)).to_sparse().coalesce().values()) == 0
-
-
-def is_real(H: torch.Tensor) -> bool:
-    """
-    Returns True if Hamiltonian H is real.
-    """
-    return len(torch.imag(H).to_sparse().coalesce().values()) == 0
 
 
 def product_state(
@@ -111,29 +99,20 @@ def random_state(
     device: str | torch.device = "cpu",
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
+    def _normalize(wf: torch.Tensor) -> torch.Tensor:
+        return wf / torch.sqrt((wf.abs() ** 2).sum())
+
     def _rand(n_qubits: int) -> torch.Tensor:
         N = 2**n_qubits
         x = -torch.log(torch.rand(N))
         sumx = torch.sum(x)
         phases = torch.rand(N) * 2.0 * torch.pi
-        return normalize(
+        return _normalize(
             (torch.sqrt(x / sumx) * torch.exp(1j * phases)).reshape(N, 1).type(dtype).to(device)
         )
 
     _state = torch.concat(tuple(_rand(n_qubits) for _ in range(batch_size)), dim=1)
     return _state.reshape([2] * n_qubits + [batch_size])
-
-
-def flatten_wf(wf: torch.Tensor) -> torch.Tensor:
-    return torch.flatten(wf, start_dim=0, end_dim=-2).t()
-
-
-def invert_endianness(wf: torch.Tensor) -> torch.Tensor:
-    wf = flatten_wf(wf)
-    n_qubits = int(log2(wf.shape[1]))
-    ls = list(range(2**n_qubits))
-    permute_ind = torch.tensor([int(f"{num:0{n_qubits}b}"[::-1], 2) for num in ls])
-    return wf[:, permute_ind]
 
 
 def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str, torch.Tensor]:

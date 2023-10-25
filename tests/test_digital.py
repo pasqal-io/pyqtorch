@@ -29,10 +29,10 @@ def test_identity() -> None:
     assert torch.allclose(product_state("1"), pyq.I(1)(product_state("1")))
 
 
-@pytest.mark.xfail
 def test_N() -> None:
-    assert torch.allclose(product_state("0"), pyq.N(0)(product_state("0"), None))
-    assert torch.allclose(product_state("0"), pyq.N(0)(product_state("1"), None))
+    null_state = torch.zeros_like(pyq.zero_state(1))
+    assert torch.allclose(null_state, pyq.N(0)(product_state("0"), None))
+    assert torch.allclose(product_state("1"), pyq.N(0)(product_state("1"), None))
 
 
 def test_CNOT_state00_controlqubit_0() -> None:
