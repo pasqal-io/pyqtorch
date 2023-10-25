@@ -139,11 +139,6 @@ model = QNN(n_qubits, n_layers)
 with torch.no_grad():
     y_init = model(x)
 
-plt.plot(x.numpy(), y.numpy(), label="truth")
-plt.plot(x.numpy(), y_init.numpy(), label="initial")
-plt.legend()
-plt.show()
-
 optimizer = torch.optim.Adam(model.parameters(), lr=.01)
 epochs = 200
 
@@ -162,5 +157,6 @@ plt.plot(x.numpy(), y.numpy(), label="truth")
 plt.plot(x.numpy(), y_init.numpy(), label="initial")
 plt.plot(x.numpy(), y_final.numpy(), "--", label="final", linewidth=3)
 plt.legend()
-plt.show()
+from docs import docsutils # markdown-exec: hide
+print(docsutils.fig_to_html(plt.gcf())) # markdown-exec: hide
 ```

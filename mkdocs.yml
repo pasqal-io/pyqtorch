@@ -4,7 +4,7 @@ repo_name: "pyqtorch"
 
 nav:
 
-  - pyqtorch : index.md
+  - Pyqtorch in a Nutshell: index.md
   - How to Contribute: CONTRIBUTING.md
   - Code of Conduct: CODE_OF_CONDUCT.md
 
