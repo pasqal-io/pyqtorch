@@ -34,13 +34,6 @@ class StrEnum(str, Enum):
         return list(map(lambda c: c.value, cls))  # type: ignore
 
 
-class ApplyFn(StrEnum):
-    """Which torch function to use to contract an operator over a state."""
-
-    VMAP = "vmap"
-    EINSUM = "einsum"
-
-
 class DiffMode(StrEnum):
     """Which Differentiation engine to use."""
 
@@ -90,7 +83,7 @@ def uniform_state(
     state = torch.ones((2**n_qubits, batch_size), dtype=dtype, device=device)
     state = state / torch.sqrt(torch.tensor(2**n_qubits))
     state = state.reshape([2] * n_qubits + [batch_size])
-    return state
+    return state.to(device=device)
 
 
 def random_state(
@@ -112,7 +105,7 @@ def random_state(
         )
 
     _state = torch.concat(tuple(_rand(n_qubits) for _ in range(batch_size)), dim=1)
-    return _state.reshape([2] * n_qubits + [batch_size])
+    return _state.reshape([2] * n_qubits + [batch_size]).to(device=device)
 
 
 def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str, torch.Tensor]:

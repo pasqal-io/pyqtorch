@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import torch
 
-torch.set_default_dtype(torch.float64)
-
 DEFAULT_MATRIX_DTYPE = torch.cdouble
 
 IMAT = torch.eye(2, dtype=DEFAULT_MATRIX_DTYPE)

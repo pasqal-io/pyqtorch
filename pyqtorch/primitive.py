@@ -5,7 +5,7 @@ from math import log2
 import torch
 
 from pyqtorch.abstract import AbstractOperator
-from pyqtorch.apply import _apply_einsum
+from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import OPERATIONS_DICT, _dagger, make_controlled
 from pyqtorch.utils import Operator, State
 
@@ -16,13 +16,14 @@ class Primitive(AbstractOperator):
         self.register_buffer("pauli", pauli)
         self.qubit_support = [self.target]
         self.n_qubits = len(self.qubit_support)
-        self.apply_fn = _apply_einsum
 
     def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
         return self.pauli.unsqueeze(2)
 
     def forward(self, state: State, values: dict[str, torch.Tensor]) -> State:
-        return self.apply_fn(state, self.unitary(values), self.qubit_support, len(state.size()) - 1)
+        return apply_operator(
+            state, self.unitary(values), self.qubit_support, len(state.size()) - 1
+        )
 
     def dagger(self, values: dict[str, torch.Tensor]) -> Operator:
         return _dagger(self.unitary(values))

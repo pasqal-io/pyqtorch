@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from pyqtorch.apply import _apply_einsum
+from pyqtorch.apply import apply_operator
 from pyqtorch.utils import Operator, State, is_diag
 
 BATCH_DIM = 2
@@ -52,7 +52,7 @@ class HamiltonianEvolution(torch.nn.Module):
             if bool(torch.prod(diag_check))
             else self._evolve_matrixexp_operator
         )
-        return _apply_einsum(
+        return apply_operator(
             state,
             evolve_operator(hamiltonian, time_evolution),
             self.qubit_support,

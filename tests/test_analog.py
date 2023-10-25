@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-import random
 from math import isclose
 
-import numpy as np
 import pytest
 import torch
 
 import pyqtorch as pyq
-
-random.seed(0)
-np.random.seed(0)
-torch.manual_seed(0)
-torch.use_deterministic_algorithms(not torch.cuda.is_available())
-
 
 pi = torch.tensor(torch.pi, dtype=torch.cdouble)
 

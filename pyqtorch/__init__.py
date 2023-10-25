@@ -9,6 +9,8 @@
 # # limitations under the License.
 from __future__ import annotations
 
+import torch
+
 from .analog import HamiltonianEvolution
 from .apply import apply_operator
 from .circuit import QuantumCircuit
@@ -37,3 +39,5 @@ from .utils import (
     uniform_state,
     zero_state,
 )
+
+torch.set_default_dtype(torch.float64)

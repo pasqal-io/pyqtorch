@@ -6,9 +6,6 @@ import torch
 import pyqtorch as pyq
 from pyqtorch.circuit import DiffMode
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-DTYPE = torch.cdouble
-
 
 def test_adjoint_diff() -> None:
     rx = pyq.RX(0, param_name="theta_0")
@@ -66,12 +63,12 @@ def test_differentiate_circuit(diff_mode: DiffMode, batch_size: int, n_qubits: i
         pyq.RX(1, "phi"),
         pyq.CNOT(0, 1),
     ]
-    circ = pyq.QuantumCircuit(n_qubits, ops, diff_mode=diff_mode).to(device=DEVICE, dtype=DTYPE)
+    circ = pyq.QuantumCircuit(n_qubits, ops, diff_mode=diff_mode)
     state = pyq.random_state(n_qubits, batch_size)
-    phi = torch.rand(batch_size, device=DEVICE, dtype=DTYPE, requires_grad=True)
+    phi = torch.rand(batch_size, requires_grad=True)
     values = {"phi": phi}
     assert circ(state, values).size() == tuple(2 for _ in range(n_qubits)) + (batch_size,)
-    state = pyq.random_state(n_qubits, batch_size=batch_size, device=DEVICE, dtype=DTYPE)
+    state = pyq.random_state(n_qubits, batch_size=batch_size)
 
     def _fwd(phi: torch.Tensor) -> torch.Tensor:
         return circ(state, {"phi": phi})

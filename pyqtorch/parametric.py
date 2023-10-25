@@ -4,7 +4,6 @@ from math import log2
 
 import torch
 
-from pyqtorch.apply import DEFAULT_APPLY_FN
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
@@ -27,7 +26,6 @@ class Parametric(Primitive):
     ):
         super().__init__(OPERATIONS_DICT[gate], target)
         self.register_buffer("identity", OPERATIONS_DICT["I"])
-        self.apply_fn = DEFAULT_APPLY_FN
         self.param_name = param_name
 
     def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
