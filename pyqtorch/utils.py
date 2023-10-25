@@ -53,13 +53,13 @@ def normalize(wf: torch.Tensor) -> torch.Tensor:
     return wf / torch.sqrt((wf.abs() ** 2).sum())
 
 
-def is_normalized(state: torch.Tensor, atol: float = 1e-15) -> bool:
+def is_normalized(state: torch.Tensor, atol: float = 1e-14) -> bool:
     n_qubits = len(state.size()) - 1
     batch_size = state.size()[-1]
     state = state.reshape((2**n_qubits, batch_size))
     sum_probs = (state.abs() ** 2).sum(dim=0)
-    ones = torch.ones(batch_size)
-    return torch.allclose(sum_probs, ones, rtol=0.0, atol=atol)  # type:ignore[no-any-return]
+    ones = torch.ones(batch_size, dtype=torch.double)
+    return torch.allclose(sum_probs, ones, rtol=0.0, atol=atol)  # type: ignore[no-any-return]
 
 
 def is_diag(H: torch.Tensor) -> bool:

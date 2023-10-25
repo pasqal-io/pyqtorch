@@ -44,18 +44,29 @@ crx(state,values)
 import torch
 import pyqtorch as pyq
 
-
 n_qubits = 4
-sigmaz = torch.diag(torch.tensor([1.0, -1.0], dtype=torch.cdouble))
-Hbase = torch.kron(sigmaz, sigmaz)
-hamiltonian = torch.kron(Hbase, Hbase)
-t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
-hamiltonian_evolution = pyq.HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
-psi = pyq.uniform_state(n_qubits)
-psi_star = hamiltonian_evolution(hamiltonian=hamiltonian, time_evolution=t_evo, state= psi)
-result = pyq.overlap(psi_star, psi)
-```
 
+# Random hermitian hamiltonian
+matrix = torch.rand(2**n_qubits, 2**n_qubits, dtype=torch.cdouble)
+hermitian_matrix = matrix + matrix.T.conj()
+
+# To be evolved for a batch of times
+t_list = torch.tensor([0.0, 0.5, 1.0, 2.0], dtype=torch.cdouble)
+
+hamiltonian_evolution = pyq.HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
+
+# Starting from a uniform state
+psi_start = pyq.uniform_state(n_qubits)
+
+# Returns an evolved state at each time value
+psi_end = hamiltonian_evolution(
+    hamiltonian=hermitian_matrix,
+    time_evolution=t_list,
+    state = psi_start
+    )
+
+assert pyq.is_normalized(psi_end, atol = 1e-12)
+```
 
 ## QuantumCircuit
 
