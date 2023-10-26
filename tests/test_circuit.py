@@ -55,22 +55,26 @@ def test_adjoint_diff() -> None:
 
 @pytest.mark.parametrize("diff_mode", [DiffMode.AD, DiffMode.ADJOINT])
 @pytest.mark.parametrize("batch_size", [1, 5])
-@pytest.mark.parametrize("n_qubits", [2, 4])
+@pytest.mark.parametrize("n_qubits", [3, 4])
 def test_differentiate_circuit(diff_mode: DiffMode, batch_size: int, n_qubits: int) -> None:
     ops = [
-        pyq.X(0),
-        pyq.X(1),
-        pyq.RX(1, "phi"),
+        pyq.RX(0, "phi"),
+        pyq.PHASE(0, "theta"),
+        pyq.CSWAP([0, 1], 2),
+        pyq.CPHASE(1, 2, "epsilon"),
         pyq.CNOT(0, 1),
+        pyq.Toffoli([0, 1], 2),
     ]
     circ = pyq.QuantumCircuit(n_qubits, ops, diff_mode=diff_mode)
     state = pyq.random_state(n_qubits, batch_size)
     phi = torch.rand(batch_size, requires_grad=True)
-    values = {"phi": phi}
+    theta = torch.rand(batch_size, requires_grad=True)
+    epsilon = torch.rand(batch_size, requires_grad=True)
+    values = {"phi": phi, "theta": theta, "epsilon": epsilon}
     assert circ(state, values).size() == tuple(2 for _ in range(n_qubits)) + (batch_size,)
     state = pyq.random_state(n_qubits, batch_size=batch_size)
 
-    def _fwd(phi: torch.Tensor) -> torch.Tensor:
-        return circ(state, {"phi": phi})
+    def _fwd(phi: torch.Tensor, theta: torch.Tensor, epsilon: torch.Tensor) -> torch.Tensor:
+        return circ(state, {"phi": phi, "theta": theta, "epsilon": epsilon})
 
-    assert torch.autograd.gradcheck(_fwd, phi)
+    assert torch.autograd.gradcheck(_fwd, (phi, theta, epsilon))
