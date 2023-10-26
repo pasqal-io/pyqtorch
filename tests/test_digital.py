@@ -175,14 +175,15 @@ def test_dagger_single_qubit() -> None:
         n_qubits = torch.randint(low=1, high=4, size=(1,)).item()
         target = random.choice([i for i in range(n_qubits)])
         state = pyq.random_state(n_qubits)
-        if issubclass(cls, Parametric):
-            op = cls(target, "theta")  # type: ignore[arg-type]
-        else:
-            op = cls(target)  # type: ignore[misc]
-        values = {"theta": torch.rand(1)}
-        new_state = apply_operator(state, op.unitary(values), [target])
-        daggered_back = apply_operator(new_state, op.dagger(values), [target])
-        assert torch.allclose(daggered_back, state)
+        for param_name in ["theta", ""]:
+            if issubclass(cls, Parametric):
+                op = cls(target, param_name)  # type: ignore[arg-type]
+            else:
+                op = cls(target)  # type: ignore[misc]
+            values = {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
+            new_state = apply_operator(state, op.unitary(values), [target])
+            daggered_back = apply_operator(new_state, op.dagger(values), [target])
+            assert torch.allclose(daggered_back, state)
 
 
 def test_dagger_nqubit() -> None:
@@ -190,19 +191,20 @@ def test_dagger_nqubit() -> None:
         n_qubits = torch.randint(low=3, high=8, size=(1,)).item()
         target = random.choice([i for i in range(n_qubits - 2)])
         state = pyq.random_state(n_qubits)
-        if isinstance(cls, (pyq.CSWAP, pyq.Toffoli)):
-            op = cls([target - 2, target - 1], target)
-            qubit_support = [target + 2, target + 1, target]
-        elif issubclass(cls, Parametric):
-            op = cls(target - 1, target, "theta")  # type: ignore[arg-type]
-            qubit_support = [target + 1, target]
-        else:
-            op = cls(target - 1, target)  # type: ignore[misc]
-            qubit_support = [target + 1, target]
-        values = {"theta": torch.rand(1)}
-        new_state = apply_operator(state, op.unitary(values), qubit_support)
-        daggered_back = apply_operator(new_state, op.dagger(values), qubit_support)
-        assert torch.allclose(daggered_back, state)
+        for param_name in ["theta", ""]:
+            if isinstance(cls, (pyq.CSWAP, pyq.Toffoli)):
+                op = cls([target - 2, target - 1], target)
+                qubit_support = [target + 2, target + 1, target]
+            elif issubclass(cls, Parametric):
+                op = cls(target - 1, target, param_name)  # type: ignore[arg-type]
+                qubit_support = [target + 1, target]
+            else:
+                op = cls(target - 1, target)  # type: ignore[misc]
+                qubit_support = [target + 1, target]
+            values = {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
+            new_state = apply_operator(state, op.unitary(values), qubit_support)
+            daggered_back = apply_operator(new_state, op.dagger(values), qubit_support)
+            assert torch.allclose(daggered_back, state)
 
 
 def test_U() -> None:

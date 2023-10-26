@@ -70,12 +70,12 @@ class RY(Parametric):
 
 
 class RZ(Parametric):
-    def __init__(self, target: int, param_name: str):
+    def __init__(self, target: int, param_name: str = ""):
         super().__init__("Z", target, param_name)
 
 
 class PHASE(Parametric):
-    def __init__(self, target: int, param_name: str):
+    def __init__(self, target: int, param_name: str = ""):
         super().__init__("I", target, param_name)
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
@@ -136,7 +136,7 @@ class CRX(ControlledRotationGate):
         self,
         control: int | list[int],
         target: int,
-        param_name: str,
+        param_name: str = "",
     ):
         super().__init__("X", control, target, param_name)
 
@@ -168,7 +168,7 @@ class CPHASE(ControlledRotationGate):
         self,
         control: int | list[int],
         target: int,
-        param_name: str,
+        param_name: str = "",
     ):
         super().__init__("S", control, target, param_name)
         self.phase = PHASE(target, param_name)
