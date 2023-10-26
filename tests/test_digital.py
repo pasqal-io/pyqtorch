@@ -208,8 +208,9 @@ def test_dagger_nqubit() -> None:
 def test_U() -> None:
     n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
-    u = pyq.U(target, "phi", "theta", "omega")
-    values = {param: torch.rand(1) for param in ["phi", "theta", "omega"]}
+    params = ["phi", "theta", "omega"]
+    u = pyq.U(target, *params)
+    values = {param: torch.rand(1) for param in params}
     state = pyq.random_state(n_qubits)
     assert torch.allclose(
         u(state, values), pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values)
