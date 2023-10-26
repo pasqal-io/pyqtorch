@@ -35,7 +35,7 @@ def apply_operator(
     in_state_dims = ABC_ARRAY[0:n_state_dims].copy()
     # Assign letters to each dimension operator, note that we cant reuse the letters
     # we used for the state, hence we use letters starting from n_state_dims.
-    # The opeator's last dimension also denotes the batch_size.
+    # The operator's last dimension also denotes the batch_size.
     operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + 2 * n_support + 1].copy()
     # Name the dimensions in the operator tensor the same as the
     # target qubit(s) we want to contract over in the input tensor.

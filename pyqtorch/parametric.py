@@ -7,9 +7,9 @@ import torch
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
+    _controlled,
     _jacobian,
     _unitary,
-    make_controlled,
 )
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import Operator
@@ -104,7 +104,7 @@ class ControlledRotationGate(Parametric):
         thetas = values[self.param_name]
         batch_size = len(thetas)
         mat = _unitary(thetas, self.pauli, self.identity, batch_size)
-        return make_controlled(mat, batch_size, len(self.control) - (int)(log2(mat.shape[0])) + 1)
+        return _controlled(mat, batch_size, len(self.control) - (int)(log2(mat.shape[0])) + 1)
 
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = values[self.param_name]
@@ -167,7 +167,7 @@ class CPHASE(ControlledRotationGate):
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = values[self.phase.param_name]
         batch_size = len(thetas)
-        return make_controlled(self.phase.unitary(values), batch_size, len(self.control))
+        return _controlled(self.phase.unitary(values), batch_size, len(self.control))
 
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = values[self.param_name]

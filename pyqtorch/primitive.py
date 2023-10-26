@@ -6,7 +6,7 @@ import torch
 
 from pyqtorch.abstract import AbstractOperator
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import OPERATIONS_DICT, _dagger, make_controlled
+from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
 from pyqtorch.utils import Operator, State
 
 
@@ -97,7 +97,7 @@ class ControlledOperationGate(Primitive):
     def __init__(self, gate: str, control: int | list[int], target: int):
         self.control: list[int] = [control] if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
-        mat = make_controlled(
+        mat = _controlled(
             unitary=mat.unsqueeze(2),
             batch_size=1,
             n_control_qubits=len(self.control) - (int)(log2(mat.shape[0])) + 1,

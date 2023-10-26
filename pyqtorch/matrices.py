@@ -92,9 +92,7 @@ def _jacobian(
     return -1 / 2 * (sin_t * batch_imat + 1j * cos_t * batch_operation_mat)
 
 
-def make_controlled(
-    unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 1
-) -> torch.Tensor:
+def _controlled(unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 1) -> torch.Tensor:
     """Transform a 2x2 unitary into a controlled unitary.
 
     Args:
