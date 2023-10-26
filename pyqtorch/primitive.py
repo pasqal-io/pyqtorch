@@ -17,15 +17,15 @@ class Primitive(AbstractOperator):
         self.qubit_support = [self.target]
         self.n_qubits = len(self.qubit_support)
 
-    def unitary(self, values: dict[str, torch.Tensor]) -> Operator:
+    def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         return self.pauli.unsqueeze(2)
 
-    def forward(self, state: State, values: dict[str, torch.Tensor]) -> State:
+    def forward(self, state: State, values: dict[str, torch.Tensor] = {}) -> State:
         return apply_operator(
             state, self.unitary(values), self.qubit_support, len(state.size()) - 1
         )
 
-    def dagger(self, values: dict[str, torch.Tensor]) -> Operator:
+    def dagger(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         return _dagger(self.unitary(values))
 
 

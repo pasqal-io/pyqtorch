@@ -23,8 +23,10 @@ def apply_operator(
     if batch_size is None:
         batch_size = state.size(-1)
     n_support = len(qubits)
-    n_state_dims = n_qubits + 1  # We have an additional batch dim.
-    # View the operator tensor in the pyq shape, where each qubit represents one dimension.
+    # Define a variable to store the dimensions of the input state.
+    # Note that the last dimension denotes the batch size.
+    n_state_dims = n_qubits + 1
+    # View the operator tensor in the pyq shape, [2,2,1] in the case of a single qubit gate.
     operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
     # Assign letters to each dimension of the input state,
     #  i.e., dim 0: 'a', dim 1: 'b' etc.
@@ -32,25 +34,31 @@ def apply_operator(
     # Hence the n_state_dims'th letter stands for the batch dim.
     in_state_dims = ABC_ARRAY[0:n_state_dims].copy()
     # Assign letters to each dimension operator, note that we cant reuse the letters
-    # we used for the state, hence we start indexing from n_state_dims.
-    # Note that we need n_support + 1 letters for the operator since it also has a batch dim.
-    op_dims = ABC_ARRAY[n_state_dims : n_state_dims + 2 * n_support + 1].copy()
+    # we used for the state, hence we use letters starting from n_state_dims.
+    # The opeator's last dimension also denotes the batch_size.
+    operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + 2 * n_support + 1].copy()
     # Name the dimensions in the operator tensor the same as the
     # target qubit(s) we want to contract over in the input tensor.
-    op_dims[n_support : 2 * n_support] = in_state_dims[qubits]
+    operator_dims[n_support : 2 * n_support] = in_state_dims[qubits]
     # Both operator and state have batch dimensions so we give them the same name.
-    op_dims[-1] = in_state_dims[-1]
+    operator_dims[-1] = in_state_dims[-1]
     # Finally, the dimensions for the new state after the operator application are created.
-    # Example: state= pyq.zero_state(2) will have shape : [2,2,1]
-    # Its dimension in the einsum expression will receive the symbols: "abc" (c for the batch_dim)
-    # If we apply: cnot= pyq.CNOT(0,1), its tensor will have shape: [2, 2, 2, 2, 1] after viewing.
-    # We get 'deabc' for the operator and 'dec' for the output state.
-    # resulting in 'deabc,abc->dec', which results in a contraction of
-    # the operator dim 0 (denoted as d) over dim 0 of the state (denoted as a)
-    # and contraction of dim 1 of the operator (e) over dim 1 of the state (b).
     out_state_dims = in_state_dims.copy()
-    out_state_dims[qubits] = op_dims[0:n_support]
-    op_dims, in_state_dims, out_state_dims = list(
-        map(lambda e: "".join(list(e)), [op_dims, in_state_dims, out_state_dims])
+    out_state_dims[qubits] = operator_dims[0:n_support]
+    operator_dims, in_state_dims, out_state_dims = list(
+        map(lambda e: "".join(list(e)), [operator_dims, in_state_dims, out_state_dims])
     )
-    return einsum(f"{op_dims},{in_state_dims}->{out_state_dims}", operator, state)
+    # Example:
+    # We apply a CNOT to a 2 qubit state.
+    # The state will have shape : [2,2,1]
+    # Its dimension in the einsum expression will receive the symbols:
+    # "abc" (c for the batch_dim)
+    # If we apply: cnot= pyq.CNOT(0,1), a 4x4x1 matrix, its tensor will have shape:
+    # [2, 2, 2, 2, 1] after viewing.
+    # We get 'deabc' for the operator.
+    # The out_state will hence have dimensions 'dec',
+    # resulting in the einsum equation: 'deabc,abc->dec'.
+    # This instructs einsum to perform a contraction of the operator dim 0 (denoted as d)
+    # over dim 0 of the state (denoted as a) and contraction
+    #  of dim 1 of the operator (e) over dim 1 of the state (b).
+    return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)

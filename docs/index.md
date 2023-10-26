@@ -14,6 +14,7 @@ pip install pyqtorch
 ## Digital
 
 `pyqtorch` offers both primitive and parametric single to n-qubit, digital quantum gates.
+When using parametric gates, the gate constructor expects a `param_name` and a dictionary with a value for the parameter in the forward pass.
 
 ```python exec="on" source="material-block"
 import torch
@@ -22,15 +23,15 @@ import pyqtorch as pyq
 x = pyq.X(0)
 state = pyq.random_state(n_qubits=2)
 
-x(state, None)
+x(state)
 
 rx = pyq.RX(0, 'theta')
 theta = torch.rand(1)
 values = {'theta':theta}
-rx(state, values )
+rx(state, values)
 
 cnot = pyq.CNOT(0,1)
-cnot(state,None)
+cnot(state)
 
 crx = pyq.CRX(0, 1, 'theta')
 crx(state,values)
