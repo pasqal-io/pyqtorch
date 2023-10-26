@@ -18,23 +18,23 @@ When using parametric gates, the gate constructor expects a `param_name` and a d
 
 ```python exec="on" source="material-block"
 import torch
-import pyqtorch as pyq
+from pyqtorch import X, RX, CNOT, CRX, random_state
 
-x = pyq.X(0)
-state = pyq.random_state(n_qubits=2)
+x = X(0)
+state = random_state(n_qubits=2)
 
-x(state)
+new_state = x(state)
 
-rx = pyq.RX(0, 'theta')
+rx = RX(0, 'theta')
 theta = torch.rand(1)
 values = {'theta':theta}
-rx(state, values)
+new_state = rx(state, values)
 
-cnot = pyq.CNOT(0,1)
-cnot(state)
+cnot = CNOT(0,1)
+new_state= cnot(state)
 
-crx = pyq.CRX(0, 1, 'theta')
-crx(state,values)
+crx = CRX(0, 1, 'theta')
+new_state = crx(state,values)
 ```
 
 ## Analog
@@ -43,7 +43,7 @@ crx(state,values)
 
 ```python exec="on" source="material-block" html="1"
 import torch
-import pyqtorch as pyq
+from pyqtorch import uniform_state, HamiltonianEvolution, is_normalized
 
 n_qubits = 4
 
@@ -54,19 +54,18 @@ hermitian_matrix = matrix + matrix.T.conj()
 # To be evolved for a batch of times
 t_list = torch.tensor([0.0, 0.5, 1.0, 2.0], dtype=torch.cdouble)
 
-hamiltonian_evolution = pyq.HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
+hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
 
 # Starting from a uniform state
-psi_start = pyq.uniform_state(n_qubits)
+psi_start = uniform_state(n_qubits)
 
 # Returns an evolved state at each time value
 psi_end = hamiltonian_evolution(
     hamiltonian=hermitian_matrix,
     time_evolution=t_list,
-    state = psi_start
-    )
+    state = psi_start)
 
-assert pyq.is_normalized(psi_end, atol = 1e-12)
+assert is_normalized(psi_end, atol = 1e-12)
 ```
 
 ## QuantumCircuit
