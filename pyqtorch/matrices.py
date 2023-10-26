@@ -54,9 +54,6 @@ OPERATIONS_DICT = {
 def _unitary(
     theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
 ) -> torch.Tensor:
-    """
-    Generate a unitary parametrized by theta for a pauli operation P.
-    """
     cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
     cos_t = cos_t.repeat((2, 2, 1))
     sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
@@ -69,7 +66,6 @@ def _unitary(
 
 
 def _dagger(matrices: torch.Tensor) -> torch.Tensor:  # noqa: E741
-    """Perform the dagger operation on matrices."""
     if not len(matrices.size()) == 3:
         breakpoint()
     return torch.permute(matrices.conj(), (1, 0, 2))
@@ -78,9 +74,6 @@ def _dagger(matrices: torch.Tensor) -> torch.Tensor:  # noqa: E741
 def _jacobian(
     theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
 ) -> torch.Tensor:
-    """
-    Compute the jacobian.
-    """
     cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
     cos_t = cos_t.repeat((2, 2, 1))
     sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
@@ -93,18 +86,6 @@ def _jacobian(
 
 
 def _controlled(unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 1) -> torch.Tensor:
-    """Transform a 2x2 unitary into a controlled unitary.
-
-    Args:
-
-        unitary (torch.Tensor): the matrix representing the unitary which should be performed.
-        batch_size (int): the batch size
-        n_control_qubits (int): The number of control qubits.
-
-    Returns:
-
-        torch.Tensor: the resulting controlled gate populated by operation_matrix
-    """
     _controlled: torch.Tensor = (
         torch.eye(2 ** (n_control_qubits + 1), dtype=DEFAULT_MATRIX_DTYPE)
         .unsqueeze(2)
