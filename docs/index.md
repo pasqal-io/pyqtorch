@@ -14,7 +14,7 @@ pip install pyqtorch
 ## Digital
 
 `pyqtorch` offers both primitive and parametric single to n-qubit, digital quantum gates.
-When using parametric gates, the gate constructor expects a `param_name` and a dictionary with a value for the parameter in the forward pass.
+Parametric gates, can be initialized with our without a `param_name`. In the former case, a dictionary with the `param_name` and value for the parameter is expected, otherwise a just a `torch.Tensor`.
 
 ```python exec="on" source="material-block"
 import torch
@@ -25,10 +25,12 @@ state = random_state(n_qubits=2)
 
 new_state = x(state)
 
-rx = RX(0, 'theta')
+rx_with_param = RX(0, 'theta')
+rx = RX(0)
 theta = torch.rand(1)
 values = {'theta':theta}
-new_state = rx(state, values)
+new_state = rx_with_param(state, values)
+new_state = rx(state, theta)
 
 cnot = CNOT(0,1)
 new_state= cnot(state)
@@ -94,6 +96,8 @@ assert torch.autograd.gradcheck(_fwd, theta)
 ```
 
 ## Fitting a function
+
+Let's have a look at how the `QuantumCircuit` can be used to implement a Quantum Neural Network and fit a simple function.
 
 ```python exec="on" source="material-block" html="1"
 from __future__ import annotations
