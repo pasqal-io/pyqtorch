@@ -52,7 +52,7 @@ matrix = torch.rand(2**n_qubits, 2**n_qubits, dtype=torch.cdouble)
 hermitian_matrix = matrix + matrix.T.conj()
 
 # To be evolved for a batch of times
-t_list = torch.tensor([0.0, 0.5, 1.0, 2.0], dtype=torch.cdouble)
+t_list = torch.tensor([0.0, 0.5, 1.0, 2.0])
 
 hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
 
