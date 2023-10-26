@@ -188,8 +188,10 @@ class CPHASE(ControlledRotationGate):
 class U(Parametric):
     n_params = 3
 
-    def __init__(self, target: int, param_names: list[str]):
-        self.param_names = param_names
+    def __init__(self, target: int, phi: str, theta: str, omega: str):
+        self.phi = phi
+        self.theta = theta
+        self.omega = omega
         super().__init__("X", target, param_name="")
 
         self.register_buffer(
@@ -206,10 +208,13 @@ class U(Parametric):
         )
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
-        phi = values[self.param_names[0]]
-        theta = values[self.param_names[1]]
-        omega = values[self.param_names[2]]
-        batch_size = 1
+        phi, theta, omega = list(
+            map(
+                lambda t: t.unsqueeze(0) if len(t.size()) == 0 else t,
+                [values[self.phi], values[self.theta], values[self.omega]],
+            )
+        )
+        batch_size = len(theta)
 
         t_plus = torch.exp(-1j * (phi + omega) / 2)
         t_minus = torch.exp(-1j * (phi - omega) / 2)
@@ -224,3 +229,13 @@ class U(Parametric):
 
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         raise NotImplementedError
+
+    def digital_decomposition(self) -> list[Parametric]:
+        return [
+            RZ(self.qubit_support[0], self.phi),
+            RY(self.qubit_support[0], self.theta),
+            RZ(self.qubit_support[0], self.omega),
+        ]
+
+    def jacobian_decomposed(self, values: dict[str, torch.Tensor] = {}) -> list[Operator]:
+        return [op.jacobian(values) for op in self.digital_decomposition()]

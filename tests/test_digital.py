@@ -203,3 +203,14 @@ def test_dagger_nqubit() -> None:
         new_state = apply_operator(state, op.unitary(values), qubit_support)
         daggered_back = apply_operator(new_state, op.dagger(values), qubit_support)
         assert torch.allclose(daggered_back, state)
+
+
+def test_U() -> None:
+    n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
+    target = random.choice([i for i in range(n_qubits)])
+    u = pyq.U(target, "phi", "theta", "omega")
+    values = {param: torch.rand(1) for param in ["phi", "theta", "omega"]}
+    state = pyq.random_state(n_qubits)
+    assert torch.allclose(
+        u(state, values), pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values)
+    )
