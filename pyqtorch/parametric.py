@@ -28,14 +28,25 @@ class Parametric(Primitive):
         self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
 
-    def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
-        thetas = values[self.param_name]
-        thetas = thetas.unsqueeze(0) if len(thetas.size()) == 0 else thetas
+        def parse_values(values: dict[str, torch.Tensor] | torch.Tensor = {}) -> torch.Tensor:
+            return Parametric._expand_values(values[self.param_name])
+
+        def parse_tensor(values: dict[str, torch.Tensor] | torch.Tensor = {}) -> torch.Tensor:
+            return Parametric._expand_values(values)
+
+        self.parse_values = parse_tensor if param_name == "" else parse_values
+
+    @staticmethod
+    def _expand_values(values: torch.Tensor) -> torch.Tensor:
+        return values.unsqueeze(0) if len(values.size()) == 0 else values
+
+    def unitary(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
+        thetas = self.parse_values(values)
         batch_size = len(thetas)
         return _unitary(thetas, self.pauli, self.identity, batch_size)
 
-    def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
-        thetas = values[self.param_name]
+    def jacobian(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
+        thetas = self.parse_values(values)
         batch_size = len(thetas)
         return _jacobian(thetas, self.pauli, self.identity, batch_size)
 
@@ -68,18 +79,16 @@ class PHASE(Parametric):
         super().__init__("I", target, param_name)
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
-        thetas = values[self.param_name]
-        thetas = thetas.unsqueeze(0) if len(thetas.size()) == 0 else thetas
+        thetas = self.parse_values(values)
         batch_size = len(thetas)
         batch_mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
         batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
 
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
-        thetas = values[self.param_name]
-        theta = thetas.squeeze(0) if thetas.ndim == 2 else thetas
+        thetas = self.parse_values(values)
         batch_mat = (
-            torch.zeros((2, 2), dtype=torch.complex128).unsqueeze(2).repeat(1, 1, len(theta))
+            torch.zeros((2, 2), dtype=torch.complex128).unsqueeze(2).repeat(1, 1, len(thetas))
         )
         batch_mat[1, 1, :] = 1j * torch.exp(1j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
@@ -101,13 +110,13 @@ class ControlledRotationGate(Parametric):
         self.qubit_support = self.control + [self.target]
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
-        thetas = values[self.param_name]
+        thetas = self.parse_values(values)
         batch_size = len(thetas)
         mat = _unitary(thetas, self.pauli, self.identity, batch_size)
         return _controlled(mat, batch_size, len(self.control) - (int)(log2(mat.shape[0])) + 1)
 
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
-        thetas = values[self.param_name]
+        thetas = self.parse_values(values)
         batch_size = len(thetas)
         n_control = len(self.control)
         jU = _jacobian(thetas, self.pauli, self.identity, batch_size)
@@ -165,12 +174,12 @@ class CPHASE(ControlledRotationGate):
         self.phase = PHASE(target, param_name)
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
-        thetas = values[self.phase.param_name]
+        thetas = self.parse_values(values)
         batch_size = len(thetas)
         return _controlled(self.phase.unitary(values), batch_size, len(self.control))
 
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
-        thetas = values[self.param_name]
+        thetas = self.parse_values(values)
         batch_size = len(thetas)
         n_control = len(self.control)
         jU = self.phase.jacobian(values)

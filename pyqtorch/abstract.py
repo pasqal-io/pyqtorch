@@ -40,15 +40,17 @@ class AbstractOperator(ABC, Module):
         return hash((self.target,))
 
     @abstractmethod
-    def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
+    def unitary(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
         ...
 
     @abstractmethod
-    def dagger(self, values: dict[str, torch.Tensor] = {}) -> Operator:
+    def dagger(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
         ...
 
     @abstractmethod
-    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = {}) -> State:
+    def forward(
+        self, state: torch.Tensor, values: dict[str, torch.Tensor] | torch.Tensor = {}
+    ) -> State:
         ...
 
     def extra_repr(self) -> str:

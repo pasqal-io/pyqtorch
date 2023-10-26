@@ -9,7 +9,7 @@ from pyqtorch.circuit import DiffMode
 
 def test_adjoint_diff() -> None:
     rx = pyq.RX(0, param_name="theta_0")
-    cry = pyq.CRY(0, 1, param_name="theta_1")
+    cry = pyq.CPHASE(0, 1, param_name="theta_1")
     rz = pyq.RZ(2, param_name="theta_2")
     cnot = pyq.CNOT(1, 2)
     ops = [rx, cry, rz, cnot]
@@ -63,7 +63,7 @@ def test_differentiate_circuit(diff_mode: DiffMode, batch_size: int, n_qubits: i
         pyq.CSWAP([0, 1], 2),
         pyq.CPHASE(1, 2, "epsilon"),
         pyq.CNOT(0, 1),
-        pyq.Toffoli([0, 1], 2),
+        pyq.Toffoli([2, 1], 0),
     ]
     circ = pyq.QuantumCircuit(n_qubits, ops, diff_mode=diff_mode)
     state = pyq.random_state(n_qubits, batch_size)

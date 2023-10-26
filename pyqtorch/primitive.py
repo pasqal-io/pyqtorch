@@ -16,16 +16,21 @@ class Primitive(AbstractOperator):
         self.register_buffer("pauli", pauli)
         self.qubit_support = [self.target]
         self.n_qubits = len(self.qubit_support)
+        self._param_type = None
 
-    def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
+    @property
+    def param_type(self) -> None:
+        return self._param_type
+
+    def unitary(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
         return self.pauli.unsqueeze(2)
 
-    def forward(self, state: State, values: dict[str, torch.Tensor] = {}) -> State:
+    def forward(self, state: State, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> State:
         return apply_operator(
             state, self.unitary(values), self.qubit_support, len(state.size()) - 1
         )
 
-    def dagger(self, values: dict[str, torch.Tensor] = {}) -> Operator:
+    def dagger(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
         return _dagger(self.unitary(values))
 
 
