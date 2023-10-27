@@ -20,11 +20,11 @@ class Parametric(Primitive):
 
     def __init__(
         self,
-        gate_name: str,
+        generator_name: str,
         target: int,
         param_name: str = "",
     ):
-        super().__init__(OPERATIONS_DICT[gate_name], target)
+        super().__init__(OPERATIONS_DICT[generator_name], target)
         self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
 

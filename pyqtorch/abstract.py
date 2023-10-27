@@ -54,4 +54,4 @@ class AbstractOperator(ABC, Module):
         ...
 
     def extra_repr(self) -> str:
-        return f"qubits={self.target}"
+        return f"qubit_support={self.qubit_support}"

@@ -85,7 +85,7 @@ class N(Primitive):
 class SWAP(Primitive):
     def __init__(self, control: int, target: int):
         super().__init__(OPERATIONS_DICT["SWAP"], target)
-        self.control = [control]
+        self.control = [control] if isinstance(control, int) else control
         self.qubit_support = self.control + [target]
         self.n_qubits = len(self.qubit_support)
 
