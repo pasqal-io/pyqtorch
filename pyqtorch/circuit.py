@@ -37,7 +37,8 @@ class QuantumCircuit(torch.nn.Module):
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, QuantumCircuit):
             return self.__key() == other.__key()
-        raise NotImplementedError
+        else:
+            raise NotImplementedError(f"Unable to compare QuantumCircuit to {type(other)}.")
 
     def __hash__(self) -> int:
         return hash(self.__key())
