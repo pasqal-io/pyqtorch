@@ -15,7 +15,7 @@ class Primitive(AbstractOperator):
         super().__init__(target)
         self.register_buffer("pauli", pauli)
         self.qubit_support = [self.target]
-        self.n_qubits = len(self.qubit_support)
+        self.n_qubits = max(self.qubit_support)
         self._param_type = None
 
     @property
@@ -87,7 +87,7 @@ class SWAP(Primitive):
         super().__init__(OPERATIONS_DICT["SWAP"], target)
         self.control = [control] if isinstance(control, int) else control
         self.qubit_support = self.control + [target]
-        self.n_qubits = len(self.qubit_support)
+        self.n_qubits = max(self.qubit_support)
 
 
 class CSWAP(Primitive):
@@ -96,6 +96,7 @@ class CSWAP(Primitive):
         self.control: list[int] = [control] if isinstance(control, int) else control
         self.target = target
         self.qubit_support = self.control + [target]
+        self.n_qubits = max(self.qubit_support)
 
 
 class ControlledOperationGate(Primitive):
@@ -109,6 +110,7 @@ class ControlledOperationGate(Primitive):
         ).squeeze(2)
         super().__init__(mat, target)
         self.qubit_support = self.control + [target]
+        self.n_qubits = max(self.qubit_support)
 
 
 class CNOT(ControlledOperationGate):

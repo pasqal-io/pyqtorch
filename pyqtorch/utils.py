@@ -13,11 +13,10 @@ Operator = torch.Tensor
 
 def overlap(state: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
     n_qubits = len(state.size()) - 1
-    batch_size = state.size()[-1]
-    state = state.reshape((2**n_qubits, batch_size))
-    other = other.reshape((2**n_qubits, batch_size))
+    state = state.reshape((2**n_qubits, state.size(-1)))
+    other = other.reshape((2**n_qubits, other.size(-1)))
     res = []
-    for i in range(batch_size):
+    for i in range(other.size(-1)):
         ovrlp = torch.real(torch.sum(torch.conj(state[:, i]) * other[:, i]))
         res.append(ovrlp)
     return torch.stack(res)
