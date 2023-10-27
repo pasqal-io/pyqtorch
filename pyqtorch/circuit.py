@@ -52,19 +52,6 @@ class QuantumCircuit(torch.nn.Module):
     def forward(self, state: State, values: dict[str, torch.Tensor] = {}) -> State:
         return self.run(state, values)
 
-    def sample(
-        self, state: State = None, values: dict[str, torch.Tensor] = {}, n_shots: int = 100
-    ) -> torch.Tensor:
-        with torch.no_grad():
-            probs = torch.abs(torch.pow(self.run(state, values), 2)).flatten()
-            return torch.bincount(
-                torch.multinomial(
-                    input=probs,
-                    num_samples=n_shots,
-                    replacement=True,
-                )
-            )
-
     def expectation(
         self,
         values: dict[str, torch.Tensor],
