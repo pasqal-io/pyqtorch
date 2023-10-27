@@ -18,12 +18,11 @@ class QuantumCircuit(torch.nn.Module):
         self.diff_mode = diff_mode
 
     def __mul__(self, other: AbstractOperator | QuantumCircuit) -> QuantumCircuit:
+        n_qubits = max(self.n_qubits, other.n_qubits)
         if isinstance(other, QuantumCircuit):
-            n_qubits = max(self.n_qubits, other.n_qubits)
             return QuantumCircuit(n_qubits, self.operations.extend(other.operations))
 
-        if isinstance(other, AbstractOperator):
-            n_qubits = max(self.n_qubits, other.n_qubits)
+        elif isinstance(other, AbstractOperator):
             return QuantumCircuit(n_qubits, self.operations.append(other))
 
         else:
@@ -72,10 +71,10 @@ class QuantumCircuit(torch.nn.Module):
         observable: QuantumCircuit,
         state: State = None,
     ) -> torch.Tensor:
-        if state is None:
-            state = self.init_state(batch_size=1)
         if observable is None:
             raise ValueError("Please provide an observable to compute expectation.")
+        if state is None:
+            state = self.init_state(batch_size=1)
         if self.diff_mode == DiffMode.AD:
             state = self.run(state, values)
             return overlap(state, observable.forward(state, values))
