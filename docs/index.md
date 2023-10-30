@@ -1,20 +1,19 @@
 # Welcome to pyqtorch
 
-**pyqtorch** is a [PyTorch](https://pytorch.org/)-based state vector simulator designed for quantum machine learning.
+**pyqtorch** is a state vector simulator designed for quantum machine learning written in [PyTorch](https://pytorch.org/). It allows for building fully differentiable quantum circuits comprised of both digital and analog operations using a intuitive [torch.nn.Module](https://pytorch.org/docs/stable/generated/torch.nn.Module.html)-based API.
 
 ## Setup
 
 To install `pyqtorch` , you can go into any virtual environment of your
 choice and install it normally with `pip`:
 
-```
+```bash
 pip install pyqtorch
 ```
 
 ## Digital
 
-`pyqtorch` offers both primitive and parametric single to n-qubit, digital quantum gates.
-Parametric gates, can be initialized with our without a `param_name`. In the former case, a dictionary with the `param_name` and value for the parameter is expected, otherwise a just a `torch.Tensor`.
+`pyqtorch` implements a large selection of both primitive and parametric single to n-qubit, digital quantum gates. Parametric gates can be initialized with or without a `param_name`. In the former case, a dictionary containing the `param_name` and a `torch.Tensor` for the parameter is expected when calling the forward method of the gate. However, if you want to run a quick state vector simulation, you can initialize parametric gates without passing a `param_name`, in which case the forward method of the gate will simply expect a `torch.Tensor`.
 
 ```python exec="on" source="material-block"
 import torch
@@ -28,7 +27,7 @@ new_state = x(state)
 rx_with_param = RX(0, 'theta')
 rx = RX(0)
 theta = torch.rand(1)
-values = {'theta':theta}
+values = {'theta': theta}
 new_state = rx_with_param(state, values)
 new_state = rx(state, theta)
 
@@ -36,12 +35,12 @@ cnot = CNOT(0,1)
 new_state= cnot(state)
 
 crx = CRX(0, 1, 'theta')
-new_state = crx(state,values)
+new_state = crx(state, values)
 ```
 
 ## Analog
 
-`pyqtorch`s analog module also offers global state evolution through the `HamiltonianEvolution` class.
+`pyqtorch` also contains a `analog` module which allows for global state evolution through the `HamiltonianEvolution` class.
 
 ```python exec="on" source="material-block" html="1"
 import torch
@@ -72,7 +71,7 @@ assert is_normalized(psi_end, atol = 1e-12)
 
 ## QuantumCircuit
 
-Digital gates can be wrapped in a `QuantumCircuit`, which are fully differentiable.
+Using digital and analog operations, you can can build fully differentiable quantum circuits using the `QuantumCircuit` class; note that the default differentiation mode in pyqtorch is using torch.autograd.
 
 ```python exec="on" source="material-block"
 import torch
@@ -174,4 +173,63 @@ plt.plot(x.numpy(), y_final.numpy(), "--", label="final", linewidth=3)
 plt.legend()
 from docs import docsutils # markdown-exec: hide
 print(docsutils.fig_to_html(plt.gcf())) # markdown-exec: hide
+```
+
+## First Order Adjoint Differentiation
+
+`pyqtorch` also offers a [adjoint differentiation mode](https://arxiv.org/abs/2009.02823) which can be used through the `expectation` method of `QuantumCircuit`.
+
+```python exec="on" source="material-block"
+import pyqtorch as pyq
+import torch
+from pyqtorch.utils import DiffMode
+
+n_qubits = 3
+batch_size = 1
+diff_mode = DiffMode.ADJOINT
+
+
+rx = pyq.RX(0, param_name="theta_0")
+cry = pyq.CPHASE(0, 1, param_name="theta_1")
+rz = pyq.RZ(2, param_name="theta_2")
+cnot = pyq.CNOT(1, 2)
+ops = [rx, cry, rz, cnot]
+n_qubits = 3
+adjoint_circ = pyq.QuantumCircuit(n_qubits, ops, DiffMode.ADJOINT)
+ad_circ = pyq.QuantumCircuit(n_qubits, ops, DiffMode.AD)
+obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+
+theta_0_value = torch.pi / 2
+theta_1_value = torch.pi
+theta_2_value = torch.pi / 4
+
+state = pyq.zero_state(n_qubits)
+
+theta_0_ad = torch.tensor([theta_0_value], requires_grad=True)
+thetas_0_adjoint = torch.tensor([theta_0_value], requires_grad=True)
+
+theta_1_ad = torch.tensor([theta_1_value], requires_grad=True)
+thetas_1_adjoint = torch.tensor([theta_1_value], requires_grad=True)
+
+theta_2_ad = torch.tensor([theta_2_value], requires_grad=True)
+thetas_2_adjoint = torch.tensor([theta_2_value], requires_grad=True)
+
+values_ad = {"theta_0": theta_0_ad, "theta_1": theta_1_ad, "theta_2": theta_2_ad}
+values_adjoint = {
+    "theta_0": thetas_0_adjoint,
+    "theta_1": thetas_1_adjoint,
+    "theta_2": thetas_2_adjoint,
+}
+exp_ad = ad_circ.expectation(values_ad, obs, state)
+exp_adjoint = adjoint_circ.expectation(values_adjoint, obs, state)
+
+grad_ad = torch.autograd.grad(exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad))
+
+grad_adjoint = torch.autograd.grad(
+    exp_adjoint, tuple(values_adjoint.values()), torch.ones_like(exp_adjoint)
+)
+
+assert len(grad_ad) == len(grad_adjoint)
+for i in range(len(grad_ad)):
+    assert torch.allclose(grad_ad[i], grad_adjoint[i])
 ```
