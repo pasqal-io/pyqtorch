@@ -13,34 +13,56 @@ pip install pyqtorch
 
 ## Digital
 
-`pyqtorch` implements a large selection of both primitive and parametric single to n-qubit, digital quantum gates. Parametric gates can be initialized with or without a `param_name`. In the former case, a dictionary containing the `param_name` and a `torch.Tensor` for the parameter is expected when calling the forward method of the gate. However, if you want to run a quick state vector simulation, you can initialize parametric gates without passing a `param_name`, in which case the forward method of the gate will simply expect a `torch.Tensor`.
+`pyqtorch` implements a large selection of both primitive and parametric single to n-qubit, digital quantum gates.
+
+Let's have a look at primitive gates first.
 
 ```python exec="on" source="material-block"
 import torch
-from pyqtorch import X, RX, CNOT, CRX, random_state
+from pyqtorch import X, CNOT, random_state
 
 x = X(0)
 state = random_state(n_qubits=2)
 
 new_state = x(state)
 
+cnot = CNOT(0,1)
+new_state= cnot(state)
+```
+
+Parametric gates can be initialized with or without a `param_name`. In the former case, a dictionary containing the `param_name` and a `torch.Tensor` for the parameter is expected when calling the forward method of the gate.
+
+```python exec="on" source="material-block"
+import torch
+from pyqtorch import X, RX, CNOT, CRX, random_state
+
+state = random_state(n_qubits=2)
+
 rx_with_param = RX(0, 'theta')
-rx = RX(0)
+
 theta = torch.rand(1)
 values = {'theta': theta}
 new_state = rx_with_param(state, values)
-new_state = rx(state, theta)
-
-cnot = CNOT(0,1)
-new_state= cnot(state)
 
 crx = CRX(0, 1, 'theta')
 new_state = crx(state, values)
 ```
 
+However, if you want to run a quick state vector simulation, you can initialize parametric gates without passing a `param_name`, in which case the forward method of the gate will simply expect a `torch.Tensor`.
+
+
+```python exec="on" source="material-block"
+import torch
+from pyqtorch import RX, random_state
+
+state = random_state(n_qubits=2)
+rx = RX(0)
+new_state = rx(state, torch.rand(1))
+```
+
 ## Analog
 
-`pyqtorch` also contains a `analog` module which allows for global state evolution through the `HamiltonianEvolution` class.
+`pyqtorch` also contains a `analog` module which allows for global state evolution through the `HamiltonianEvolution` class. Note that it only accepts a `torch.Tensor` as a generator which is expected to be an Hermitian matrix. To build arbitrary Pauli hamiltonians, we recommend using [Qadence](https://pasqal-io.github.io/qadence/v1.0.3/tutorials/hamiltonians/).
 
 ```python exec="on" source="material-block" html="1"
 import torch
@@ -140,7 +162,7 @@ class QNN(pyq.QuantumCircuit):
         self.param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea.operations if isinstance(op, Parametric)})
     def forward(self, phi: torch.Tensor):
         batch_size = len(phi)
-        state = self.hea.init_state(batch_size)
+        state = self.feature_map.init_state(batch_size)
         state = self.feature_map(state, {'phi': phi})
         state = self.hea(state, self.param_dict)
         new_state = self.observable(state, self.param_dict)
