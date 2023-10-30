@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Tuple
+
 import torch
 
 from pyqtorch.apply import apply_operator
@@ -11,11 +13,11 @@ BATCH_DIM = 2
 class HamiltonianEvolution(torch.nn.Module):
     def __init__(
         self,
-        qubit_support: list[int],
+        qubit_support: Tuple[int, ...],
         n_qubits: int = None,
     ):
         super().__init__()
-        self.qubit_support: list[int] = qubit_support
+        self.qubit_support: Tuple[int, ...] = qubit_support
         if n_qubits is None:
             n_qubits = len(qubit_support)
         self.n_qubits: int = n_qubits

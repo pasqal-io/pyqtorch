@@ -57,7 +57,7 @@ def test_hamevo_single() -> None:
     n_qubits = 4
     H = Hamiltonian(1)
     t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
-    hamevo = pyq.HamiltonianEvolution([i for i in range(n_qubits)], n_qubits)
+    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), n_qubits)
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(H, t_evo, psi)
     result = overlap(psi_star, psi)
@@ -70,7 +70,7 @@ def test_hamevo_batch() -> None:
     batch_size = 2
     H = Hamiltonian(batch_size)
     t_evo = torch.tensor([torch.pi / 4], dtype=torch.cdouble)
-    hamevo = pyq.HamiltonianEvolution([i for i in range(n_qubits)], n_qubits)
+    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), n_qubits)
     psi = pyq.uniform_state(n_qubits, batch_size)
     psi_star = hamevo(H, t_evo, psi)
     result = overlap(psi_star, psi)
@@ -120,7 +120,7 @@ def test_hamiltonianevolution_with_types(
         return torch.abs(overlap**2).flatten()
 
     n_qubits = 4
-    hamevo = pyq.HamiltonianEvolution([i for i in range(n_qubits)], n_qubits)
+    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), n_qubits)
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(H, t_evo, psi)
     result = overlap(psi_star, psi)
@@ -139,7 +139,7 @@ def test_hamevo_endianness() -> None:
         ]
     )
     iszero = torch.tensor([False, True, False, True])
-    op = pyq.HamiltonianEvolution(qubit_support=[0, 1], n_qubits=2)
+    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), n_qubits=2)
     st = op(h, t, pyq.zero_state(2)).flatten()
     assert torch.allclose(st[iszero], torch.zeros(1, dtype=torch.cdouble))
 
@@ -152,6 +152,6 @@ def test_hamevo_endianness() -> None:
         ]
     )
     iszero = torch.tensor([False, False, True, True])
-    op = pyq.HamiltonianEvolution(qubit_support=[0, 1], n_qubits=2)
+    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), n_qubits=2)
     st = op(h, t, pyq.zero_state(2)).flatten()
     assert torch.allclose(st[iszero], torch.zeros(1, dtype=torch.cdouble))
