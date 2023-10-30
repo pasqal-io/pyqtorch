@@ -4,23 +4,9 @@ repo_name: "pyqtorch"
 
 nav:
 
-  - Setup : index.md
-  - Contribute:
-      - How to Contribute: CONTRIBUTING.md
-      - Code of Conduct: CODE_OF_CONDUCT.md
-  - Overview:
-      - Essentials : essentials.ipynb
-  - Tutorials:
-      - Fitting a function: fit_function.ipynb
-      - QAOA : QAOA.ipynb
-  - Documentation:
-    - Modules:
-        - Circuit : circuit.md
-        - Matrices : matrices.md
-        - Parametric : parametric.md
-        - Primitive : primitive.md
-        - Utils : utils.md
-
+  - Pyqtorch in a Nutshell: index.md
+  - How to Contribute: CONTRIBUTING.md
+  - Code of Conduct: CODE_OF_CONDUCT.md
 
 theme:
   name: material

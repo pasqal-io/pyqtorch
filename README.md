@@ -31,14 +31,12 @@ python -m hatch shell
 python -m hatch run python my_script.py
 ```
 
-!!! warning
-    `hatch` will not combine nicely with other environment managers such Conda. If you want to use Conda,
-    install it from source using `pip`:
+Please note that `hatch` will not combine nicely with other environment managers such Conda. If you want to use Conda, install `pyqtorch` from source using `pip`:
 
-    ```bash
-    # within the Conda environment
-    python -m pip install -e .
-    ```
+```bash
+# within the Conda environment
+python -m pip install -e .
+```
 
 ## Contributing
 
