@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from math import log2
-from typing import Callable
+from typing import Callable, Tuple
 
 import pytest
 import torch
@@ -65,12 +65,12 @@ def test_CRY_state01_controlqubit_0() -> None:
 
 
 def test_CSWAP_state101_controlqubit_0() -> None:
-    result: torch.Tensor = pyq.CSWAP([0, 1], 2)(product_state("101"), None)
+    result: torch.Tensor = pyq.CSWAP((0, 1), 2)(product_state("101"), None)
     assert torch.allclose(product_state("110"), result)
 
 
 def test_CSWAP_state110_controlqubit_0() -> None:
-    result: torch.Tensor = pyq.CSWAP([0, 1], 2)(product_state("101"), None)
+    result: torch.Tensor = pyq.CSWAP((0, 1), 2)(product_state("101"), None)
     assert torch.allclose(product_state("110"), result)
 
 
@@ -85,13 +85,7 @@ def test_CSWAP_state110_controlqubit_0() -> None:
     ],
 )
 def test_CSWAP_controlqubits0(initial_state: torch.Tensor, expected_state: torch.Tensor) -> None:
-    cswap = pyq.CSWAP(
-        [
-            0,
-            1,
-        ],
-        2,
-    )
+    cswap = pyq.CSWAP((0, 1), 2)
     assert torch.allclose(cswap(initial_state, None), expected_state)
 
 
@@ -108,7 +102,7 @@ def test_CSWAP_controlqubits0(initial_state: torch.Tensor, expected_state: torch
 )
 def test_Toffoli_controlqubits0(initial_state: torch.Tensor, expected_state: torch.Tensor) -> None:
     n_qubits = int(log2(torch.numel(initial_state)))
-    qubits = [i for i in range(n_qubits)]
+    qubits = tuple([i for i in range(n_qubits)])
     toffoli = pyq.Toffoli(qubits[:-1], qubits[-1])
     assert torch.allclose(toffoli(initial_state, None), expected_state)
 
@@ -134,7 +128,7 @@ def test_multi_controlled_gates(
     controlled_rot_gate = getattr(pyq, "C" + gate)
     phi = torch.rand(batch_size)
     n_qubits = int(log2(torch.numel(initial_state)))
-    qubits = [i for i in range(n_qubits)]
+    qubits = tuple([i for i in range(n_qubits)])
     op = controlled_rot_gate(qubits[:-1], qubits[-1], "phi")
     out = op(initial_state, {"phi": phi})
     expected_state = (
@@ -188,19 +182,20 @@ def test_dagger_single_qubit() -> None:
 
 def test_dagger_nqubit() -> None:
     for cls in [pyq.SWAP, pyq.CNOT, pyq.CY, pyq.CZ, pyq.CRX, pyq.CRY, pyq.CRZ, pyq.CPHASE]:
+        qubit_support: Tuple[int, ...]
         n_qubits = torch.randint(low=3, high=8, size=(1,)).item()
         target = random.choice([i for i in range(n_qubits - 2)])
         state = pyq.random_state(n_qubits)
         for param_name in ["theta", ""]:
             if isinstance(cls, (pyq.CSWAP, pyq.Toffoli)):
-                op = cls([target - 2, target - 1], target)
-                qubit_support = [target + 2, target + 1, target]
+                op = cls((target - 2, target - 1), target)
+                qubit_support = (target + 2, target + 1, target)
             elif issubclass(cls, Parametric):
                 op = cls(target - 1, target, param_name)  # type: ignore[arg-type]
-                qubit_support = [target + 1, target]
+                qubit_support = (target + 1, target)
             else:
                 op = cls(target - 1, target)  # type: ignore[misc]
-                qubit_support = [target + 1, target]
+                qubit_support = (target + 1, target)
             values = {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             new_state = apply_operator(state, op.unitary(values), qubit_support)
             daggered_back = apply_operator(new_state, op.dagger(values), qubit_support)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from math import log2
+from typing import Tuple
 
 import torch
 
@@ -100,15 +101,14 @@ class ControlledRotationGate(Parametric):
     def __init__(
         self,
         gate: str,
-        control: int | list[int],
+        control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
     ):
-        control = [control] if isinstance(control, int) else control
-        self.control = control
+        self.control = control if isinstance(control, tuple) else (control,)
         super().__init__(gate, target, param_name)
-        self.qubit_support = self.control + [self.target]
-        self.n_qubits = max(self.qubit_support)
+        self.qubit_support = self.control + (self.target,)
+        self.n_qubits = max(list(self.qubit_support))
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = self.parse_values(values)
@@ -135,7 +135,7 @@ class ControlledRotationGate(Parametric):
 class CRX(ControlledRotationGate):
     def __init__(
         self,
-        control: int | list[int],
+        control: int | Tuple[int],
         target: int,
         param_name: str = "",
     ):
@@ -145,7 +145,7 @@ class CRX(ControlledRotationGate):
 class CRY(ControlledRotationGate):
     def __init__(
         self,
-        control: int | list[int],
+        control: int | Tuple[int],
         target: int,
         param_name: str = "",
     ):
@@ -155,7 +155,7 @@ class CRY(ControlledRotationGate):
 class CRZ(ControlledRotationGate):
     def __init__(
         self,
-        control: list[int],
+        control: Tuple[int],
         target: int,
         param_name: str = "",
     ):
@@ -167,7 +167,7 @@ class CPHASE(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | list[int],
+        control: int | Tuple[int],
         target: int,
         param_name: str = "",
     ):

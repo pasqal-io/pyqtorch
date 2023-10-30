@@ -66,8 +66,6 @@ def _unitary(
 
 
 def _dagger(matrices: torch.Tensor) -> torch.Tensor:  # noqa: E741
-    if not len(matrices.size()) == 3:
-        breakpoint()
     return torch.permute(matrices.conj(), (1, 0, 2))
 
 

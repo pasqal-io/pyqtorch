@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from string import ascii_letters as ABC
+from typing import Tuple
 
 from numpy import array
 from numpy.typing import NDArray
@@ -14,10 +15,11 @@ ABC_ARRAY: NDArray = array(list(ABC))
 def apply_operator(
     state: State,
     operator: Operator,
-    qubits: list[int],
+    qubits: Tuple[int, ...] | list[int],
     n_qubits: int = None,
     batch_size: int = None,
 ) -> State:
+    qubits = list(qubits)
     if n_qubits is None:
         n_qubits = len(state.size()) - 1
     if batch_size is None:

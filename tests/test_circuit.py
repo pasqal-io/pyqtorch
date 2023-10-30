@@ -60,10 +60,10 @@ def test_differentiate_circuit(diff_mode: DiffMode, batch_size: int, n_qubits: i
     ops = [
         pyq.RX(0, "phi"),
         pyq.PHASE(0, "theta"),
-        pyq.CSWAP([0, 1], 2),
+        pyq.CSWAP((0, 1), 2),
         pyq.CPHASE(1, 2, "epsilon"),
         pyq.CNOT(0, 1),
-        pyq.Toffoli([2, 1], 0),
+        pyq.Toffoli((2, 1), 0),
     ]
     circ = pyq.QuantumCircuit(n_qubits, ops, diff_mode=diff_mode)
     state = pyq.random_state(n_qubits, batch_size)

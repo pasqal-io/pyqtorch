@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from math import log2
+from typing import Tuple
 
 import torch
 
@@ -14,8 +15,6 @@ class Primitive(AbstractOperator):
     def __init__(self, pauli: torch.Tensor, target: int):
         super().__init__(target)
         self.register_buffer("pauli", pauli)
-        self.qubit_support = [self.target]
-        self.n_qubits = max(self.qubit_support)
         self._param_type = None
 
     @property
@@ -85,23 +84,23 @@ class N(Primitive):
 class SWAP(Primitive):
     def __init__(self, control: int, target: int):
         super().__init__(OPERATIONS_DICT["SWAP"], target)
-        self.control = [control] if isinstance(control, int) else control
-        self.qubit_support = self.control + [target]
+        self.control = (control,) if isinstance(control, int) else control
+        self.qubit_support = self.control + (target,)
         self.n_qubits = max(self.qubit_support)
 
 
 class CSWAP(Primitive):
-    def __init__(self, control: int | list[int], target: int):
+    def __init__(self, control: int | Tuple[int, ...], target: int):
         super().__init__(OPERATIONS_DICT["CSWAP"], target)
-        self.control: list[int] = [control] if isinstance(control, int) else control
+        self.control = (control,) if isinstance(control, int) else control
         self.target = target
-        self.qubit_support = self.control + [target]
+        self.qubit_support = self.control + (target,)
         self.n_qubits = max(self.qubit_support)
 
 
 class ControlledOperationGate(Primitive):
-    def __init__(self, gate: str, control: int | list[int], target: int):
-        self.control: list[int] = [control] if isinstance(control, int) else control
+    def __init__(self, gate: str, control: int | Tuple[int, ...], target: int):
+        self.control = (control,) if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
         mat = _controlled(
             unitary=mat.unsqueeze(2),
@@ -109,12 +108,12 @@ class ControlledOperationGate(Primitive):
             n_control_qubits=len(self.control) - (int)(log2(mat.shape[0])) + 1,
         ).squeeze(2)
         super().__init__(mat, target)
-        self.qubit_support = self.control + [target]
+        self.qubit_support = self.control + (target,)
         self.n_qubits = max(self.qubit_support)
 
 
 class CNOT(ControlledOperationGate):
-    def __init__(self, control: int | list[int], target: int):
+    def __init__(self, control: int | Tuple[int, ...], target: int):
         super().__init__("X", control, target)
 
 
@@ -122,15 +121,15 @@ CX = CNOT
 
 
 class CY(ControlledOperationGate):
-    def __init__(self, control: int | list[int], target: int):
+    def __init__(self, control: int | Tuple[int, ...], target: int):
         super().__init__("Y", control, target)
 
 
 class CZ(ControlledOperationGate):
-    def __init__(self, control: int | list[int], target: int):
+    def __init__(self, control: int | Tuple[int, ...], target: int):
         super().__init__("Z", control, target)
 
 
 class Toffoli(ControlledOperationGate):
-    def __init__(self, control: int | list[int], target: int):
+    def __init__(self, control: int | Tuple[int, ...], target: int):
         super().__init__("X", control, target)
