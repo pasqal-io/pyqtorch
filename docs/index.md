@@ -217,8 +217,7 @@ rz = pyq.RZ(2, param_name="theta_2")
 cnot = pyq.CNOT(1, 2)
 ops = [rx, cry, rz, cnot]
 n_qubits = 3
-adjoint_circ = pyq.QuantumCircuit(n_qubits, ops, DiffMode.ADJOINT)
-ad_circ = pyq.QuantumCircuit(n_qubits, ops, DiffMode.AD)
+circ = pyq.QuantumCircuit(n_qubits, ops)
 obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 
 theta_0_value = torch.pi / 2
@@ -242,8 +241,8 @@ values_adjoint = {
     "theta_1": thetas_1_adjoint,
     "theta_2": thetas_2_adjoint,
 }
-exp_ad = ad_circ.expectation(values_ad, obs, state)
-exp_adjoint = adjoint_circ.expectation(values_adjoint, obs, state)
+exp_ad = circ.expectation(values_ad, obs, state, diff_mode=DiffMode.AD)
+exp_adjoint = circ.expectation(values_adjoint, obs, state, diff_mode=DiffMode.ADJOINT)
 
 grad_ad = torch.autograd.grad(exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad))
 

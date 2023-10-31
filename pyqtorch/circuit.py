@@ -9,13 +9,10 @@ from pyqtorch.utils import DiffMode, State, overlap, zero_state
 
 
 class QuantumCircuit(torch.nn.Module):
-    def __init__(
-        self, n_qubits: int, operations: list[AbstractOperator], diff_mode: DiffMode = DiffMode.AD
-    ):
+    def __init__(self, n_qubits: int, operations: list[AbstractOperator]):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = torch.nn.ModuleList(operations)
-        self.diff_mode = diff_mode
 
     def __mul__(self, other: AbstractOperator | QuantumCircuit) -> QuantumCircuit:
         n_qubits = max(self.n_qubits, other.n_qubits)
@@ -58,12 +55,13 @@ class QuantumCircuit(torch.nn.Module):
         values: dict[str, torch.Tensor],
         observable: QuantumCircuit,
         state: State = None,
+        diff_mode: DiffMode = DiffMode.AD,
     ) -> torch.Tensor:
         if observable is None:
             raise ValueError("Please provide an observable to compute expectation.")
         if state is None:
             state = self.init_state(batch_size=1)
-        if self.diff_mode == DiffMode.AD:
+        if diff_mode == DiffMode.AD:
             state = self.run(state, values)
             return overlap(state, observable.forward(state, values))
         else:
