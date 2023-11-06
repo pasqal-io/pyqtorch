@@ -3,11 +3,12 @@ from __future__ import annotations
 from string import ascii_letters as ABC
 from typing import Tuple
 
+import torch
 from numpy import array
 from numpy.typing import NDArray
 from torch import einsum
 
-from pyqtorch.utils import Operator, State
+from pyqtorch.utils import Operator, State, basis_state_indices
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -37,3 +38,17 @@ def apply_operator(
         map(lambda e: "".join(list(e)), [operator_dims, in_state_dims, out_state_dims])
     )
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
+
+
+def apply_kjd_gate(
+    state: torch.Tensor, mat: torch.Tensor, qubit: int, n_qubits: int, batch_size: int
+) -> torch.Tensor:
+    batch_size = state.size(-1)
+    state = state.flatten()
+    indices = basis_state_indices(n_qubits, qubit)
+    _, sorted_indices = torch.sort(indices)
+    return (
+        (mat @ state[indices].view(2, 2**n_qubits // 2))
+        .flatten()[sorted_indices]
+        .reshape([2] * n_qubits + [batch_size])
+    )

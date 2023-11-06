@@ -8,7 +8,7 @@ import torch
 from pyqtorch.abstract import AbstractOperator
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import Operator, State
+from pyqtorch.utils import Operator, State, basis_state_indices
 
 
 class Primitive(AbstractOperator):
@@ -34,6 +34,18 @@ class Primitive(AbstractOperator):
 
 
 class X(Primitive):
+    def __init__(self, target: int):
+        super().__init__(OPERATIONS_DICT["X"], target)
+
+    def forward(self, state: torch.Tensor, values: dict = {}) -> torch.Tensor:
+        batch_size = state.size(-1)
+        n_qubits = len(state.size()) - 1
+        state = state.flatten()
+        zero_indices, one_indices = basis_state_indices(n_qubits, self.target)
+        return state[torch.cat([one_indices, zero_indices])].reshape([2] * n_qubits + [batch_size])
+
+
+class OldX(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["X"], target)
 
