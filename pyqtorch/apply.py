@@ -41,14 +41,20 @@ def apply_operator(
 
 
 def apply_kjd_gate(
-    state: torch.Tensor, mat: torch.Tensor, qubit: int, n_qubits: int, batch_size: int
+    state: State,
+    operator: Operator,
+    qubits: Tuple[int, ...] | list[int],
+    n_qubits: int,
+    batch_size: int,
 ) -> torch.Tensor:
+    assert len(qubits) == 1, "Currently only supports single qubit gates."
+    qubit = qubits[0]
     batch_size = state.size(-1)
     state = state.flatten()
     indices = basis_state_indices(n_qubits, qubit)
     _, sorted_indices = torch.sort(indices)
     return (
-        (mat @ state[indices].view(2, 2**n_qubits // 2))
+        (operator @ state[indices].view(2, 2**n_qubits // 2))
         .flatten()[sorted_indices]
         .reshape([2] * n_qubits + [batch_size])
     )
