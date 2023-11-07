@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import torch
 from torch import Tensor
 from torch.autograd import Function
 
@@ -12,6 +13,7 @@ from pyqtorch.utils import overlap, param_dict
 
 
 class AdjointExpectation(Function):
+    @torch.no_grad()
     @staticmethod
     def forward(
         ctx: Any,
@@ -30,6 +32,7 @@ class AdjointExpectation(Function):
         ctx.save_for_backward(*param_values)
         return overlap(ctx.out_state, ctx.projected_state)
 
+    @torch.no_grad()
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> tuple:
         param_values = ctx.saved_tensors
