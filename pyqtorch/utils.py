@@ -112,3 +112,14 @@ def random_state(
 
 def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str, torch.Tensor]:
     return {key: val for key, val in zip(keys, values)}
+
+
+def basis_state_indices(
+    n_qubits: int, target: int, n_target: int = 1
+) -> tuple[torch.LongTensor, torch.LongTensor]:
+    target = torch.tensor(target, dtype=torch.int64)
+    index_base = torch.arange(0, 2 ** (n_qubits - n_target))
+    t = n_qubits - 1 - target
+    zero_index = index_base + ((index_base >> t) << t)
+    one_index = index_base + (((index_base >> t) + 1) << t)
+    return (zero_index.long(), one_index.long())

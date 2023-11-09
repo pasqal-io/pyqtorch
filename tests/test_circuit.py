@@ -58,6 +58,7 @@ def test_adjoint_diff() -> None:
 @pytest.mark.parametrize("n_qubits", [3, 4])
 def test_differentiate_circuit(diff_mode: DiffMode, batch_size: int, n_qubits: int) -> None:
     ops = [
+        pyq.X(1),
         pyq.RX(0, "phi"),
         pyq.PHASE(0, "theta"),
         pyq.CSWAP((0, 1), 2),
