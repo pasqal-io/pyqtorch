@@ -11,7 +11,8 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=DEFAULT_MATRIX_DTYPE)
 SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=DEFAULT_MATRIX_DTYPE)
 SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=DEFAULT_MATRIX_DTYPE)
 TMAT = torch.tensor(
-    [[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4))]], dtype=DEFAULT_MATRIX_DTYPE
+    [[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4, dtype=DEFAULT_MATRIX_DTYPE))]],
+    dtype=DEFAULT_MATRIX_DTYPE,
 )
 NMAT = torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE)
 NDIAG = torch.tensor([0, 1], dtype=DEFAULT_MATRIX_DTYPE)
@@ -33,7 +34,11 @@ CSWAPMAT = torch.tensor(
     ],
     dtype=DEFAULT_MATRIX_DTYPE,
 )
-HMAT = 1 / torch.sqrt(torch.tensor(2)) * torch.tensor([[1, 1], [1, -1]], dtype=DEFAULT_MATRIX_DTYPE)
+HMAT = (
+    1
+    / torch.sqrt(torch.tensor(2.0, dtype=DEFAULT_MATRIX_DTYPE))
+    * torch.tensor([[1, 1], [1, -1]], dtype=DEFAULT_MATRIX_DTYPE)
+)
 
 
 OPERATIONS_DICT = {
@@ -54,6 +59,7 @@ OPERATIONS_DICT = {
 def _unitary(
     theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
 ) -> torch.Tensor:
+    assert theta.dtype == torch.float64
     cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
     cos_t = cos_t.repeat((2, 2, 1))
     sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
