@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import torch
 from torch import Tensor
 from torch.autograd import Function
 
@@ -13,6 +14,7 @@ from pyqtorch.utils import overlap, param_dict
 
 class AdjointExpectation(Function):
     @staticmethod
+    @torch.no_grad()
     def forward(
         ctx: Any,
         circuit: QuantumCircuit,
@@ -31,6 +33,7 @@ class AdjointExpectation(Function):
         return overlap(ctx.out_state, ctx.projected_state)
 
     @staticmethod
+    @torch.no_grad()
     def backward(ctx: Any, grad_out: Tensor) -> tuple:
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)
