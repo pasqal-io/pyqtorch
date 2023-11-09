@@ -59,7 +59,6 @@ OPERATIONS_DICT = {
 def _unitary(
     theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
 ) -> torch.Tensor:
-    assert theta.dtype == torch.float64
     cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
     cos_t = cos_t.repeat((2, 2, 1))
     sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
