@@ -24,6 +24,7 @@ from .primitive import (
     H,
     I,
     N,
+    Projector,
     S,
     SDagger,
     T,

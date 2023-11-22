@@ -76,6 +76,14 @@ class SDagger(Primitive):
         super().__init__(OPERATIONS_DICT["SDAGGER"], target)
 
 
+class Projector(Primitive):
+    def __init__(self, target: int, state: str = "1"):
+        if state == "0":
+            super().__init__(OPERATIONS_DICT["PROJ0"], target)
+        else:
+            super().__init__(OPERATIONS_DICT["PROJ1"], target)
+
+
 class N(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["N"], target)

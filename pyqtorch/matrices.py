@@ -15,6 +15,8 @@ TMAT = torch.tensor(
     dtype=DEFAULT_MATRIX_DTYPE,
 )
 NMAT = torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE)
+PROJ0MAT = torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE)
+PROJ1MAT = torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE)
 NDIAG = torch.tensor([0, 1], dtype=DEFAULT_MATRIX_DTYPE)
 ZDIAG = torch.tensor([1, -1], dtype=DEFAULT_MATRIX_DTYPE)
 IDIAG = torch.tensor([1, 1], dtype=DEFAULT_MATRIX_DTYPE)
@@ -50,6 +52,8 @@ OPERATIONS_DICT = {
     "SDAGGER": SDAGGERMAT,
     "T": TMAT,
     "N": NMAT,
+    "PROJ0": PROJ0MAT,
+    "PROJ1": PROJ1MAT,
     "H": HMAT,
     "SWAP": SWAPMAT,
     "CSWAP": CSWAPMAT,

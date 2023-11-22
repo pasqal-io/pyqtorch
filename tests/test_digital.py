@@ -35,6 +35,16 @@ def test_N() -> None:
     assert torch.allclose(product_state("1"), pyq.N(0)(product_state("1"), None))
 
 
+def test_projectors() -> None:
+    t0 = torch.tensor([[0.0], [0.0]], dtype=torch.cdouble)
+    t1 = torch.tensor([[1.0], [0.0]], dtype=torch.cdouble)
+    t2 = torch.tensor([[0.0], [1.0]], dtype=torch.cdouble)
+    assert torch.allclose(t1, pyq.Projector(0, "0")(product_state("0")))
+    assert torch.allclose(t0, pyq.Projector(0, "0")(product_state("1")))
+    assert torch.allclose(t2, pyq.Projector(0, "1")(product_state("1")))
+    assert torch.allclose(t0, pyq.Projector(0, "1")(product_state("0")))
+
+
 def test_CNOT_state00_controlqubit_0() -> None:
     result: torch.Tensor = pyq.CNOT(0, 1)(product_state("00"), None)
     assert torch.equal(product_state("00"), result)
