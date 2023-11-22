@@ -80,7 +80,8 @@ class Proj(Primitive):
     def __init__(self, target: int, state: str = "1"):
         if state == "0":
             super().__init__(OPERATIONS_DICT["PROJ0"], target)
-        super()._init__(OPERATIONS_DICT["PROJ1"], target)
+        else:
+            super().__init__(OPERATIONS_DICT["PROJ1"], target)
 
 
 class N(Primitive):
