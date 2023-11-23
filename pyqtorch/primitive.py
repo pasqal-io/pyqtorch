@@ -77,7 +77,10 @@ class SDagger(Primitive):
 
 
 class Projector(Primitive):
-    def __init__(self, target: int, ket: str, bra: str):
+    def __init__(self, support: int | tuple[int, ...], ket: str, bra: str):
+        self.qubit_support = (support,) if isinstance(support, int) else support
+        target = support if isinstance(support, int) else support[-1]
+        self.n_qubits = max(self.qubit_support)
         ket_state = product_state(ket)
         bra_state = product_state(bra)
         super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), target)
