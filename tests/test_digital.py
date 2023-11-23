@@ -45,9 +45,6 @@ def test_projectors() -> None:
     assert torch.allclose(t0, pyq.Projector(0, ket="1", bra="1")(product_state("0")))
 
 
-    
-
-
 def test_CNOT_state00_controlqubit_0() -> None:
     result: torch.Tensor = pyq.CNOT(0, 1)(product_state("00"), None)
     assert torch.equal(product_state("00"), result)
