@@ -77,10 +77,9 @@ class SDagger(Primitive):
 
 
 class Projector(Primitive):
-    def __init__(self, support: int | tuple[int, ...], ket: str, bra: str):
-        self.qubit_support = (support,) if isinstance(support, int) else support
-        target = support if isinstance(support, int) else support[-1]
-        self.n_qubits = max(self.qubit_support)
+    def __init__(self, target: int, ket: str, bra: str):
+        if len(ket) > 1 or len(bra) > 1:
+            raise ValueError("PyQTorch does not support multiqubit projectors yet.")
         ket_state = product_state(ket)
         bra_state = product_state(bra)
         super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), target)
