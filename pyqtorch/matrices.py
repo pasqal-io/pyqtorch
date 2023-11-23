@@ -43,7 +43,9 @@ HMAT = (
 
 
 def PROJMAT(ket: Tensor, bra: Tensor) -> Tensor:
-    return torch.kron(ket, bra.T)
+    # Reshape to conform internal PyQ definition for states and operators.
+    proj_mat = torch.kron(ket, bra.T).reshape((2,) * ket.size(0))
+    return proj_mat.unsqueeze(-1)
 
 
 OPERATIONS_DICT = {
