@@ -79,16 +79,8 @@ class SDagger(Primitive):
 class Projector(Primitive):
     def __init__(self, target: int | tuple[int, ...], ket: str, bra: str):
         support = (target,) if isinstance(target, int) else target
-        # Reshape states to make outer product possible.
-        ket_state = product_state(ket)
-        bra_state = product_state(bra)
-        if len(ket) > 1:
-            ket_state = ket_state.reshape(
-                (ket_state.size(0) + ket_state.size(1), ket_state.size(2))
-            )
-            bra_state = bra_state.reshape(
-                (bra_state.size(0) + bra_state.size(1), bra_state.size(2))
-            )
+        ket_state = product_state(ket).flatten()
+        bra_state = product_state(bra).flatten()
         super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), support[-1])
         # Override the attribute in AbstractOperator.
         self.qubit_support = support
