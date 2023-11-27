@@ -79,6 +79,8 @@ class SDagger(Primitive):
 class Projector(Primitive):
     def __init__(self, target: int | tuple[int, ...], ket: str, bra: str):
         support = (target,) if isinstance(target, int) else target
+        if len(ket) != len(bra):
+            raise ValueError("Input ket and bra bitstrings must be of same length.")
         ket_state = product_state(ket).flatten()
         bra_state = product_state(bra).flatten()
         super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), support[-1])
