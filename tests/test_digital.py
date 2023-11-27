@@ -39,10 +39,63 @@ def test_projectors() -> None:
     t0 = torch.tensor([[0.0], [0.0]], dtype=torch.cdouble)
     t1 = torch.tensor([[1.0], [0.0]], dtype=torch.cdouble)
     t2 = torch.tensor([[0.0], [1.0]], dtype=torch.cdouble)
-    assert torch.allclose(t1, pyq.Projector(0, "0")(product_state("0")))
-    assert torch.allclose(t0, pyq.Projector(0, "0")(product_state("1")))
-    assert torch.allclose(t2, pyq.Projector(0, "1")(product_state("1")))
-    assert torch.allclose(t0, pyq.Projector(0, "1")(product_state("0")))
+    assert torch.allclose(t1, pyq.Projector(0, ket="0", bra="0")(product_state("0")))
+    assert torch.allclose(t0, pyq.Projector(0, ket="0", bra="0")(product_state("1")))
+    assert torch.allclose(t2, pyq.Projector(0, ket="1", bra="1")(product_state("1")))
+    assert torch.allclose(t0, pyq.Projector(0, ket="1", bra="1")(product_state("0")))
+    t00 = torch.tensor([[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]])
+    t01 = torch.tensor([[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]])
+    t10 = torch.tensor([[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]])
+    t11 = torch.tensor([[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]])
+    assert torch.allclose(pyq.Projector((0, 1), ket="00", bra="00")(product_state("00")), t00)
+    assert torch.allclose(pyq.Projector((0, 1), ket="10", bra="01")(product_state("01")), t10)
+    assert torch.allclose(pyq.Projector((0, 1), ket="01", bra="10")(product_state("10")), t01)
+    assert torch.allclose(pyq.Projector((0, 1), ket="11", bra="11")(product_state("11")), t11)
+    t000 = torch.tensor(
+        [
+            [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+        ]
+    )
+    t100 = torch.tensor(
+        [
+            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+            [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+        ]
+    )
+    t001 = torch.tensor(
+        [
+            [[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+        ]
+    )
+    t010 = torch.tensor(
+        [
+            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]],
+            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+        ]
+    )
+    t111 = torch.tensor(
+        [
+            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]],
+        ]
+    )
+    assert torch.allclose(
+        pyq.Projector((0, 1, 2), ket="000", bra="000")(product_state("000")), t000
+    )
+    assert torch.allclose(
+        pyq.Projector((0, 1, 2), ket="100", bra="001")(product_state("001")), t100
+    )
+    assert torch.allclose(
+        pyq.Projector((0, 1, 2), ket="010", bra="010")(product_state("010")), t010
+    )
+    assert torch.allclose(
+        pyq.Projector((0, 1, 2), ket="001", bra="100")(product_state("100")), t001
+    )
+    assert torch.allclose(
+        pyq.Projector((0, 1, 2), ket="111", bra="111")(product_state("111")), t111
+    )
 
 
 def test_CNOT_state00_controlqubit_0() -> None:

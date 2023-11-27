@@ -8,7 +8,7 @@ import torch
 from pyqtorch.abstract import AbstractOperator
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import Operator, State
+from pyqtorch.utils import Operator, State, product_state
 
 
 class Primitive(AbstractOperator):
@@ -77,11 +77,15 @@ class SDagger(Primitive):
 
 
 class Projector(Primitive):
-    def __init__(self, target: int, state: str = "1"):
-        if state == "0":
-            super().__init__(OPERATIONS_DICT["PROJ0"], target)
-        else:
-            super().__init__(OPERATIONS_DICT["PROJ1"], target)
+    def __init__(self, target: int | tuple[int, ...], ket: str, bra: str):
+        support = (target,) if isinstance(target, int) else target
+        if len(ket) != len(bra):
+            raise ValueError("Input ket and bra bitstrings must be of same length.")
+        ket_state = product_state(ket).flatten()
+        bra_state = product_state(bra).flatten()
+        super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), support[-1])
+        # Override the attribute in AbstractOperator.
+        self.qubit_support = support
 
 
 class N(Primitive):
