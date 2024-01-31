@@ -132,7 +132,6 @@ import matplotlib.pyplot as plt
 
 import torch.nn.functional as F
 
-diff_mode = DiffMode.ADJOINT
 
 def target_function(x: torch.Tensor, degree: int = 3) -> torch.Tensor:
     result = 0
