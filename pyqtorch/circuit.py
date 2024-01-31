@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from logging import getLogger
 from typing import Any, Iterator
 
 from torch import Tensor, device
 from torch.nn import Module, ModuleList
 
 from pyqtorch.utils import DiffMode, State, overlap, zero_state
+
+logger = getLogger(__name__)
 
 
 class QuantumCircuit(Module):
@@ -72,12 +75,21 @@ class QuantumCircuit(Module):
             )
 
     @property
-    def _device(self) -> device:
-        try:
-            (_, buffer) = next(self.named_buffers())
-            return buffer.device
-        except StopIteration:
-            return device("cpu")
+    def _device(self) -> device | None:
+        device_lst: list[device] = []
+        for op in self.operations:
+            if isinstance(op, QuantumCircuit):
+                device_lst.append(op._device)
+            elif isinstance(op, Module):
+                device_lst += [b.device for b in op.buffers()]
+        if len(list(set(device_lst))) > 1:
+            logger.error(f"Found more than one device in object {self}.")
+            return None
+        elif len(device_lst) == 0:
+            logger.warning(f"Unable to determine device on module {self}.")
+            return None
+        else:
+            return device_lst[0]
 
     def init_state(self, batch_size: int = 1) -> Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
