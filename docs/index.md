@@ -125,11 +125,14 @@ from __future__ import annotations
 
 import torch
 import pyqtorch as pyq
+from pyqtorch.utils import DiffMode
 from pyqtorch.parametric import Parametric
 import numpy as np
 import matplotlib.pyplot as plt
 
 import torch.nn.functional as F
+
+diff_mode = DiffMode.ADJOINT
 
 def target_function(x: torch.Tensor, degree: int = 3) -> torch.Tensor:
     result = 0
@@ -141,53 +144,43 @@ x = torch.tensor(np.linspace(0, 10, 100))
 y = target_function(x, 5)
 
 
-def HEA(n_qubits: int, n_layers: int, param_name: str) -> pyq.QuantumCircuit:
+def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
     ops = []
     for l in range(n_layers):
         ops += [pyq.RX(i, f'{param_name}_0_{l}_{i}') for i in range(n_qubits)]
         ops += [pyq.RY(i, f'{param_name}_1_{l}_{i}') for i in range(n_qubits)]
         ops += [pyq.RX(i, f'{param_name}_2_{l}_{i}') for i in range(n_qubits)]
         ops += [pyq.CNOT(i % n_qubits, (i+1) % n_qubits) for i in range(n_qubits)]
-    return pyq.QuantumCircuit(n_qubits, ops)
-
-
-class QNN(pyq.QuantumCircuit):
-
-    def __init__(self, n_qubits, n_layers):
-        super().__init__(n_qubits, [])
-        self.n_qubits = n_qubits
-        self.feature_map = pyq.QuantumCircuit(n_qubits, [pyq.RX(i, f'phi') for i in range(n_qubits)])
-        self.hea = HEA(n_qubits, n_layers, 'theta')
-        self.observable = pyq.Z(0)
-        self.param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea.operations if isinstance(op, Parametric)})
-    def forward(self, phi: torch.Tensor):
-        batch_size = len(phi)
-        state = self.feature_map.init_state(batch_size)
-        state = self.feature_map(state, {'phi': phi})
-        state = self.hea(state, self.param_dict)
-        new_state = self.observable(state, self.param_dict)
-        return pyq.overlap(state, new_state)
+    return ops
 
 n_qubits = 5
 n_layers = 3
-model = QNN(n_qubits, n_layers)
+
+feature_map = [pyq.RX(i, f'phi') for i in range(n_qubits)]
+ansatz = hea(n_qubits, n_layers, 'theta')
+observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in ansatz if isinstance(op, Parametric)})
+qnn = pyq.QuantumCircuit(n_qubits, feature_map + ansatz, DiffMode.AD)
+
+state = qnn.init_state()
 
 with torch.no_grad():
-    y_init = model(x)
+    y_init = qnn.expectation({**param_dict,**{'phi': x}}, observable, state)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=.01)
+optimizer = torch.optim.Adam(param_dict.values(), lr=.01)
 epochs = 200
+
 
 for epoch in range(epochs):
     optimizer.zero_grad()
-    y_pred = model(x)
+    y_pred = qnn.expectation({**param_dict,**{'phi': x}}, observable, state)
     loss = F.mse_loss(y, y_pred)
     loss.backward()
     optimizer.step()
 
 
 with torch.no_grad():
-    y_final = model(x)
+    y_final = qnn.expectation({**param_dict,**{'phi': x}}, observable, state)
 
 plt.plot(x.numpy(), y.numpy(), label="truth")
 plt.plot(x.numpy(), y_init.numpy(), label="initial")

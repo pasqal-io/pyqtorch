@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import torch
-from torch import Tensor
+from torch import Tensor, tensor
 from torch.autograd import Function
 
 from pyqtorch.apply import apply_operator
@@ -41,9 +41,17 @@ class AdjointExpectation(Function):
         for op in ctx.circuit.reverse():
             ctx.out_state = apply_operator(ctx.out_state, op.dagger(values), op.qubit_support)
             if isinstance(op, Parametric):
-                mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
-                grads = [grad_out * 2 * overlap(ctx.projected_state, mu)] + grads
+                if values[op.param_name].requires_grad:
+                    mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
+                    grad = grad_out * 2 * overlap(ctx.projected_state, mu)
+                else:
+                    grad = torch.zeros(1)
+                grads = [grad] + grads
             ctx.projected_state = apply_operator(
                 ctx.projected_state, op.dagger(values), op.qubit_support
             )
+        num_grads = len(grads)
+        num_params = len(ctx.saved_tensors)
+        diff = num_params - num_grads
+        grads = grads + [tensor([0]) for _ in range(diff)]
         return (None, None, None, None, *grads)
