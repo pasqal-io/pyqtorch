@@ -176,7 +176,7 @@ for i in range(len(grad_ad)):
 
 ## Fitting a function
 
-Let's have a look at how the `QuantumCircuit` can be used to implement a Quantum Neural Network and fit a simple function.
+Let's have a look at how the `QuantumCircuit` can be used to fit a function.
 
 ```python exec="on" source="material-block" html="1"
 from __future__ import annotations
@@ -243,6 +243,11 @@ plt.plot(x.numpy(), y.numpy(), label="truth")
 plt.plot(x.numpy(), y_init.numpy(), label="initial")
 plt.plot(x.numpy(), y_final.numpy(), "--", label="final", linewidth=3)
 plt.legend()
-from docs import docsutils # markdown-exec: hide
-print(docsutils.fig_to_html(plt.gcf())) # markdown-exec: hide
+from io import StringIO  # markdown-exec: hide
+from matplotlib.figure import Figure  # markdown-exec: hide
+def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
+    buffer = StringIO()  # markdown-exec: hide
+    fig.savefig(buffer, format="svg")  # markdown-exec: hide
+    return buffer.getvalue()  # markdown-exec: hide
+print(fig_to_html(plt.gcf())) # markdown-exec: hide
 ```
