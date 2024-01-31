@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import torch
-from torch import Tensor, tensor
+from torch import Tensor
 from torch.autograd import Function
 
 from pyqtorch.apply import apply_operator
@@ -37,7 +37,7 @@ class AdjointExpectation(Function):
     def backward(ctx: Any, grad_out: Tensor) -> tuple:
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)
-        grads: list = []
+        grads_dict = values.copy()
         for op in ctx.circuit.reverse():
             ctx.out_state = apply_operator(ctx.out_state, op.dagger(values), op.qubit_support)
             if isinstance(op, Parametric):
@@ -46,12 +46,10 @@ class AdjointExpectation(Function):
                     grad = grad_out * 2 * overlap(ctx.projected_state, mu)
                 else:
                     grad = torch.zeros(1)
-                grads = [grad] + grads
+
+                grads_dict[op.param_name] = grad
+
             ctx.projected_state = apply_operator(
                 ctx.projected_state, op.dagger(values), op.qubit_support
             )
-        num_grads = len(grads)
-        num_params = len(ctx.saved_tensors)
-        diff = num_params - num_grads
-        grads = grads + [tensor([0]) for _ in range(diff)]
-        return (None, None, None, None, *grads)
+        return (None, None, None, None, *grads_dict.values())
