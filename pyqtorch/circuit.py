@@ -75,21 +75,22 @@ class QuantumCircuit(Module):
             )
 
     @property
-    def _device(self) -> device | None:
+    def _device(self) -> device:
         device_lst: list[device] = []
         for op in self.operations:
             if isinstance(op, QuantumCircuit):
                 device_lst.append(op._device)
             elif isinstance(op, Module):
                 device_lst += [b.device for b in op.buffers()]
-        if len(list(set(device_lst))) > 1:
-            logger.error(f"Found more than one device in object {self}.")
-            return None
-        elif len(device_lst) == 0:
-            logger.warning(f"Unable to determine device on module {self}.")
-            return None
+        maybe_device = list(set(device_lst))
+        if len(maybe_device) > 1:
+            logger.error(f"Found more than one device in module {self}.")
+        elif len(maybe_device) == 0:
+            logger.warning(f"Unable to determine device of module {self}.")
         else:
-            return device_lst[0]
+            _device = device_lst[0]
+            logger.info(f"Found device {_device}.")
+            return _device
 
     def init_state(self, batch_size: int = 1) -> Tensor:
         return zero_state(self.n_qubits, batch_size, device=self._device)
