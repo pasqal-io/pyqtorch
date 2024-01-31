@@ -5,17 +5,34 @@ from typing import Tuple
 
 import torch
 
-from pyqtorch.abstract import AbstractOperator
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
 from pyqtorch.utils import Operator, State, product_state
 
 
-class Primitive(AbstractOperator):
-    def __init__(self, pauli: torch.Tensor, target: int):
-        super().__init__(target)
+class Primitive(torch.nn.Module):
+    def __init__(self, pauli: torch.Tensor, target: int) -> None:
+        super().__init__()
+        self.target: int = target
+        self.qubit_support: Tuple[int, ...] = (target,)
+        self.n_qubits: int = max(self.qubit_support)
         self.register_buffer("pauli", pauli)
         self._param_type = None
+
+    def __key(self) -> tuple:
+        return self.qubit_support
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.__key() == other.__key()
+        else:
+            return False
+
+    def __hash__(self) -> int:
+        return hash(self.qubit_support)
+
+    def extra_repr(self) -> str:
+        return f"qubit_support={self.qubit_support}"
 
     @property
     def param_type(self) -> None:
