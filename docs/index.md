@@ -160,6 +160,8 @@ Let's have a look at how the `QuantumCircuit` can be used to fit a function.
 ```python exec="on" source="material-block" html="1"
 from __future__ import annotations
 
+from operator import add
+from functools import reduce
 import torch
 import pyqtorch as pyq
 from pyqtorch.utils import DiffMode
@@ -169,15 +171,10 @@ import matplotlib.pyplot as plt
 
 from torch.nn.functional import mse_loss
 
-
-def target_function(x: torch.Tensor, degree: int = 3) -> torch.Tensor:
-    result = 0
-    for i in range(degree):
-        result += torch.cos(i*x) + torch.sin(i*x)
-    return .05 * result
-
+# A target function and some training data
+fn = lambda x, degree: .05 * reduce(add, (torch.cos(i*x) + torch.sin(i*x) for i in range(degree)), 0)
 x = torch.tensor(np.linspace(0, 10, 100))
-y = target_function(x, 5)
+y = fn(x, 5)
 
 
 def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
