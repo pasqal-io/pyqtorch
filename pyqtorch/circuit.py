@@ -107,7 +107,9 @@ def expectation(
     if diff_mode == DiffMode.AD:
         state = circuit.run(state, values)
         return overlap(state, observable.forward(state, values))
-    else:
+    elif diff_mode == DiffMode.ADJOINT:
         from pyqtorch.adjoint import AdjointExpectation
 
         return AdjointExpectation.apply(circuit, observable, state, values.keys(), *values.values())
+    else:
+        raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")
