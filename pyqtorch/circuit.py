@@ -91,9 +91,11 @@ def expectation(
 ) -> Tensor:
     """Compute the expectation value of the circuit given a state and observable.
     Arguments:
-        state: A input state
+        circuit: QuantumCircuit instance
+        state: An input state
         values: A dictionary of parameter values
-        observable: A Observable
+        observable: QuantumCircuit representing the observable
+        diff_mode: The differentiation mode
     Returns:
         A expectation value.
     """
