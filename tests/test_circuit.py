@@ -77,3 +77,10 @@ def test_differentiate_circuit(diff_mode: DiffMode, batch_size: int, n_qubits: i
         return circ(state, {"phi": phi, "theta": theta, "epsilon": epsilon})
 
     assert torch.autograd.gradcheck(_fwd, (phi, theta, epsilon))
+
+
+def test_device_inference() -> None:
+    ops = [pyq.RX(0), pyq.RX(0)]
+    circ = pyq.QuantumCircuit(2, ops)
+    nested_circ = pyq.QuantumCircuit(2, [circ, circ])
+    assert nested_circ._device is not None
