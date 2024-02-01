@@ -166,14 +166,13 @@ import torch
 import pyqtorch as pyq
 from pyqtorch.utils import DiffMode
 from pyqtorch.parametric import Parametric
-import numpy as np
 import matplotlib.pyplot as plt
 
 from torch.nn.functional import mse_loss
 
 # A target function and some training data
 fn = lambda x, degree: .05 * reduce(add, (torch.cos(i*x) + torch.sin(i*x) for i in range(degree)), 0)
-x = torch.tensor(np.linspace(0, 10, 100))
+x = torch.linspace(0, 10, 100)
 y = fn(x, 5)
 
 
