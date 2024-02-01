@@ -19,6 +19,26 @@ def apply_operator(
     n_qubits: int = None,
     batch_size: int = None,
 ) -> State:
+    """Applies an operator, i.e. a single tensor of shape [2, 2, ...], on a given state
+       of shape [2 for _ in range(n_qubits)] for a given set of (target and control) qubits.
+
+       Since dimension 'i' in 'state' corresponds to all amplitudes where qubit 'i' is 1,
+       target and control qubits represent the dimensions over which to contract the 'operator'.
+       Contraction means applying the 'dot' operation between the operator array and dimension 'i'
+       of 'state, resulting in a new state where the result of the 'dot' operation has been moved to
+       dimension 'i' of 'state'. To restore the former order of dimensions, the affected dimensions
+       are moved to their original positions and the state is returned.
+
+    Arguments:
+        state: State to operate on.
+        operator: Tensor to contract over 'state'.
+        qubits: Tuple of qubits on which to apply the 'operator' to.
+        n_qubits: The number of qubits of the full system.
+        batch_size: Batch size of either state and or operators.
+
+    Returns:
+        State after applying 'operator'.
+    """
     qubits = list(qubits)
     if n_qubits is None:
         n_qubits = len(state.size()) - 1

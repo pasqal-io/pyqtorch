@@ -37,13 +37,19 @@ class AdjointExpectation(Function):
     def backward(ctx: Any, grad_out: Tensor) -> tuple:
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)
-        grads: list = []
+        grads_dict = values.copy()
         for op in ctx.circuit.reverse():
             ctx.out_state = apply_operator(ctx.out_state, op.dagger(values), op.qubit_support)
             if isinstance(op, Parametric):
-                mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
-                grads = [grad_out * 2 * overlap(ctx.projected_state, mu)] + grads
+                if values[op.param_name].requires_grad:
+                    mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
+                    grad = grad_out * 2 * overlap(ctx.projected_state, mu)
+                else:
+                    grad = torch.zeros(1)
+
+                grads_dict[op.param_name] = grad
+
             ctx.projected_state = apply_operator(
                 ctx.projected_state, op.dagger(values), op.qubit_support
             )
-        return (None, None, None, None, *grads)
+        return (None, None, None, None, *grads_dict.values())

@@ -236,7 +236,7 @@ def test_dagger_single_qubit() -> None:
             if issubclass(cls, Parametric):
                 op = cls(target, param_name)  # type: ignore[arg-type]
             else:
-                op = cls(target)  # type: ignore[misc]
+                op = cls(target)  # type: ignore[assignment, call-arg]
             values = {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             new_state = apply_operator(state, op.unitary(values), [target])
             daggered_back = apply_operator(new_state, op.dagger(values), [target])
@@ -257,7 +257,7 @@ def test_dagger_nqubit() -> None:
                 op = cls(target - 1, target, param_name)  # type: ignore[arg-type]
                 qubit_support = (target + 1, target)
             else:
-                op = cls(target - 1, target)  # type: ignore[misc]
+                op = cls(target - 1, target)  # type: ignore[call-arg]
                 qubit_support = (target + 1, target)
             values = {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             new_state = apply_operator(state, op.unitary(values), qubit_support)

@@ -11,7 +11,7 @@ choice and install it normally with `pip`:
 pip install pyqtorch
 ```
 
-## Digital
+## Digital Operations
 
 `pyqtorch` implements a large selection of both primitive and parametric single to n-qubit, digital quantum gates.
 
@@ -60,7 +60,7 @@ rx = RX(0)
 new_state = rx(state, torch.rand(1))
 ```
 
-## Analog
+## Analog Operations
 
 `pyqtorch` also contains a `analog` module which allows for global state evolution through the `HamiltonianEvolution` class. Note that it only accepts a `torch.Tensor` as a generator which is expected to be an Hermitian matrix. To build arbitrary Pauli hamiltonians, we recommend using [Qadence](https://pasqal-io.github.io/qadence/v1.0.3/tutorials/hamiltonians/).
 
@@ -116,88 +116,7 @@ def _fwd(phi: torch.Tensor) -> torch.Tensor:
 assert torch.autograd.gradcheck(_fwd, theta)
 ```
 
-## Fitting a function
-
-Let's have a look at how the `QuantumCircuit` can be used to implement a Quantum Neural Network and fit a simple function.
-
-```python exec="on" source="material-block" html="1"
-from __future__ import annotations
-
-import torch
-import pyqtorch as pyq
-from pyqtorch.parametric import Parametric
-import numpy as np
-import matplotlib.pyplot as plt
-
-import torch.nn.functional as F
-
-def target_function(x: torch.Tensor, degree: int = 3) -> torch.Tensor:
-    result = 0
-    for i in range(degree):
-        result += torch.cos(i*x) + torch.sin(i*x)
-    return .05 * result
-
-x = torch.tensor(np.linspace(0, 10, 100))
-y = target_function(x, 5)
-
-
-def HEA(n_qubits: int, n_layers: int, param_name: str) -> pyq.QuantumCircuit:
-    ops = []
-    for l in range(n_layers):
-        ops += [pyq.RX(i, f'{param_name}_0_{l}_{i}') for i in range(n_qubits)]
-        ops += [pyq.RY(i, f'{param_name}_1_{l}_{i}') for i in range(n_qubits)]
-        ops += [pyq.RX(i, f'{param_name}_2_{l}_{i}') for i in range(n_qubits)]
-        ops += [pyq.CNOT(i % n_qubits, (i+1) % n_qubits) for i in range(n_qubits)]
-    return pyq.QuantumCircuit(n_qubits, ops)
-
-
-class QNN(pyq.QuantumCircuit):
-
-    def __init__(self, n_qubits, n_layers):
-        super().__init__(n_qubits, [])
-        self.n_qubits = n_qubits
-        self.feature_map = pyq.QuantumCircuit(n_qubits, [pyq.RX(i, f'phi') for i in range(n_qubits)])
-        self.hea = HEA(n_qubits, n_layers, 'theta')
-        self.observable = pyq.Z(0)
-        self.param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in self.hea.operations if isinstance(op, Parametric)})
-    def forward(self, phi: torch.Tensor):
-        batch_size = len(phi)
-        state = self.feature_map.init_state(batch_size)
-        state = self.feature_map(state, {'phi': phi})
-        state = self.hea(state, self.param_dict)
-        new_state = self.observable(state, self.param_dict)
-        return pyq.overlap(state, new_state)
-
-n_qubits = 5
-n_layers = 3
-model = QNN(n_qubits, n_layers)
-
-with torch.no_grad():
-    y_init = model(x)
-
-optimizer = torch.optim.Adam(model.parameters(), lr=.01)
-epochs = 200
-
-for epoch in range(epochs):
-    optimizer.zero_grad()
-    y_pred = model(x)
-    loss = F.mse_loss(y, y_pred)
-    loss.backward()
-    optimizer.step()
-
-
-with torch.no_grad():
-    y_final = model(x)
-
-plt.plot(x.numpy(), y.numpy(), label="truth")
-plt.plot(x.numpy(), y_init.numpy(), label="initial")
-plt.plot(x.numpy(), y_final.numpy(), "--", label="final", linewidth=3)
-plt.legend()
-from docs import docsutils # markdown-exec: hide
-print(docsutils.fig_to_html(plt.gcf())) # markdown-exec: hide
-```
-
-## First Order Adjoint Differentiation
+## Efficient Computation of Derivatives
 
 `pyqtorch` also offers a [adjoint differentiation mode](https://arxiv.org/abs/2009.02823) which can be used through the `expectation` method of `QuantumCircuit`.
 
@@ -208,50 +127,113 @@ from pyqtorch.utils import DiffMode
 
 n_qubits = 3
 batch_size = 1
-diff_mode = DiffMode.ADJOINT
 
-
-rx = pyq.RX(0, param_name="theta_0")
-cry = pyq.CPHASE(0, 1, param_name="theta_1")
-rz = pyq.RZ(2, param_name="theta_2")
+rx = pyq.RX(0, param_name="x")
 cnot = pyq.CNOT(1, 2)
-ops = [rx, cry, rz, cnot]
+ops = [rx, cnot]
 n_qubits = 3
-adjoint_circ = pyq.QuantumCircuit(n_qubits, ops, DiffMode.ADJOINT)
-ad_circ = pyq.QuantumCircuit(n_qubits, ops, DiffMode.AD)
+circ = pyq.QuantumCircuit(n_qubits, ops)
+
 obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
-
-theta_0_value = torch.pi / 2
-theta_1_value = torch.pi
-theta_2_value = torch.pi / 4
-
 state = pyq.zero_state(n_qubits)
 
-theta_0_ad = torch.tensor([theta_0_value], requires_grad=True)
-thetas_0_adjoint = torch.tensor([theta_0_value], requires_grad=True)
+values_ad = {"x": torch.tensor([torch.pi / 2], requires_grad=True)}
+values_adjoint = {"x": torch.tensor([torch.pi / 2], requires_grad=True)}
+exp_ad = pyq.expectation(circ, state, values_ad, obs, DiffMode.AD)
+exp_adjoint = pyq.expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 
-theta_1_ad = torch.tensor([theta_1_value], requires_grad=True)
-thetas_1_adjoint = torch.tensor([theta_1_value], requires_grad=True)
+dfdx_ad = torch.autograd.grad(exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad))
 
-theta_2_ad = torch.tensor([theta_2_value], requires_grad=True)
-thetas_2_adjoint = torch.tensor([theta_2_value], requires_grad=True)
-
-values_ad = {"theta_0": theta_0_ad, "theta_1": theta_1_ad, "theta_2": theta_2_ad}
-values_adjoint = {
-    "theta_0": thetas_0_adjoint,
-    "theta_1": thetas_1_adjoint,
-    "theta_2": thetas_2_adjoint,
-}
-exp_ad = ad_circ.expectation(values_ad, obs, state)
-exp_adjoint = adjoint_circ.expectation(values_adjoint, obs, state)
-
-grad_ad = torch.autograd.grad(exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad))
-
-grad_adjoint = torch.autograd.grad(
+dfdx_adjoint = torch.autograd.grad(
     exp_adjoint, tuple(values_adjoint.values()), torch.ones_like(exp_adjoint)
 )
 
-assert len(grad_ad) == len(grad_adjoint)
-for i in range(len(grad_ad)):
-    assert torch.allclose(grad_ad[i], grad_adjoint[i])
+assert len(dfdx_ad) == len(dfdx_adjoint)
+for i in range(len(dfdx_ad)):
+    assert torch.allclose(dfdx_ad[i], dfdx_adjoint[i])
+```
+
+## Fitting a function
+
+Let's have a look at how the `QuantumCircuit` can be used to fit a function.
+
+```python exec="on" source="material-block" html="1"
+from __future__ import annotations
+
+from operator import add
+from functools import reduce
+import torch
+import pyqtorch as pyq
+from pyqtorch.utils import DiffMode
+from pyqtorch.parametric import Parametric
+import matplotlib.pyplot as plt
+
+from torch.nn.functional import mse_loss
+
+# We can train on GPU if available
+DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+# Target function and some training data
+fn = lambda x, degree: .05 * reduce(add, (torch.cos(i*x) + torch.sin(i*x) for i in range(degree)), 0)
+x = torch.linspace(0, 10, 100)
+y = fn(x, 5)
+
+
+def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
+    ops = []
+    for l in range(n_layers):
+        ops += [pyq.RX(i, f'{param_name}_0_{l}_{i}') for i in range(n_qubits)]
+        ops += [pyq.RY(i, f'{param_name}_1_{l}_{i}') for i in range(n_qubits)]
+        ops += [pyq.RX(i, f'{param_name}_2_{l}_{i}') for i in range(n_qubits)]
+        ops += [pyq.CNOT(i % n_qubits, (i+1) % n_qubits) for i in range(n_qubits)]
+    return ops
+
+n_qubits = 5
+n_layers = 3
+diff_mode = DiffMode.ADJOINT
+# Lets define a feature map to encode our 'x' values
+feature_map = [pyq.RX(i, f'x') for i in range(n_qubits)]
+# To fit the function, we define a hardware-efficient ansatz with tunable parameters
+ansatz = hea(n_qubits, n_layers, 'theta')
+observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in ansatz if isinstance(op, Parametric)})
+circ = pyq.QuantumCircuit(n_qubits, feature_map + ansatz)
+# Lets move all necessary components to the DEVICE
+circ = circ.to(DEVICE)
+observable = observable.to(DEVICE)
+param_dict = param_dict.to(DEVICE)
+x, y = x.to(DEVICE), y.to(DEVICE)
+state = circ.init_state()
+
+def exp_fn(param_dict: dict[str, torch.Tensor], inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    return pyq.expectation(circ, state, {**param_dict,**inputs}, observable, diff_mode)
+
+with torch.no_grad():
+    y_init = exp_fn(param_dict, {'x': x})
+
+# We need to set 'foreach' False since Adam doesnt support float64 on CUDA devices
+optimizer = torch.optim.Adam(param_dict.values(), lr=.01, foreach=False)
+epochs = 300
+
+for epoch in range(epochs):
+    optimizer.zero_grad()
+    y_pred = exp_fn(param_dict, {'x': x})
+    loss = mse_loss(y, y_pred)
+    loss.backward()
+    optimizer.step()
+
+with torch.no_grad():
+    y_final = exp_fn(param_dict, {'x': x})
+
+plt.plot(x.numpy(), y.numpy(), label="truth")
+plt.plot(x.numpy(), y_init.numpy(), label="initial")
+plt.plot(x.numpy(), y_final.numpy(), "--", label="final", linewidth=3)
+plt.legend()
+from io import StringIO  # markdown-exec: hide
+from matplotlib.figure import Figure  # markdown-exec: hide
+def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
+    buffer = StringIO()  # markdown-exec: hide
+    fig.savefig(buffer, format="svg")  # markdown-exec: hide
+    return buffer.getvalue()  # markdown-exec: hide
+print(fig_to_html(plt.gcf())) # markdown-exec: hide
 ```
