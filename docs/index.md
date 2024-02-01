@@ -132,15 +132,15 @@ rx = pyq.RX(0, param_name="x")
 cnot = pyq.CNOT(1, 2)
 ops = [rx, cnot]
 n_qubits = 3
-adjoint_circ = pyq.QuantumCircuit(n_qubits, ops, DiffMode.ADJOINT)
-ad_circ = pyq.QuantumCircuit(n_qubits, ops, DiffMode.AD)
+circ = pyq.QuantumCircuit(n_qubits, ops)
+
 obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 state = pyq.zero_state(n_qubits)
 
 values_ad = {"x": torch.tensor([torch.pi / 2], requires_grad=True)}
 values_adjoint = {"x": torch.tensor([torch.pi / 2], requires_grad=True)}
-exp_ad = ad_circ.expectation(state, values_ad, obs)
-exp_adjoint = adjoint_circ.expectation(state, values_adjoint, obs)
+exp_ad = pyq.expectation(circ, state, values_ad, obs, DiffMode.AD)
+exp_adjoint = pyq.expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 
 dfdx_ad = torch.autograd.grad(exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad))
 
@@ -188,19 +188,22 @@ def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
 
 n_qubits = 5
 n_layers = 3
-
+diff_mode = DiffMode.ADJOINT
 # Lets define a feature map to encode our 'x' values
 feature_map = [pyq.RX(i, f'x') for i in range(n_qubits)]
 # To fit the function, we define a hardware-efficient ansatz with tunable parameters
 ansatz = hea(n_qubits, n_layers, 'theta')
 observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in ansatz if isinstance(op, Parametric)})
-circ = pyq.QuantumCircuit(n_qubits, feature_map + ansatz, DiffMode.ADJOINT)
+circ = pyq.QuantumCircuit(n_qubits, feature_map + ansatz)
 
 state = circ.init_state()
 
+def exp_fn(param_dict: dict[str, torch.Tensor], inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    return pyq.expectation(circ, state, {**param_dict,**inputs}, observable, diff_mode)
+
 with torch.no_grad():
-    y_init = circ.expectation(state, {**param_dict,**{'x': x}}, observable)
+    y_init = exp_fn(param_dict, {'x': x})
 
 optimizer = torch.optim.Adam(param_dict.values(), lr=.01)
 epochs = 300
@@ -208,14 +211,14 @@ epochs = 300
 
 for epoch in range(epochs):
     optimizer.zero_grad()
-    y_pred = circ.expectation(state, {**param_dict,**{'x': x}}, observable)
+    y_pred = exp_fn(param_dict, {'x': x})
     loss = mse_loss(y, y_pred)
     loss.backward()
     optimizer.step()
 
 
 with torch.no_grad():
-    y_final = circ.expectation(state, {**param_dict,**{'x': x}}, observable)
+    y_final = exp_fn(param_dict, {'x': x})
 
 plt.plot(x.numpy(), y.numpy(), label="truth")
 plt.plot(x.numpy(), y_init.numpy(), label="initial")

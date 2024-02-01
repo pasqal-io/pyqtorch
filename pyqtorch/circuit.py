@@ -12,11 +12,10 @@ logger = getLogger(__name__)
 
 
 class QuantumCircuit(Module):
-    def __init__(self, n_qubits: int, operations: list[Module], diff_mode: DiffMode = DiffMode.AD):
+    def __init__(self, n_qubits: int, operations: list[Module]):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = ModuleList(operations)
-        self.diff_mode = diff_mode
 
     def __mul__(self, other: Module | QuantumCircuit) -> QuantumCircuit:
         n_qubits = max(self.n_qubits, other.n_qubits)
@@ -54,34 +53,6 @@ class QuantumCircuit(Module):
     def forward(self, state: State, values: dict[str, Tensor] = {}) -> State:
         return self.run(state, values)
 
-    def expectation(
-        self,
-        state: State,
-        values: dict[str, Tensor],
-        observable: QuantumCircuit,
-    ) -> Tensor:
-        """Compute the expectation value of the circuit given a state and observable.
-        Arguments:
-            state: A input state
-            values: A dictionary of parameter values
-            observable: A Observable
-        Returns:
-            A expectation value.
-        """
-        if observable is None:
-            raise ValueError("Please provide an observable to compute expectation.")
-        if state is None:
-            state = self.init_state(batch_size=1)
-        if self.diff_mode == DiffMode.AD:
-            state = self.run(state, values)
-            return overlap(state, observable.forward(state, values))
-        else:
-            from pyqtorch.adjoint import AdjointExpectation
-
-            return AdjointExpectation.apply(
-                self, observable, state, values.keys(), *values.values()
-            )
-
     @property
     def _device(self) -> device:
         device_lst: list[device] = []
@@ -109,3 +80,31 @@ class QuantumCircuit(Module):
     def to(self, device: device) -> QuantumCircuit:
         self.operations = ModuleList([op.to(device) for op in self.operations])
         return self
+
+
+def expectation(
+    circuit: QuantumCircuit,
+    state: State,
+    values: dict[str, Tensor],
+    observable: QuantumCircuit,
+    diff_mode: DiffMode = DiffMode.AD,
+) -> Tensor:
+    """Compute the expectation value of the circuit given a state and observable.
+    Arguments:
+        state: A input state
+        values: A dictionary of parameter values
+        observable: A Observable
+    Returns:
+        A expectation value.
+    """
+    if observable is None:
+        raise ValueError("Please provide an observable to compute expectation.")
+    if state is None:
+        state = circuit.init_state(batch_size=1)
+    if diff_mode == DiffMode.AD:
+        state = circuit.run(state, values)
+        return overlap(state, observable.forward(state, values))
+    else:
+        from pyqtorch.adjoint import AdjointExpectation
+
+        return AdjointExpectation.apply(circuit, observable, state, values.keys(), *values.values())
