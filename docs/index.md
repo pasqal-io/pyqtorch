@@ -170,7 +170,10 @@ import matplotlib.pyplot as plt
 
 from torch.nn.functional import mse_loss
 
-# A target function and some training data
+# We can train on GPU if available
+DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+# Target function and some training data
 fn = lambda x, degree: .05 * reduce(add, (torch.cos(i*x) + torch.sin(i*x) for i in range(degree)), 0)
 x = torch.linspace(0, 10, 100)
 y = fn(x, 5)
@@ -195,7 +198,11 @@ ansatz = hea(n_qubits, n_layers, 'theta')
 observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in ansatz if isinstance(op, Parametric)})
 circ = pyq.QuantumCircuit(n_qubits, feature_map + ansatz)
-
+# Lets move all necessary components to the DEVICE
+circ = circ.to(DEVICE)
+observable = observable.to(DEVICE)
+param_dict = param_dict.to(DEVICE)
+x, y = x.to(DEVICE), y.to(DEVICE)
 state = circ.init_state()
 
 def exp_fn(param_dict: dict[str, torch.Tensor], inputs: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -204,9 +211,9 @@ def exp_fn(param_dict: dict[str, torch.Tensor], inputs: dict[str, torch.Tensor])
 with torch.no_grad():
     y_init = exp_fn(param_dict, {'x': x})
 
-optimizer = torch.optim.Adam(param_dict.values(), lr=.01)
+# We need to set 'foreach' False since Adam doesnt support float64 on CUDA devices
+optimizer = torch.optim.Adam(param_dict.values(), lr=.01, foreach=False)
 epochs = 300
-
 
 for epoch in range(epochs):
     optimizer.zero_grad()
@@ -214,7 +221,6 @@ for epoch in range(epochs):
     loss = mse_loss(y, y_pred)
     loss.backward()
     optimizer.step()
-
 
 with torch.no_grad():
     y_final = exp_fn(param_dict, {'x': x})
