@@ -189,16 +189,18 @@ def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
 n_qubits = 5
 n_layers = 3
 
+# Lets define a feature map to encode our 'x' values
 feature_map = [pyq.RX(i, f'x') for i in range(n_qubits)]
+# To fit the function, we define a hardware-efficient ansatz with tunable parameters
 ansatz = hea(n_qubits, n_layers, 'theta')
 observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in ansatz if isinstance(op, Parametric)})
-qnn = pyq.QuantumCircuit(n_qubits, feature_map + ansatz, DiffMode.ADJOINT)
+circ = pyq.QuantumCircuit(n_qubits, feature_map + ansatz, DiffMode.ADJOINT)
 
-state = qnn.init_state()
+state = circ.init_state()
 
 with torch.no_grad():
-    y_init = qnn.expectation(state, {**param_dict,**{'x': x}}, observable)
+    y_init = circ.expectation(state, {**param_dict,**{'x': x}}, observable)
 
 optimizer = torch.optim.Adam(param_dict.values(), lr=.01)
 epochs = 300
@@ -206,14 +208,14 @@ epochs = 300
 
 for epoch in range(epochs):
     optimizer.zero_grad()
-    y_pred = qnn.expectation(state, {**param_dict,**{'x': x}}, observable)
+    y_pred = circ.expectation(state, {**param_dict,**{'x': x}}, observable)
     loss = mse_loss(y, y_pred)
     loss.backward()
     optimizer.step()
 
 
 with torch.no_grad():
-    y_final = qnn.expectation(state, {**param_dict,**{'x': x}}, observable)
+    y_final = circ.expectation(state, {**param_dict,**{'x': x}}, observable)
 
 plt.plot(x.numpy(), y.numpy(), label="truth")
 plt.plot(x.numpy(), y_init.numpy(), label="initial")
