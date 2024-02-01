@@ -56,10 +56,18 @@ class QuantumCircuit(Module):
 
     def expectation(
         self,
+        state: State,
         values: dict[str, Tensor],
         observable: QuantumCircuit,
-        state: State = None,
     ) -> Tensor:
+        """Compute the expectation value of the circuit given a state and observable.
+        Arguments:
+            state: A input state
+            values: A dictionary of parameter values
+            observable: A Observable
+        Returns:
+            A expectation value.
+        """
         if observable is None:
             raise ValueError("Please provide an observable to compute expectation.")
         if state is None:

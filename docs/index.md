@@ -139,8 +139,8 @@ state = pyq.zero_state(n_qubits)
 
 values_ad = {"x": torch.tensor([torch.pi / 2], requires_grad=True)}
 values_adjoint = {"x": torch.tensor([torch.pi / 2], requires_grad=True)}
-exp_ad = ad_circ.expectation(values_ad, obs, state)
-exp_adjoint = adjoint_circ.expectation(values_adjoint, obs, state)
+exp_ad = ad_circ.expectation(state, values_ad, obs)
+exp_adjoint = adjoint_circ.expectation(state, values_adjoint, obs)
 
 dfdx_ad = torch.autograd.grad(exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad))
 
@@ -201,7 +201,7 @@ qnn = pyq.QuantumCircuit(n_qubits, feature_map + ansatz, DiffMode.ADJOINT)
 state = qnn.init_state()
 
 with torch.no_grad():
-    y_init = qnn.expectation({**param_dict,**{'x': x}}, observable, state)
+    y_init = qnn.expectation(state, {**param_dict,**{'x': x}}, observable)
 
 optimizer = torch.optim.Adam(param_dict.values(), lr=.01)
 epochs = 300
@@ -209,14 +209,14 @@ epochs = 300
 
 for epoch in range(epochs):
     optimizer.zero_grad()
-    y_pred = qnn.expectation({**param_dict,**{'x': x}}, observable, state)
+    y_pred = qnn.expectation(state, {**param_dict,**{'x': x}}, observable)
     loss = mse_loss(y, y_pred)
     loss.backward()
     optimizer.step()
 
 
 with torch.no_grad():
-    y_final = qnn.expectation({**param_dict,**{'x': x}}, observable, state)
+    y_final = qnn.expectation(state, {**param_dict,**{'x': x}}, observable)
 
 plt.plot(x.numpy(), y.numpy(), label="truth")
 plt.plot(x.numpy(), y_init.numpy(), label="initial")

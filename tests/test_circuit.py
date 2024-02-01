@@ -39,8 +39,8 @@ def test_adjoint_diff() -> None:
         "theta_1": thetas_1_adjoint,
         "theta_2": thetas_2_adjoint,
     }
-    exp_ad = ad_circ.expectation(values_ad, obs, state)
-    exp_adjoint = adjoint_circ.expectation(values_adjoint, obs, state)
+    exp_ad = ad_circ.expectation(state, values_ad, obs)
+    exp_adjoint = adjoint_circ.expectation(state, values_adjoint, obs)
 
     grad_ad = torch.autograd.grad(exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad))
 
