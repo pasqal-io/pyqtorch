@@ -61,7 +61,8 @@ class QuantumCircuit(Module):
                 devices.add(op._device)
             elif isinstance(op, Module):
                 devices.update([b.device for b in op.buffers()])
-        if len(devices) == 1 and None not in devices:
+        devices.discard(None)
+        if len(devices) == 1:
             _device = next(iter(devices))
             logger.debug(f"Found device {_device}.")
             return _device
