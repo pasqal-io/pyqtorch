@@ -17,7 +17,10 @@ class QuantumCircuit(Module):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = ModuleList(operations)
-        self._device = next(iter(set((op.device for op in self.operations))))
+        try:
+            self._device = next(iter(set((op.device for op in self.operations))))
+        except Exception:
+            self._device = torch_device("cpu")
 
     def __mul__(self, other: Module | QuantumCircuit) -> QuantumCircuit:
         n_qubits = max(self.n_qubits, other.n_qubits)
