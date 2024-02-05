@@ -63,13 +63,14 @@ class QuantumCircuit(Module):
         return self._device
 
     def init_state(self, batch_size: int = 1) -> Tensor:
-        return zero_state(self.n_qubits, batch_size, device=self._device)
+        return zero_state(self.n_qubits, batch_size, device=self.device)
 
     def reverse(self) -> QuantumCircuit:
         return QuantumCircuit(self.n_qubits, ModuleList(list(reversed(self.operations))))
 
     def to(self, device: torch_device) -> QuantumCircuit:
         self.operations = ModuleList([op.to(device) for op in self.operations])
+        self._device = device
         return self
 
 
