@@ -55,8 +55,7 @@ class Primitive(torch.nn.Module):
         return self._device
 
     def to(self, device: torch.device) -> Primitive:
-        for b in self.buffers():
-            b = b.to(device)
+        super().to(device)
         self._device = device
         return self
 
