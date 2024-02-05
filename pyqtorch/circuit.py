@@ -3,7 +3,8 @@ from __future__ import annotations
 from logging import getLogger
 from typing import Any, Iterator
 
-from torch import Tensor, device
+from torch import Tensor
+from torch import device as torch_device
 from torch.nn import Module, ModuleList
 
 from pyqtorch.utils import DiffMode, State, overlap, zero_state
@@ -16,6 +17,12 @@ class QuantumCircuit(Module):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = ModuleList(operations)
+        self._device = torch_device("cpu")
+        if operations:
+            try:
+                self._device = next(iter(set((op.device for op in self.operations))))
+            except StopIteration:
+                pass
 
     def __mul__(self, other: Module | QuantumCircuit) -> QuantumCircuit:
         n_qubits = max(self.n_qubits, other.n_qubits)
@@ -54,32 +61,18 @@ class QuantumCircuit(Module):
         return self.run(state, values)
 
     @property
-    def _device(self) -> device | None:
-        devices = set()
-        for op in self.operations:
-            if isinstance(op, QuantumCircuit):
-                devices.add(op._device)
-            elif isinstance(op, Module):
-                devices.update([b.device for b in op.buffers()])
-        if len(devices) == 1 and None not in devices:
-            _device = next(iter(devices))
-            logger.debug(f"Found device {_device}.")
-            return _device
-        else:
-            logger.warning(
-                f"Unable to determine device of module {self}.\
-                             Found {devices}, however expected exactly one device."
-            )
-            return None
+    def device(self) -> torch_device:
+        return self._device
 
     def init_state(self, batch_size: int = 1) -> Tensor:
-        return zero_state(self.n_qubits, batch_size, device=self._device)
+        return zero_state(self.n_qubits, batch_size, device=self.device)
 
     def reverse(self) -> QuantumCircuit:
         return QuantumCircuit(self.n_qubits, ModuleList(list(reversed(self.operations))))
 
-    def to(self, device: device) -> QuantumCircuit:
+    def to(self, device: torch_device) -> QuantumCircuit:
         self.operations = ModuleList([op.to(device) for op in self.operations])
+        self._device = device
         return self
 
 

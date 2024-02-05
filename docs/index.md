@@ -118,7 +118,7 @@ assert torch.autograd.gradcheck(_fwd, theta)
 
 ## Efficient Computation of Derivatives
 
-`pyqtorch` also offers a [adjoint differentiation mode](https://arxiv.org/abs/2009.02823) which can be used through the `expectation` method of `QuantumCircuit`.
+`pyqtorch` also offers a [adjoint differentiation mode](https://arxiv.org/abs/2009.02823) which can be used through the `expectation` method.
 
 ```python exec="on" source="material-block"
 import pyqtorch as pyq

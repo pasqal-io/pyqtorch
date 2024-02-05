@@ -18,6 +18,7 @@ class Primitive(torch.nn.Module):
         self.n_qubits: int = max(self.qubit_support)
         self.register_buffer("pauli", pauli)
         self._param_type = None
+        self._device = self.pauli.device
 
     def __key(self) -> tuple:
         return self.qubit_support
@@ -48,6 +49,15 @@ class Primitive(torch.nn.Module):
 
     def dagger(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
         return _dagger(self.unitary(values))
+
+    @property
+    def device(self) -> torch.device:
+        return self._device
+
+    def to(self, device: torch.device) -> Primitive:
+        super().to(device)
+        self._device = device
+        return self
 
 
 class X(Primitive):
