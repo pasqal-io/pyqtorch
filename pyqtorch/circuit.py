@@ -21,8 +21,8 @@ class QuantumCircuit(Module):
         if operations:
             try:
                 self._device = next(iter(set((op.device for op in self.operations))))
-            except Exception:
-                self._device = self._device
+            except StopIteration:
+                pass
 
     def __mul__(self, other: Module | QuantumCircuit) -> QuantumCircuit:
         n_qubits = max(self.n_qubits, other.n_qubits)
