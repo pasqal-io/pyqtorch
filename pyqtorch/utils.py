@@ -11,11 +11,15 @@ State = torch.Tensor
 Operator = torch.Tensor
 
 
-def overlap(bra: torch.Tensor, ket: torch.Tensor) -> torch.Tensor:
+def inner_prod(bra: torch.Tensor, ket: torch.Tensor) -> torch.Tensor:
     n_qubits = len(bra.size()) - 1
     bra = bra.reshape((2**n_qubits, bra.size(-1)))
     ket = ket.reshape((2**n_qubits, ket.size(-1)))
-    return torch.pow(torch.einsum("ib,ib->b", bra.conj(), ket), 2).real
+    return torch.einsum("ib,ib->b", bra.conj(), ket)
+
+
+def overlap(bra: torch.Tensor, ket: torch.Tensor) -> torch.Tensor:
+    return torch.pow(inner_prod(bra, ket).real, 2)
 
 
 class StrEnum(str, Enum):
