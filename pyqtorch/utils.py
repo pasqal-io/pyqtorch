@@ -15,7 +15,7 @@ def overlap(bra: torch.Tensor, ket: torch.Tensor) -> torch.Tensor:
     n_qubits = len(bra.size()) - 1
     bra = bra.reshape((2**n_qubits, bra.size(-1)))
     ket = ket.reshape((2**n_qubits, ket.size(-1)))
-    return torch.einsum("ib,ib->b", bra.conj(), ket).real
+    return torch.pow(torch.einsum("ib,ib->b", bra.conj(), ket), 2).real
 
 
 class StrEnum(str, Enum):
