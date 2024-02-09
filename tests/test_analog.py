@@ -4,7 +4,7 @@ import pytest
 import torch
 
 import pyqtorch as pyq
-from pyqtorch.utils import overlap
+from pyqtorch.utils import is_normalized, overlap
 
 pi = torch.tensor(torch.pi, dtype=torch.cdouble)
 
@@ -39,6 +39,16 @@ def Hamiltonian_diag(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
         H_diag = torch.diag(get_diag)
         H_batch[..., i] = H_diag
     return H_batch
+
+
+@pytest.mark.parametrize("n_qubits, batch_size", [(2, 1), (4, 2)])
+def test_hamevo_general(n_qubits: int, batch_size: int) -> None:
+    H = Hamiltonian_general(n_qubits, batch_size)
+    t_evo = torch.rand(1, dtype=torch.float64)
+    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), n_qubits)
+    psi = pyq.random_state(n_qubits, batch_size)
+    psi_star = hamevo(H, t_evo, psi)
+    assert is_normalized(psi_star)
 
 
 def test_hamevo_single() -> None:
