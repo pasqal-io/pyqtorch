@@ -34,6 +34,7 @@ from .primitive import (
     Z,
 )
 from .utils import (
+    inner_prod,
     is_normalized,
     overlap,
     random_state,
