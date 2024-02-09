@@ -7,7 +7,7 @@ from torch import Tensor
 from torch import device as torch_device
 from torch.nn import Module, ModuleList
 
-from pyqtorch.utils import DiffMode, State, overlap, zero_state
+from pyqtorch.utils import DiffMode, State, inner_prod, zero_state
 
 logger = getLogger(__name__)
 
@@ -99,7 +99,7 @@ def expectation(
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
         state = circuit.run(state, values)
-        return overlap(state, observable.forward(state, values))
+        return inner_prod(state, observable.forward(state, values)).real
     elif diff_mode == DiffMode.ADJOINT:
         from pyqtorch.adjoint import AdjointExpectation
 

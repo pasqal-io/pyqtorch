@@ -9,7 +9,7 @@ from torch.autograd import Function
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import overlap, param_dict
+from pyqtorch.utils import inner_prod, param_dict
 
 
 class AdjointExpectation(Function):
@@ -30,7 +30,7 @@ class AdjointExpectation(Function):
         ctx.out_state = circuit.run(state, values)
         ctx.projected_state = observable.run(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
-        return overlap(ctx.out_state, ctx.projected_state)
+        return inner_prod(ctx.out_state, ctx.projected_state).real
 
     @staticmethod
     @torch.no_grad()
@@ -43,7 +43,7 @@ class AdjointExpectation(Function):
             if isinstance(op, Parametric):
                 if values[op.param_name].requires_grad:
                     mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
-                    grad = grad_out * 2 * overlap(ctx.projected_state, mu)
+                    grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
                 else:
                     grad = torch.zeros(1)
 

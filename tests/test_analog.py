@@ -1,24 +1,12 @@
 from __future__ import annotations
 
-from math import isclose
-
 import pytest
 import torch
 
 import pyqtorch as pyq
+from pyqtorch.utils import overlap
 
 pi = torch.tensor(torch.pi, dtype=torch.cdouble)
-
-
-def overlap(state1: torch.Tensor, state2: torch.Tensor) -> float | list[float]:
-    N = len(state1.shape) - 1
-    state1_T = torch.transpose(state1, N, 0)
-    overlap = torch.tensordot(state1_T, state2, dims=N)
-    res: list[float] = list(map(float, torch.abs(overlap**2).flatten()))
-    if len(res) == 1:
-        return res[0]
-    else:
-        return res
 
 
 def Hamiltonian(batch_size: int = 1) -> torch.Tensor:
@@ -61,8 +49,7 @@ def test_hamevo_single() -> None:
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(H, t_evo, psi)
     result = overlap(psi_star, psi)
-    result = result if isinstance(result, float) else result[0]
-    assert isclose(result, 0.5)
+    assert torch.isclose(result, torch.tensor([0.5]))
 
 
 def test_hamevo_batch() -> None:
@@ -74,8 +61,7 @@ def test_hamevo_batch() -> None:
     psi = pyq.uniform_state(n_qubits, batch_size)
     psi_star = hamevo(H, t_evo, psi)
     result = overlap(psi_star, psi)
-
-    assert map(isclose, zip(result, [0.5, 0.5]))  # type: ignore [arg-type]
+    assert torch.allclose(result, torch.tensor([0.5, 0.5]))
 
 
 @pytest.mark.parametrize(
@@ -113,12 +99,6 @@ def test_hamiltonianevolution_with_types(
     target: torch.Tensor,
     batch_size: int,
 ) -> None:
-    def overlap(state1: torch.Tensor, state2: torch.Tensor) -> torch.Tensor:
-        N = len(state1.shape) - 1
-        state1_T = torch.transpose(state1, N, 0)
-        overlap = torch.tensordot(state1_T, state2, dims=N)
-        return torch.abs(overlap**2).flatten()
-
     n_qubits = 4
     hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), n_qubits)
     psi = pyq.uniform_state(n_qubits)
