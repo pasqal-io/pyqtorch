@@ -28,8 +28,10 @@ class ParallelCircuit(torch.nn.Module):
         self.observable = pyq.Z(0).to("cuda:1")
 
     def forward(self, state: torch.Tensor, inputs: dict = dict()) -> torch.Tensor:
-        state = self.feature_map.forward(state, {k: v.to("cuda:0") for k, v in inputs.items()})
-        state = self.c0.forward(state.to("cuda:0"), self.params_c0)
+        state = self.feature_map.forward(
+            state.to("cuda:0"), {k: v.to("cuda:0") for k, v in inputs.items()}
+        )
+        state = self.c0.forward(state, self.params_c0)
         state = self.c1.forward(state.to("cuda:1"), self.params_c1)
         projected = self.observable.forward(state)
         return pyq.inner_prod(state, projected).real
