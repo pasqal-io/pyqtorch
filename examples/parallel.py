@@ -128,10 +128,15 @@ class PipelineParallelCircuit(ModelParallelCircuit):
 
 
 if __name__ == "__main__":
-    res = {}
+    res = {"n_qubits": N_QUBITS}
     for model_cls in [SingleDeviceCircuit, ModelParallelCircuit, PipelineParallelCircuit]:
-        setup = "circ = model_cls(N_QUBITS)"
-        pp_run_times = timeit.repeat("train(circ)", setup, number=1, repeat=10, globals=globals())
-        pp_mean, pp_std = np.mean(pp_run_times), np.std(pp_run_times)
-        res[model_cls.__name__] = pp_mean
+        try:
+            setup = "circ = model_cls(N_QUBITS)"
+            pp_run_times = timeit.repeat(
+                "train(circ)", setup, number=1, repeat=10, globals=globals()
+            )
+            pp_mean, pp_std = np.mean(pp_run_times), np.std(pp_run_times)
+            res[model_cls.__name__] = f"mean_runtime: {pp_mean}, std_runtime: {pp_std}"
+        except Exception as e:
+            res[model_cls.__name__] = f"failed, reason: {e}"
     print(res)
