@@ -7,6 +7,7 @@ from pyqtorch.parametric import Parametric
 
 N_DEVICES = 2
 
+assert torch.cuda.is_available()
 assert torch.cuda.device_count() == N_DEVICES
 
 
@@ -17,10 +18,13 @@ class ParallelCircuit(torch.nn.Module):
         self.c1 = c1.to("cuda:1")
         self.params_c0 = torch.nn.ParameterDict({k: v.to("cuda:0") for k, v in params_c0.items()})
         self.params_c1 = torch.nn.ParameterDict({k: v.to("cuda:1") for k, v in params_c1.items()})
+        self.observable = pyq.Z(0).to("cuda:1")
 
     def forward(self, state: torch.Tensor, values: dict = dict()) -> torch.Tensor:
         state = self.c0.forward(state.to("cuda:0"), self.params_c0)
-        return self.c1.forward(state.to("cuda:1"), self.params_c1)
+        state = self.c1.forward(state.to("cuda:1"), self.params_c1)
+        projected = self.observable.forward(state)
+        return pyq.inner_prod(state, projected).real
 
 
 def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
@@ -53,3 +57,14 @@ params_c1 = init_params(c1)
 
 circ = ParallelCircuit(c0, c1, params_c0, params_c1)
 new_state = circ.forward(pyq.zero_state(n_qubits))
+
+optimizer = torch.optim.Adam({**circ.params_c0, **circ.params_c1}.values(), lr=0.01, foreach=False)
+epochs = 10
+
+for epoch in range(epochs):
+    optimizer.zero_grad()
+    y_pred = circ.forward(pyq.zero_state(n_qubits))
+    loss = y_pred - torch.rand(1, device=y_pred.device)
+    loss.backward()
+    print(f"{epoch}:{loss.item()}")
+    optimizer.step()
