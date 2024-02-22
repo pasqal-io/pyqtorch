@@ -42,7 +42,7 @@ class ModelParallelCircuit(torch.nn.Module):
         self.observable = pyq.Z(0).to("cuda:1")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        state = pyq.zero_state(N_QUBITS)
+        state = pyq.zero_state(N_QUBITS).to("cuda:0")
         state = self.feature_map.forward(state.to("cuda:0"), {"x": x.to("cuda:0")})
         state = self.c0.forward(state, self.params_c0)
         state = self.c1.forward(state.to("cuda:1"), self.params_c1)
@@ -90,7 +90,7 @@ class PipelineParallelCircuit(ModelParallelCircuit):
         self.split_size = split_size
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        state = pyq.zero_state(N_QUBITS)
+        state = pyq.zero_state(N_QUBITS).to("cuda:0")
         splits = iter(x.split(self.split_size, dim=0))
         s_next = next(splits)
         s_prev = self.feature_map(state, {"x": s_next.to("cuda:0")})
