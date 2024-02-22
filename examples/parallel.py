@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import timeit
 from functools import reduce
 from operator import add
 
+import numpy as np
 import torch
 from torch.nn.functional import mse_loss
 
@@ -10,27 +12,38 @@ import pyqtorch as pyq
 from pyqtorch.parametric import Parametric
 
 N_DEVICES = 2
+N_QUBITS = 2
+N_POINTS = 100
 
 assert torch.cuda.is_available()
 assert torch.cuda.device_count() == N_DEVICES
 
 
-class ParallelCircuit(torch.nn.Module):
-    def __init__(self, c0: pyq.QuantumCircuit, c1: pyq.QuantumCircuit, params_c0, params_c1):
+def init_params(circ: pyq.QuantumCircuit, device: torch.device) -> torch.nn.ParameterDict:
+    return torch.nn.ParameterDict(
+        {
+            op.param_name: torch.rand(1, requires_grad=True, device=device)
+            for op in circ.operations
+            if isinstance(op, Parametric)
+        }
+    )
+
+
+class ModelParallelCircuit(torch.nn.Module):
+    def __init__(self, n_qubits: int = N_QUBITS):
         super().__init__()
         self.feature_map = pyq.QuantumCircuit(
             n_qubits, [pyq.RX(i, "x") for i in range(n_qubits)]
         ).to("cuda:0")
-        self.c0 = c0.to("cuda:0")
-        self.c1 = c1.to("cuda:1")
-        self.params_c0 = torch.nn.ParameterDict({k: v.to("cuda:0") for k, v in params_c0.items()})
-        self.params_c1 = torch.nn.ParameterDict({k: v.to("cuda:1") for k, v in params_c1.items()})
+        self.c0 = pyq.QuantumCircuit(n_qubits, hea(n_qubits, 1, "theta")).to("cuda:0")
+        self.c1 = pyq.QuantumCircuit(n_qubits, hea(n_qubits, 1, "phi")).to("cuda:1")
+        self.params_c0 = init_params(self.c0, device="cuda:0")
+        self.params_c1 = init_params(self.c1, device="cuda:1")
         self.observable = pyq.Z(0).to("cuda:1")
 
-    def forward(self, state: torch.Tensor, inputs: dict = dict()) -> torch.Tensor:
-        state = self.feature_map.forward(
-            state.to("cuda:0"), {k: v.to("cuda:0") for k, v in inputs.items()}
-        )
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        state = pyq.zero_state(N_QUBITS)
+        state = self.feature_map.forward(state.to("cuda:0"), {"x": x.to("cuda:0")})
         state = self.c0.forward(state, self.params_c0)
         state = self.c1.forward(state.to("cuda:1"), self.params_c1)
         projected = self.observable.forward(state)
@@ -47,50 +60,56 @@ def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
     return ops
 
 
-n_qubits = 2
-c0 = pyq.QuantumCircuit(n_qubits, hea(n_qubits, 1, "theta"))
-c1 = pyq.QuantumCircuit(n_qubits, hea(n_qubits, 1, "phi"))
-
-
-def init_params(circ: pyq.QuantumCircuit) -> torch.nn.ParameterDict:
-    return torch.nn.ParameterDict(
-        {
-            op.param_name: torch.rand(1, requires_grad=True)
-            for op in circ.operations
-            if isinstance(op, Parametric)
-        }
-    )
-
-
-# Target function and some training data
-def fn(x, degree):
+def fn(x: torch.Tensor, degree: int) -> torch.Tensor:
     return 0.05 * reduce(add, (torch.cos(i * x) + torch.sin(i * x) for i in range(degree)), 0)
 
 
-x = torch.linspace(0, 10, 100)
+x = torch.linspace(0, 10, N_POINTS)
 y = fn(x, 5)
 
-
-params_c0 = init_params(c0)
-params_c1 = init_params(c1)
-
-circ = ParallelCircuit(c0, c1, params_c0, params_c1)
-state = pyq.zero_state(n_qubits)
-
-
-def exp_fn(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-    return pyq.expectation(
-        circ, state, {**circ.params_c0, **circ.params_c1, **inputs}, circ.observable, "ad"
-    )
+circ = ModelParallelCircuit(N_QUBITS)
 
 
 optimizer = torch.optim.Adam({**circ.params_c0, **circ.params_c1}.values(), lr=0.01, foreach=False)
 epochs = 10
 
-for epoch in range(epochs):
-    optimizer.zero_grad()
-    y_pred = circ.forward(pyq.zero_state(n_qubits), {"x": x})
-    loss = mse_loss(y_pred, y.to("cuda:1"))
-    loss.backward()
-    print(f"{epoch}:{loss.item()}")
-    optimizer.step()
+
+def train(circ) -> None:
+    for epoch in range(epochs):
+        optimizer.zero_grad()
+        y_pred = circ.forward(x)
+        loss = mse_loss(y_pred, y.to("cuda:1"))
+        loss.backward()
+        print(f"{epoch}:{loss.item()}")
+        optimizer.step()
+
+
+class PipelineParallelCircuit(ModelParallelCircuit):
+    def __init__(self, split_size=N_POINTS // 2, *args, **kwargs):
+        super(PipelineParallelCircuit, self).__init__(*args, **kwargs)
+        self.split_size = split_size
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        state = pyq.zero_state(N_QUBITS)
+        splits = iter(x.split(self.split_size, dim=0))
+        s_next = next(splits)
+        s_prev = self.feature_map(state, {"x": s_next.to("cuda:0")})
+        s_prev = self.c0.forward(state, self.params_c0).to("cuda:1")
+        ret = []
+
+        for s_next in splits:
+            s_prev = self.c1.forward(s_prev, self.params_c1)
+            ret.append(pyq.inner_prod(s_prev, self.observable.forward(s_prev)).real)
+
+            s_prev = self.feature_map(state, {"x": s_next.to("cuda:0")})
+            s_prev = self.c0.forward(state, self.params_c0).to("cuda:1")
+
+        s_prev = self.c1.forward(s_prev, self.params_c1)
+        ret.append(pyq.inner_prod(s_prev, self.observable.forward(s_prev)).real)
+
+        return torch.cat(ret)
+
+
+setup = "model = PipelineParallelCircuit()"
+pp_run_times = timeit.repeat("train(circ)", setup, number=1, repeat=10, globals=globals())
+pp_mean, pp_std = np.mean(pp_run_times), np.std(pp_run_times)
