@@ -67,11 +67,12 @@ new_state = rx(state, torch.rand(1))
 ```python exec="on" source="material-block" html="1"
 import torch
 from pyqtorch import uniform_state, HamiltonianEvolution, is_normalized
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
 
 n_qubits = 4
 
 # Random hermitian hamiltonian
-matrix = torch.rand(2**n_qubits, 2**n_qubits, dtype=torch.cdouble)
+matrix = torch.rand(2**n_qubits, 2**n_qubits, dtype=DEFAULT_MATRIX_DTYPE)
 hermitian_matrix = matrix + matrix.T.conj()
 
 # To be evolved for a batch of times

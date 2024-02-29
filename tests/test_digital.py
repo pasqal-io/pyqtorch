@@ -9,7 +9,7 @@ import torch
 
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import IMAT, ZMAT
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import product_state
 
@@ -36,9 +36,9 @@ def test_N() -> None:
 
 
 def test_projectors() -> None:
-    t0 = torch.tensor([[0.0], [0.0]], dtype=torch.cdouble)
-    t1 = torch.tensor([[1.0], [0.0]], dtype=torch.cdouble)
-    t2 = torch.tensor([[0.0], [1.0]], dtype=torch.cdouble)
+    t0 = torch.tensor([[0.0], [0.0]], dtype=DEFAULT_MATRIX_DTYPE)
+    t1 = torch.tensor([[1.0], [0.0]], dtype=DEFAULT_MATRIX_DTYPE)
+    t2 = torch.tensor([[0.0], [1.0]], dtype=DEFAULT_MATRIX_DTYPE)
     assert torch.allclose(t1, pyq.Projector(0, ket="0", bra="0")(product_state("0")))
     assert torch.allclose(t0, pyq.Projector(0, ket="0", bra="0")(product_state("1")))
     assert torch.allclose(t2, pyq.Projector(0, ket="1", bra="1")(product_state("1")))
@@ -208,7 +208,7 @@ def test_parametric_phase_hamevo(
 ) -> None:
     target = 0
     state = state_fn(n_qubits, batch_size=batch_size)
-    phi = torch.rand(1, dtype=torch.cdouble)
+    phi = torch.rand(1, dtype=DEFAULT_MATRIX_DTYPE)
     H = (ZMAT - IMAT) / 2
     hamevo = pyq.HamiltonianEvolution(qubit_support=(target,), n_qubits=n_qubits)
     phase = pyq.PHASE(target, "phi")
@@ -221,7 +221,7 @@ def test_parametric_phase_hamevo(
 def test_parametrized_phase_gate(state_fn: Callable, batch_size: int, n_qubits: int) -> None:
     target: int = torch.randint(low=0, high=n_qubits, size=(1,)).item()
     state = state_fn(n_qubits, batch_size=batch_size)
-    phi = torch.tensor([torch.pi / 2], dtype=torch.cdouble)
+    phi = torch.tensor([torch.pi / 2], dtype=DEFAULT_MATRIX_DTYPE)
     phase = pyq.PHASE(target, "phi")
     constant_phase = pyq.S(target)
     assert torch.allclose(phase(state, {"phi": phi}), constant_phase(state, None))

@@ -41,5 +41,3 @@ from .utils import (
     uniform_state,
     zero_state,
 )
-
-torch.set_default_dtype(torch.float64)

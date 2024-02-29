@@ -3,7 +3,8 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-DEFAULT_MATRIX_DTYPE = torch.cdouble
+DEFAULT_REAL_DTYPE = torch.get_default_dtype()
+DEFAULT_MATRIX_DTYPE = torch.cdouble if DEFAULT_REAL_DTYPE == torch.float64 else torch.cfloat
 
 IMAT = torch.eye(2, dtype=DEFAULT_MATRIX_DTYPE)
 XMAT = torch.tensor([[0, 1], [1, 0]], dtype=DEFAULT_MATRIX_DTYPE)
