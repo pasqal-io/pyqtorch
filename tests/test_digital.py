@@ -105,26 +105,26 @@ def test_CNOT_state00_controlqubit_0() -> None:
 
 def test_CNOT_state10_controlqubit_0() -> None:
     result: torch.Tensor = pyq.CNOT(0, 1)(product_state("10"), None)
-    assert torch.equal(product_state("11"), result)
+    assert torch.allclose(product_state("11"), result)
 
 
 def test_CNOT_state11_controlqubit_0() -> None:
     result: torch.Tensor = pyq.CNOT(0, 1)(product_state("11"), None)
-    assert torch.equal(product_state("10"), result)
+    assert torch.allclose(product_state("10"), result)
 
 
 def test_CRY_state10_controlqubit_0() -> None:
     result: torch.Tensor = pyq.CRY(0, 1, "theta")(
         product_state("10"), {"theta": torch.tensor([torch.pi])}
     )
-    assert torch.allclose(product_state("11"), result)
+    assert torch.equal(product_state("11"), result)
 
 
 def test_CRY_state01_controlqubit_0() -> None:
     result: torch.Tensor = pyq.CRY(1, 0, "theta")(
         product_state("01"), {"theta": torch.tensor([torch.pi])}
     )
-    assert torch.allclose(product_state("11"), result)
+    assert torch.equal(product_state("11"), result)
 
 
 def test_CSWAP_state101_controlqubit_0() -> None:

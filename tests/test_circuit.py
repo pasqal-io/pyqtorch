@@ -5,6 +5,7 @@ import torch
 
 import pyqtorch as pyq
 from pyqtorch.circuit import DiffMode, expectation
+from pyqtorch.utils import GRADCHECK_ATOL
 
 
 def test_adjoint_diff() -> None:
@@ -76,7 +77,7 @@ def test_differentiate_circuit(diff_mode: DiffMode, batch_size: int, n_qubits: i
     def _fwd(phi: torch.Tensor, theta: torch.Tensor, epsilon: torch.Tensor) -> torch.Tensor:
         return circ(state, {"phi": phi, "theta": theta, "epsilon": epsilon})
 
-    assert torch.autograd.gradcheck(_fwd, (phi, theta, epsilon))
+    assert torch.autograd.gradcheck(_fwd, (phi, theta, epsilon), atol=GRADCHECK_ATOL)
 
 
 def test_device_inference() -> None:

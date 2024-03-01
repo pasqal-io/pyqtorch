@@ -5,10 +5,13 @@ from typing import Sequence
 
 import torch
 
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
 
 State = torch.Tensor
 Operator = torch.Tensor
+
+ATOL = 1e-07 if DEFAULT_REAL_DTYPE == torch.float32 else 1e-014
+GRADCHECK_ATOL = 1e-01 if DEFAULT_REAL_DTYPE == torch.float32 else 1e-014
 
 
 def inner_prod(bra: torch.Tensor, ket: torch.Tensor) -> torch.Tensor:
@@ -47,13 +50,13 @@ class DiffMode(StrEnum):
     ADJOINT = "adjoint"
 
 
-def is_normalized(state: torch.Tensor, atol: float = 1e-14) -> bool:
+def is_normalized(state: torch.Tensor, atol: float = ATOL) -> bool:
     n_qubits = len(state.size()) - 1
     batch_size = state.size()[-1]
     state = state.reshape((2**n_qubits, batch_size))
     sum_probs = (state.abs() ** 2).sum(dim=0)
-    ones = torch.ones(batch_size, dtype=torch.double)
-    return torch.allclose(sum_probs, ones, rtol=0.0, atol=atol)  # type: ignore[no-any-return]
+    ones = torch.ones(batch_size, dtype=DEFAULT_REAL_DTYPE)
+    return torch.allclose(sum_probs, ones, atol=atol)  # type: ignore[no-any-return]
 
 
 def is_diag(H: torch.Tensor) -> bool:
