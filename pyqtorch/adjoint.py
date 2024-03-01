@@ -32,7 +32,7 @@ class AdjointExpectation(Function):
         return inner_prod(ctx.out_state, ctx.projected_state).real
 
     @staticmethod
-    @no_grad()
+    # @no_grad()
     def backward(ctx: Any, grad_out: Tensor) -> tuple:
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)

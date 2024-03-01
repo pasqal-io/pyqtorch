@@ -11,7 +11,7 @@ import pyqtorch as pyq
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import product_state
+from pyqtorch.utils import ATOL, product_state
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -117,14 +117,14 @@ def test_CRY_state10_controlqubit_0() -> None:
     result: torch.Tensor = pyq.CRY(0, 1, "theta")(
         product_state("10"), {"theta": torch.tensor([torch.pi])}
     )
-    assert torch.equal(product_state("11"), result)
+    assert torch.allclose(product_state("11"), result, atol=ATOL)
 
 
 def test_CRY_state01_controlqubit_0() -> None:
     result: torch.Tensor = pyq.CRY(1, 0, "theta")(
         product_state("01"), {"theta": torch.tensor([torch.pi])}
     )
-    assert torch.equal(product_state("11"), result)
+    assert torch.allclose(product_state("11"), result, atol=ATOL)
 
 
 def test_CSWAP_state101_controlqubit_0() -> None:

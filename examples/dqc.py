@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import reduce
 from itertools import product
 from operator import add
+from typing import Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +15,7 @@ import pyqtorch as pyq
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import DiffMode
 
-DIFF_MODE = DiffMode.AD
+DIFF_MODE = DiffMode.ADJOINT
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 PLOT = True
 LEARNING_RATE = 0.01
@@ -38,51 +39,64 @@ def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
 
 
 class TotalMagnetization(pyq.QuantumCircuit):
-    def __init__(self, n_qubits: int, operations: list[torch.nn.Module]):
-        super().__init__(n_qubits, operations)
+    def __init__(self, n_qubits: int):
+        super().__init__(n_qubits, [pyq.Z(i) for i in range(n_qubits)])
 
     def forward(self, state, values) -> torch.Tensor:
         return reduce(add, [op(state, values) for op in self.operations])
 
 
-def left_boundary(exp_fn, sample) -> Tensor:  # u(0,y)=0
-    sample[:, X_POS] = 0.0
-    return exp_fn(sample).pow(2).mean()
+class DomainSampling(torch.nn.Module):
+    def __init__(
+        self, exp_fn: Callable[[Tensor], Tensor], n_inputs: int, n_points: int, device: torch.device
+    ) -> None:
+        super().__init__()
+        self.exp_fn = exp_fn
+        self.n_inputs = n_inputs
+        self.n_points = n_points
+        self.device = device
 
+    def sample(self, requires_grad: bool = False) -> Tensor:
+        return rand((self.n_points, self.n_inputs), requires_grad=requires_grad, device=self.device)
 
-def right_boundary(exp_fn, sample) -> Tensor:  # u(L,y)=0
-    sample[:, X_POS] = 1.0
-    return exp_fn(sample).pow(2).mean()
+    def left_boundary(self) -> Tensor:  # u(0,y)=0
+        sample = self.sample()
+        sample[:, X_POS] = 0.0
+        return self.exp_fn(sample).pow(2).mean()
 
+    def right_boundary(self) -> Tensor:  # u(L,y)=0
+        sample = self.sample()
+        sample[:, X_POS] = 1.0
+        return self.exp_fn(sample).pow(2).mean()
 
-def top_boundary(exp_fn, sample) -> Tensor:  # u(x,H)=0
-    sample[:, Y_POS] = 1.0
-    return exp_fn(sample).pow(2).mean()
+    def top_boundary(self) -> Tensor:  # u(x,H)=0
+        sample = self.sample()
+        sample[:, Y_POS] = 1.0
+        return self.exp_fn(sample).pow(2).mean()
 
+    def bottom_boundary(self) -> Tensor:  # u(x,0)=f(x)
+        sample = self.sample()
+        sample[:, Y_POS] = 0.0
+        return (self.exp_fn(sample) - sin(np.pi * sample[:, 0])).pow(2).mean()
 
-def bottom_boundary(exp_fn, sample) -> Tensor:  # u(x,0)=f(x)
-    sample[:, Y_POS] = 0.0
-    return (exp_fn(sample) - sin(np.pi * sample[:, 0])).pow(2).mean()
+    def interior(self) -> Tensor:  # uxx+uyy=0
+        sample = self.sample(requires_grad=True)
+        f = self.exp_fn(sample)
+        dfdxy = grad(
+            f,
+            sample,
+            ones_like(f),
+            create_graph=True,
+            retain_graph=True,
+        )[0]
+        dfdxxdyy = grad(
+            dfdxy,
+            sample,
+            ones_like(dfdxy),
+            retain_graph=True,
+        )[0]
 
-
-def interior(exp_fn, sample) -> Tensor:  # uxx+uyy=0
-    sample = sample.requires_grad_()
-    f = exp_fn(sample)
-    dfdxy = grad(
-        f,
-        sample,
-        ones_like(f),
-        create_graph=True,
-        retain_graph=True,
-    )[0]
-    dfdxxdyy = grad(
-        dfdxy,
-        sample,
-        ones_like(dfdxy),
-        retain_graph=True,
-    )[0]
-
-    return (dfdxxdyy[:, X_POS] + dfdxxdyy[:, Y_POS]).pow(2).mean()
+        return (dfdxxdyy[:, X_POS] + dfdxxdyy[:, Y_POS]).pow(2).mean()
 
 
 feature_map = [pyq.RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
@@ -97,7 +111,7 @@ param_dict = torch.nn.ParameterDict(
     }
 )
 circ = pyq.QuantumCircuit(N_QUBITS, feature_map + ansatz).to(DEVICE)
-observable = TotalMagnetization(N_QUBITS, [pyq.Z(i) for i in range(N_QUBITS)]).to(DEVICE)
+observable = TotalMagnetization(N_QUBITS).to(DEVICE)
 param_dict = param_dict.to(DEVICE)
 state = circ.init_state()
 
@@ -116,20 +130,16 @@ single_domain_torch = linspace(0, 1, steps=N_POINTS)
 domain_torch = tensor(list(product(single_domain_torch, single_domain_torch)))
 
 opt = optim.Adam(param_dict.values(), lr=LEARNING_RATE)
-
-
-def sample() -> Tensor:
-    return rand(N_POINTS, len(VARIABLES), device=DEVICE)
-
+sol = DomainSampling(exp_fn, len(VARIABLES), N_POINTS, DEVICE)
 
 for _ in range(N_EPOCHS):
     opt.zero_grad()
     loss = (
-        left_boundary(exp_fn, sample())
-        + right_boundary(exp_fn, sample())
-        + top_boundary(exp_fn, sample())
-        + bottom_boundary(exp_fn, sample())
-        + interior(exp_fn, sample())
+        sol.left_boundary()
+        + sol.right_boundary()
+        + sol.top_boundary()
+        + sol.bottom_boundary()
+        + sol.interior()
     )
     loss.backward()
     opt.step()

@@ -44,10 +44,12 @@ class DiffMode(StrEnum):
              Adjoint Differentiation   - An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
                                        Jones & Gacon, 2020
+            Hybrid - Applying Autograd on the first-order gradients returned by Adjoint.
     """
 
     AD = "ad"
     ADJOINT = "adjoint"
+    HYBRID = "hybrid"
 
 
 def is_normalized(state: torch.Tensor, atol: float = ATOL) -> bool:
