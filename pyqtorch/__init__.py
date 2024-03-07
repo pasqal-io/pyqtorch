@@ -9,6 +9,8 @@
 # # limitations under the License.
 from __future__ import annotations
 
+import logging
+
 import torch
 
 from .analog import HamiltonianEvolution
@@ -43,3 +45,11 @@ from .utils import (
 )
 
 torch.set_default_dtype(torch.float64)
+
+if __name__ not in logging.Logger.manager.loggerDict.keys():
+    import sys
+    from logging import getLogger
+
+    _logger = getLogger(__name__)
+    _logger.setLevel(logging.INFO)
+    _logger.addHandler(logging.StreamHandler(sys.stderr))

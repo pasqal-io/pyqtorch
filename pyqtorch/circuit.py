@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
 from logging import getLogger
 from typing import Any, Iterator
 
+import torch
 from torch import Tensor
 from torch import device as torch_device
 from torch.nn import Module, ModuleList
@@ -10,6 +12,27 @@ from torch.nn import Module, ModuleList
 from pyqtorch.utils import DiffMode, State, inner_prod, zero_state
 
 logger = getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
+def forward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    logger.debug("Forward complete")
+    torch.cuda.nvtx.range_pop()
+
+
+def pre_forward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    logger.debug("Executing forward")
+    torch.cuda.nvtx.range_push("QuantumCircuit.forward")
+
+
+def backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    logger.debug("Backward complete")
+    torch.cuda.nvtx.range_pop()
+
+
+def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    logger.debug("Executed backward")
+    torch.cuda.nvtx.range_push("QuantumCircuit.backward")
 
 
 class QuantumCircuit(Module):
@@ -23,6 +46,16 @@ class QuantumCircuit(Module):
                 self._device = next(iter(set((op.device for op in self.operations))))
             except StopIteration:
                 pass
+        logger.debug("QuantumCircuit initialized")
+        logger.info("Hello")
+        logger.exception("hello")
+        if logger.isEnabledFor(logging.DEBUG):
+            # When Debugging let's add logging and NVTX markers
+            # WARNING: incurs performance penalty
+            self.register_forward_hook(forward_hook, always_call=True)
+            self.register_full_backward_hook(backward_hook)
+            self.register_forward_pre_hook(pre_forward_hook)
+            self.register_full_backward_pre_hook(pre_backward_hook)
 
     def __mul__(self, other: Module | QuantumCircuit) -> QuantumCircuit:
         n_qubits = max(self.n_qubits, other.n_qubits)
@@ -50,15 +83,15 @@ class QuantumCircuit(Module):
     def __hash__(self) -> int:
         return hash(self.__key())
 
-    def run(self, state: State = None, values: dict[str, Tensor] = {}) -> State:
-        if state is None:
-            state = self.init_state()
+    def forward(self, state: State, values: dict[str, Tensor] = {}) -> State:
         for op in self.operations:
             state = op(state, values)
         return state
 
-    def forward(self, state: State, values: dict[str, Tensor] = {}) -> State:
-        return self.run(state, values)
+    def run(self, state: State = None, values: dict[str, Tensor] = {}) -> State:
+        if state is None:
+            state = self.init_state()
+        return self.forward(state, values)
 
     @property
     def device(self) -> torch_device:
@@ -95,14 +128,14 @@ def expectation(
     """
     if observable is None:
         raise ValueError("Please provide an observable to compute expectation.")
-    if state is None:
-        state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
-        state = circuit.run(state, values)
+        state = circuit.forward(state, values)
         return inner_prod(state, observable.forward(state, values)).real
     elif diff_mode == DiffMode.ADJOINT:
         from pyqtorch.adjoint import AdjointExpectation
 
+        if state is None:
+            state = circuit.init_state(batch_size=1)
         return AdjointExpectation.apply(circuit, observable, state, values.keys(), *values.values())
     else:
         raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")

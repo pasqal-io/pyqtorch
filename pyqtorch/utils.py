@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 from enum import Enum
+from logging import getLogger
 from typing import Sequence
 
 import torch
@@ -10,12 +12,21 @@ from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
 State = torch.Tensor
 Operator = torch.Tensor
 
+logger = getLogger(__name__)
+
 
 def inner_prod(bra: torch.Tensor, ket: torch.Tensor) -> torch.Tensor:
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Inner prod calculation")
+        torch.cuda.nvtx.range_push("inner_prod")
     n_qubits = len(bra.size()) - 1
     bra = bra.reshape((2**n_qubits, bra.size(-1)))
     ket = ket.reshape((2**n_qubits, ket.size(-1)))
-    return torch.einsum("ib,ib->b", bra.conj(), ket)
+    res = torch.einsum("ib,ib->b", bra.conj(), ket)
+    if logger.isEnabledFor(logging.DEBUG):
+        torch.cuda.nvtx.range_pop()
+        logger.debug("Inner prod complete")
+    return res
 
 
 def overlap(bra: torch.Tensor, ket: torch.Tensor) -> torch.Tensor:
