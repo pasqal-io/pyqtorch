@@ -127,7 +127,7 @@ def density_mat(vector_state:State) -> Operator :
     density_mat = torch.zeros(2**n_qubits,2**n_qubits,batch_size,dtype=DEFAULT_MATRIX_DTYPE)
     for i in range (batch_size):
         v_state_ket = vector_state.reshape((2**n_qubits, batch_size))[:,i].reshape(2**n_qubits,1)
-        v_state_bra = v_state_ket.transpose(1,0)
+        v_state_bra = v_state_ket.transpose(1,0).conj()
         density = torch.matmul(v_state_ket,v_state_bra)
         density_mat[:,:,i] = density
     return density_mat
