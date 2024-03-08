@@ -25,9 +25,9 @@ logging_levels = {
     "CRITICAL": logging.CRITICAL,
 }
 
-LOG_BASE_LEVEL = os.environ.get("PYQ_LOG_LEVEL", None)
-QADENCE_LOG_LEVEL = os.environ.get("QADENCE_LOG_LEVEL", None)
-LOG_LEVEL: str | None | int = QADENCE_LOG_LEVEL if not LOG_BASE_LEVEL else LOG_BASE_LEVEL
+LOG_BASE_LEVEL = os.environ.get("PYQ_LOG_LEVEL", "").upper()
+QADENCE_LOG_LEVEL = os.environ.get("QADENCE_LOG_LEVEL", "").upper()
+LOG_LEVEL: str | int = QADENCE_LOG_LEVEL if not LOG_BASE_LEVEL else LOG_BASE_LEVEL
 
 
 if LOG_LEVEL:

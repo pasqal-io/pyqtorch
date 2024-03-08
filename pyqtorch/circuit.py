@@ -47,8 +47,6 @@ class QuantumCircuit(Module):
             except StopIteration:
                 pass
         logger.debug("QuantumCircuit initialized")
-        logger.info("Hello")
-        logger.exception("hello")
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
             # WARNING: incurs performance penalty
