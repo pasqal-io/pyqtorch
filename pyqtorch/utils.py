@@ -136,18 +136,21 @@ def density_mat(vector_state: torch.Tensor) -> torch.Tensor:
         density_mat[:, :, i] = density
     return density_mat
 
-def promote_ope(operator:Operator, target: int, n_qubits: int, batch_size=1) -> Operator:
+
+def promote_ope(
+    operator: torch.Tensor, target: int, n_qubits: int, batch_size: int = 1
+) -> torch.Tensor:
     """
     Promotes operator to the size of the circuit (number of qubit and batch).
     If an input operator is not with the correct size:
-    this function must be used before the apply_ope_ope() function 
+    this function must be used before the apply_ope_ope() function
     """
     qubits_support = [index for index in range(n_qubits) if index != target]
     for support in qubits_support:
         if target > support:
-            operator = torch.kron(I(support).unitary(),operator)
+            operator = torch.kron(I(support).unitary(), operator)
         else:
-            operator = torch.kron(operator,I(support).unitary())
+            operator = torch.kron(operator, I(support).unitary())
     # Add batches
-    operator_prom = operator.repeat(1,1,batch_size)
+    operator_prom = operator.repeat(1, 1, batch_size)
     return operator_prom

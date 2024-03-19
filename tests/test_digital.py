@@ -11,8 +11,8 @@ import pyqtorch as pyq
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import IMAT, ZMAT
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import product_state, promote_ope
 from pyqtorch.primitive import H
+from pyqtorch.utils import product_state, promote_ope
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -277,36 +277,42 @@ def test_U() -> None:
         u(state, values), pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values)
     )
 
+
 def test_promote() -> None:
     target = 0
     n_qubits = 2
     batch_size = 2
     h = H(target).unitary()
-    h_prom_func = promote_ope(h,target,n_qubits,batch_size)
+    h_prom_func = promote_ope(h, target, n_qubits, batch_size)
     assert h_prom_func.size() == torch.Size(
         [2**n_qubits, 2**n_qubits, batch_size]
     ), "The density matrix is not a matrix."
     h_prom_ideal = torch.tensor(
-        [[[ 0.7071+0.j,  0.7071+0.j],
-         [ 0.0000+0.j,  0.0000+0.j],
-         [ 0.7071+0.j,  0.7071+0.j],
-         [ 0.0000+0.j,  0.0000+0.j]],
-
-        [[ 0.0000+0.j,  0.0000+0.j],
-         [ 0.7071+0.j,  0.7071+0.j],
-         [ 0.0000+0.j,  0.0000+0.j],
-         [ 0.7071+0.j,  0.7071+0.j]],
-
-        [[ 0.7071+0.j,  0.7071+0.j],
-         [ 0.0000+0.j,  0.0000+0.j],
-         [-0.7071+0.j, -0.7071+0.j],
-         [ 0.0000+0.j,  0.0000+0.j]],
-
-        [[ 0.0000+0.j,  0.0000+0.j],
-         [ 0.7071+0.j,  0.7071+0.j],
-         [ 0.0000+0.j,  0.0000+0.j],
-         [-0.7071+0.j, -0.7071+0.j]]]) 
-    assert torch.allclose(
-        h_prom_ideal, h_prom_func
-    ), "The promoted operator is not correct."
-    
+        [
+            [
+                [0.7071 + 0.0j, 0.7071 + 0.0j],
+                [0.0000 + 0.0j, 0.0000 + 0.0j],
+                [0.7071 + 0.0j, 0.7071 + 0.0j],
+                [0.0000 + 0.0j, 0.0000 + 0.0j],
+            ],
+            [
+                [0.0000 + 0.0j, 0.0000 + 0.0j],
+                [0.7071 + 0.0j, 0.7071 + 0.0j],
+                [0.0000 + 0.0j, 0.0000 + 0.0j],
+                [0.7071 + 0.0j, 0.7071 + 0.0j],
+            ],
+            [
+                [0.7071 + 0.0j, 0.7071 + 0.0j],
+                [0.0000 + 0.0j, 0.0000 + 0.0j],
+                [-0.7071 + 0.0j, -0.7071 + 0.0j],
+                [0.0000 + 0.0j, 0.0000 + 0.0j],
+            ],
+            [
+                [0.0000 + 0.0j, 0.0000 + 0.0j],
+                [0.7071 + 0.0j, 0.7071 + 0.0j],
+                [0.0000 + 0.0j, 0.0000 + 0.0j],
+                [-0.7071 + 0.0j, -0.7071 + 0.0j],
+            ],
+        ]
+    )
+    assert torch.allclose(h_prom_ideal, h_prom_func), "The promoted operator is not correct."

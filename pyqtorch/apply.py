@@ -62,7 +62,7 @@ def apply_operator(
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
-def apply_ope_ope(ope1: Operator, ope2: Operator) -> Operator:
+def apply_ope_ope(ope1: torch.Tensor, ope2: torch.Tensor) -> torch.Tensor:
     """
     Compute the product between two same dimension operators
     """
