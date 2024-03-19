@@ -12,7 +12,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import IMAT, ZMAT
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import product_state, promote_ope
-from pyqtorch.primitive import H,I
+from pyqtorch.primitive import H
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -281,7 +281,7 @@ def test_promote() -> None:
     target = 0
     n_qubits = 2
     batch_size = 2
-    h = H(0).unitary()
+    h = H(target).unitary()
     h_prom_func = promote_ope(h,target,n_qubits,batch_size)
     assert h_prom_func.size() == torch.Size(
         [2**n_qubits, 2**n_qubits, batch_size]
