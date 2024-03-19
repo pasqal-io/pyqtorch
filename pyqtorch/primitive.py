@@ -42,6 +42,7 @@ class Primitive(torch.nn.Module):
     def unitary(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
         return self.pauli.unsqueeze(2)
 
+    # To change for dm, put if condition on the len od the state -> Vector or matrix
     def forward(self, state: State, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> State:
         return apply_operator(
             state, self.unitary(values), self.qubit_support, len(state.size()) - 1

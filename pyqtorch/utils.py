@@ -118,16 +118,19 @@ def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str,
     return {key: val for key, val in zip(keys, values)}
 
 
-def density_mat(vector_state:State) -> Operator :
+def density_mat(vector_state: torch.Tensor) -> torch.Tensor:
     """
-    Transforms a pure state :math:`|\\psi\\rangle` into its corresponding density matrix :math:`\\rho = |\\psi\\rangle \\langle\\psi|`.
+    Transforms a pure state :math:`|\\psi\\rangle` into its corresponding density matrix
+    :math:`\\rho = |\\psi\\rangle \\langle\\psi|`.
     """
     n_qubits = len(vector_state.size()) - 1
     batch_size = vector_state.size(-1)
-    density_mat = torch.zeros(2**n_qubits,2**n_qubits,batch_size,dtype=DEFAULT_MATRIX_DTYPE)
-    for i in range (batch_size):
-        v_state_ket = vector_state.reshape((2**n_qubits, batch_size))[:,i].reshape(2**n_qubits,1)
-        v_state_bra = v_state_ket.transpose(1,0).conj()
-        density = torch.matmul(v_state_ket,v_state_bra)
-        density_mat[:,:,i] = density
+    density_mat = torch.zeros(2**n_qubits, 2**n_qubits, batch_size, dtype=DEFAULT_MATRIX_DTYPE)
+    for i in range(batch_size):
+        v_state_ket = vector_state.reshape((2**n_qubits, batch_size))[:, i].reshape(
+            2**n_qubits, 1
+        )
+        v_state_bra = v_state_ket.transpose(1, 0).conj()
+        density = torch.matmul(v_state_ket, v_state_bra)
+        density_mat[:, :, i] = density
     return density_mat
