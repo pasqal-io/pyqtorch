@@ -11,7 +11,7 @@ import pyqtorch as pyq
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import IMAT, ZMAT
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import product_state
+from pyqtorch.utils import density_mat, product_state, random_state
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -275,3 +275,173 @@ def test_U() -> None:
     assert torch.allclose(
         u(state, values), pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values)
     )
+
+
+def test_dm() -> None:
+    state_00 = pyq.utils.product_state("00")
+    n_qubit = len(state_00.size()) - 1
+    batch_size = state_00.size(-1)
+    dm = density_mat(state_00)
+    assert dm.size() == torch.Size(
+        [2**n_qubit, 2**n_qubit, batch_size]
+    ), "The density matrix is not a matrix."
+    state_00_batch = product_state("00", batch_size=3)
+    dm_batch = density_mat(state_00_batch)
+    dm_00_batch = torch.tensor(
+        [
+            [
+                [1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+        ]
+    )
+    assert torch.allclose(
+        dm_00_batch, dm_batch
+    ), "The density matrix is not the projetctor |00><00| with 3 batches."
+    state_101 = pyq.utils.product_state("101", batch_size=2)
+    dm_101 = density_mat(state_101)
+    dm_101_ideal = torch.tensor(
+        [
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [1.0 + 0.0j, 1.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+        ]
+    )
+    assert torch.allclose(
+        dm_101_ideal, dm_101
+    ), "The density matrix is the projetctor |101><101| with 2 batches."
+    state_10 = pyq.utils.product_state("10", batch_size=1)
+    dm_10 = density_mat(state_10)
+    dm_10_ideal = torch.tensor(
+        [
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [1.0 + 0.0j, 1.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+        ]
+    )
+    assert torch.allclose(dm_10_ideal, dm_10), "The density matrix is not the projetctor |10><10| ."
+    state_random = random_state(n_qubits=2)
+    dm_random = density_mat(state_random)
+    indices_to_check = [(0, 0), (1, 1), (2, 2), (3, 3)]
+    for i, j in indices_to_check:
+        assert (
+            dm_random[i, j, 0].imag == 0
+        ), f"The imaginary part of the element at index ({i}, {j}) is not zero."

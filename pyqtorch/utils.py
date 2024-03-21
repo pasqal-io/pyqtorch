@@ -116,3 +116,20 @@ def random_state(
 
 def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str, torch.Tensor]:
     return {key: val for key, val in zip(keys, values)}
+
+
+def density_mat(
+    vector_state: torch.Tensor, dtype: torch.dtype = DEFAULT_MATRIX_DTYPE
+) -> torch.Tensor:
+    """
+    Transforms a pure state :math:`|\\psi\\rangle` into its corresponding density matrix
+    :math:`\\rho = |\\psi\\rangle \\langle\\psi|`.
+    """
+    n_qubits = len(vector_state.size()) - 1
+    batch_size = vector_state.size(-1)
+    density_mat = torch.zeros(2**n_qubits, 2**n_qubits, batch_size, dtype=dtype)
+    for i in range(batch_size):
+        v_state_ket = vector_state.reshape((2**n_qubits, batch_size))[:, i]
+        density = torch.outer(v_state_ket, v_state_ket.conj())
+        density_mat[:, :, i] = density
+    return density_mat
