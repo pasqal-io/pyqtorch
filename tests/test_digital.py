@@ -404,7 +404,40 @@ def test_dm() -> None:
             ],
         ]
     )
-    assert torch.allclose(dm_101_ideal, dm_101), "The density matrix is not correct."
+    assert torch.allclose(
+        dm_101_ideal, dm_101
+    ), "The density matrix is the projetctor |101><101| with 2 batches."
+    state_10 = pyq.utils.product_state("10", batch_size=1)
+    dm_10 = density_mat(state_10)
+    dm_10_ideal = torch.tensor(
+        [
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [1.0 + 0.0j, 1.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+            [
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+                [0.0 + 0.0j, 0.0 + 0.0j],
+            ],
+        ]
+    )
+    assert torch.allclose(dm_10_ideal, dm_10), "The density matrix is not the projetctor |10><10| ."
     state_random = random_state(n_qubits=2)
     dm_random = density_mat(state_random)
     indices_to_check = [(0, 0), (1, 1), (2, 2), (3, 3)]
