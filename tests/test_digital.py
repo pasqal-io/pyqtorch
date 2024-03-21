@@ -285,7 +285,7 @@ def test_dm() -> None:
     assert dm.size() == torch.Size(
         [2**n_qubit, 2**n_qubit, batch_size]
     ), "The density matrix is not a matrix."
-    state_00_batch = pyq.utils.product_state("00", batch_size=3)
+    state_00_batch = product_state("00", batch_size=3)
     dm_batch = density_mat(state_00_batch)
     dm_00_batch = torch.tensor(
         [
