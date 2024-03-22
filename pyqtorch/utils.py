@@ -11,7 +11,7 @@ State = torch.Tensor
 Operator = torch.Tensor
 
 ATOL = 1e-07 if DEFAULT_REAL_DTYPE == torch.float32 else 1e-014
-GRADCHECK_ATOL = 1e-01 if DEFAULT_REAL_DTYPE == torch.float32 else 1e-014
+GRADCHECK_ATOL = 1e-06 if DEFAULT_REAL_DTYPE == torch.float32 else 1e-014
 
 
 def inner_prod(bra: torch.Tensor, ket: torch.Tensor) -> torch.Tensor:
