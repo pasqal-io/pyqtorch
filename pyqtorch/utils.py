@@ -11,6 +11,7 @@ State = torch.Tensor
 Operator = torch.Tensor
 
 ATOL = 1e-07 if DEFAULT_REAL_DTYPE == torch.float32 else 1e-014
+RTOL = 1e-05 if DEFAULT_REAL_DTYPE == torch.float32 else 0.0
 GRADCHECK_ATOL = 1e-06 if DEFAULT_REAL_DTYPE == torch.float32 else 1e-014
 
 
@@ -58,7 +59,7 @@ def is_normalized(state: torch.Tensor, atol: float = ATOL) -> bool:
     state = state.reshape((2**n_qubits, batch_size))
     sum_probs = (state.abs() ** 2).sum(dim=0)
     ones = torch.ones(batch_size, dtype=DEFAULT_REAL_DTYPE)
-    return torch.allclose(sum_probs, ones, atol=atol)  # type: ignore[no-any-return]
+    return torch.allclose(sum_probs, ones, rtol=RTOL, atol=atol)  # type: ignore[no-any-return]
 
 
 def is_diag(H: torch.Tensor) -> bool:

@@ -5,7 +5,7 @@ import torch
 
 import pyqtorch as pyq
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
-from pyqtorch.utils import is_normalized, overlap
+from pyqtorch.utils import ATOL, is_normalized, overlap
 
 pi = torch.tensor(torch.pi, dtype=DEFAULT_MATRIX_DTYPE)
 
@@ -49,7 +49,7 @@ def test_hamevo_general(n_qubits: int, batch_size: int) -> None:
     hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), n_qubits)
     psi = pyq.random_state(n_qubits, batch_size)
     psi_star = hamevo(H, t_evo, psi)
-    assert is_normalized(psi_star)
+    assert is_normalized(psi_star, atol=ATOL)
 
 
 def test_hamevo_single() -> None:

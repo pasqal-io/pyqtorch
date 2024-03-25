@@ -106,15 +106,11 @@ cnot = pyq.CNOT(0, 1)
 ops = [rx, y, cnot]
 n_qubits = 2
 circ = pyq.QuantumCircuit(n_qubits, ops)
-
 state = pyq.random_state(n_qubits)
-
 theta = torch.rand(1, requires_grad=True)
-
-def _fwd(phi: torch.Tensor) -> torch.Tensor:
-    return circ(state, {"theta": theta})
-
-assert torch.autograd.gradcheck(_fwd, theta)
+obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+expval = pyq.expectation(circ, state, {"theta": theta}, obs)
+dfdtheta = torch.autograd.grad(expval, theta, torch.ones_like(expval))
 ```
 
 ## Efficient Computation of Derivatives
