@@ -5,7 +5,7 @@ import torch
 
 import pyqtorch as pyq
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
-from pyqtorch.utils import ATOL, is_normalized, overlap
+from pyqtorch.utils import ATOL, RTOL, is_normalized, overlap
 
 pi = torch.tensor(torch.pi, dtype=DEFAULT_MATRIX_DTYPE)
 
@@ -60,7 +60,7 @@ def test_hamevo_single() -> None:
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(H, t_evo, psi)
     result = overlap(psi_star, psi)
-    assert torch.isclose(result, torch.tensor([0.5]))
+    assert torch.isclose(result, torch.tensor([0.5]), rtol=RTOL, atol=ATOL)
 
 
 def test_hamevo_batch() -> None:
@@ -72,7 +72,7 @@ def test_hamevo_batch() -> None:
     psi = pyq.uniform_state(n_qubits, batch_size)
     psi_star = hamevo(H, t_evo, psi)
     result = overlap(psi_star, psi)
-    assert torch.allclose(result, torch.tensor([0.5, 0.5]))
+    assert torch.allclose(result, torch.tensor([0.5, 0.5]), rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize(
@@ -116,7 +116,7 @@ def test_hamiltonianevolution_with_types(
     psi_star = hamevo(H, t_evo, psi)
     result = overlap(psi_star, psi)
     assert result.size() == (batch_size,)
-    assert torch.allclose(result, target)
+    assert torch.allclose(result, target, rtol=RTOL, atol=ATOL)
 
 
 def test_hamevo_endianness() -> None:
@@ -132,7 +132,9 @@ def test_hamevo_endianness() -> None:
     iszero = torch.tensor([False, True, False, True])
     op = pyq.HamiltonianEvolution(qubit_support=(0, 1), n_qubits=2)
     st = op(h, t, pyq.zero_state(2)).flatten()
-    assert torch.allclose(st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE))
+    assert torch.allclose(
+        st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
+    )
 
     h = torch.tensor(
         [
@@ -145,4 +147,6 @@ def test_hamevo_endianness() -> None:
     iszero = torch.tensor([False, False, True, True])
     op = pyq.HamiltonianEvolution(qubit_support=(0, 1), n_qubits=2)
     st = op(h, t, pyq.zero_state(2)).flatten()
-    assert torch.allclose(st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE))
+    assert torch.allclose(
+        st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
+    )

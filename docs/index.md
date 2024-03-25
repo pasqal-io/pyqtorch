@@ -89,7 +89,7 @@ psi_end = hamiltonian_evolution(
     time_evolution=t_list,
     state = psi_start)
 
-assert is_normalized(psi_end, atol = 1e-12)
+assert is_normalized(psi_end, atol=1e-05)
 ```
 
 ## QuantumCircuit

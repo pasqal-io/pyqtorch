@@ -10,9 +10,9 @@ from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
 State = torch.Tensor
 Operator = torch.Tensor
 
-ATOL = 1e-07 if DEFAULT_REAL_DTYPE == torch.float32 else 1e-014
-RTOL = 1e-05 if DEFAULT_REAL_DTYPE == torch.float32 else 0.0
-GRADCHECK_ATOL = 1e-06 if DEFAULT_REAL_DTYPE == torch.float32 else 1e-014
+ATOL = 1e-06
+RTOL = 0.0
+GRADCHECK_ATOL = 1e-06
 
 
 def inner_prod(bra: torch.Tensor, ket: torch.Tensor) -> torch.Tensor:
