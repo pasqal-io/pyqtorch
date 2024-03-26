@@ -6,6 +6,7 @@ from typing import Sequence
 import torch
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
+from pyqtorch.primitive import I
 
 State = torch.Tensor
 Operator = torch.Tensor
@@ -116,3 +117,40 @@ def random_state(
 
 def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str, torch.Tensor]:
     return {key: val for key, val in zip(keys, values)}
+
+
+def density_mat(vector_state: torch.Tensor) -> torch.Tensor:
+    """
+    Transforms a pure state :math:`|\\psi\\rangle` into its corresponding density matrix
+    :math:`\\rho = |\\psi\\rangle \\langle\\psi|`.
+    """
+    n_qubits = len(vector_state.size()) - 1
+    batch_size = vector_state.size(-1)
+    density_mat = torch.zeros(2**n_qubits, 2**n_qubits, batch_size, dtype=DEFAULT_MATRIX_DTYPE)
+    for i in range(batch_size):
+        v_state_ket = vector_state.reshape((2**n_qubits, batch_size))[:, i].reshape(
+            2**n_qubits, 1
+        )
+        v_state_bra = v_state_ket.transpose(1, 0).conj()
+        density = torch.matmul(v_state_ket, v_state_bra)
+        density_mat[:, :, i] = density
+    return density_mat
+
+
+def promote_ope(
+    operator: torch.Tensor, target: int, n_qubits: int, batch_size: int = 1
+) -> torch.Tensor:
+    """
+    Promotes operator to the size of the circuit (number of qubit and batch).
+    If an input operator is not with the correct size:
+    this function must be used before the apply_ope_ope() function
+    """
+    qubits_support = [index for index in range(n_qubits) if index != target]
+    for support in qubits_support:
+        if target > support:
+            operator = torch.kron(I(support).unitary(), operator)
+        else:
+            operator = torch.kron(operator, I(support).unitary())
+    # Add batches
+    operator_prom = operator.repeat(1, 1, batch_size)
+    return operator_prom
