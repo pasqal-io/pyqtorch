@@ -9,7 +9,6 @@ from numpy import array
 from numpy.typing import NDArray
 from torch import einsum
 
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
 from pyqtorch.utils import Operator, State
 
 ABC_ARRAY: NDArray = array(list(ABC))
@@ -62,33 +61,58 @@ def apply_operator(
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
-def apply_ope_ope(ope1: torch.Tensor, ope2: torch.Tensor) -> torch.Tensor:
+def apply_ope_ope(operator_1: torch.Tensor, operator_2: torch.Tensor) -> torch.Tensor:
     """
-    Compute the product between two same dimension operators
+    Compute the product of two operators.
+    The operators must have the same dimensions.
+
+    Args:
+        operator_1 (torch.Tensor): The first operator.
+        operator_2 (torch.Tensor): The second operator.
+
+    Returns:
+        torch.Tensor: The product of the two operators.
+
+    Raises:
+        ValueError: If the number of qubits or the batch size differs between the two operators.
     """
-    # Initialization and dimension verification
-    n_qubits_1 = int(log2(ope1.size(1)))
-    n_qubits_2 = int(log2(ope2.size(1)))
-    print(n_qubits_1, n_qubits_2)
-    batch_size_1 = ope1.size(-1)
-    batch_size_2 = ope2.size(-1)
-    if n_qubits_1 != n_qubits_2 or batch_size_1 != batch_size_2:
+
+    # Dimension verifications:
+    n_qubits_1 = int(log2(operator_1.size(1)))
+    n_qubits_2 = int(log2(operator_2.size(1)))
+    batch_size_1 = operator_1.size(-1)
+    batch_size_2 = operator_2.size(-1)
+    if n_qubits_1 != n_qubits_2:
         raise ValueError("The number of qubit is different between the two operators.")
     if batch_size_1 != batch_size_2:
         raise ValueError("The number of batch is different between the two operators.")
-    n_qubits_out = n_qubits_1
-    batch_size_out = batch_size_1
-    # Reshape in square matrix without batches for matmul
-    ope1_split = list(torch.split(ope1, split_size_or_sections=1, dim=2))
-    ope2_split = list(torch.split(ope2, split_size_or_sections=1, dim=2))
-    for i in range(batch_size_out):
-        ope1_split[i] = torch.squeeze(ope1_split[i])
-        ope2_split[i] = torch.squeeze(ope2_split[i])
-    # Matmul on every batch separately
-    result = torch.zeros(
-        [2**n_qubits_out, 2**n_qubits_out, batch_size_out], dtype=DEFAULT_MATRIX_DTYPE
-    )
-    for i in range(batch_size_out):
-        res = torch.matmul(ope1_split[i], ope2_split[i])
-        result[:, :, i] = res
-    return result
+
+    # Permute the batch size on first dimension to allow torch.bmm():
+    def batch_first(operator: torch.Tensor) -> torch.Tensor:
+        """
+        Permute the operator's batch dimension on first dimension.
+
+        Args:
+        operator (torch.Tensor): Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+
+        Returns:
+        torch.Tensor: Operator in size [batch_size, 2**n_qubits, 2**n_qubits].
+        """
+        batch_first_perm = (2, 0, 1)
+        return torch.permute(operator, batch_first_perm)
+
+    # Undo the permute since PyQ expects tensor.Size([2**n_qubits, 2**n_qubits,batch_size]):
+    def batch_last(operator: torch.Tensor) -> torch.Tensor:
+        """
+        Permute the operator's batch dimension on last dimension.
+
+        Args:
+        operator (torch.Tensor): Operator in size [batch_size,2**n_qubits, 2**n_qubits].
+
+        Returns:
+        torch.Tensor: Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+        """
+        undo_perm = (1, 2, 0)
+        return torch.permute(operator, undo_perm)
+
+    return batch_last(torch.bmm(batch_first(operator_1), batch_first(operator_2)))
