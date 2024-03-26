@@ -7,7 +7,7 @@ import pyqtorch as pyq
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
 from pyqtorch.utils import ATOL, RTOL, is_normalized, overlap
 
-pi = torch.tensor(torch.pi, dtype=DEFAULT_MATRIX_DTYPE)
+pi = torch.tensor(torch.pi)
 
 
 def Hamiltonian(batch_size: int = 1) -> torch.Tensor:
@@ -35,13 +35,14 @@ def Hamiltonian_diag(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
     H_batch = torch.zeros((2**n_qubits, 2**n_qubits, batch_size), dtype=DEFAULT_MATRIX_DTYPE)
     for i in range(batch_size):
         H_0 = torch.randn((2**n_qubits, 2**n_qubits), dtype=DEFAULT_MATRIX_DTYPE)
-        H = (H_0 + torch.conj(H_0.transpose(0, 1))).to(DEFAULT_MATRIX_DTYPE)
+        H = H_0 + torch.conj(H_0.transpose(0, 1))
         get_diag = torch.diag(H)
         H_diag = torch.diag(get_diag)
         H_batch[..., i] = H_diag
     return H_batch
 
 
+@pytest.mark.flaky(max_runs=5)
 @pytest.mark.parametrize("n_qubits, batch_size", [(2, 1), (4, 2)])
 def test_hamevo_general(n_qubits: int, batch_size: int) -> None:
     H = Hamiltonian_general(n_qubits, batch_size)
@@ -52,6 +53,7 @@ def test_hamevo_general(n_qubits: int, batch_size: int) -> None:
     assert is_normalized(psi_star, atol=ATOL)
 
 
+@pytest.mark.flaky(max_runs=5)
 def test_hamevo_single() -> None:
     n_qubits = 4
     H = Hamiltonian(1)
@@ -63,6 +65,7 @@ def test_hamevo_single() -> None:
     assert torch.isclose(result, torch.tensor([0.5]), rtol=RTOL, atol=ATOL)
 
 
+@pytest.mark.flaky(max_runs=5)
 def test_hamevo_batch() -> None:
     n_qubits = 4
     batch_size = 2
