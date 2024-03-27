@@ -6,7 +6,7 @@ from typing import Any, Iterator
 from torch import Tensor, complex128
 from torch import device as torch_device
 from torch import dtype as torch_dtype
-from torch.nn import Module, ModuleList
+from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.utils import DiffMode, State, inner_prod, zero_state
 
@@ -52,15 +52,15 @@ class QuantumCircuit(Module):
     def __hash__(self) -> int:
         return hash(self.__key())
 
-    def run(self, state: State = None, values: dict[str, Tensor] = {}) -> State:
+    def run(self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}) -> State:
         if state is None:
             state = self.init_state()
+        return self.forward(state, values)
+
+    def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
         for op in self.operations:
             state = op(state, values)
         return state
-
-    def forward(self, state: State, values: dict[str, Tensor] = {}) -> State:
-        return self.run(state, values)
 
     @property
     def device(self) -> torch_device:

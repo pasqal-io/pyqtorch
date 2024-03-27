@@ -103,3 +103,10 @@ def _controlled(unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 
     )
     _controlled[2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :] = unitary
     return _controlled
+
+
+COMPLEX_TO_REAL_DTYPES = {
+    torch.complex128: torch.float64,
+    torch.complex64: torch.float32,
+    torch.complex32: torch.float16,
+}
