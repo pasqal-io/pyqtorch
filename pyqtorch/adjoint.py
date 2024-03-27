@@ -38,20 +38,17 @@ class AdjointExpectation(Function):
         values = param_dict(ctx.param_names, param_values)
         grads_dict = values.copy()
         for op in ctx.circuit.reverse():
-            try:
-                ctx.out_state = apply_operator(ctx.out_state, op.dagger(values), op.qubit_support)
-                if isinstance(op, Parametric):
-                    if values[op.param_name].requires_grad:
-                        mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
-                        grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
-                    else:
-                        grad = zeros(1)
+            ctx.out_state = apply_operator(ctx.out_state, op.dagger(values), op.qubit_support)
+            if isinstance(op, Parametric):
+                if values[op.param_name].requires_grad:
+                    mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
+                    grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
+                else:
+                    grad = zeros(1)
 
-                    grads_dict[op.param_name] = grad
+                grads_dict[op.param_name] = grad
 
-                ctx.projected_state = apply_operator(
-                    ctx.projected_state, op.dagger(values), op.qubit_support
-                )
-            except Exception as e:
-                breakpoint()
+            ctx.projected_state = apply_operator(
+                ctx.projected_state, op.dagger(values), op.qubit_support
+            )
         return (None, None, None, None, *grads_dict.values())
