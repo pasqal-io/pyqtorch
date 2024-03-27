@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from math import log2
-from typing import Tuple
+from typing import Any, Tuple
 
 import torch
 
@@ -89,7 +89,7 @@ class PHASE(Parametric):
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = self.parse_values(values)
         batch_mat = (
-            torch.zeros((2, 2), dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2).repeat(1, 1, len(thetas))
+            torch.zeros((2, 2), dtype=self.identity.dtype).unsqueeze(2).repeat(1, 1, len(thetas))
         )
         batch_mat[1, 1, :] = 1j * torch.exp(1j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
@@ -123,7 +123,7 @@ class ControlledRotationGate(Parametric):
         jU = _jacobian(thetas, self.pauli, self.identity, batch_size)
         n_dim = 2 ** (n_control + 1)
         jC = (
-            torch.zeros((n_dim, n_dim), dtype=DEFAULT_MATRIX_DTYPE)
+            torch.zeros((n_dim, n_dim), dtype=self.identity.dtype)
             .unsqueeze(2)
             .repeat(1, 1, batch_size)
         )
@@ -171,28 +171,35 @@ class CPHASE(ControlledRotationGate):
         target: int,
         param_name: str = "",
     ):
-        super().__init__("S", control, target, param_name)
-        self.phase = PHASE(target, param_name)
+        super().__init__("I", control, target, param_name)
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = self.parse_values(values)
         batch_size = len(thetas)
-        return _controlled(self.phase.unitary(values), batch_size, len(self.control))
+        mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
+        mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
+        return _controlled(mat, batch_size, len(self.control))
 
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = self.parse_values(values)
         batch_size = len(thetas)
         n_control = len(self.control)
-        jU = self.phase.jacobian(values)
+        jU = torch.zeros((2, 2), dtype=self.identity.dtype).unsqueeze(2).repeat(1, 1, len(thetas))
+        jU[1, 1, :] = 1j * torch.exp(1j * thetas).unsqueeze(0).unsqueeze(1)
         n_dim = 2 ** (n_control + 1)
         jC = (
-            torch.zeros((n_dim, n_dim), dtype=DEFAULT_MATRIX_DTYPE)
+            torch.zeros((n_dim, n_dim), dtype=self.identity.dtype)
             .unsqueeze(2)
             .repeat(1, 1, batch_size)
         )
         unitary_idx = 2 ** (n_control + 1) - 2
         jC[unitary_idx:, unitary_idx:, :] = jU
         return jC
+
+    def to(self, *args: Any, **kwargs: Any) -> Primitive:
+        super().to(*args, **kwargs)
+        self._device = self.identity.device
+        return self
 
 
 class U(Parametric):

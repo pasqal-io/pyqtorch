@@ -43,10 +43,18 @@ def test_projectors() -> None:
     assert torch.allclose(t0, pyq.Projector(0, ket="0", bra="0")(product_state("1")))
     assert torch.allclose(t2, pyq.Projector(0, ket="1", bra="1")(product_state("1")))
     assert torch.allclose(t0, pyq.Projector(0, ket="1", bra="1")(product_state("0")))
-    t00 = torch.tensor([[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]])
-    t01 = torch.tensor([[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]])
-    t10 = torch.tensor([[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]])
-    t11 = torch.tensor([[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]])
+    t00 = torch.tensor(
+        [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]], dtype=torch.complex128
+    )
+    t01 = torch.tensor(
+        [[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]], dtype=torch.complex128
+    )
+    t10 = torch.tensor(
+        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]], dtype=torch.complex128
+    )
+    t11 = torch.tensor(
+        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]], dtype=torch.complex128
+    )
     assert torch.allclose(pyq.Projector((0, 1), ket="00", bra="00")(product_state("00")), t00)
     assert torch.allclose(pyq.Projector((0, 1), ket="10", bra="01")(product_state("01")), t10)
     assert torch.allclose(pyq.Projector((0, 1), ket="01", bra="10")(product_state("10")), t01)
@@ -55,31 +63,36 @@ def test_projectors() -> None:
         [
             [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     t100 = torch.tensor(
         [
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
             [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     t001 = torch.tensor(
         [
             [[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     t010 = torch.tensor(
         [
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]],
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     t111 = torch.tensor(
         [
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     assert torch.allclose(
         pyq.Projector((0, 1, 2), ket="000", bra="000")(product_state("000")), t000

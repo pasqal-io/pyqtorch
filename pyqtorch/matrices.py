@@ -3,8 +3,8 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-DEFAULT_REAL_DTYPE = torch.get_default_dtype()
-DEFAULT_MATRIX_DTYPE = torch.cdouble if DEFAULT_REAL_DTYPE == torch.float64 else torch.cfloat
+DEFAULT_REAL_DTYPE = torch.float64
+DEFAULT_MATRIX_DTYPE = torch.cdouble
 
 IMAT = torch.eye(2, dtype=DEFAULT_MATRIX_DTYPE)
 XMAT = torch.tensor([[0, 1], [1, 0]], dtype=DEFAULT_MATRIX_DTYPE)
@@ -97,7 +97,7 @@ def _jacobian(
 
 def _controlled(unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 1) -> torch.Tensor:
     _controlled: torch.Tensor = (
-        torch.eye(2 ** (n_control_qubits + 1), dtype=DEFAULT_MATRIX_DTYPE)
+        torch.eye(2 ** (n_control_qubits + 1), dtype=unitary.dtype)
         .unsqueeze(2)
         .repeat(1, 1, batch_size)
     )

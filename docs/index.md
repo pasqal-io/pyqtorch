@@ -150,7 +150,7 @@ for i in range(len(dfdx_ad)):
     assert torch.allclose(dfdx_ad[i], dfdx_adjoint[i])
 ```
 
-## Fitting a simple nonlinear function
+## Fitting a nonlinear function
 
 Let's have a look at how the `QuantumCircuit` can be used to fit a function.
 
@@ -169,6 +169,9 @@ from torch.nn.functional import mse_loss
 
 # We can train on GPU if available
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+# We can also choose the precision we want to train on
+COMPLEX_DTYPE = torch.complex64
+REAL_DTYPE = torch.float32
 
 # Target function and some training data
 fn = lambda x, degree: .05 * reduce(add, (torch.cos(i*x) + torch.sin(i*x) for i in range(degree)), 0)
@@ -196,10 +199,10 @@ observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in ansatz if isinstance(op, Parametric)})
 circ = pyq.QuantumCircuit(n_qubits, feature_map + ansatz)
 # Lets move all necessary components to the DEVICE
-circ = circ.to(DEVICE)
-observable = observable.to(DEVICE)
-param_dict = param_dict.to(DEVICE)
-x, y = x.to(DEVICE), y.to(DEVICE)
+circ = circ.to(device=DEVICE, dtype=COMPLEX_DTYPE)
+observable = observable.to(device=DEVICE, dtype=COMPLEX_DTYPE)
+param_dict = param_dict.to(device=DEVICE, dtype=REAL_DTYPE)
+x, y = x.to(device=DEVICE, dtype=REAL_DTYPE), y.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
 def exp_fn(param_dict: dict[str, torch.Tensor], inputs: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -257,8 +260,11 @@ from pyqtorch import CNOT, RX, RY, QuantumCircuit, Z, expectation
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import DiffMode
 
-DIFF_MODE = DiffMode.ADJOINT
+DIFF_MODE = DiffMode.AD
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+# We can also choose the precision we want to train on
+COMPLEX_DTYPE = torch.complex64
+REAL_DTYPE = torch.float32
 PLOT = False
 LEARNING_RATE = 0.01
 N_QUBITS = 4
@@ -290,16 +296,17 @@ class TotalMagnetization(QuantumCircuit):
 
 class DomainSampling(torch.nn.Module):
     def __init__(
-        self, exp_fn: Callable[[Tensor], Tensor], n_inputs: int, n_points: int, device: torch.device
+        self, exp_fn: Callable[[Tensor], Tensor], n_inputs: int, n_points: int, device: torch.device, dtype: torch.dtype
     ) -> None:
         super().__init__()
         self.exp_fn = exp_fn
         self.n_inputs = n_inputs
         self.n_points = n_points
         self.device = device
+        self.dtype = dtype
 
     def sample(self, requires_grad: bool = False) -> Tensor:
-        return rand((self.n_points, self.n_inputs), requires_grad=requires_grad, device=self.device)
+        return rand((self.n_points, self.n_inputs), requires_grad=requires_grad, device=self.device, dtype=self.dtype)
 
     def left_boundary(self) -> Tensor:  # u(0,y)=0
         sample = self.sample()
@@ -352,9 +359,9 @@ param_dict = torch.nn.ParameterDict(
         if isinstance(op, Parametric)
     }
 )
-circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(DEVICE)
-observable = TotalMagnetization(N_QUBITS).to(DEVICE)
-param_dict = param_dict.to(DEVICE)
+circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+observable = TotalMagnetization(N_QUBITS).to(device=DEVICE, dtype= COMPLEX_DTYPE)
+param_dict = param_dict.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
 
@@ -372,7 +379,7 @@ single_domain_torch = linspace(0, 1, steps=N_POINTS)
 domain_torch = tensor(list(product(single_domain_torch, single_domain_torch)))
 
 opt = optim.Adam(param_dict.values(), lr=LEARNING_RATE)
-sol = DomainSampling(exp_fn, len(VARIABLES), N_POINTS, DEVICE)
+sol = DomainSampling(exp_fn, len(VARIABLES), N_POINTS, DEVICE, REAL_DTYPE)
 
 for _ in range(N_EPOCHS):
     opt.zero_grad()

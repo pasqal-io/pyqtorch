@@ -53,9 +53,10 @@ def test_adjoint_diff() -> None:
         assert torch.allclose(grad_ad[i], grad_adjoint[i])
 
 
+@pytest.mark.parametrize("dtype", [torch.complex64])
 @pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize("n_qubits", [3, 4])
-def test_differentiate_circuit(batch_size: int, n_qubits: int) -> None:
+def test_differentiate_circuit(dtype: torch.dtype, batch_size: int, n_qubits: int) -> None:
     ops = [
         pyq.RX(0, "theta_0"),
         pyq.PHASE(0, "theta_1"),
@@ -64,11 +65,11 @@ def test_differentiate_circuit(batch_size: int, n_qubits: int) -> None:
         pyq.CNOT(0, 1),
         pyq.Toffoli((2, 1), 0),
     ]
-    theta_0_value = torch.rand(1)
-    theta_1_value = torch.rand(1)
-    theta_2_value = torch.rand(1)
-    circ = pyq.QuantumCircuit(n_qubits, ops)
-    state = pyq.random_state(n_qubits, batch_size)
+    theta_0_value = torch.rand(1, dtype=dtype)
+    theta_1_value = torch.rand(1, dtype=dtype)
+    theta_2_value = torch.rand(1, dtype=dtype)
+    circ = pyq.QuantumCircuit(n_qubits, ops).to(dtype)
+    state = pyq.random_state(n_qubits, batch_size, dtype=dtype)
     theta_0_ad = torch.tensor([theta_0_value], requires_grad=True)
     thetas_0_adjoint = torch.tensor([theta_0_value], requires_grad=True)
 
@@ -78,14 +79,18 @@ def test_differentiate_circuit(batch_size: int, n_qubits: int) -> None:
     theta_2_ad = torch.tensor([theta_2_value], requires_grad=True)
     thetas_2_adjoint = torch.tensor([theta_2_value], requires_grad=True)
 
-    values_ad = {"theta_0": theta_0_ad, "theta_1": theta_1_ad, "theta_2": theta_2_ad}
-    values_adjoint = {
-        "theta_0": thetas_0_adjoint,
-        "theta_1": thetas_1_adjoint,
-        "theta_2": thetas_2_adjoint,
-    }
+    values_ad = torch.nn.ParameterDict(
+        {"theta_0": theta_0_ad, "theta_1": theta_1_ad, "theta_2": theta_2_ad}
+    ).to(torch.float64 if dtype == torch.complex128 else torch.float32)
+    values_adjoint = torch.nn.ParameterDict(
+        {
+            "theta_0": thetas_0_adjoint,
+            "theta_1": thetas_1_adjoint,
+            "theta_2": thetas_2_adjoint,
+        }
+    ).to(torch.float64 if dtype == torch.complex128 else torch.float32)
 
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)]).to(dtype)
     exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 

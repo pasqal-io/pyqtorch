@@ -3,7 +3,7 @@ from __future__ import annotations
 from logging import getLogger
 from typing import Any, Iterator
 
-from torch import Tensor
+from torch import Tensor, complex128, dtype
 from torch import device as torch_device
 from torch.nn import Module, ModuleList
 
@@ -18,6 +18,7 @@ class QuantumCircuit(Module):
         self.n_qubits = n_qubits
         self.operations = ModuleList(operations)
         self._device = torch_device("cpu")
+        self._dtype = complex128
         if operations:
             try:
                 self._device = next(iter(set((op.device for op in self.operations))))
@@ -64,15 +65,24 @@ class QuantumCircuit(Module):
     def device(self) -> torch_device:
         return self._device
 
+    @property
+    def dtype(self) -> dtype:
+        return self._dtype
+
     def init_state(self, batch_size: int = 1) -> Tensor:
-        return zero_state(self.n_qubits, batch_size, device=self.device)
+        return zero_state(self.n_qubits, batch_size, device=self.device, dtype=self.dtype)
 
     def reverse(self) -> QuantumCircuit:
         return QuantumCircuit(self.n_qubits, ModuleList(list(reversed(self.operations))))
 
-    def to(self, device: torch_device) -> QuantumCircuit:
-        self.operations = ModuleList([op.to(device) for op in self.operations])
-        self._device = device
+    def to(self, *args: Any, **kwargs: Any) -> QuantumCircuit:
+        self.operations = ModuleList([op.to(*args, **kwargs) for op in self.operations])
+        try:
+            self._device = self.operations[0].device
+            self._dtype = self.operations[0].dtype
+        except IndexError:
+            pass
+
         return self
 
 

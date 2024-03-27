@@ -45,12 +45,10 @@ class DiffMode(StrEnum):
              Adjoint Differentiation   - An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
                                        Jones & Gacon, 2020
-            Hybrid - Applying Autograd on the first-order gradients returned by Adjoint.
     """
 
     AD = "ad"
     ADJOINT = "adjoint"
-    HYBRID = "hybrid"
 
 
 def is_normalized(state: torch.Tensor, atol: float = ATOL) -> bool:
@@ -70,10 +68,13 @@ def is_diag(H: torch.Tensor) -> bool:
 
 
 def product_state(
-    bitstring: str, batch_size: int = 1, device: str | torch.device = "cpu"
+    bitstring: str,
+    batch_size: int = 1,
+    device: str | torch.device = "cpu",
+    dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
-    state = torch.zeros((2 ** len(bitstring), batch_size), dtype=DEFAULT_MATRIX_DTYPE)
-    state[int(bitstring, 2)] = torch.tensor(1.0 + 0j, dtype=DEFAULT_MATRIX_DTYPE)
+    state = torch.zeros((2 ** len(bitstring), batch_size), dtype=dtype)
+    state[int(bitstring, 2)] = torch.tensor(1.0 + 0j, dtype=dtype)
     return state.reshape([2] * len(bitstring) + [batch_size]).to(device=device)
 
 
@@ -83,7 +84,7 @@ def zero_state(
     device: str | torch.device = "cpu",
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> torch.Tensor:
-    return product_state("0" * n_qubits, batch_size, device)
+    return product_state("0" * n_qubits, batch_size, dtype=dtype, device=device)
 
 
 def uniform_state(
@@ -94,8 +95,7 @@ def uniform_state(
 ) -> torch.Tensor:
     state = torch.ones((2**n_qubits, batch_size), dtype=dtype, device=device)
     state = state / torch.sqrt(torch.tensor(2**n_qubits))
-    state = state.reshape([2] * n_qubits + [batch_size])
-    return state.to(device=device)
+    return state.reshape([2] * n_qubits + [batch_size])
 
 
 def random_state(
@@ -116,8 +116,8 @@ def random_state(
             (torch.sqrt(x / sumx) * torch.exp(1j * phases)).reshape(N, 1).type(dtype).to(device)
         )
 
-    _state = torch.concat(tuple(_rand(n_qubits) for _ in range(batch_size)), dim=1)
-    return _state.reshape([2] * n_qubits + [batch_size]).to(device=device)
+    state = torch.concat(tuple(_rand(n_qubits) for _ in range(batch_size)), dim=1)
+    return state.reshape([2] * n_qubits + [batch_size]).to(device=device)
 
 
 def param_dict(keys: Sequence[str], values: Sequence[torch.Tensor]) -> dict[str, torch.Tensor]:
