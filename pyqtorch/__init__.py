@@ -9,8 +9,6 @@
 # # limitations under the License.
 from __future__ import annotations
 
-import torch
-
 from .analog import HamiltonianEvolution
 from .apply import apply_operator
 from .circuit import QuantumCircuit, expectation
@@ -34,6 +32,9 @@ from .primitive import (
     Z,
 )
 from .utils import (
+    DEFAULT_MATRIX_DTYPE,
+    DEFAULT_REAL_DTYPE,
+    DiffMode,
     inner_prod,
     is_normalized,
     overlap,
@@ -41,5 +42,3 @@ from .utils import (
     uniform_state,
     zero_state,
 )
-
-torch.set_default_dtype(torch.float64)
