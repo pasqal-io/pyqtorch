@@ -3,8 +3,9 @@ from __future__ import annotations
 from logging import getLogger
 from typing import Any, Iterator
 
-from torch import Tensor, complex128, dtype
+from torch import Tensor, complex128
 from torch import device as torch_device
+from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList
 
 from pyqtorch.utils import DiffMode, State, inner_prod, zero_state
@@ -19,7 +20,7 @@ class QuantumCircuit(Module):
         self.operations = ModuleList(operations)
         self._device = torch_device("cpu")
         self._dtype = complex128
-        if operations:
+        if len(self.operations) > 0:
             try:
                 self._device = next(iter(set((op.device for op in self.operations))))
             except StopIteration:
@@ -66,7 +67,7 @@ class QuantumCircuit(Module):
         return self._device
 
     @property
-    def dtype(self) -> dtype:
+    def dtype(self) -> torch_dtype:
         return self._dtype
 
     def init_state(self, batch_size: int = 1) -> Tensor:
@@ -77,12 +78,9 @@ class QuantumCircuit(Module):
 
     def to(self, *args: Any, **kwargs: Any) -> QuantumCircuit:
         self.operations = ModuleList([op.to(*args, **kwargs) for op in self.operations])
-        try:
+        if len(self.operations) > 0:
             self._device = self.operations[0].device
             self._dtype = self.operations[0].dtype
-        except IndexError:
-            pass
-
         return self
 
 

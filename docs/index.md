@@ -360,7 +360,7 @@ param_dict = torch.nn.ParameterDict(
     }
 )
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-observable = TotalMagnetization(N_QUBITS).to(device=DEVICE, dtype= COMPLEX_DTYPE)
+observable = TotalMagnetization(N_QUBITS).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 param_dict = param_dict.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
