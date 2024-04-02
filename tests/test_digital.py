@@ -288,8 +288,8 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     dm = density_mat(state)
     assert dm.size() == torch.Size(
         [2**n_qubits, 2**n_qubits, 1]
-    ), "The density matrix is not a matrix."
-    assert torch.allclose(dm, proj), "The density matrix is not the projector."
+    )
+    assert torch.allclose(dm, proj)
 
     # Test with batches:
     state_list = []
@@ -311,5 +311,5 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     dm = density_mat(state_cat)
     assert dm.size() == torch.Size(
         [2**n_qubits, 2**n_qubits, batch_size]
-    ), "The density matrix is not a matrix."
-    assert torch.allclose(dm, dm_proj), "The density matrix is not the projector."
+    )
+    assert torch.allclose(dm, dm_proj)

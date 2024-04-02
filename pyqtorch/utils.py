@@ -134,7 +134,6 @@ def density_mat(state: Tensor) -> Tensor:
             The input must be a Tensor.
     """
 
-    # Verification input type:
     if not isinstance(state, Tensor):
         raise TypeError("The input must be a Tensor")
 
@@ -145,15 +144,15 @@ def density_mat(state: Tensor) -> Tensor:
     batch_first_perm = [batch_dim] + list(range(batch_dim))
     state = torch.permute(state, batch_first_perm)
 
-    # reshape by flatten
+    # reshape by flattening
     state = state.flatten()
 
     # Split for every batch
-    ket_list = torch.split(state, split_size_or_sections=2**n_qubits)
+    kets = torch.split(state, split_size_or_sections=2**n_qubits)
 
     # Compute the permute projector and stack it
     proj_list = []
-    for ket in ket_list:
+    for ket in kets:
         proj_ket = torch.outer(ket, ket.conj())
         proj_list.append(proj_ket)
     projector = torch.stack(proj_list)
