@@ -155,7 +155,7 @@ def density_mat(state: Tensor) -> Tensor:
     for ket in kets:
         proj_ket = torch.outer(ket, ket.conj())
         projectors.append(proj_ket)
-    projector = torch.stack(projectors)
+    batched_projectors = torch.stack(projectors)
 
     # Permute back the matrix's batch last:
     undo_perm = (1, 2, 0)
