@@ -282,30 +282,30 @@ def test_U() -> None:
 def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     # Test without batches:
     state = random_state(n_qubits)
-    proj = torch.outer(state.flatten(), state.conj().flatten()).view(
+    projector = torch.outer(state.flatten(), state.conj().flatten()).view(
         2**n_qubits, 2**n_qubits, 1
     )
     dm = density_mat(state)
     assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
-    assert torch.allclose(dm, proj)
+    assert torch.allclose(dm, projector)
 
     # Test with batches:
-    state_list = []
-    proj_list = []
+    states = []
+    projectors = []
     # Batches creation:
     for batch in range(batch_size):
         # Batch state creation:
         state = random_state(n_qubits)
-        state_list.append(state)
+        states.append(state)
         # Batch projector:
-        proj = torch.outer(state.flatten(), state.conj().flatten()).view(
+        projector = torch.outer(state.flatten(), state.conj().flatten()).view(
             2**n_qubits, 2**n_qubits, 1
         )
-        proj_list.append(proj)
+        projectors.append(projector)
     # Concatenate all the batch projectors:
-    dm_proj = torch.cat(proj_list, dim=2)
+    dm_proj = torch.cat(projector, dim=2)
     # Concatenate the batch state to compute the density matrix
-    state_cat = torch.cat(state_list, dim=n_qubits)
+    state_cat = torch.cat(states, dim=n_qubits)
     dm = density_mat(state_cat)
     assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
     assert torch.allclose(dm, dm_proj)
