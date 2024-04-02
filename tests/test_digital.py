@@ -6,6 +6,7 @@ from typing import Callable, Tuple
 
 import pytest
 import torch
+from torch import Tensor
 
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator
@@ -99,41 +100,41 @@ def test_projectors() -> None:
 
 
 def test_CNOT_state00_controlqubit_0() -> None:
-    result: torch.Tensor = pyq.CNOT(0, 1)(product_state("00"), None)
+    result: Tensor = pyq.CNOT(0, 1)(product_state("00"), None)
     assert torch.equal(product_state("00"), result)
 
 
 def test_CNOT_state10_controlqubit_0() -> None:
-    result: torch.Tensor = pyq.CNOT(0, 1)(product_state("10"), None)
+    result: Tensor = pyq.CNOT(0, 1)(product_state("10"), None)
     assert torch.equal(product_state("11"), result)
 
 
 def test_CNOT_state11_controlqubit_0() -> None:
-    result: torch.Tensor = pyq.CNOT(0, 1)(product_state("11"), None)
+    result: Tensor = pyq.CNOT(0, 1)(product_state("11"), None)
     assert torch.equal(product_state("10"), result)
 
 
 def test_CRY_state10_controlqubit_0() -> None:
-    result: torch.Tensor = pyq.CRY(0, 1, "theta")(
+    result: Tensor = pyq.CRY(0, 1, "theta")(
         product_state("10"), {"theta": torch.tensor([torch.pi])}
     )
     assert torch.allclose(product_state("11"), result)
 
 
 def test_CRY_state01_controlqubit_0() -> None:
-    result: torch.Tensor = pyq.CRY(1, 0, "theta")(
+    result: Tensor = pyq.CRY(1, 0, "theta")(
         product_state("01"), {"theta": torch.tensor([torch.pi])}
     )
     assert torch.allclose(product_state("11"), result)
 
 
 def test_CSWAP_state101_controlqubit_0() -> None:
-    result: torch.Tensor = pyq.CSWAP((0, 1), 2)(product_state("101"), None)
+    result: Tensor = pyq.CSWAP((0, 1), 2)(product_state("101"), None)
     assert torch.allclose(product_state("110"), result)
 
 
 def test_CSWAP_state110_controlqubit_0() -> None:
-    result: torch.Tensor = pyq.CSWAP((0, 1), 2)(product_state("101"), None)
+    result: Tensor = pyq.CSWAP((0, 1), 2)(product_state("101"), None)
     assert torch.allclose(product_state("110"), result)
 
 
@@ -147,7 +148,7 @@ def test_CSWAP_state110_controlqubit_0() -> None:
         (state_110, state_101),
     ],
 )
-def test_CSWAP_controlqubits0(initial_state: torch.Tensor, expected_state: torch.Tensor) -> None:
+def test_CSWAP_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:
     cswap = pyq.CSWAP((0, 1), 2)
     assert torch.allclose(cswap(initial_state, None), expected_state)
 
@@ -163,7 +164,7 @@ def test_CSWAP_controlqubits0(initial_state: torch.Tensor, expected_state: torch
         (state_1110, state_1111),
     ],
 )
-def test_Toffoli_controlqubits0(initial_state: torch.Tensor, expected_state: torch.Tensor) -> None:
+def test_Toffoli_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:
     n_qubits = int(log2(torch.numel(initial_state)))
     qubits = tuple([i for i in range(n_qubits)])
     toffoli = pyq.Toffoli(qubits[:-1], qubits[-1])
@@ -184,7 +185,7 @@ def test_Toffoli_controlqubits0(initial_state: torch.Tensor, expected_state: tor
 @pytest.mark.parametrize("gate", ["RX", "RY", "RZ", "PHASE"])
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_multi_controlled_gates(
-    initial_state: torch.Tensor, expects_rotation: bool, batch_size: int, gate: str
+    initial_state: Tensor, expects_rotation: bool, batch_size: int, gate: str
 ) -> None:
     phi = "phi"
     rot_gate = getattr(pyq, gate)
@@ -277,171 +278,38 @@ def test_U() -> None:
     )
 
 
-def test_dm() -> None:
-    state_00 = pyq.utils.product_state("00")
-    n_qubit = len(state_00.size()) - 1
-    batch_size = state_00.size(-1)
-    dm = density_mat(state_00)
+@pytest.mark.parametrize("n_qubits,batch_size", torch.randint(1, 6, (8, 2)))
+def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
+    # Test without batches:
+    state = random_state(n_qubits)
+    proj = torch.outer(state.flatten(), state.conj().flatten()).view(
+        2**n_qubits, 2**n_qubits, 1
+    )
+    dm = density_mat(state)
     assert dm.size() == torch.Size(
-        [2**n_qubit, 2**n_qubit, batch_size]
+        [2**n_qubits, 2**n_qubits, 1]
     ), "The density matrix is not a matrix."
-    state_00_batch = product_state("00", batch_size=3)
-    dm_batch = density_mat(state_00_batch)
-    dm_00_batch = torch.tensor(
-        [
-            [
-                [1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-        ]
-    )
-    assert torch.allclose(
-        dm_00_batch, dm_batch
-    ), "The density matrix is not the projetctor |00><00| with 3 batches."
-    state_101 = pyq.utils.product_state("101", batch_size=2)
-    dm_101 = density_mat(state_101)
-    dm_101_ideal = torch.tensor(
-        [
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [1.0 + 0.0j, 1.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-        ]
-    )
-    assert torch.allclose(
-        dm_101_ideal, dm_101
-    ), "The density matrix is the projetctor |101><101| with 2 batches."
-    state_10 = pyq.utils.product_state("10", batch_size=1)
-    dm_10 = density_mat(state_10)
-    dm_10_ideal = torch.tensor(
-        [
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [1.0 + 0.0j, 1.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-            [
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-                [0.0 + 0.0j, 0.0 + 0.0j],
-            ],
-        ]
-    )
-    assert torch.allclose(dm_10_ideal, dm_10), "The density matrix is not the projetctor |10><10| ."
-    state_random = random_state(n_qubits=2)
-    dm_random = density_mat(state_random)
-    indices_to_check = [(0, 0), (1, 1), (2, 2), (3, 3)]
-    for i, j in indices_to_check:
-        assert (
-            dm_random[i, j, 0].imag == 0
-        ), f"The imaginary part of the element at index ({i}, {j}) is not zero."
+    assert torch.allclose(dm, proj), "The density matrix is not the projector."
+
+    # Test with batches:
+    state_list = []
+    proj_list = []
+    # Batches creation:
+    for batch in range(batch_size):
+        # Batch state creation:
+        state = random_state(n_qubits)
+        state_list.append(state)
+        # Batch projector:
+        proj = torch.outer(state.flatten(), state.conj().flatten()).view(
+            2**n_qubits, 2**n_qubits, 1
+        )
+        proj_list.append(proj)
+    # Concatenate all the batch projectors:
+    dm_proj = torch.cat(proj_list, dim=2)
+    # Concatenate the batch state to compute the density matrix
+    state_cat = torch.cat(state_list, dim=n_qubits)
+    dm = density_mat(state_cat)
+    assert dm.size() == torch.Size(
+        [2**n_qubits, 2**n_qubits, batch_size]
+    ), "The density matrix is not a matrix."
+    assert torch.allclose(dm, dm_proj), "The density matrix is not the projector."
