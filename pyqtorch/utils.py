@@ -144,19 +144,19 @@ def density_mat(state: Tensor) -> Tensor:
     batch_first_perm = [batch_dim] + list(range(batch_dim))
     state = torch.permute(state, batch_first_perm)
 
-    # reshape by flattening
+    # Reshape by flatteninging
     state = state.flatten()
 
     # Split for every batch
     kets = torch.split(state, split_size_or_sections=2**n_qubits)
 
     # Compute the permute projector and stack it
-    proj_list = []
+    projectors = []
     for ket in kets:
         proj_ket = torch.outer(ket, ket.conj())
-        proj_list.append(proj_ket)
-    projector = torch.stack(proj_list)
+        projectors.append(proj_ket)
+    projector = torch.stack(projectors)
 
-    # Permute the matrix's batch last:
+    # Permute back the matrix's batch last:
     undo_perm = (1, 2, 0)
     return torch.permute(projector, undo_perm)
