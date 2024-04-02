@@ -286,9 +286,7 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
         2**n_qubits, 2**n_qubits, 1
     )
     dm = density_mat(state)
-    assert dm.size() == torch.Size(
-        [2**n_qubits, 2**n_qubits, 1]
-    )
+    assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(dm, proj)
 
     # Test with batches:
@@ -309,7 +307,5 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     # Concatenate the batch state to compute the density matrix
     state_cat = torch.cat(state_list, dim=n_qubits)
     dm = density_mat(state_cat)
-    assert dm.size() == torch.Size(
-        [2**n_qubits, 2**n_qubits, batch_size]
-    )
+    assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
     assert torch.allclose(dm, dm_proj)
