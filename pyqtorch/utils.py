@@ -145,7 +145,7 @@ def density_mat(state: Tensor) -> Tensor:
     batch_first_perm = [batch_dim] + list(range(batch_dim))
     state = torch.permute(state, batch_first_perm)
 
-    # reshape by flatten
+    # Reshape by flattening
     state = state.flatten()
 
     # Split for every batch
