@@ -158,6 +158,6 @@ def density_mat(state: Tensor) -> Tensor:
         proj_list.append(proj_ket)
     projector = torch.stack(proj_list)
 
-    # Permute the matrix's batch last:
+    # Permute back the matrix's batch last:
     undo_perm = (1, 2, 0)
     return torch.permute(projector, undo_perm)
