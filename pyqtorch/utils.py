@@ -152,7 +152,7 @@ def density_mat(state: Tensor) -> Tensor:
     ket_list = torch.split(state, split_size_or_sections=2**n_qubits)
 
     # Compute the permute projector and stack it
-    proj_list = []
+    projectors = []
     for ket in ket_list:
         proj_ket = torch.outer(ket, ket.conj())
         proj_list.append(proj_ket)
