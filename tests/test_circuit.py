@@ -119,3 +119,20 @@ def test_device_inference() -> None:
     circ = pyq.QuantumCircuit(2, ops)
     nested_circ = pyq.QuantumCircuit(2, [circ, circ])
     assert nested_circ._device is not None
+
+
+def test_adjoint_duplicate_params() -> None:
+    n_qubits = 2
+    ops = [pyq.RX(0, param_name="theta_0"), pyq.RX(0, param_name="theta_0")]
+    theta_vals = torch.arange(0, torch.pi, 0.05, requires_grad=True)
+    circ = pyq.QuantumCircuit(n_qubits, ops)
+    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    init_state = pyq.zero_state(n_qubits)
+    values = {"theta_0": theta_vals}
+    exp_ad = expectation(circ, init_state, values, obs, DiffMode.AD)
+    exp_adjoint = expectation(circ, init_state, values, obs, DiffMode.ADJOINT)
+    grad_ad = torch.autograd.grad(exp_ad, tuple(values.values()), torch.ones_like(exp_ad))[0]
+    grad_adjoint = torch.autograd.grad(
+        exp_adjoint, tuple(values.values()), torch.ones_like(exp_adjoint)
+    )[0]
+    assert torch.allclose(grad_ad, grad_adjoint)
