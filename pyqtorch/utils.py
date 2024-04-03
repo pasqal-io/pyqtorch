@@ -128,35 +128,11 @@ def density_mat(state: Tensor) -> Tensor:
 
     Returns:
         Tensor: The density matrix :math:`\\rho = |\psi \\rangle \\langle\\psi|`.
-
-    Raises:
-        TypeError: If the input is not a Tensor.
-            The input must be a Tensor.
     """
-
-    if not isinstance(state, Tensor):
-        raise TypeError("The input must be a Tensor")
-
     n_qubits = len(state.size()) - 1
-
-    # Permute the vector's batch_first
     batch_dim = state.dim() - 1
+    batch_size = state.shape[-1]
     batch_first_perm = [batch_dim] + list(range(batch_dim))
-    state = torch.permute(state, batch_first_perm)
-
-    # Reshape by flatteninging
-    state = state.flatten()
-
-    # Split for every batch
-    kets = torch.split(state, split_size_or_sections=2**n_qubits)
-
-    # Compute the permute projector and stack it
-    projectors = []
-    for ket in kets:
-        proj_ket = torch.outer(ket, ket.conj())
-        projectors.append(proj_ket)
-    projector = torch.stack(projectors)
-
-    # Permute back the matrix's batch last:
+    state = torch.permute(state, batch_first_perm).reshape(batch_size, 2**n_qubits)
     undo_perm = (1, 2, 0)
-    return torch.permute(projector, undo_perm)
+    return torch.permute(torch.einsum("bi,bj->bij", (state, state.conj())), undo_perm)
