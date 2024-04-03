@@ -303,7 +303,7 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
         )
         projectors.append(projector)
     # Concatenate all the batch projectors:
-    dm_proj = torch.cat(projector, dim=2)
+    dm_proj = torch.cat(projectors, dim=2)
     # Concatenate the batch state to compute the density matrix
     state_cat = torch.cat(states, dim=n_qubits)
     dm = density_mat(state_cat)
