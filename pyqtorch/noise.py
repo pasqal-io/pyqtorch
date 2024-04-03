@@ -57,7 +57,7 @@ class Noise(torch.nn.Module):
         self._device = self.kraus[0].device
 
     @property
-    def proba(self) -> Union[List[float], float]:
+    def proba(self) -> Union[Tuple[float, ...], float]:
         return self.probability
 
     @property
@@ -149,7 +149,7 @@ class Noise(torch.nn.Module):
 
         Args:
             state (torch.Tensor): Input quantum state represented as a tensor.
-            
+
         Returns:
             torch.Tensor: Quantum state as a density matrix after evolution.
 
