@@ -137,7 +137,7 @@ class Noise(torch.nn.Module):
 
         return _dagger(kraus_op)
 
-    def forward(self, state: torch.Tensor, kraus_list: List[torch.Tensor]) -> torch.Tensor:
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         """
         Applies a noisy quantum channel on the input state.
         The evolution is represented as a sum of Kraus operators:
@@ -149,8 +149,7 @@ class Noise(torch.nn.Module):
 
         Args:
             state (torch.Tensor): Input quantum state represented as a tensor.
-            kraus_list (List[torch.Tensor]): List of Kraus operators representing the noisy quantum channel.
-
+            
         Returns:
             torch.Tensor: Quantum state as a density matrix after evolution.
 
@@ -161,10 +160,6 @@ class Noise(torch.nn.Module):
         # Verification input type:
         if not isinstance(state, torch.Tensor):
             raise TypeError("The input must be a torch.Tensor")
-        if not isinstance(kraus_list, list) or not all(
-            isinstance(tensor, torch.Tensor) for tensor in kraus_list
-        ):
-            raise TypeError("The input must be a list containing torch.Tensor objects")
 
         # Output operator initialization:
         n_qubits: int = len(state.size()) - 1
@@ -175,7 +170,7 @@ class Noise(torch.nn.Module):
 
         # Apply noisy channel on input state
         rho: torch.tensor = density_mat(state)
-        for kraus_op in kraus_list:
+        for kraus_op in self.kraus:
             Ki: torch.tensor = self.unitary(kraus_op, batch_size)
             rho_i: torch.tensor = apply_ope_ope(Ki, apply_ope_ope(rho, self.dagger(Ki)))
             rho_evol += rho_i
@@ -191,7 +186,7 @@ class Noise(torch.nn.Module):
         return self
 
 
-class Bitflip(Noise):
+class BitFlip(Noise):
     def __init__(
         self,
         target: int,
@@ -210,7 +205,7 @@ class Bitflip(Noise):
         super().__init__(Kraus_Bitflip, target, probability)
 
 
-class Phaseflip(Noise):
+class PhaseFlip(Noise):
     def __init__(
         self,
         target: int,
