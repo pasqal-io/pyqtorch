@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from math import log2
-from typing import Tuple
+from typing import Any, Tuple
 
 import torch
 
@@ -19,6 +19,7 @@ class Primitive(torch.nn.Module):
         self.register_buffer("pauli", pauli)
         self._param_type = None
         self._device = self.pauli.device
+        self._dtype = self.pauli.dtype
 
     def __key(self) -> tuple:
         return self.qubit_support
@@ -54,9 +55,14 @@ class Primitive(torch.nn.Module):
     def device(self) -> torch.device:
         return self._device
 
-    def to(self, device: torch.device) -> Primitive:
-        super().to(device)
-        self._device = device
+    @property
+    def dtype(self) -> torch.dtype:
+        return self._dtype
+
+    def to(self, *args: Any, **kwargs: Any) -> Primitive:
+        super().to(*args, **kwargs)
+        self._device = self.pauli.device
+        self._dtype = self.pauli.dtype
         return self
 
 

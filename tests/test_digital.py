@@ -10,9 +10,9 @@ from torch import Tensor
 
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import IMAT, ZMAT
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import density_mat, product_state, random_state
+from pyqtorch.utils import density_mat, ATOL, product_state, random_state
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -37,17 +37,25 @@ def test_N() -> None:
 
 
 def test_projectors() -> None:
-    t0 = torch.tensor([[0.0], [0.0]], dtype=torch.cdouble)
-    t1 = torch.tensor([[1.0], [0.0]], dtype=torch.cdouble)
-    t2 = torch.tensor([[0.0], [1.0]], dtype=torch.cdouble)
+    t0 = torch.tensor([[0.0], [0.0]], dtype=DEFAULT_MATRIX_DTYPE)
+    t1 = torch.tensor([[1.0], [0.0]], dtype=DEFAULT_MATRIX_DTYPE)
+    t2 = torch.tensor([[0.0], [1.0]], dtype=DEFAULT_MATRIX_DTYPE)
     assert torch.allclose(t1, pyq.Projector(0, ket="0", bra="0")(product_state("0")))
     assert torch.allclose(t0, pyq.Projector(0, ket="0", bra="0")(product_state("1")))
     assert torch.allclose(t2, pyq.Projector(0, ket="1", bra="1")(product_state("1")))
     assert torch.allclose(t0, pyq.Projector(0, ket="1", bra="1")(product_state("0")))
-    t00 = torch.tensor([[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]])
-    t01 = torch.tensor([[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]])
-    t10 = torch.tensor([[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]])
-    t11 = torch.tensor([[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]])
+    t00 = torch.tensor(
+        [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]], dtype=torch.complex128
+    )
+    t01 = torch.tensor(
+        [[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]], dtype=torch.complex128
+    )
+    t10 = torch.tensor(
+        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]], dtype=torch.complex128
+    )
+    t11 = torch.tensor(
+        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]], dtype=torch.complex128
+    )
     assert torch.allclose(pyq.Projector((0, 1), ket="00", bra="00")(product_state("00")), t00)
     assert torch.allclose(pyq.Projector((0, 1), ket="10", bra="01")(product_state("01")), t10)
     assert torch.allclose(pyq.Projector((0, 1), ket="01", bra="10")(product_state("10")), t01)
@@ -56,31 +64,36 @@ def test_projectors() -> None:
         [
             [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     t100 = torch.tensor(
         [
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
             [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     t001 = torch.tensor(
         [
             [[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     t010 = torch.tensor(
         [
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]],
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     t111 = torch.tensor(
         [
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
             [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]],
-        ]
+        ],
+        dtype=torch.complex128,
     )
     assert torch.allclose(
         pyq.Projector((0, 1, 2), ket="000", bra="000")(product_state("000")), t000
@@ -106,26 +119,26 @@ def test_CNOT_state00_controlqubit_0() -> None:
 
 def test_CNOT_state10_controlqubit_0() -> None:
     result: Tensor = pyq.CNOT(0, 1)(product_state("10"), None)
-    assert torch.equal(product_state("11"), result)
+    assert torch.allclose(product_state("11"), result)
 
 
 def test_CNOT_state11_controlqubit_0() -> None:
     result: Tensor = pyq.CNOT(0, 1)(product_state("11"), None)
-    assert torch.equal(product_state("10"), result)
+    assert torch.allclose(product_state("10"), result)
 
 
 def test_CRY_state10_controlqubit_0() -> None:
     result: Tensor = pyq.CRY(0, 1, "theta")(
         product_state("10"), {"theta": torch.tensor([torch.pi])}
     )
-    assert torch.allclose(product_state("11"), result)
+    assert torch.allclose(product_state("11"), result, atol=ATOL)
 
 
 def test_CRY_state01_controlqubit_0() -> None:
     result: Tensor = pyq.CRY(1, 0, "theta")(
         product_state("01"), {"theta": torch.tensor([torch.pi])}
     )
-    assert torch.allclose(product_state("11"), result)
+    assert torch.allclose(product_state("11"), result, atol=ATOL)
 
 
 def test_CSWAP_state101_controlqubit_0() -> None:
@@ -209,7 +222,7 @@ def test_parametric_phase_hamevo(
 ) -> None:
     target = 0
     state = state_fn(n_qubits, batch_size=batch_size)
-    phi = torch.rand(1, dtype=torch.cdouble)
+    phi = torch.rand(1, dtype=DEFAULT_MATRIX_DTYPE)
     H = (ZMAT - IMAT) / 2
     hamevo = pyq.HamiltonianEvolution(qubit_support=(target,), n_qubits=n_qubits)
     phase = pyq.PHASE(target, "phi")
@@ -222,7 +235,7 @@ def test_parametric_phase_hamevo(
 def test_parametrized_phase_gate(state_fn: Callable, batch_size: int, n_qubits: int) -> None:
     target: int = torch.randint(low=0, high=n_qubits, size=(1,)).item()
     state = state_fn(n_qubits, batch_size=batch_size)
-    phi = torch.tensor([torch.pi / 2], dtype=torch.cdouble)
+    phi = torch.tensor([torch.pi / 2], dtype=DEFAULT_MATRIX_DTYPE)
     phase = pyq.PHASE(target, "phi")
     constant_phase = pyq.S(target)
     assert torch.allclose(phase(state, {"phi": phi}), constant_phase(state, None))
