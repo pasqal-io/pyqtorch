@@ -7,10 +7,10 @@ import torch
 from torch import Tensor
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
+from pyqtorch.primitive import I
 
 State = Tensor
 Operator = Tensor
-from pyqtorch.primitive import I
 
 ATOL = 1e-06
 RTOL = 0.0

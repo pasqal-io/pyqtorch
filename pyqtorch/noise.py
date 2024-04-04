@@ -17,7 +17,8 @@ class Noise(torch.nn.Module):
     ) -> None:
         super().__init__()
 
-        self.qubit_support: Tuple[int, ...] = (target,)
+        self.target = target
+        self.qubit_support: Tuple[int, ...] = (self.target,)
 
         self.probability: Union[Tuple[float, ...], float] = probability
         # Verification probability value:
@@ -90,7 +91,8 @@ class Noise(torch.nn.Module):
 
         Raises:
             TypeError: If the input is not a Tensor.
-            ValueError: If the input tensor does not have the expected size [2**n_qubits, 2**n_qubits].
+            ValueError: If the input tensor does not have the expected size
+                        [2**n_qubits, 2**n_qubits].
             ValueError: If the batch size is less than 1.
         """
         # Verification input type:
@@ -100,7 +102,7 @@ class Noise(torch.nn.Module):
         # Verification input size:
         if len(kraus_op.size()) != 2:
             raise ValueError(
-                "The input must be in torch.Size([2**n_qubits,2**n_qubits]) to add a batch dimension "
+                "The input must be in size [2**n_qubits,2**n_qubits] to add a batch dimension "
             )
 
         if batch_size == 1:
@@ -122,7 +124,8 @@ class Noise(torch.nn.Module):
 
         Raises:
             TypeError: If the input is not a Tensor.
-            ValueError: If the input tensor does not have the expected size [2**n_qubits, 2**n_qubits, batch_size].
+            ValueError: If the input tensor does not have the expected size:
+                        [2**n_qubits, 2**n_qubits, batch_size].
         """
         # Verification input type:
         if not isinstance(kraus_op, Tensor):
@@ -171,7 +174,9 @@ class Noise(torch.nn.Module):
         rho: Tensor = density_mat(state)
         for kraus_op in self.kraus:
             Ki: Tensor = self.unitary(kraus_op, batch_size)
-            rho_i: Tensor = apply_ope_ope(Ki, apply_ope_ope(rho, self.dagger(Ki)))
+            rho_i: Tensor = apply_ope_ope(
+                Ki, apply_ope_ope(rho, self.dagger(Ki), self.target), self.target
+            )
             rho_evol += rho_i
         return rho_evol
 

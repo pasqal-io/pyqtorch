@@ -9,18 +9,18 @@ from numpy import array
 from numpy.typing import NDArray
 from torch import Tensor, einsum
 
-from pyqtorch.utils import Operator, State
+from pyqtorch.utils import promote_ope
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
 
 def apply_operator(
-    state: State,
-    operator: Operator,
+    state: Tensor,
+    operator: Tensor,
     qubits: Tuple[int, ...] | list[int],
     n_qubits: int = None,
     batch_size: int = None,
-) -> State:
+) -> Tensor:
     """Applies an operator, i.e. a single tensor of shape [2, 2, ...], on a given state
        of shape [2 for _ in range(n_qubits)] for a given set of (target and control) qubits.
 
@@ -61,7 +61,7 @@ def apply_operator(
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
-def apply_ope_ope(operator_1: Tensor, operator_2: Tensor) -> Tensor:
+def apply_ope_ope(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
     """
     Compute the product of two operators.
     The operators must have the same dimensions.
@@ -83,7 +83,11 @@ def apply_ope_ope(operator_1: Tensor, operator_2: Tensor) -> Tensor:
     batch_size_1 = operator_1.size(-1)
     batch_size_2 = operator_2.size(-1)
     if n_qubits_1 != n_qubits_2:
-        raise ValueError("The number of qubit is different between the two operators.")
+        if n_qubits_1 > n_qubits_2:
+            operator_2 = promote_ope(operator_2, target, n_qubits_1)
+        if n_qubits_1 < n_qubits_2:
+            operator_1 = promote_ope(operator_1, target, n_qubits_2)
+            # Look at the batch
     if batch_size_1 != batch_size_2:
         raise ValueError("The number of batch is different between the two operators.")
 
