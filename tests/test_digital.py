@@ -12,7 +12,7 @@ import pyqtorch as pyq
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import density_mat, ATOL, product_state, random_state
+from pyqtorch.utils import ATOL, density_mat, product_state, random_state
 
 state_000 = product_state("000")
 state_001 = product_state("001")
