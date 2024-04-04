@@ -12,6 +12,7 @@ from __future__ import annotations
 from .analog import HamiltonianEvolution
 from .apply import apply_operator
 from .circuit import QuantumCircuit, expectation
+from .hamiltonian import Hamiltonian
 from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
 from .primitive import (
     CNOT,
