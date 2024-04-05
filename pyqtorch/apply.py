@@ -64,17 +64,14 @@ def apply_operator(
 def apply_ope_ope(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
     """
     Compute the product of two operators.
-    The operators must have the same dimensions.
 
     Args:
         operator_1 (Tensor): The first operator.
         operator_2 (Tensor): The second operator.
+        target (int): The target qubit index.
 
     Returns:
         Tensor: The product of the two operators.
-
-    Raises:
-        ValueError: If the number of qubits or the batch size differs between the two operators.
     """
 
     # Dimension verifications:

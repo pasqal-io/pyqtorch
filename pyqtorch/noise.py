@@ -93,7 +93,7 @@ class Noise(torch.nn.Module):
             TypeError: If the input is not a Tensor.
             ValueError: If the input tensor does not have the expected size
                         [2**n_qubits, 2**n_qubits].
-            ValueError: If the batch size is less than 1.
+                        If the batch size is less than 1.
         """
         # Verification input type:
         if not isinstance(kraus_op, Tensor):
@@ -112,32 +112,18 @@ class Noise(torch.nn.Module):
         else:
             return kraus_op.unsqueeze(2).repeat(1, 1, batch_size)
 
-    def dagger(self, kraus_op: Tensor) -> Tensor:
+    def dagger(self, kraus_op: Tensor, batch_size: int = 1) -> Tensor:
         """
         Computes the conjugate transpose (dagger) of a Kraus operator.
 
         Args:
             kraus_op (Tensor): The tensor representing a quantum Kraus operator.
+            batch_size (int, optional): The desired batch size. Defaults to 1.
 
         Returns:
             Tensor: The conjugate transpose (dagger) of the input tensor.
-
-        Raises:
-            TypeError: If the input is not a Tensor.
-            ValueError: If the input tensor does not have the expected size:
-                        [2**n_qubits, 2**n_qubits, batch_size].
         """
-        # Verification input type:
-        if not isinstance(kraus_op, Tensor):
-            raise TypeError("The input must be a Tensor")
-
-        # Verification input size:
-        if len(kraus_op.size()) != 3:
-            raise ValueError(
-                "The input must be in torch.Size([2**n_qubits,2**n_qubits,batch_size]) "
-            )
-
-        return _dagger(kraus_op)
+        return _dagger(self.unitary(kraus_op, batch_size))
 
     def forward(self, state: Tensor) -> Tensor:
         """

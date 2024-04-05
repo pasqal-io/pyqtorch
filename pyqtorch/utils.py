@@ -145,21 +145,29 @@ def density_mat(state: Tensor) -> Tensor:
     return torch.permute(torch.einsum("bi,bj->bij", (state, state.conj())), undo_perm)
 
 
-def promote_ope(
-    operator: torch.Tensor, target: int, n_qubits: int, batch_size: int = 1
-) -> torch.Tensor:
+def promote_ope(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     """
-    Promotes operator to the size of the circuit (number of qubit and batch).
-    If an input operator is not with the correct size:
-    this function must be used before the apply_ope_ope() function
+    Promotes `operator` to the size of the circuit (number of qubits and batch).
+
+    Args:
+        operator (Tensor): The operator tensor to be promoted.
+        target (int): The target qubit index.
+        n_qubits (int): Number of qubits in the circuit.
+
+    Returns:
+        Tensor: The promoted operator tensor.
+
+    Raises:
+        ValueError: If `target` is not within the range of qubits.
     """
-    qubits_support = [index for index in range(n_qubits) if index != target]
+    if target > n_qubits:
+        raise ValueError("The target must be a register qubit")
+
+    qubits_support = torch.arange(0, n_qubits)
     for support in qubits_support:
         if target > support:
             operator = torch.kron(I(support).unitary(), operator.contiguous())
         # Add.contiguous() because kron does not support the transpose (dagger)
-        else:
+        elif target < support:
             operator = torch.kron(operator.contiguous(), I(support).unitary())
-    # Add batches
-    operator_prom = operator.repeat(1, 1, batch_size)
-    return operator_prom
+    return operator
