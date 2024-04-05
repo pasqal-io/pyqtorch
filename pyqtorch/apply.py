@@ -87,9 +87,11 @@ def apply_ope_ope(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor
             operator_2 = promote_ope(operator_2, target, n_qubits_1)
         if n_qubits_1 < n_qubits_2:
             operator_1 = promote_ope(operator_1, target, n_qubits_2)
-            # Look at the batch
     if batch_size_1 != batch_size_2:
-        raise ValueError("The number of batch is different between the two operators.")
+        if batch_size_1 > batch_size_2:
+            operator_2 = operator_2.repeat(1, 1, batch_size_1)
+        if batch_size_2 > batch_size_1:
+            operator_1 = operator_1.repeat(1, 1, batch_size_2)
 
     # Permute the batch size on first dimension to allow torch.bmm():
     def batch_first(operator: Tensor) -> Tensor:
