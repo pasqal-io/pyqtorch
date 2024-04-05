@@ -156,9 +156,10 @@ def promote_ope(
     qubits_support = [index for index in range(n_qubits) if index != target]
     for support in qubits_support:
         if target > support:
-            operator = torch.kron(I(support).unitary(), operator)
+            operator = torch.kron(I(support).unitary(), operator.contiguous())
+        # Add.contiguous() because kron does not support the transpose (dagger)
         else:
-            operator = torch.kron(operator, I(support).unitary())
+            operator = torch.kron(operator.contiguous(), I(support).unitary())
     # Add batches
     operator_prom = operator.repeat(1, 1, batch_size)
     return operator_prom
