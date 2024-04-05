@@ -147,27 +147,29 @@ def density_mat(state: Tensor) -> Tensor:
 
 def promote_ope(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     """
-    Promotes `operator` to the size of the circuit.
+    Promotes `operator` to the size of the circuit (number of qubits and batch).
+    Targeting the first qubit implies target = 0, so target > n_qubits - 1.
 
     Args:
         operator (Tensor): The operator tensor to be promoted.
-        target (int): The target qubit index.
+        target (int): The index of the target qubit to which the operator is applied.
+            Targeting the first qubit implies target = 0, so target > n_qubits - 1.
         n_qubits (int): Number of qubits in the circuit.
 
     Returns:
         Tensor: The promoted operator tensor.
 
     Raises:
-        ValueError: If `target` is not within the range of qubits.
+        ValueError: If `target` is outside the valid range of qubits.
     """
-    if target > n_qubits:
-        raise ValueError("The target must be a register qubit")
+    if target > n_qubits - 1 : 
+        raise ValueError("The target must be a valid qubit index within the circuit's range.")
 
     qubits_support = torch.arange(0, n_qubits)
     for support in qubits_support:
         if target > support:
             operator = torch.kron(I(support).unitary(), operator.contiguous())
-        # Add .contiguous() because kron does not support the transpose (dagger)
+        # Add.contiguous() because kron does not support the transpose (dagger)
         elif target < support:
             operator = torch.kron(operator.contiguous(), I(support).unitary())
     return operator
