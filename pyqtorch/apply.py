@@ -3,11 +3,14 @@ from __future__ import annotations
 from string import ascii_letters as ABC
 from typing import Tuple
 
+from math import log2
 from numpy import array
 from numpy.typing import NDArray
-from torch import einsum
 
-from pyqtorch.utils import Operator, State
+import torch
+from torch import Tensor,einsum
+
+from pyqtorch.utils import Operator, State, promote_ope
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -57,3 +60,63 @@ def apply_operator(
         map(lambda e: "".join(list(e)), [operator_dims, in_state_dims, out_state_dims])
     )
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
+
+
+def apply_ope_ope(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
+    """
+    Compute the product of two operators.
+
+    Args:
+        operator_1 (Tensor): The first operator.
+        operator_2 (Tensor): The second operator.
+        target (int): The target qubit index.
+
+    Returns:
+        Tensor: The product of the two operators.
+    """
+
+    # Dimension verifications:
+    n_qubits_1 = int(log2(operator_1.size(1)))
+    n_qubits_2 = int(log2(operator_2.size(1)))
+    batch_size_1 = operator_1.size(-1)
+    batch_size_2 = operator_2.size(-1)
+    if n_qubits_1 != n_qubits_2:
+        if n_qubits_1 > n_qubits_2:
+            operator_2 = promote_ope(operator_2, target, n_qubits_1)
+        if n_qubits_1 < n_qubits_2:
+            operator_1 = promote_ope(operator_1, target, n_qubits_2)
+    if batch_size_1 != batch_size_2:
+        if batch_size_1 > batch_size_2:
+            operator_2 = operator_2.repeat(1, 1, batch_size_1)
+        if batch_size_2 > batch_size_1:
+            operator_1 = operator_1.repeat(1, 1, batch_size_2)
+
+    # Permute the batch size on first dimension to allow torch.bmm():
+    def batch_first(operator: Tensor) -> Tensor:
+        """
+        Permute the operator's batch dimension on first dimension.
+
+        Args:
+        operator (Tensor): Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+
+        Returns:
+        Tensor: Operator in size [batch_size, 2**n_qubits, 2**n_qubits].
+        """
+        batch_first_perm = (2, 0, 1)
+        return torch.permute(operator, batch_first_perm)
+
+    # Undo the permute since PyQ expects tensor.Size([2**n_qubits, 2**n_qubits,batch_size]):
+    def batch_last(operator: Tensor) -> Tensor:
+        """
+        Permute the operator's batch dimension on last dimension.
+
+        Args:
+        operator (Tensor): Operator in size [batch_size,2**n_qubits, 2**n_qubits].
+
+        Returns:
+        Tensor: Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+        """
+        undo_perm = (1, 2, 0)
+        return torch.permute(operator, undo_perm)
+
+    return batch_last(torch.bmm(batch_first(operator_1), batch_first(operator_2)))
