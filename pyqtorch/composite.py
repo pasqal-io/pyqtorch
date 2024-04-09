@@ -53,14 +53,14 @@ class CompositeOperation(Module):
         return hash(self.__key())
 
 
-class SeqOperation(CompositeOperation):
+class ApplyOp(CompositeOperation):
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
         for op in self.operations:
             state = op(state, values)
         return state
 
 
-class AddOperation(CompositeOperation):
+class AddOp(CompositeOperation):
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
         if self.operations.is_parameterized:
             result_list = []
