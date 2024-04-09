@@ -8,8 +8,8 @@ from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
-from pyqtorch.utils import DiffMode, State, inner_prod, zero_state
 from pyqtorch.composite import SeqOps
+from pyqtorch.utils import DiffMode, State, inner_prod, zero_state
 
 logger = getLogger(__name__)
 
