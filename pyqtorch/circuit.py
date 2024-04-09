@@ -9,6 +9,7 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.utils import DiffMode, State, inner_prod, zero_state
+from pyqtorch.composite import SeqOps
 
 logger = getLogger(__name__)
 
@@ -17,7 +18,7 @@ class QuantumCircuit(Module):
     def __init__(self, n_qubits: int, operations: list[Module]):
         super().__init__()
         self.n_qubits = n_qubits
-        self.operations = ModuleList(operations)
+        self.operations = SeqOps(operations)
         self._device = torch_device("cpu")
         self._dtype = complex128
         if len(self.operations) > 0:
@@ -58,9 +59,7 @@ class QuantumCircuit(Module):
         return self.forward(state, values)
 
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
-        for op in self.operations:
-            state = op(state, values)
-        return state
+        return self.operations(state, values)
 
     @property
     def device(self) -> torch_device:
