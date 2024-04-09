@@ -6,7 +6,7 @@ from typing import Any, Iterator
 from torch import Tensor, complex128
 from torch import device as torch_device
 from torch import dtype as torch_dtype
-from torch.nn import Module, ModuleList, ParameterDict
+from torch.nn import Module, ParameterDict
 
 from pyqtorch.composite import SeqOps
 from pyqtorch.utils import DiffMode, State, inner_prod, zero_state

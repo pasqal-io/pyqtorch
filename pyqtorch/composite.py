@@ -17,7 +17,7 @@ class SeqOps(ModuleList):
         self.key_map = {}
         self.inv_key_map = {}
 
-        if isinstance(operations, list):
+        if isinstance(operations, list | ModuleList):
             self.is_parameterized = False
             super().__init__(operations)
         if isinstance(operations, dict):
