@@ -3,15 +3,15 @@ from __future__ import annotations
 from torch import Tensor
 from torch.nn import Module
 
-from pyqtorch.composite import AddOp, ApplyOp, OpContainer
+from pyqtorch.composite import AddOps, SeqOps
 
 
-class Hamiltonian(AddOp):
+class Hamiltonian(AddOps):
     def __init__(self, terms: list[list[Module]] | dict[str, list[Module]]) -> None:
         if isinstance(terms, list):
-            terms = [OpContainer(term) for term in terms]
+            terms = [SeqOps(term) for term in terms]
         if isinstance(terms, dict):
-            terms = {key: OpContainer(term) for key, term in terms.items()}
+            terms = {key: SeqOps(term) for key, term in terms.items()}
         super().__init__(terms)
 
 
