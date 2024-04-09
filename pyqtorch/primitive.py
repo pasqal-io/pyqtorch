@@ -7,7 +7,7 @@ import torch
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import Operator, State, product_state
+from pyqtorch.utils import product_state
 
 
 class Primitive(torch.nn.Module):
@@ -40,15 +40,17 @@ class Primitive(torch.nn.Module):
     def param_type(self) -> None:
         return self._param_type
 
-    def unitary(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
+    def unitary(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> torch.Tensor:
         return self.pauli.unsqueeze(2)
 
-    def forward(self, state: State, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> State:
+    def forward(
+        self, state: torch.Tensor, values: dict[str, torch.Tensor] | torch.Tensor = {}
+    ) -> torch.Tensor:
         return apply_operator(
             state, self.unitary(values), self.qubit_support, len(state.size()) - 1
         )
 
-    def dagger(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
+    def dagger(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> torch.Tensor:
         return _dagger(self.unitary(values))
 
     @property
@@ -85,7 +87,7 @@ class I(Primitive):  # noqa: E742
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["I"], target)
 
-    def forward(self, state: State, values: dict[str, torch.Tensor] = None) -> State:
+    def forward(self, state: torch.Tensor, values: dict[str, torch.Tensor] = None) -> torch.Tensor:
         return state
 
 

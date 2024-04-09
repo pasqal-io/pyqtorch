@@ -12,7 +12,8 @@ import pyqtorch as pyq
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import ATOL, density_mat, product_state, random_state
+from pyqtorch.primitive import I
+from pyqtorch.utils import ATOL, density_mat, product_state, promote_ope, random_state
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -322,3 +323,13 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     dm = density_mat(state_cat)
     assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
     assert torch.allclose(dm, dm_proj)
+
+
+random_number = torch.randint(1, 6, (8, 2))
+sorted_numbers, _ = torch.sort(random_number, dim=1)
+
+
+@pytest.mark.parametrize("target,n_qubits", sorted_numbers)
+def test_promote(target: int, n_qubits: int) -> None:
+    operator: Tensor = promote_ope(I(target).unitary(), target, n_qubits)
+    assert operator.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])

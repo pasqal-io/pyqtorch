@@ -162,7 +162,7 @@ def promote_ope(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     Raises:
         ValueError: If `target` is outside the valid range of qubits.
     """
-    if target > n_qubits - 1 : 
+    if target > n_qubits - 1:
         raise ValueError("The target must be a valid qubit index within the circuit's range.")
 
     qubits_support = torch.arange(0, n_qubits)

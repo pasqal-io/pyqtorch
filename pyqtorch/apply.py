@@ -5,20 +5,18 @@ from typing import Tuple
 
 from numpy import array
 from numpy.typing import NDArray
-from torch import einsum
-
-from pyqtorch.utils import Operator, State
+from torch import Tensor, einsum
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
 
 def apply_operator(
-    state: State,
-    operator: Operator,
+    state: Tensor,
+    operator: Tensor,
     qubits: Tuple[int, ...] | list[int],
     n_qubits: int = None,
     batch_size: int = None,
-) -> State:
+) -> Tensor:
     """Applies an operator, i.e. a single tensor of shape [2, 2, ...], on a given state
        of shape [2 for _ in range(n_qubits)] for a given set of (target and control) qubits.
 
