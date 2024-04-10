@@ -12,23 +12,11 @@ from pyqtorch.utils import State
 logger = getLogger(__name__)
 
 
-class SeqOps(ModuleList):
-    def __init__(self, operations: list[Module] | dict[str, Module]):
-        self.key_map = {}
-        self.inv_key_map = {}
-
-        if isinstance(operations, list | ModuleList):
-            self.is_parameterized = False
-            super().__init__(operations)
-        if isinstance(operations, dict):
-            self.is_parameterized = True
-            self.key_map = {k: i for i, k in enumerate(operations.keys())}
-            self.inv_key_map = {i: k for i, k in enumerate(operations.keys())}
-            super().__init__(list(operations.values()))
-
-    def __getitem__(self, key: str | int) -> Module:
-        index = self.key_map[key] if isinstance(key, str) else key
-        return super().__getitem__(index)
+class CompOp(ModuleList):
+    def __init__(self, operations: list[Module]):
+        if not isinstance(operations, list | ModuleList):
+            raise TypeError("Please pass a list of individual operations.")
+        super().__init__(operations)
 
     @property
     def qubit_support(self) -> tuple[int, ...]:
@@ -46,13 +34,27 @@ class SeqOps(ModuleList):
         return state
 
 
-class AddOps(SeqOps):
+class AddOp(CompOp):
+    def __init__(self, operations: list[Module] | dict[str, Module]):
+        self.param_map = {}
+        self.inv_param_map = {}
+        self.is_parameterized = False
+
+        if isinstance(operations, dict):
+            super().__init__(list(operations.values()))
+            self.is_parameterized = True
+            self.param_map = {i: k for i, k in enumerate(operations.keys())}
+            self.inv_param_map = {k: i for i, k in self.param_map.items()}
+        else:
+            super().__init__(operations)
+
+    def __getitem__(self, key: str | int) -> Module:
+        index = self.inv_param_map[key] if isinstance(key, str) else key
+        return super().__getitem__(index)
+
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
         if self.is_parameterized:
-            result_list = []
-            for i, op in enumerate(self):
-                param_key = self.inv_key_map[i]
-                result_list.append(values[param_key] * op(state, values))
-            return reduce(add, result_list)
+            coeffs = [values[self.param_map[i]] for i in range(len(self))]
+            return reduce(add, [coeffs[i] * op(state, values) for i, op in enumerate(self)])
         else:
             return reduce(add, [op(state, values) for op in self])

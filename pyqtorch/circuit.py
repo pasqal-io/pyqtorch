@@ -8,7 +8,7 @@ from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ParameterDict
 
-from pyqtorch.composite import SeqOps
+from pyqtorch.composite import CompOp
 from pyqtorch.utils import DiffMode, State, inner_prod, zero_state
 
 logger = getLogger(__name__)
@@ -18,7 +18,7 @@ class QuantumCircuit(Module):
     def __init__(self, n_qubits: int, operations: list[Module]):
         super().__init__()
         self.n_qubits = n_qubits
-        self.operations = SeqOps(operations)
+        self.operations = CompOp(operations)
         self._device = torch_device("cpu")
         self._dtype = complex128
         if len(self.operations) > 0:
@@ -73,10 +73,10 @@ class QuantumCircuit(Module):
         return zero_state(self.n_qubits, batch_size, device=self.device, dtype=self.dtype)
 
     def reverse(self) -> QuantumCircuit:
-        return QuantumCircuit(self.n_qubits, SeqOps(list(reversed(self.operations))))
+        return QuantumCircuit(self.n_qubits, CompOp(list(reversed(self.operations))))
 
     def to(self, *args: Any, **kwargs: Any) -> QuantumCircuit:
-        self.operations = SeqOps([op.to(*args, **kwargs) for op in self.operations])
+        self.operations = CompOp([op.to(*args, **kwargs) for op in self.operations])
         if len(self.operations) > 0:
             self._device = self.operations[0].device
             self._dtype = self.operations[0].dtype
