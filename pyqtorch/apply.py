@@ -1,27 +1,26 @@
 from __future__ import annotations
 
+from math import log2
 from string import ascii_letters as ABC
 from typing import Tuple
 
-from math import log2
+import torch
 from numpy import array
 from numpy.typing import NDArray
+from torch import Tensor, einsum
 
-import torch
-from torch import Tensor,einsum
-
-from pyqtorch.utils import Operator, State, promote_ope,batch_first, batch_last
+from pyqtorch.utils import batch_first, batch_last, promote_ope
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
 
 def apply_operator(
-    state: State,
-    operator: Operator,
+    state: Tensor,
+    operator: Tensor,
     qubits: Tuple[int, ...] | list[int],
     n_qubits: int = None,
     batch_size: int = None,
-) -> State:
+) -> Tensor:
     """Applies an operator, i.e. a single tensor of shape [2, 2, ...], on a given state
        of shape [2 for _ in range(n_qubits)] for a given set of (target and control) qubits.
 
