@@ -77,7 +77,7 @@ class Noise(torch.nn.Module):
     def kraus_operator(self) -> List[Tensor]:
         return self.kraus
 
-    def unitary(self, kraus_op: Tensor) -> Tensor:
+    def unitary(self) -> Tensor:
         """
         Create a batch of unitary operators from a single operator.
         Since PyQ expects tensor.Size([2**n_qubits, 2**n_qubits,batch_size]).
@@ -91,12 +91,9 @@ class Noise(torch.nn.Module):
         Raises:
             TypeError: If the input is not a Tensor.
         """
-        # Verification input type:
-        if not isinstance(kraus_op, Tensor):
-            raise TypeError("The input must be a Tensor")
-        return kraus_op.unsqueeze(2)
+        return [kraus_op.unsqueeze(2) for kraus_op in self.kraus]
 
-    def dagger(self, kraus_op: Tensor) -> Tensor:
+    def dagger(self) -> Tensor:
         """
         Computes the conjugate transpose (dagger) of a Kraus operator.
 
@@ -106,7 +103,7 @@ class Noise(torch.nn.Module):
         Returns:
             Tensor: The conjugate transpose (dagger) of the input tensor.
         """
-        return _dagger(self.unitary(kraus_op))
+        return [_dagger(kraus_op) for kraus_op in self.unitary()]
 
     def forward(self, state: Tensor) -> Tensor:
         """
@@ -141,9 +138,11 @@ class Noise(torch.nn.Module):
 
         # Apply noisy channel on input state
         rho: Tensor = density_mat(state)
-        for kraus_op in self.kraus:
+        kraus_unit = self.unitary()
+        kraus_dag = self.dagger()
+        for index in range (len(self.kraus)):
             rho_i: Tensor = apply_ope_ope(
-                self.unitary(kraus_op), apply_ope_ope(rho, self.dagger(kraus_op), self.target), self.target
+                kraus_unit[index], apply_ope_ope(rho, kraus_dag[index], self.target), self.target
             )
             rho_evol += rho_i
         return rho_evol
