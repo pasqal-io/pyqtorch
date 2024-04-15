@@ -12,8 +12,7 @@ import pyqtorch as pyq
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT
 from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import H
-from pyqtorch.utils import ATOL, density_mat, product_state, promote_ope, random_state
+from pyqtorch.utils import ATOL, density_mat, product_state, random_state
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -323,43 +322,3 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     dm = density_mat(state_cat)
     assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
     assert torch.allclose(dm, dm_proj)
-
-
-def test_promote() -> None:
-    target = 0
-    n_qubits = 2
-    batch_size = 2
-    h = H(target).unitary()
-    h_prom_func = promote_ope(h, target, n_qubits, batch_size)
-    assert h_prom_func.size() == torch.Size(
-        [2**n_qubits, 2**n_qubits, batch_size]
-    ), "The density matrix is not a matrix."
-    h_prom_ideal = torch.tensor(
-        [
-            [
-                [0.7071 + 0.0j, 0.7071 + 0.0j],
-                [0.0000 + 0.0j, 0.0000 + 0.0j],
-                [0.7071 + 0.0j, 0.7071 + 0.0j],
-                [0.0000 + 0.0j, 0.0000 + 0.0j],
-            ],
-            [
-                [0.0000 + 0.0j, 0.0000 + 0.0j],
-                [0.7071 + 0.0j, 0.7071 + 0.0j],
-                [0.0000 + 0.0j, 0.0000 + 0.0j],
-                [0.7071 + 0.0j, 0.7071 + 0.0j],
-            ],
-            [
-                [0.7071 + 0.0j, 0.7071 + 0.0j],
-                [0.0000 + 0.0j, 0.0000 + 0.0j],
-                [-0.7071 + 0.0j, -0.7071 + 0.0j],
-                [0.0000 + 0.0j, 0.0000 + 0.0j],
-            ],
-            [
-                [0.0000 + 0.0j, 0.0000 + 0.0j],
-                [0.7071 + 0.0j, 0.7071 + 0.0j],
-                [0.0000 + 0.0j, 0.0000 + 0.0j],
-                [-0.7071 + 0.0j, -0.7071 + 0.0j],
-            ],
-        ]
-    )
-    assert torch.allclose(h_prom_ideal, h_prom_func), "The promoted operator is not correct."

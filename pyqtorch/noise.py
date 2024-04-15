@@ -140,7 +140,7 @@ class Noise(torch.nn.Module):
         rho: Tensor = density_mat(state)
         kraus_unit = self.unitary()
         kraus_dag = self.dagger()
-        for index in range (len(self.kraus)):
+        for index in range(len(self.kraus)):
             rho_i: Tensor = apply_ope_ope(
                 kraus_unit[index], apply_ope_ope(rho, kraus_dag[index], self.target), self.target
             )
