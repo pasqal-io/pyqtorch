@@ -165,11 +165,11 @@ def promote_ope(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     if target > n_qubits - 1:
         raise ValueError("The target must be a valid qubit index within the circuit's range.")
 
-    qubits_support = torch.arange(0, n_qubits)
-    for support in qubits_support:
-        if target > support:
-            operator = torch.kron(I(support).unitary(), operator.contiguous())
-        # Add.contiguous() because kron does not support the transpose (dagger)
-        elif target < support:
-            operator = torch.kron(operator.contiguous(), I(support).unitary())
+    qubits = torch.arange(0, n_qubits)
+    for qubit in qubits:
+        if target > qubit:
+            operator = torch.kron(I(qubit).unitary(), operator.contiguous())
+        # Add .contiguous() because kron does not support the transpose (dagger)
+        elif target < qubit:
+            operator = torch.kron(operator.contiguous(), I(qubit).unitary())
     return operator
