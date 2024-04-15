@@ -13,7 +13,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import I, X
-from pyqtorch.utils import ATOL, density_mat, product_state, promote_ope, random_state
+from pyqtorch.utils import ATOL, density_mat, product_state, promote_op, random_state
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -333,7 +333,7 @@ random_param = torch.sort(random_param, dim=1)[0]
 
 @pytest.mark.parametrize("target,n_qubits", random_param)
 def test_promote(target: int, n_qubits: int) -> None:
-    I_prom = promote_ope(I(0).unitary(), target, n_qubits)
+    I_prom = promote_op(I(0).unitary(), target, n_qubits)
     assert I_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
-    X_prom = promote_ope(X(0).unitary(), target, n_qubits)
+    X_prom = promote_op(X(0).unitary(), target, n_qubits)
     assert X_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])

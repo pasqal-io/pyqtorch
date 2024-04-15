@@ -7,7 +7,6 @@ import torch
 from torch import Tensor
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
-from pyqtorch.primitive import I
 
 State = Tensor
 Operator = Tensor
@@ -145,7 +144,7 @@ def density_mat(state: Tensor) -> Tensor:
     return torch.permute(torch.einsum("bi,bj->bij", (state, state.conj())), undo_perm)
 
 
-def promote_ope(operator: Tensor, target: int, n_qubits: int) -> Tensor:
+def promote_op(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     """
     Promotes `operator` to the size of the circuit (number of qubits and batch).
     Targeting the first qubit implies target = 0, so target > n_qubits - 1.
@@ -166,10 +165,12 @@ def promote_ope(operator: Tensor, target: int, n_qubits: int) -> Tensor:
         raise ValueError("The target must be a valid qubit index within the circuit's range.")
 
     qubits = torch.arange(0, n_qubits)
+    # Define I instead of importing it from pyqtorch.primitive to avoid circular import
+    identity = torch.tensor([[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]])
     for qubit in qubits:
         if target > qubit:
-            operator = torch.kron(I(qubit).unitary(), operator.contiguous())
+            operator = torch.kron(identity, operator.contiguous())
         # Add .contiguous() because kron does not support the transpose (dagger)
         elif target < qubit:
-            operator = torch.kron(operator.contiguous(), I(qubit).unitary())
+            operator = torch.kron(operator.contiguous(), identity)
     return operator
