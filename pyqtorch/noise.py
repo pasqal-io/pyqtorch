@@ -77,53 +77,36 @@ class Noise(torch.nn.Module):
     def kraus_operator(self) -> List[Tensor]:
         return self.kraus
 
-    def unitary(self, kraus_op: Tensor, batch_size: int = 1) -> Tensor:
+    def unitary(self, kraus_op: Tensor) -> Tensor:
         """
         Create a batch of unitary operators from a single operator.
         Since PyQ expects tensor.Size([2**n_qubits, 2**n_qubits,batch_size]).
 
         Args:
             kraus_op (Tensor): The single unitary operator tensor.
-            batch_size (int, optional): The desired batch size. Defaults to 1.
 
         Returns:
             Tensor: A tensor containing batched unitary operators.
 
         Raises:
             TypeError: If the input is not a Tensor.
-            ValueError: If the input tensor does not have the expected size
-                        [2**n_qubits, 2**n_qubits].
-                        If the batch size is less than 1.
         """
         # Verification input type:
         if not isinstance(kraus_op, Tensor):
             raise TypeError("The input must be a Tensor")
+        return kraus_op.unsqueeze(2)
 
-        # Verification input size:
-        if len(kraus_op.size()) != 2:
-            raise ValueError(
-                "The input must be in size [2**n_qubits,2**n_qubits] to add a batch dimension "
-            )
-
-        if batch_size == 1:
-            return kraus_op.unsqueeze(2)
-        elif batch_size == 0:
-            raise ValueError("The batch size must be greater than or equal to 1.")
-        else:
-            return kraus_op.unsqueeze(2).repeat(1, 1, batch_size)
-
-    def dagger(self, kraus_op: Tensor, batch_size: int = 1) -> Tensor:
+    def dagger(self, kraus_op: Tensor) -> Tensor:
         """
         Computes the conjugate transpose (dagger) of a Kraus operator.
 
         Args:
             kraus_op (Tensor): The tensor representing a quantum Kraus operator.
-            batch_size (int, optional): The desired batch size. Defaults to 1.
 
         Returns:
             Tensor: The conjugate transpose (dagger) of the input tensor.
         """
-        return _dagger(self.unitary(kraus_op, batch_size))
+        return _dagger(self.unitary(kraus_op))
 
     def forward(self, state: Tensor) -> Tensor:
         """
@@ -159,9 +142,8 @@ class Noise(torch.nn.Module):
         # Apply noisy channel on input state
         rho: Tensor = density_mat(state)
         for kraus_op in self.kraus:
-            Ki: Tensor = self.unitary(kraus_op, batch_size)
             rho_i: Tensor = apply_ope_ope(
-                Ki, apply_ope_ope(rho, self.dagger(Ki), self.target), self.target
+                self.unitary(kraus_op), apply_ope_ope(rho, self.dagger(kraus_op), self.target), self.target
             )
             rho_evol += rho_i
         return rho_evol
