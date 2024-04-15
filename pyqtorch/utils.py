@@ -7,7 +7,6 @@ import torch
 from torch import Tensor
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
-from pyqtorch.primitive import I
 
 State = Tensor
 Operator = Tensor
@@ -164,10 +163,11 @@ def promote_ope(operator: Tensor, target: int, n_qubits: int) -> Tensor:
         raise ValueError("The target must be a register qubit")
 
     qubits_support = torch.arange(0, n_qubits)
+    identity = torch.tensor([[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]])
     for support in qubits_support:
         if target > support:
-            operator = torch.kron(I(support).unitary(), operator.contiguous())
+            operator = torch.kron(identity, operator.contiguous())
         # Add.contiguous() because kron does not support the transpose (dagger)
         elif target < support:
-            operator = torch.kron(operator.contiguous(), I(support).unitary())
+            operator = torch.kron(operator.contiguous(), identity)
     return operator
