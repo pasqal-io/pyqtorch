@@ -9,7 +9,7 @@ from numpy import array
 from numpy.typing import NDArray
 from torch import Tensor, einsum
 
-from pyqtorch.utils import batch_first, batch_last, promote_ope
+from pyqtorch.utils import batch_first, batch_last, promote_op
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -81,9 +81,9 @@ def apply_ope_ope(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor
     batch_size_2 = operator_2.size(-1)
     if n_qubits_1 != n_qubits_2:
         if n_qubits_1 > n_qubits_2:
-            operator_2 = promote_ope(operator_2, target, n_qubits_1)
+            operator_2 = promote_op(operator_2, target, n_qubits_1)
         if n_qubits_1 < n_qubits_2:
-            operator_1 = promote_ope(operator_1, target, n_qubits_2)
+            operator_1 = promote_op(operator_1, target, n_qubits_2)
     if batch_size_1 != batch_size_2:
         if batch_size_1 > batch_size_2:
             operator_2 = operator_2.repeat(1, 1, batch_size_1)
