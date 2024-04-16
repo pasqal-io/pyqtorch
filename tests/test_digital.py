@@ -340,3 +340,21 @@ def test_promote(target: int, n_qubits: int, operator: Tensor) -> None:
         apply_op_op(op_prom, _dagger(op_prom), target),
         torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2),
     )
+
+
+size = (3, 3)
+random_param = torch.randperm(size[0] * size[1])
+random_param = random_param.reshape(size)
+random_param = torch.sort(random_param, dim=1)[0]
+
+
+@pytest.mark.parametrize("target,n_qubits,batch_size", random_param)
+@pytest.mark.parametrize("operator", [I, X, Y, Z, H, T, S])
+def test_apply_op_op(target: int, n_qubits: int, batch_size: int, operator: Tensor) -> None:
+    op_prom: Tensor = promote_op(operator(target).unitary(), target, n_qubits)
+    op_prom = op_prom.repeat(1, 1, batch_size)
+    op_mul = apply_op_op(op_prom, _dagger(operator(target).unitary()), target)
+    assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+    assert torch.allclose(
+        op_mul, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size)
+    )
