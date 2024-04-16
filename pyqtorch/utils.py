@@ -146,6 +146,7 @@ def density_mat(state: Tensor) -> Tensor:
 
 def promote_op(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     from pyqtorch.primitive import I
+
     """
     Promotes `operator` to the size of the circuit (number of qubits and batch).
     Targeting the first qubit implies target = 0, so target > n_qubits - 1.
