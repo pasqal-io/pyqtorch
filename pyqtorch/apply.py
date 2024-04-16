@@ -61,7 +61,7 @@ def apply_operator(
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
-def apply_ope_ope(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
+def apply_op_op(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
     """
     Compute the product of two operators.
 

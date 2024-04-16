@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 
 import pyqtorch as pyq
-from pyqtorch.apply import apply_ope_ope, apply_operator
+from pyqtorch.apply import apply_op_op, apply_operator
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT, _dagger
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import H, I, S, T, X, Y, Z
@@ -337,6 +337,6 @@ def test_promote(target: int, n_qubits: int, operator: Tensor) -> None:
     op_prom = promote_op(operator(target).unitary(), target, n_qubits)
     assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(
-        apply_ope_ope(op_prom, _dagger(op_prom), target),
+        apply_op_op(op_prom, _dagger(op_prom), target),
         torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2),
     )
