@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-from math import log2
 from string import ascii_letters as ABC
 from typing import Tuple
 
-import torch
 from numpy import array
 from numpy.typing import NDArray
 from torch import Tensor, einsum
-
-from pyqtorch.utils import promote_ope
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -59,5 +55,3 @@ def apply_operator(
         map(lambda e: "".join(list(e)), [operator_dims, in_state_dims, out_state_dims])
     )
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
-
-

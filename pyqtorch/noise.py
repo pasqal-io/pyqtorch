@@ -16,33 +16,13 @@ class Noise(torch.nn.Module):
         self, kraus: List[Tensor], target: int, probability: Union[Tuple[float, ...], float]
     ) -> None:
         super().__init__()
-
-        self.target = target
+        self.target: int = target
         self.qubit_support: Tuple[int, ...] = (self.target,)
-
-        self.probability: Union[Tuple[float, ...], float] = probability
-        # Verification probability value:
-        if isinstance(self.probability, float):
-            if self.probability > 1.0 or self.probability < 0.0:
-                raise ValueError("The probability value is not a correct probability")
-
-        # Verification list probability values:
-        elif isinstance(self.probability, list):
-            sum_prob = sum(self.probability)
-            if sum_prob > 1.0:
-                raise ValueError("The sum of probabilities can't be greater 1.0")
-            for proba in self.probability:
-                if not isinstance(proba, float):
-                    raise TypeError("The probability values must be float")
-                if proba > 1.0 or proba < 0.0:
-                    raise ValueError("The probability values are not correct probabilities")
-
         # Verification Kraus operators:
         if not isinstance(kraus, list) or not all(isinstance(tensor, Tensor) for tensor in kraus):
             raise TypeError("The Kraus operators must be a list containing Tensor objects")
         if len(kraus) == 0:
             raise ValueError("The noisy gate must be described by the Kraus operator")
-
         # Create a buffer for the Kraus operators.
         self.kraus = []
         for index, tensor in enumerate(kraus):
@@ -50,11 +30,23 @@ class Noise(torch.nn.Module):
             self.register_buffer(f"kraus_{index}", tensor)
             # Storing the tensor itself in the self.kraus list
             self.kraus.append(tensor)
-
         # Kraus operator's device
         if len(set(kraus.device for kraus in self.kraus)) != 1:
             raise ValueError("All tensors are not on the same device.")
         self._device = self.kraus[0].device
+        self.probability: Union[Tuple[float, ...], float] = probability
+        # Verification probability value:
+        if isinstance(self.probability, float):
+            if self.probability > 1.0 or self.probability < 0.0:
+                raise ValueError("The probability value is not a correct probability")
+        # Verification list probability values:
+        elif isinstance(self.probability, list):
+            sum_prob = sum(self.probability)
+            if sum_prob > 1.0:
+                raise ValueError("The sum of probabilities can't be greater 1.0")
+            for proba in self.probability:
+                if proba > 1.0 or proba < 0.0:
+                    raise ValueError("The probability values are not correct probabilities")
 
     @property
     def proba(self) -> Union[Tuple[float, ...], float]:
@@ -77,32 +69,11 @@ class Noise(torch.nn.Module):
     def kraus_operator(self) -> List[Tensor]:
         return self.kraus
 
-    def unitary(self) -> Tensor:
-        """
-        Create a batch of unitary operators from a single operator.
-        Since PyQ expects tensor.Size([2**n_qubits, 2**n_qubits,batch_size]).
-
-        Args:
-            kraus_op (Tensor): The single unitary operator tensor.
-
-        Returns:
-            Tensor: A tensor containing batched unitary operators.
-
-        Raises:
-            TypeError: If the input is not a Tensor.
-        """
+    # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
+    def unitary(self) -> List[Tensor]:
         return [kraus_op.unsqueeze(2) for kraus_op in self.kraus]
 
-    def dagger(self) -> Tensor:
-        """
-        Computes the conjugate transpose (dagger) of a Kraus operator.
-
-        Args:
-            kraus_op (Tensor): The tensor representing a quantum Kraus operator.
-
-        Returns:
-            Tensor: The conjugate transpose (dagger) of the input tensor.
-        """
+    def dagger(self) -> List[Tensor]:
         return [_dagger(kraus_op) for kraus_op in self.unitary()]
 
     def forward(self, state: Tensor) -> Tensor:
@@ -138,11 +109,11 @@ class Noise(torch.nn.Module):
 
         # Apply noisy channel on input state
         rho: Tensor = density_mat(state)
-        kraus_unit = self.unitary()
-        kraus_dag = self.dagger()
-        for index in range(len(self.kraus)):
+        kraus_unit: List[Tensor] = self.unitary()
+        kraus_dag: List[Tensor] = self.dagger()
+        for i in range(len(self.kraus)):
             rho_i: Tensor = apply_ope_ope(
-                kraus_unit[index], apply_ope_ope(rho, kraus_dag[index], self.target), self.target
+                kraus_unit[i], apply_ope_ope(rho, kraus_dag[i], self.target), self.target
             )
             rho_evol += rho_i
         return rho_evol
@@ -158,6 +129,22 @@ class Noise(torch.nn.Module):
 
 
 class BitFlip(Noise):
+    """
+    Initialize the BitFlip gate.
+
+    The bit flip channel is defined as:
+
+    .. math::
+        \\rho \\Rightarrow (1-p) \\rho + p X \\rho X^{\\dagger}
+
+    Args:
+        target (int): The index of the qubit being affected by the noise.
+        probability (float): The probability of a bit flip error.
+
+    Raises:
+        TypeError: If the probability value is not a float.
+    """
+
     def __init__(
         self,
         target: int,
@@ -175,6 +162,22 @@ class BitFlip(Noise):
 
 
 class PhaseFlip(Noise):
+    """
+    Initialize the PhaseFlip gate
+
+    The phase flip channel is defined as:
+
+    .. math::
+        \\rho \\Rightarrow (1-p) \\rho + p Z \\rho Z^{\\dagger}
+
+    Args:
+        target (int): The index of the qubit being affected by the noise.
+        probability (float): The probability of phase flip error.
+
+    Raises:
+        TypeError: If the probability value is not a float.
+    """
+
     def __init__(
         self,
         target: int,
@@ -192,6 +195,25 @@ class PhaseFlip(Noise):
 
 
 class Depolarizing(Noise):
+    """
+    Initialize the Depolarizing gate.
+
+    The depolarizing channel is defined as:
+
+    .. math::
+        \\rho \\Rightarrow (1-p) \\rho
+            + p/3 X \\rho X^{\\dagger}
+            + p/3 Y \\rho Y^{\\dagger}
+            + p/3 Z \\rho Z^{\\dagger}
+
+    Args:
+        target (int): The index of the qubit being affected by the noise.
+        probability (float): The probability of depolarizing error.
+
+    Raises:
+        TypeError: If the probability value is not a float.
+    """
+
     def __init__(
         self,
         target: int,
@@ -211,6 +233,25 @@ class Depolarizing(Noise):
 
 
 class PauliChannel(Noise):
+    """
+    Initialize the PauliChannel gate.
+
+    The pauli channel is defined as:
+
+    .. math::
+        \\rho \\Rightarrow (1-probX-probY-probZ) \\rho
+            + p_X X \\rho X^{\\dagger}
+            + p_Y Y \\rho Y^{\\dagger}
+            + p_Z Z \\rho Z^{\\dagger}
+
+    Args:
+        target (int): The index of the qubit being affected by the noise.
+        probability (Tuple[float, ...]): Tuple containing probabilities of X, Y, and Z errors.
+
+    Raises:
+        TypeError: If the probability values are not provided in a tuple.
+    """
+
     def __init__(
         self,
         target: int,
@@ -235,10 +276,34 @@ class PauliChannel(Noise):
 
 
 class AmplitudeDamping(Noise):
+    """
+    Initialize the AmplitudeDamping gate.
+
+    The amplitude damping channel is defined as:
+
+    .. math::
+        \\rho \\Rightarrow K_0 \\rho K_0^{\\dagger} + K_1 \\rho K_1^{\\dagger}
+
+    with:
+
+    .. code-block:: python
+
+        K0 = [[1, 0], [0, sqrt(1 - rate)]]
+        K1 = [[0, sqrt(rate)], [0, 0]]
+
+    Args:
+        target (int): The index of the qubit being affected by the noise.
+        rate (float): The damping rate, indicating the probability of amplitude loss.
+
+    Raises:
+        TypeError: If the rate value is not a float.
+        ValueError: If the damping rate is not a correct probability.
+    """
+
     def __init__(
         self,
         target: int,
-        rate: float,  # Maybe treat != the rate and the proba
+        rate: float,
     ):
         # Verification rate type and value:
         if not isinstance(rate, float):
@@ -254,10 +319,34 @@ class AmplitudeDamping(Noise):
 
 
 class PhaseDamping(Noise):
+    """
+    Initialize the PhaseDamping gate.
+
+    The phase damping channel is defined as:
+
+    .. math::
+        \\rho \\Rightarrow K_0 \\rho K_0^{\\dagger} + K_1 \\rho K_1^{\\dagger}
+
+     with:
+
+    .. code-block:: python
+
+        K0 = [[1, 0], [0, sqrt(1 - rate)]]
+        K1 = [[0, 0], [0, sqrt(rate)]]
+
+    Args:
+        target (int): The index of the qubit being affected by the noise.
+        rate (float): The damping rate, indicating the probability of phase damping.
+
+    Raises:
+        TypeError: If the rate value is not a float.
+        ValueError: If the damping rate is not a correct probability.
+    """
+
     def __init__(
         self,
         target: int,
-        rate: float,  # Maybe treat != the rate and the proba
+        rate: float,
     ):
         # Verification rate type and value:
         if not isinstance(rate, float):
@@ -272,11 +361,39 @@ class PhaseDamping(Noise):
 
 
 class GeneralizeAmplitudeDamping(Noise):
+    """
+    Initialize the GeneralizeAmplitudeDamping gate.
+
+    The generalize amplitude damping channel is defined as:
+
+    .. math::
+        \\rho \\Rightarrow K_0 \\rho K_0^{\\dagger} + K_1 \\rho K_1^{\\dagger}
+            + K_2 \\rho K_2^{\\dagger} + K_3 \\rho K_3^{\\dagger}
+
+    with:
+
+    .. code-block:: python
+
+        K0 = sqrt(p) * [[1, 0], [0, sqrt(1 - rate)]]
+        K1 = sqrt(p) * [[0, sqrt(rate)], [0, 0]]
+        K2 = sqrt(1-p) * [[sqrt(1 - rate), 0], [0, 1]]
+        K1 = sqrt(1-p) * [[0, 0], [sqrt(rate), 0]]
+
+    Args:
+        target (int): The index of the qubit being affected by the noise.
+        probability (float): The probability of amplitude damping error.
+        rate (float): The damping rate, indicating the probability of generalized amplitude damping.
+
+    Raises:
+        TypeError: If the probability or rate values is not float.
+        ValueError: If the damping rate  a correct probability.
+    """
+
     def __init__(
         self,
         target: int,
         probability: float,
-        rate: float,  # Rate remplace proba
+        rate: float,
     ):
         # Verification probability/rate type:
         if not isinstance(probability, float):
