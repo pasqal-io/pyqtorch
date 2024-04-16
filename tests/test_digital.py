@@ -9,10 +9,10 @@ import torch
 from torch import Tensor
 
 import pyqtorch as pyq
-from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT
+from pyqtorch.apply import apply_ope_ope, apply_operator
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT, _dagger
 from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import I, X
+from pyqtorch.primitive import H, I, S, T, X, Y, Z
 from pyqtorch.utils import ATOL, density_mat, product_state, promote_op, random_state
 
 state_000 = product_state("000")
@@ -327,13 +327,16 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
 
 size = (5, 2)
 random_param = torch.randperm(size[0] * size[1])
-random_param = random_param.view(size)
+random_param = random_param.reshape(size)
 random_param = torch.sort(random_param, dim=1)[0]
 
 
 @pytest.mark.parametrize("target,n_qubits", random_param)
-def test_promote(target: int, n_qubits: int) -> None:
-    I_prom = promote_op(I(0).unitary(), target, n_qubits)
-    assert I_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
-    X_prom = promote_op(X(0).unitary(), target, n_qubits)
-    assert X_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
+@pytest.mark.parametrize("operator", [I, X, Y, Z, H, T, S])
+def test_promote(target: int, n_qubits: int, operator: Tensor) -> None:
+    op_prom = promote_op(operator(target).unitary(), target, n_qubits)
+    assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
+    assert torch.allclose(
+        apply_ope_ope(op_prom, _dagger(op_prom), target),
+        torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2),
+    )
