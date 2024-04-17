@@ -41,15 +41,15 @@ class Primitive(torch.nn.Module):
     def param_type(self) -> None:
         return self._param_type
 
-    def unitary(self, values: dict[str, Tensor] | Tensor = {}) -> Tensor:
+    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return self.pauli.unsqueeze(2)
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = {}) -> Tensor:
+    def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return apply_operator(
             state, self.unitary(values), self.qubit_support, len(state.size()) - 1
         )
 
-    def dagger(self, values: dict[str, Tensor] | Tensor = {}) -> Tensor:
+    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return _dagger(self.unitary(values))
 
     @property

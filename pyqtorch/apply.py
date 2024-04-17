@@ -74,20 +74,17 @@ def apply_op_op(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
         Tensor: The product of the two operators.
     """
 
-    # Dimension verifications:
     n_qubits_1 = int(log2(operator_1.size(1)))
     n_qubits_2 = int(log2(operator_2.size(1)))
     batch_size_1 = operator_1.size(-1)
     batch_size_2 = operator_2.size(-1)
-    if n_qubits_1 != n_qubits_2:
-        if n_qubits_1 > n_qubits_2:
-            operator_2 = promote_op(operator_2, target, n_qubits_1)
-        if n_qubits_1 < n_qubits_2:
-            operator_1 = promote_op(operator_1, target, n_qubits_2)
-    if batch_size_1 != batch_size_2:
-        if batch_size_1 > batch_size_2:
-            operator_2 = operator_2.repeat(1, 1, batch_size_1)
-        if batch_size_2 > batch_size_1:
-            operator_1 = operator_1.repeat(1, 1, batch_size_2)
+    if n_qubits_1 > n_qubits_2:
+        operator_2 = promote_op(operator_2, target, n_qubits_1)
+    if n_qubits_1 < n_qubits_2:
+        operator_1 = promote_op(operator_1, target, n_qubits_2)
+    if batch_size_1 > batch_size_2:
+        operator_2 = operator_2.repeat(1, 1, batch_size_1)
+    if batch_size_2 > batch_size_1:
+        operator_1 = operator_1.repeat(1, 1, batch_size_2)
 
     return batch_last(torch.bmm(batch_first(operator_1), batch_first(operator_2)))

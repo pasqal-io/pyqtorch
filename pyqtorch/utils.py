@@ -181,10 +181,10 @@ def batch_first(operator: Tensor) -> Tensor:
     Permute the operator's batch dimension on first dimension.
 
     Args:
-    operator (Tensor): Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+        operator (Tensor): Operator in size [2**n_qubits, 2**n_qubits,batch_size].
 
     Returns:
-    Tensor: Operator in size [batch_size, 2**n_qubits, 2**n_qubits].
+        Tensor: Operator in size [batch_size, 2**n_qubits, 2**n_qubits].
     """
     batch_first_perm = (2, 0, 1)
     return torch.permute(operator, batch_first_perm)
@@ -195,10 +195,10 @@ def batch_last(operator: Tensor) -> Tensor:
     Permute the operator's batch dimension on last dimension.
 
     Args:
-    operator (Tensor): Operator in size [batch_size,2**n_qubits, 2**n_qubits].
+        operator (Tensor): Operator in size [batch_size,2**n_qubits, 2**n_qubits].
 
     Returns:
-    Tensor: Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+        Tensor: Operator in size [2**n_qubits, 2**n_qubits,batch_size].
     """
     undo_perm = (1, 2, 0)
     return torch.permute(operator, undo_perm)
