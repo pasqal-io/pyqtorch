@@ -144,7 +144,7 @@ def density_mat(state: Tensor) -> Tensor:
     return torch.permute(torch.einsum("bi,bj->bij", (state, state.conj())), undo_perm)
 
 
-def promote_op(operator: Tensor, target: int, n_qubits: int) -> Tensor:
+def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     from pyqtorch.primitive import I
 
     """

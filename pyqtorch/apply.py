@@ -9,7 +9,7 @@ from numpy import array
 from numpy.typing import NDArray
 from torch import Tensor, einsum
 
-from pyqtorch.utils import batch_first, batch_last, promote_op
+from pyqtorch.utils import batch_first, batch_last, promote_operator
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -61,7 +61,7 @@ def apply_operator(
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
-def apply_op_op(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
+def operator_product(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
     """
     Compute the product of two operators.
 
@@ -79,12 +79,12 @@ def apply_op_op(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
     batch_size_1 = operator_1.size(-1)
     batch_size_2 = operator_2.size(-1)
     if n_qubits_1 > n_qubits_2:
-        operator_2 = promote_op(operator_2, target, n_qubits_1)
-    if n_qubits_1 < n_qubits_2:
-        operator_1 = promote_op(operator_1, target, n_qubits_2)
+        operator_2 = promote_operator(operator_2, target, n_qubits_1)
+    elif n_qubits_1 < n_qubits_2:
+        operator_1 = promote_operator(operator_1, target, n_qubits_2)
     if batch_size_1 > batch_size_2:
         operator_2 = operator_2.repeat(1, 1, batch_size_1)
-    if batch_size_2 > batch_size_1:
+    elif batch_size_2 > batch_size_1:
         operator_1 = operator_1.repeat(1, 1, batch_size_2)
 
     return batch_last(torch.bmm(batch_first(operator_1), batch_first(operator_2)))
