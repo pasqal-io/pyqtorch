@@ -343,11 +343,16 @@ def test_promote(operator: Tensor) -> None:
 def test_operator_product(operator: Tensor) -> None:
     n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
-    batch_size = torch.randint(low=1, high=5, size=(1,)).item()
-    op_prom: Tensor = promote_operator(operator(target).unitary(), target, n_qubits)
-    op_prom = op_prom.repeat(1, 1, batch_size)
-    op_mul = operator_product(operator(target).unitary(), _dagger(op_prom), target)
-    assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+    batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
+    max_batch = max(batch_size_2, batch_size_1)
+    op_prom: Tensor = promote_operator(operator(target).unitary(), target, n_qubits).repeat(
+        1, 1, batch_size_1
+    )
+    op_mul = operator_product(
+        operator(target).unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
+    )
+    assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
     assert torch.allclose(
-        op_mul, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, batch_size)
+        op_mul, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, max_batch)
     )

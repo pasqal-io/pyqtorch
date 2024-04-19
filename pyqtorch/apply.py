@@ -61,30 +61,30 @@ def apply_operator(
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
-def operator_product(operator_1: Tensor, operator_2: Tensor, target: int) -> Tensor:
+def operator_product(op1: Tensor, op2: Tensor, target: int) -> Tensor:
     """
     Compute the product of two operators.
 
     Args:
-        operator_1 (Tensor): The first operator.
-        operator_2 (Tensor): The second operator.
+        op1 (Tensor): The first operator.
+        op2 (Tensor): The second operator.
         target (int): The target qubit index.
 
     Returns:
         Tensor: The product of the two operators.
     """
 
-    n_qubits_1 = int(log2(operator_1.size(1)))
-    n_qubits_2 = int(log2(operator_2.size(1)))
-    batch_size_1 = operator_1.size(-1)
-    batch_size_2 = operator_2.size(-1)
+    n_qubits_1 = int(log2(op1.size(1)))
+    n_qubits_2 = int(log2(op2.size(1)))
+    batch_size_1 = op1.size(-1)
+    batch_size_2 = op2.size(-1)
     if n_qubits_1 > n_qubits_2:
-        operator_2 = promote_operator(operator_2, target, n_qubits_1)
+        op2 = promote_operator(op2, target, n_qubits_1)
     elif n_qubits_1 < n_qubits_2:
-        operator_1 = promote_operator(operator_1, target, n_qubits_2)
+        op1 = promote_operator(op1, target, n_qubits_2)
     if batch_size_1 > batch_size_2:
-        operator_2 = operator_2.repeat(1, 1, batch_size_1)
+        op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
     elif batch_size_2 > batch_size_1:
-        operator_1 = operator_1.repeat(1, 1, batch_size_2)
+        op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
 
-    return batch_last(torch.bmm(batch_first(operator_1), batch_first(operator_2)))
+    return batch_last(torch.bmm(batch_first(op1), batch_first(op2)))
