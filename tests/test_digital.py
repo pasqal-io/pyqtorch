@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from math import log2
-from typing import Callable, Tuple
+from typing import Callable, Tuple, List
 
 import pytest
 import torch
@@ -328,7 +328,7 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
 
 
 @pytest.mark.parametrize("operator", GATESET)
-def test_promote(operator: Tensor) -> None:
+def test_promote(operator: List) -> None:
     n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
     op_prom = promote_operator(operator(target).unitary(), target, n_qubits)
@@ -340,7 +340,7 @@ def test_promote(operator: Tensor) -> None:
 
 
 @pytest.mark.parametrize("operator", GATESET)
-def test_operator_product(operator: Tensor) -> None:
+def test_operator_product(operator: List) -> None:
     n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
