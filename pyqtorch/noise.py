@@ -1,56 +1,34 @@
 from __future__ import annotations
 
 from math import sqrt
-from typing import List, Tuple, Union
 
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_ope_ope
+from pyqtorch.apply import operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT, _dagger
 from pyqtorch.utils import density_mat
 
 
 class Noise(torch.nn.Module):
     def __init__(
-        self, kraus: List[Tensor], target: int, probability: Union[Tuple[float, ...], float]
+        self, kraus: list[Tensor], target: int, probabilities: tuple[float, ...] | float
     ) -> None:
         super().__init__()
         self.target: int = target
-        self.qubit_support: Tuple[int, ...] = (self.target,)
-        # Verification Kraus operators:
-        if not isinstance(kraus, list) or not all(isinstance(tensor, Tensor) for tensor in kraus):
-            raise TypeError("The Kraus operators must be a list containing Tensor objects")
-        if len(kraus) == 0:
-            raise ValueError("The noisy gate must be described by the Kraus operator")
-        # Create a buffer for the Kraus operators.
+        self.qubit_support: tuple[int, ...] = (self.target,)
         self.kraus = []
         for index, tensor in enumerate(kraus):
-            # Registering the tensor as a buffer with a unique name
             self.register_buffer(f"kraus_{index}", tensor)
-            # Storing the tensor itself in the self.kraus list
             self.kraus.append(tensor)
-        # Kraus operator's device
         if len(set(kraus.device for kraus in self.kraus)) != 1:
             raise ValueError("All tensors are not on the same device.")
         self._device = self.kraus[0].device
-        self.probability: Union[Tuple[float, ...], float] = probability
-        # Verification probability value:
-        if isinstance(self.probability, float):
-            if self.probability > 1.0 or self.probability < 0.0:
-                raise ValueError("The probability value is not a correct probability")
-        # Verification list probability values:
-        elif isinstance(self.probability, list):
-            sum_prob = sum(self.probability)
-            if sum_prob > 1.0:
-                raise ValueError("The sum of probabilities can't be greater 1.0")
-            for proba in self.probability:
-                if proba > 1.0 or proba < 0.0:
-                    raise ValueError("The probability values are not correct probabilities")
+        self.probabilities: tuple[float, ...] | float = probabilities
 
     @property
-    def proba(self) -> Union[Tuple[float, ...], float]:
-        return self.probability
+    def proba(self) -> tuple[float, ...] | float:
+        return self.probabilities
 
     @property
     def name(self) -> str:
@@ -59,21 +37,20 @@ class Noise(torch.nn.Module):
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
             return self.name == other.name and self.probabilty == other.probabilty
-        else:
-            return False
+        return False
 
     def extra_repr(self) -> str:
-        return f"'qubit_support'={self.qubit_support}, 'probability'={self.probability}"
+        return f"'qubit_support'={self.qubit_support}, 'probabilities'={self.probabilities}"
 
     @property
-    def kraus_operator(self) -> List[Tensor]:
+    def kraus_operator(self) -> list[Tensor]:
         return self.kraus
 
     # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
-    def unitary(self) -> List[Tensor]:
+    def unitary(self) -> list[Tensor]:
         return [kraus_op.unsqueeze(2) for kraus_op in self.kraus]
 
-    def dagger(self) -> List[Tensor]:
+    def dagger(self) -> list[Tensor]:
         return [_dagger(kraus_op) for kraus_op in self.unitary()]
 
     def forward(self, state: Tensor) -> Tensor:
@@ -95,25 +72,19 @@ class Noise(torch.nn.Module):
         Raises:
             TypeError: If the input `state` or `kraus_list` is not a Tensor.
         """
-
-        # Verification input type:
         if not isinstance(state, Tensor):
             raise TypeError("The input must be a Tensor")
-
-        # Output operator initialization:
         n_qubits: int = len(state.size()) - 1
         batch_size: int = state.size(-1)
         rho_evol: Tensor = torch.zeros(
             2**n_qubits, 2**n_qubits, batch_size, dtype=DEFAULT_MATRIX_DTYPE
         )
-
-        # Apply noisy channel on input state
         rho: Tensor = density_mat(state)
-        kraus_unit: List[Tensor] = self.unitary()
-        kraus_dag: List[Tensor] = self.dagger()
+        kraus_unit: list[Tensor] = self.unitary()
+        kraus_dag: list[Tensor] = self.dagger()
         for i in range(len(self.kraus)):
-            rho_i: Tensor = apply_ope_ope(
-                kraus_unit[i], apply_ope_ope(rho, kraus_dag[i], self.target), self.target
+            rho_i: Tensor = operator_product(
+                kraus_unit[i], operator_product(rho, kraus_dag[i], self.target), self.target
             )
             rho_evol += rho_i
         return rho_evol
@@ -150,14 +121,12 @@ class BitFlip(Noise):
         target: int,
         probability: float,
     ):
-        # Verification probability type:
-        if not isinstance(probability, float):
-            raise TypeError("The probability values must be float")
-
-        # Define Kraus operator:
-        K0: Tensor = torch.sqrt(torch.tensor(1 - probability, dtype=DEFAULT_MATRIX_DTYPE)) * IMAT
-        K1: Tensor = torch.sqrt(torch.tensor(probability, dtype=DEFAULT_MATRIX_DTYPE)) * XMAT
-        Kraus_Bitflip: List[Tensor] = [K0, K1]
+        if probability > 1.0 or probability < 0.0:
+            raise ValueError("The probability value is not a correct probability")
+        proba_tensor = torch.tensor(probability, dtype=DEFAULT_MATRIX_DTYPE)
+        K0: Tensor = torch.sqrt(1.0 - proba_tensor) * IMAT
+        K1: Tensor = torch.sqrt(proba_tensor) * XMAT
+        Kraus_Bitflip: list[Tensor] = [K0, K1]
         super().__init__(Kraus_Bitflip, target, probability)
 
 
@@ -183,14 +152,12 @@ class PhaseFlip(Noise):
         target: int,
         probability: float,
     ):
-        # Verification probability type:
-        if not isinstance(probability, float):
-            raise TypeError("The probability values must be float")
-
-        # Define Kraus operator:
-        K0: Tensor = torch.sqrt(torch.tensor(1 - probability, dtype=DEFAULT_MATRIX_DTYPE)) * IMAT
-        K1: Tensor = torch.sqrt(torch.tensor(probability, dtype=DEFAULT_MATRIX_DTYPE)) * ZMAT
-        Kraus_Phase: List[Tensor] = [K0, K1]
+        if probability > 1.0 or probability < 0.0:
+            raise ValueError("The probability value is not a correct probability")
+        proba_tensor = torch.tensor(probability, dtype=DEFAULT_MATRIX_DTYPE)
+        K0: Tensor = torch.sqrt(1.0 - proba_tensor) * IMAT
+        K1: Tensor = torch.sqrt(proba_tensor) * ZMAT
+        Kraus_Phase: list[Tensor] = [K0, K1]
         super().__init__(Kraus_Phase, target, probability)
 
 
@@ -219,16 +186,14 @@ class Depolarizing(Noise):
         target: int,
         probability: float,
     ):
-        # Verification probability type:
-        if not isinstance(probability, float):
-            raise TypeError("The probability values must be float")
-
-        # Define Kraus operator:
-        K0: Tensor = torch.sqrt(torch.tensor(1 - probability, dtype=DEFAULT_MATRIX_DTYPE)) * IMAT
-        K1: Tensor = torch.sqrt(torch.tensor(probability / 3, dtype=DEFAULT_MATRIX_DTYPE)) * XMAT
-        K2: Tensor = torch.sqrt(torch.tensor(probability / 3, dtype=DEFAULT_MATRIX_DTYPE)) * YMAT
-        K3: Tensor = torch.sqrt(torch.tensor(probability / 3, dtype=DEFAULT_MATRIX_DTYPE)) * ZMAT
-        Kraus_Depolarizing: List[Tensor] = [K0, K1, K2, K3]
+        if probability > 1.0 or probability < 0.0:
+            raise ValueError("The probability value is not a correct probability")
+        proba_tensor = torch.tensor(probability, dtype=DEFAULT_MATRIX_DTYPE)
+        K0: Tensor = torch.sqrt(1.0 - proba_tensor) * IMAT
+        K1: Tensor = torch.sqrt(proba_tensor / 3) * XMAT
+        K2: Tensor = torch.sqrt(proba_tensor / 3) * YMAT
+        K3: Tensor = torch.sqrt(proba_tensor / 3) * ZMAT
+        Kraus_Depolarizing: list[Tensor] = [K0, K1, K2, K3]
         super().__init__(Kraus_Depolarizing, target, probability)
 
 
@@ -246,33 +211,32 @@ class PauliChannel(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        probability (Tuple[float, ...]): Tuple containing probabilities of X, Y, and Z errors.
+        probabilities (Tuple[float, ...]): Tuple containing probabilities of X, Y, and Z errors.
 
     Raises:
-        TypeError: If the probability values are not provided in a tuple.
+        TypeError: If the probabilities values are not provided in a tuple.
     """
 
     def __init__(
         self,
         target: int,
-        probability: Tuple[float, ...],
+        probabilities: tuple[float, ...],
     ):
-        # Verification list probability type:
-        if not isinstance(probability, list):
-            raise TypeError("The probability values must be in a list")
-
-        # Define Kraus operator:
-        p_x = probability[0]
-        p_y = probability[1]
-        p_z = probability[2]
-        K0: Tensor = (
-            torch.sqrt(torch.tensor(1 - (p_x + p_y + p_z), dtype=DEFAULT_MATRIX_DTYPE)) * IMAT
-        )
-        K1: Tensor = torch.sqrt(torch.tensor(p_x, dtype=DEFAULT_MATRIX_DTYPE)) * XMAT
-        K2: Tensor = torch.sqrt(torch.tensor(p_y, dtype=DEFAULT_MATRIX_DTYPE)) * YMAT
-        K3: Tensor = torch.sqrt(torch.tensor(p_z, dtype=DEFAULT_MATRIX_DTYPE)) * ZMAT
-        Kraus_PauliChannel: List[Tensor] = [K0, K1, K2, K3]
-        super().__init__(Kraus_PauliChannel, target, probability)
+        sum_prob = sum(probabilities)
+        if sum_prob > 1.0:
+            raise ValueError("The sum of probabilities can't be greater 1.0")
+        for probability in probabilities:
+            if probability > 1.0 or probability < 0.0:
+                raise ValueError("The probability values are not correct probabilities")
+        px = torch.tensor(probabilities[0], dtype=DEFAULT_MATRIX_DTYPE)
+        py = torch.tensor(probabilities[1], dtype=DEFAULT_MATRIX_DTYPE)
+        pz = torch.tensor(probabilities[2], dtype=DEFAULT_MATRIX_DTYPE)
+        K0: Tensor = torch.sqrt(1.0 - (px + py + pz)) * IMAT
+        K1: Tensor = torch.sqrt(px) * XMAT
+        K2: Tensor = torch.sqrt(py) * YMAT
+        K3: Tensor = torch.sqrt(pz) * ZMAT
+        Kraus_PauliChannel: list[Tensor] = [K0, K1, K2, K3]
+        super().__init__(Kraus_PauliChannel, target, probabilities)
 
 
 class AmplitudeDamping(Noise):
@@ -305,16 +269,11 @@ class AmplitudeDamping(Noise):
         target: int,
         rate: float,
     ):
-        # Verification rate type and value:
-        if not isinstance(rate, float):
-            raise TypeError("The probability values must be float")
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
-
-        # Define Kraus operator:
         K0: Tensor = torch.tensor([[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE)
         K1: Tensor = torch.tensor([[0, sqrt(rate)], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE)
-        Kraus_AmplitudeDamping: List[Tensor] = [K0, K1]
+        Kraus_AmplitudeDamping: list[Tensor] = [K0, K1]
         super().__init__(Kraus_AmplitudeDamping, target, rate)
 
 
@@ -348,15 +307,11 @@ class PhaseDamping(Noise):
         target: int,
         rate: float,
     ):
-        # Verification rate type and value:
-        if not isinstance(rate, float):
-            raise TypeError("The probability values must be float")
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
-
         K0: Tensor = torch.tensor([[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE)
         K1: Tensor = torch.tensor([[0, 0], [0, sqrt(rate)]], dtype=DEFAULT_MATRIX_DTYPE)
-        Kraus_GeneralizeAmplitudeDamping: List[Tensor] = [K0, K1]
+        Kraus_GeneralizeAmplitudeDamping: list[Tensor] = [K0, K1]
         super().__init__(Kraus_GeneralizeAmplitudeDamping, target, rate)
 
 
@@ -395,26 +350,22 @@ class GeneralizeAmplitudeDamping(Noise):
         probability: float,
         rate: float,
     ):
-        # Verification probability/rate type:
-        if not isinstance(probability, float):
-            raise TypeError("The probability values must be float")
-        if not isinstance(rate, float):
-            raise TypeError("The damping rate must be float")
+        if probability > 1.0 or probability < 0.0:
+            raise ValueError("The probability value is not a correct probability")
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
-
-        # Define Kraus operator:
-        K0: Tensor = torch.sqrt(
-            torch.tensor(probability, dtype=DEFAULT_MATRIX_DTYPE)
-        ) * torch.tensor([[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE)
-        K1: Tensor = torch.sqrt(
-            torch.tensor(probability, dtype=DEFAULT_MATRIX_DTYPE)
-        ) * torch.tensor([[0, sqrt(rate)], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE)
-        K2: Tensor = torch.sqrt(
-            torch.tensor(1 - probability, dtype=DEFAULT_MATRIX_DTYPE)
-        ) * torch.tensor([[sqrt(1 - rate), 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE)
-        K3: Tensor = torch.sqrt(
-            torch.tensor(1 - probability, dtype=DEFAULT_MATRIX_DTYPE)
-        ) * torch.tensor([[0, 0], [sqrt(rate), 0]], dtype=DEFAULT_MATRIX_DTYPE)
-        Kraus_GeneralizeAmplitudeDamping: List[Tensor] = [K0, K1, K2, K3]
+        proba_tensor = torch.tensor(probability, dtype=DEFAULT_MATRIX_DTYPE)
+        K0: Tensor = torch.sqrt(proba_tensor) * torch.tensor(
+            [[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE
+        )
+        K1: Tensor = torch.sqrt(proba_tensor) * torch.tensor(
+            [[0, sqrt(rate)], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE
+        )
+        K2: Tensor = torch.sqrt(1.0 - proba_tensor) * torch.tensor(
+            [[sqrt(1 - rate), 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE
+        )
+        K3: Tensor = torch.sqrt(1.0 - proba_tensor) * torch.tensor(
+            [[0, 0], [sqrt(rate), 0]], dtype=DEFAULT_MATRIX_DTYPE
+        )
+        Kraus_GeneralizeAmplitudeDamping: list[Tensor] = [K0, K1, K2, K3]
         super().__init__(Kraus_GeneralizeAmplitudeDamping, target, probability)
