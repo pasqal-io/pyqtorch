@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from math import log2
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import pytest
 import torch
@@ -12,7 +12,7 @@ import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT, _dagger
 from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import H, I, S, T, X, Y, Z
+from pyqtorch.primitive import H, I, Primitive, S, T, X, Y, Z
 from pyqtorch.utils import ATOL, density_mat, product_state, promote_operator, random_state
 
 state_000 = product_state("000")
@@ -24,8 +24,6 @@ state_111 = product_state("111")
 state_0000 = product_state("0000")
 state_1110 = product_state("1110")
 state_1111 = product_state("1111")
-
-GATESET = [I, X, Y, Z, H, T, S]
 
 
 def test_identity() -> None:
@@ -327,11 +325,15 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     assert torch.allclose(dm, dm_proj)
 
 
-@pytest.mark.parametrize("operator", GATESET)
-def test_promote(operator: Parametric) -> None:
+@pytest.fixture(params=[I, X, Y, Z, H, T, S])
+def GATE(request: Primitive) -> Any:
+    return request.param
+
+
+def test_promote(GATE: Primitive) -> None:
     n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
-    op_prom = promote_operator(operator(target).unitary(), target, n_qubits)
+    op_prom = promote_operator(GATE(target).unitary(), target, n_qubits)
     assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(
         operator_product(op_prom, _dagger(op_prom), target),
@@ -339,18 +341,15 @@ def test_promote(operator: Parametric) -> None:
     )
 
 
-@pytest.mark.parametrize("operator", GATESET)
-def test_operator_product(operator: Parametric) -> None:
+def test_operator_product(GATE: Primitive) -> None:
     n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
     max_batch = max(batch_size_2, batch_size_1)
-    op_prom: Tensor = promote_operator(operator(target).unitary(), target, n_qubits).repeat(
-        1, 1, batch_size_1
-    )
+    op_prom = promote_operator(GATE(target).unitary(), target, n_qubits).repeat(1, 1, batch_size_1)
     op_mul = operator_product(
-        operator(target).unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
+        GATE(target).unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
     )
     assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
     assert torch.allclose(
