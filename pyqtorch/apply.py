@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from math import log2
 from string import ascii_letters as ABC
 from typing import Tuple
 
 import torch
-from numpy import array
+from numpy import array, log2
 from numpy.typing import NDArray
 from torch import Tensor, einsum
 
