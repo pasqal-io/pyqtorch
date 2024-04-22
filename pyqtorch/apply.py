@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from string import ascii_letters as ABC
-from typing import Tuple
 
 import torch
 from numpy import array, log2
@@ -16,7 +15,7 @@ ABC_ARRAY: NDArray = array(list(ABC))
 def apply_operator(
     state: Tensor,
     operator: Tensor,
-    qubits: Tuple[int, ...] | list[int],
+    qubits: tuple[int, ...] | list[int],
     n_qubits: int = None,
     batch_size: int = None,
 ) -> Tensor:
