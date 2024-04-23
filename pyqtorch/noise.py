@@ -80,11 +80,11 @@ class Noise(torch.nn.Module):
             2**n_qubits, 2**n_qubits, batch_size, dtype=DEFAULT_MATRIX_DTYPE
         )
         rho: Tensor = density_mat(state)
-        kraus_unit: list[Tensor] = self.unitary()
-        kraus_dag: list[Tensor] = self.dagger()
-        for i in range(len(self.kraus)):
+        kraus_unitaries: list[Tensor] = self.unitary()
+        kraus_daggers: list[Tensor] = self.dagger()
+        for kraus_unitary, kraus_dagger in zip(kraus_unitaries, kraus_daggers):
             rho_i: Tensor = operator_product(
-                kraus_unit[i], operator_product(rho, kraus_dag[i], self.target), self.target
+                kraus_unitary, operator_product(rho, kraus_dagger, self.target), self.target
             )
             rho_evol += rho_i
         return rho_evol
@@ -204,10 +204,10 @@ class PauliChannel(Noise):
     The pauli channel is defined as:
 
     .. math::
-        \\rho \\Rightarrow (1-probX-probY-probZ) \\rho
-            + p_X X \\rho X^{\\dagger}
-            + p_Y Y \\rho Y^{\\dagger}
-            + p_Z Z \\rho Z^{\\dagger}
+        \\rho \\Rightarrow (1-px-py-pz) \\rho
+            + px X \\rho X^{\\dagger}
+            + py Y \\rho Y^{\\dagger}
+            + pz Z \\rho Z^{\\dagger}
 
     Args:
         target (int): The index of the qubit being affected by the noise.
