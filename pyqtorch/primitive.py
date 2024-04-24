@@ -45,17 +45,18 @@ class Primitive(torch.nn.Module):
         return self.pauli.unsqueeze(2)
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return torch.where(
-            isinstance(state, Density_Matrix),
-            Density_Matrix(
+        if isinstance(state, Density_Matrix):
+            return Density_Matrix(
                 operator_product(
                     self.unitary(values),
                     operator_product(state, self.dagger(values), self.target),
                     self.target,
                 )
-            ),
-            apply_operator(state, self.unitary(values), self.qubit_support, len(state.size()) - 1),
-        )
+            )
+        else:
+            return apply_operator(
+                state, self.unitary(values), self.qubit_support, len(state.size()) - 1
+            )
 
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return _dagger(self.unitary(values))
