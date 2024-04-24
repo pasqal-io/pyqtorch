@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from math import log2
-from typing import Any, Tuple
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -15,7 +15,7 @@ class Primitive(torch.nn.Module):
     def __init__(self, pauli: Tensor, target: int) -> None:
         super().__init__()
         self.target: int = target
-        self.qubit_support: Tuple[int, ...] = (target,)
+        self.qubit_support: tuple[int, ...] = (target,)
         self.n_qubits: int = max(self.qubit_support)
         self.register_buffer("pauli", pauli)
         self._param_type = None
@@ -136,7 +136,7 @@ class SWAP(Primitive):
 
 
 class CSWAP(Primitive):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__(OPERATIONS_DICT["CSWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.target = target
@@ -145,7 +145,7 @@ class CSWAP(Primitive):
 
 
 class ControlledOperationGate(Primitive):
-    def __init__(self, gate: str, control: int | Tuple[int, ...], target: int):
+    def __init__(self, gate: str, control: int | tuple[int, ...], target: int):
         self.control = (control,) if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
         mat = _controlled(
@@ -159,7 +159,7 @@ class ControlledOperationGate(Primitive):
 
 
 class CNOT(ControlledOperationGate):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("X", control, target)
 
 
@@ -167,15 +167,15 @@ CX = CNOT
 
 
 class CY(ControlledOperationGate):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("Y", control, target)
 
 
 class CZ(ControlledOperationGate):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("Z", control, target)
 
 
 class Toffoli(ControlledOperationGate):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("X", control, target)
