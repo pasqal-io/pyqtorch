@@ -6,9 +6,9 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator
+from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import product_state
+from pyqtorch.utils import Density_Matrix, product_state
 
 
 class Primitive(torch.nn.Module):
@@ -45,8 +45,16 @@ class Primitive(torch.nn.Module):
         return self.pauli.unsqueeze(2)
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return apply_operator(
-            state, self.unitary(values), self.qubit_support, len(state.size()) - 1
+        return torch.where(
+            isinstance(state, Density_Matrix),
+            Density_Matrix(
+                operator_product(
+                    self.unitary(values),
+                    operator_product(state, self.dagger(values), self.target),
+                    self.target,
+                )
+            ),
+            apply_operator(state, self.unitary(values), self.qubit_support, len(state.size()) - 1),
         )
 
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:

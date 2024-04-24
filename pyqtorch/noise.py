@@ -7,7 +7,7 @@ from torch import Tensor
 
 from pyqtorch.apply import operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT, _dagger
-from pyqtorch.utils import density_mat
+from pyqtorch.utils import Density_Matrix, density_mat
 
 
 class Noise(torch.nn.Module):
@@ -47,13 +47,13 @@ class Noise(torch.nn.Module):
         return self.kraus
 
     # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
-    def unitary(self) -> list[Tensor]:
+    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> list[Tensor]:
         return [kraus_op.unsqueeze(2) for kraus_op in self.kraus]
 
-    def dagger(self) -> list[Tensor]:
-        return [_dagger(kraus_op) for kraus_op in self.unitary()]
+    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> list[Tensor]:
+        return [_dagger(kraus_op) for kraus_op in self.unitary(values)]
 
-    def forward(self, state: Tensor) -> Tensor:
+    def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         """
         Applies a noisy quantum channel on the input state.
         The evolution is represented as a sum of Kraus operators:
@@ -74,20 +74,19 @@ class Noise(torch.nn.Module):
         """
         if not isinstance(state, Tensor):
             raise TypeError("The input must be a Tensor")
-        n_qubits: int = len(state.size()) - 1
-        batch_size: int = state.size(-1)
-        rho_evol: Tensor = torch.zeros(
-            2**n_qubits, 2**n_qubits, batch_size, dtype=DEFAULT_MATRIX_DTYPE
+        if not isinstance(state, Density_Matrix):
+            state = density_mat(state)
+        rho_evol = torch.stack(
+            [
+                operator_product(
+                    kraus_unitary, operator_product(state, kraus_dagger, self.target), self.target
+                )
+                for kraus_unitary, kraus_dagger in zip(self.unitary(values), self.dagger(values))
+            ],
+            dim=0,
         )
-        rho: Tensor = density_mat(state)
-        kraus_unitaries: list[Tensor] = self.unitary()
-        kraus_daggers: list[Tensor] = self.dagger()
-        for kraus_unitary, kraus_dagger in zip(kraus_unitaries, kraus_daggers):
-            rho_i: Tensor = operator_product(
-                kraus_unitary, operator_product(rho, kraus_dagger, self.target), self.target
-            )
-            rho_evol += rho_i
-        return rho_evol
+        rho_evol = torch.sum(rho_evol, dim=0)
+        return Density_Matrix(rho_evol)
 
     @property
     def device(self) -> torch.device:

@@ -125,6 +125,10 @@ def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tenso
     return {key: val for key, val in zip(keys, values)}
 
 
+class Density_Matrix(Tensor):
+    pass
+
+
 def density_mat(state: Tensor) -> Tensor:
     """
     Computes the density matrix from a pure state vector.
@@ -141,7 +145,9 @@ def density_mat(state: Tensor) -> Tensor:
     batch_first_perm = [batch_dim] + list(range(batch_dim))
     state = torch.permute(state, batch_first_perm).reshape(batch_size, 2**n_qubits)
     undo_perm = (1, 2, 0)
-    return torch.permute(torch.einsum("bi,bj->bij", (state, state.conj())), undo_perm)
+    return Density_Matrix(
+        torch.permute(torch.einsum("bi,bj->bij", (state, state.conj())), undo_perm)
+    )
 
 
 def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
