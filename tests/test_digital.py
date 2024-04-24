@@ -9,10 +9,11 @@ import torch
 from torch import Tensor
 
 import pyqtorch as pyq
-from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT
+from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT, _dagger
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import ATOL, density_mat, product_state, random_state
+from pyqtorch.primitive import Primitive
+from pyqtorch.utils import ATOL, density_mat, product_state, promote_operator, random_state
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -293,7 +294,6 @@ def test_U() -> None:
 
 @pytest.mark.parametrize("n_qubits,batch_size", torch.randint(1, 6, (8, 2)))
 def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
-    # Test without batches:
     state = random_state(n_qubits)
     projector = torch.outer(state.flatten(), state.conj().flatten()).view(
         2**n_qubits, 2**n_qubits, 1
@@ -301,24 +301,44 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     dm = density_mat(state)
     assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(dm, projector)
-
-    # Test with batches:
     states = []
     projectors = []
-    # Batches creation:
     for batch in range(batch_size):
-        # Batch state creation:
         state = random_state(n_qubits)
         states.append(state)
-        # Batch projector:
         projector = torch.outer(state.flatten(), state.conj().flatten()).view(
             2**n_qubits, 2**n_qubits, 1
         )
         projectors.append(projector)
-    # Concatenate all the batch projectors:
     dm_proj = torch.cat(projectors, dim=2)
-    # Concatenate the batch state to compute the density matrix
     state_cat = torch.cat(states, dim=n_qubits)
     dm = density_mat(state_cat)
     assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
     assert torch.allclose(dm, dm_proj)
+
+
+def test_promote(gate: Primitive) -> None:
+    n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
+    target = random.choice([i for i in range(n_qubits)])
+    op_prom = promote_operator(gate(target).unitary(), target, n_qubits)
+    assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
+    assert torch.allclose(
+        operator_product(op_prom, _dagger(op_prom), target),
+        torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2),
+    )
+
+
+def test_operator_product(gate: Primitive) -> None:
+    n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
+    target = random.choice([i for i in range(n_qubits)])
+    batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
+    max_batch = max(batch_size_2, batch_size_1)
+    op_prom = promote_operator(gate(target).unitary(), target, n_qubits).repeat(1, 1, batch_size_1)
+    op_mul = operator_product(
+        gate(target).unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
+    )
+    assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
+    assert torch.allclose(
+        op_mul, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, max_batch)
+    )

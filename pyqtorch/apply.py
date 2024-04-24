@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from string import ascii_letters as ABC
-from typing import Tuple
 
-from numpy import array
+import torch
+from numpy import array, log2
 from numpy.typing import NDArray
 from torch import Tensor, einsum
+
+from pyqtorch.utils import batch_first, batch_last, promote_operator
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -13,7 +15,7 @@ ABC_ARRAY: NDArray = array(list(ABC))
 def apply_operator(
     state: Tensor,
     operator: Tensor,
-    qubits: Tuple[int, ...] | list[int],
+    qubits: tuple[int, ...] | list[int],
     n_qubits: int = None,
     batch_size: int = None,
 ) -> Tensor:
@@ -55,3 +57,32 @@ def apply_operator(
         map(lambda e: "".join(list(e)), [operator_dims, in_state_dims, out_state_dims])
     )
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
+
+
+def operator_product(op1: Tensor, op2: Tensor, target: int) -> Tensor:
+    """
+    Compute the product of two operators.
+
+    Args:
+        op1 (Tensor): The first operator.
+        op2 (Tensor): The second operator.
+        target (int): The target qubit index.
+
+    Returns:
+        Tensor: The product of the two operators.
+    """
+
+    n_qubits_1 = int(log2(op1.size(1)))
+    n_qubits_2 = int(log2(op2.size(1)))
+    batch_size_1 = op1.size(-1)
+    batch_size_2 = op2.size(-1)
+    if n_qubits_1 > n_qubits_2:
+        op2 = promote_operator(op2, target, n_qubits_1)
+    elif n_qubits_1 < n_qubits_2:
+        op1 = promote_operator(op1, target, n_qubits_2)
+    if batch_size_1 > batch_size_2:
+        op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
+    elif batch_size_2 > batch_size_1:
+        op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
+
+    return batch_last(torch.bmm(batch_first(op1), batch_first(op2)))

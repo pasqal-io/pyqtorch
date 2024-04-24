@@ -142,3 +142,63 @@ def density_mat(state: Tensor) -> Tensor:
     state = torch.permute(state, batch_first_perm).reshape(batch_size, 2**n_qubits)
     undo_perm = (1, 2, 0)
     return torch.permute(torch.einsum("bi,bj->bij", (state, state.conj())), undo_perm)
+
+
+def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
+    from pyqtorch.primitive import I
+
+    """
+    Promotes `operator` to the size of the circuit (number of qubits and batch).
+    Targeting the first qubit implies target = 0, so target > n_qubits - 1.
+
+    Args:
+        operator (Tensor): The operator tensor to be promoted.
+        target (int): The index of the target qubit to which the operator is applied.
+            Targeting the first qubit implies target = 0, so target > n_qubits - 1.
+        n_qubits (int): Number of qubits in the circuit.
+
+    Returns:
+        Tensor: The promoted operator tensor.
+
+    Raises:
+        ValueError: If `target` is outside the valid range of qubits.
+    """
+    if target > n_qubits - 1:
+        raise ValueError("The target must be a valid qubit index within the circuit's range.")
+    qubits = torch.arange(0, n_qubits)
+    qubits = qubits[qubits != target]
+    for qubit in qubits:
+        operator = torch.where(
+            target > qubit,
+            torch.kron(I(target).unitary(), operator.contiguous()),
+            torch.kron(operator.contiguous(), I(target).unitary()),
+        )
+    return operator
+
+
+def batch_first(operator: Tensor) -> Tensor:
+    """
+    Permute the operator's batch dimension on first dimension.
+
+    Args:
+        operator (Tensor): Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+
+    Returns:
+        Tensor: Operator in size [batch_size, 2**n_qubits, 2**n_qubits].
+    """
+    batch_first_perm = (2, 0, 1)
+    return torch.permute(operator, batch_first_perm)
+
+
+def batch_last(operator: Tensor) -> Tensor:
+    """
+    Permute the operator's batch dimension on last dimension.
+
+    Args:
+        operator (Tensor): Operator in size [batch_size,2**n_qubits, 2**n_qubits].
+
+    Returns:
+        Tensor: Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+    """
+    undo_perm = (1, 2, 0)
+    return torch.permute(operator, undo_perm)
