@@ -8,7 +8,7 @@ from torch import Tensor
 
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import Density_Matrix, product_state
+from pyqtorch.utils import DensityMatrix, product_state
 
 
 class Primitive(torch.nn.Module):
@@ -45,8 +45,8 @@ class Primitive(torch.nn.Module):
         return self.pauli.unsqueeze(2)
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        if isinstance(state, Density_Matrix):
-            return Density_Matrix(
+        if isinstance(state, DensityMatrix):
+            return DensityMatrix(
                 operator_product(
                     self.unitary(values),
                     operator_product(state, self.dagger(values), self.target),

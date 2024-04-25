@@ -7,7 +7,7 @@ from torch import Tensor
 
 from pyqtorch.apply import operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT, _dagger
-from pyqtorch.utils import Density_Matrix, density_mat
+from pyqtorch.utils import DensityMatrix, density_mat
 
 
 class Noise(torch.nn.Module):
@@ -74,7 +74,7 @@ class Noise(torch.nn.Module):
         """
         if not isinstance(state, Tensor):
             raise TypeError("The input must be a Tensor")
-        if not isinstance(state, Density_Matrix):
+        if not isinstance(state, DensityMatrix):
             state = density_mat(state)
         rho_evol = torch.stack(
             [
@@ -86,7 +86,7 @@ class Noise(torch.nn.Module):
             dim=0,
         )
         rho_evol = torch.sum(rho_evol, dim=0)
-        return Density_Matrix(rho_evol)
+        return DensityMatrix(rho_evol)
 
     @property
     def device(self) -> torch.device:
