@@ -21,13 +21,11 @@ class Noise(torch.nn.Module):
         for index, tensor in enumerate(kraus):
             self.register_buffer(f"kraus_{index}", tensor)
             self.kraus.append(tensor)
-        if len(set(kraus.device for kraus in self.kraus)) != 1:
-            raise ValueError("All tensors are not on the same device.")
         self._device = self.kraus[0].device
         self.probabilities: tuple[float, ...] | float = probabilities
 
     @property
-    def proba(self) -> tuple[float, ...] | float:
+    def prob(self) -> tuple[float, ...] | float:
         return self.probabilities
 
     @property
