@@ -352,7 +352,7 @@ def test_operator_product(gate: Primitive) -> None:
     )
 
 
-@pytest.mark.parametrize("FlipGate", [pyq.BitFlip, pyq.PhaseFlip])
+@pytest.mark.parametrize("FlipGate", [pyq.BitFlip, pyq.PhaseFlip, pyq.Depolarizing])
 def test_flip_gates(FlipGate: Noise) -> None:
     n_qubits: int = torch.randint(low=1, high=8, size=(1,)).item()
     target: int = random.choice([i for i in range(n_qubits)])
@@ -373,6 +373,13 @@ def test_flip_gates(FlipGate: Noise) -> None:
             expected_state = DensityMatrix(
                 torch.tensor([[[1], [0]], [[0], [0]]], dtype=torch.cdouble)
             )
+        else:
+            expected_state = DensityMatrix(
+                torch.tensor(
+                    [[[1 - (2 * probability) / 3], [0]], [[0], [(2 * probability) / 3]]],
+                    dtype=torch.cdouble,
+                )
+            )
         for qubit in qubits:
             expected_state = torch.where(
                 target > qubit,
@@ -380,16 +387,28 @@ def test_flip_gates(FlipGate: Noise) -> None:
                 torch.kron(expected_state, rho_0),
             )
         assert torch.allclose(output_state, expected_state.repeat(1, 1, batch_size))
-    input_state = random_state(n_qubits, batch_size)
-    FlipGate_0 = FlipGate(target, probability=0)
-    assert torch.allclose(FlipGate_0(density_mat(input_state)), density_mat(input_state))
+    input_state: Tensor = random_state(n_qubits, batch_size)
+    assert torch.allclose(
+        FlipGate(target, probability=0)(density_mat(input_state)), density_mat(input_state)
+    )
     if FlipGate == pyq.BitFlip:
-        FlipGate_1 = FlipGate(target, probability=1)
         assert torch.allclose(
-            FlipGate_1(density_mat(input_state)), density_mat(pyq.X(target)(input_state))
+            FlipGate(target, probability=1)(density_mat(input_state)),
+            density_mat(pyq.X(target)(input_state)),
         )
     elif FlipGate == pyq.PhaseFlip:
-        FlipGate_1 = FlipGate(target, probability=1)
         assert torch.allclose(
-            FlipGate_1(density_mat(input_state)), density_mat(pyq.Z(target)(input_state))
+            FlipGate(target, probability=1)(density_mat(input_state)),
+            density_mat(pyq.Z(target)(input_state)),
+        )
+    else:
+        assert torch.allclose(
+            FlipGate(target, probability=1)(density_mat(input_state)),
+            1
+            / 3
+            * (
+                density_mat(pyq.Z(target)(input_state))
+                + density_mat(pyq.X(target)(input_state))
+                + density_mat(pyq.Y(target)(input_state))
+            ),
         )
