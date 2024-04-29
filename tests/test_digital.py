@@ -11,9 +11,17 @@ from torch import Tensor
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT, _dagger
+from pyqtorch.noise import Noise
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import ATOL, density_mat, product_state, promote_operator, random_state
+from pyqtorch.utils import (
+    ATOL,
+    DensityMatrix,
+    density_mat,
+    product_state,
+    promote_operator,
+    random_state,
+)
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -342,3 +350,46 @@ def test_operator_product(gate: Primitive) -> None:
     assert torch.allclose(
         op_mul, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, max_batch)
     )
+
+
+@pytest.mark.parametrize("FlipGate", [pyq.BitFlip, pyq.PhaseFlip])
+def test_flip_gates(FlipGate: Noise) -> None:
+    n_qubits: int = torch.randint(low=1, high=8, size=(1,)).item()
+    target: int = random.choice([i for i in range(n_qubits)])
+    qubits: Tensor = torch.arange(0, n_qubits)
+    qubits = qubits[qubits != target]
+    batch_size: int = torch.randint(low=1, high=5, size=(1,)).item()
+    state_0s: Tensor = product_state("0" * n_qubits, batch_size)
+    rho_0 = DensityMatrix(pyq.Projector(1, "0", "0").unitary())
+    probabilities: Tensor = torch.arange(0, 1, 10)
+    for probability in probabilities:
+        output_state: DensityMatrix = FlipGate(target, probability)(state_0s)
+        assert output_state.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+        if FlipGate == pyq.BitFlip:
+            expected_state = DensityMatrix(
+                torch.tensor([[[1 - probability], [0]], [[0], [probability]]], dtype=torch.cdouble)
+            )
+        elif FlipGate == pyq.PhaseFlip:
+            expected_state = DensityMatrix(
+                torch.tensor([[[1], [0]], [[0], [0]]], dtype=torch.cdouble)
+            )
+        for qubit in qubits:
+            expected_state = torch.where(
+                target > qubit,
+                torch.kron(rho_0, expected_state),
+                torch.kron(expected_state, rho_0),
+            )
+        assert torch.allclose(output_state, expected_state.repeat(1, 1, batch_size))
+    input_state = random_state(n_qubits, batch_size)
+    FlipGate_0 = FlipGate(target, probability=0)
+    assert torch.allclose(FlipGate_0(density_mat(input_state)), density_mat(input_state))
+    if FlipGate == pyq.BitFlip:
+        FlipGate_1 = FlipGate(target, probability=1)
+        assert torch.allclose(
+            FlipGate_1(density_mat(input_state)), density_mat(pyq.X(target)(input_state))
+        )
+    elif FlipGate == pyq.PhaseFlip:
+        FlipGate_1 = FlipGate(target, probability=1)
+        assert torch.allclose(
+            FlipGate_1(density_mat(input_state)), density_mat(pyq.Z(target)(input_state))
+        )

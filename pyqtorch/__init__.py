@@ -12,6 +12,15 @@ from __future__ import annotations
 from .analog import HamiltonianEvolution
 from .apply import apply_operator
 from .circuit import QuantumCircuit, expectation
+from .noise import (
+    AmplitudeDamping,
+    BitFlip,
+    Depolarizing,
+    GeneralizeAmplitudeDamping,
+    PauliChannel,
+    PhaseDamping,
+    PhaseFlip,
+)
 from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
 from .primitive import (
     CNOT,
