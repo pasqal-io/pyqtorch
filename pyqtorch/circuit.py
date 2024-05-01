@@ -3,7 +3,7 @@ from __future__ import annotations
 from logging import getLogger
 from typing import Any, Iterator
 
-from torch import Tensor, complex128
+from torch import Tensor, complex128, bernoulli, tensor
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
@@ -14,10 +14,11 @@ logger = getLogger(__name__)
 
 
 class QuantumCircuit(Module):
-    def __init__(self, n_qubits: int, operations: list[Module]):
+    def __init__(self, n_qubits: int, operations: list[Module], dropout: dict[str, torch_dtype] = {}):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = ModuleList(operations)
+        self.dropout = dropout
         self._device = torch_device("cpu")
         self._dtype = complex128
         if len(self.operations) > 0:
@@ -59,7 +60,17 @@ class QuantumCircuit(Module):
 
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
         for op in self.operations:
-            state = op(state, values)
+            if (bool(self.dropout)) & (hasattr(op, "param_name")):
+                if values[op.param_name].requires_grad:
+                    keep = bool(1-bernoulli(tensor(self.dropout["pg"]*self.dropout["pl"])))
+                    if keep:
+                        state = op(state, values)
+                
+                else:
+                    state = op(state, values)
+            
+            else:
+                state = op(state, values)
         return state
 
     @property

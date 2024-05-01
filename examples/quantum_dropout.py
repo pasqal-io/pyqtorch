@@ -6,7 +6,9 @@ from torch import manual_seed, tensor, optim
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 import pyqtorch as pyq
+from pyqtorch.parametric import Parametric
 from torch.autograd import grad
+
 manual_seed(12345)
 np.random.seed(12345)
 
@@ -33,65 +35,72 @@ def hea_ansatz(n_qubits, layer):
 
     for j in range(n_qubits-1):
         ops.append(pyq.CNOT(control=j, target=j+1))
-    return pyq.QuantumCircuit(n_qubits, ops)
+    return ops
 
 
 def fm1(n_qubits):
     ops = []
     for i in range(n_qubits):
-        ops.append(pyq.RY(i))
-    return pyq.QuantumCircuit(n_qubits, ops)
+        ops.append(pyq.RY(i, "x1"))
+    return ops
 
 
 def fm2(n_qubits):
     ops = []
     for i in range(n_qubits):
-        ops.append(pyq.RZ(i))
-    return pyq.QuantumCircuit(n_qubits, ops)
+        ops.append(pyq.RZ(i, "x2"))
+    return ops
 
 
 class Model(torch.nn.Module):
 
-    def __init__(self, n_qubits, n_layers):
+    def __init__(self, n_qubits, n_layers, device, dropout={}):
         super().__init__()
         self.n_qubits = n_qubits 
         self.n_layers = n_layers
-        self.ansatz_collection = [hea_ansatz(n_qubits, i) for i in range(n_layers)]
-        param_tensor = torch.nn.Parameter(torch.rand((n_qubits*3*n_layers), requires_grad=True))
-        self.params = self.convert_tensor_to_dict(param_tensor)
+        self.training = True
         self.embedding1 = fm1(n_qubits=n_qubits)
         self.embedding2 = fm2(n_qubits=n_qubits)
-        self.observable = pyq.Z(0)
 
-    def convert_tensor_to_dict(self, params):
-        param_dict = {}
-        count = 0
-        for i in range(self.n_qubits):
-            for j in range(self.n_layers):
-                for k in range(3):
-                    param_dict[f"theta_{i}{j}{k}"] = params[count]
-                    count +=1
-        return torch.nn.ParameterDict(param_dict)
+        params = {}
+        operations = []
+        for i in range(n_layers):
+            operations += self.embedding1 + self.embedding2
+            layer_i_ansatz = hea_ansatz(n_qubits=n_qubits, layer=i)
+            operations += layer_i_ansatz
+            for op in layer_i_ansatz:
+                if isinstance(op, Parametric):
+                    params[f"{op.param_name}"] = torch.randn(1, requires_grad=True)
 
-    def forward(self, x):
-        batch_size = len(x)
-        x_1 = np.arcsin(x)
-        x_2 = np.arccos(x**2)
-        state = pyq.zero_state(n_qubits=self.n_qubits, batch_size=batch_size)
-        for i in range(self.n_layers):
-            state = self.embedding1(state, x_1)
-            state = self.embedding2(state, x_2)
-            state = self.ansatz_collection[i](state, self.params)
+        params = torch.nn.ParameterDict(params)
+        training_circuit = pyq.QuantumCircuit(n_qubits=n_qubits, operations=operations, dropout=dropout)
+        eval_circuit = pyq.QuantumCircuit(n_qubits=n_qubits, operations=operations)
         
-        new_state = self.observable(state).reshape((2**n_qubits, batch_size))
-        state = state.reshape((2**self.n_qubits, batch_size))
+        observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(i) for i in range(n_qubits)])
+        self.training_circuit = training_circuit.to(device=device, dtype=torch.complex64)
+        self.eval_circuit = eval_circuit.to(device=device, dtype=torch.complex64)
+        self.observable = observable.to(device=device, dtype=torch.complex64)
+        self.params = params.to(device=device, dtype=torch.float32)
 
-        return torch.real(torch.sum(torch.conj(state)*new_state, axis=0))
+    def forward(self, x, training=True):
+        self.training = training
+        x = x.flatten()
+        x_1 = {"x1":torch.asin(x)}
+        x_2 = {"x2":torch.acos(x**2)}
+        
+        if self.training:
+            state = self.training_circuit.init_state(batch_size=int(x.shape[0]))
+            out = pyq.expectation(circuit=self.training_circuit, state=state, values={**self.params, **x_1, **x_2}, observable=self.observable)
+        if not(self.training):
+            state = self.eval_circuit.init_state(batch_size=int(x.shape[0]))
+            out = pyq.expectation(circuit=self.eval_circuit, state=state, values={**self.params, **x_1, **x_2}, observable=self.observable)
+
+        return out
 
 
 def train_step(model, opt, data):
     opt.zero_grad()
-    y_true = data[1]
+    y_true = data[1].flatten()
     y_preds = model(data[0])
     loss = torch.nn.MSELoss()(y_preds, y_true)
     loss.backward()
@@ -105,20 +114,27 @@ def train(model, opt, x_train, y_train, x_test, y_test, epochs, batch_size):
     validation_loss_history = []
     steps_per_epoch = x_train.shape[0] // batch_size
 
+    x_test = tensor(x_test).to(device, dtype=torch.float32)
+    y_test = tensor(y_test).to(device, dtype=torch.float32).flatten()
+
     for epoch in range(epochs):
         for step in range(steps_per_epoch):
-            x_batch = tensor(x_train[step*batch_size:(step+1)*batch_size])
-            y_batch = tensor(y_train[step*batch_size:(step+1)*batch_size])
+            x_batch = tensor(x_train[step*batch_size:(step+1)*batch_size]).to(device, dtype=torch.float32)
+            y_batch = tensor(y_train[step*batch_size:(step+1)*batch_size]).to(device, dtype=torch.float32)
 
             loss = train_step(model, opt, (x_batch, y_batch))
 
-        test_preds = model(tensor(x_test))
-        test_loss = torch.nn.MSELoss()(test_preds, tensor(y_test))
-        train_loss_history.append(loss.detach().numpy())
+        test_preds = model(x_test, training=False)
+        test_loss = torch.nn.MSELoss()(test_preds, y_test)
+
+        train_preds = model(x_batch, training=False)
+        train_loss = torch.nn.MSELoss()(train_preds, y_batch.flatten())
+        
+        train_loss_history.append(train_loss.detach().numpy())
         validation_loss_history.append(test_loss.detach().numpy())
 
         if epoch % 100 == 0:
-            print(f"epoch: {epoch}, train loss {loss.detach().numpy()}, val loss: {test_loss.detach().numpy()}")
+            print(f"epoch: {epoch}, train loss {train_loss.detach().numpy()}, val loss: {test_loss.detach().numpy()}")
 
     plt.plot(train_loss_history,label="train loss")
     plt.plot(validation_loss_history,label="val loss")
@@ -130,14 +146,14 @@ def train(model, opt, x_train, y_train, x_test, y_test, epochs, batch_size):
     return model, train_loss_history, validation_loss_history
 
 if __name__ == "__main__":
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     n_qubits = 4
     depth = 10
     lr = 0.01
     n_points = 20
-    epochs = 700
+    epochs = 1000
     
     x_train, x_test, y_train, y_test = sin_dataset(dataset_size=n_points, test_size=0.25)
-
     fig, ax = plt.subplots()
     plt.plot(x_train, y_train, "o", label="training")
     plt.plot(x_test, y_test, "o", label="testing")
@@ -157,42 +173,17 @@ if __name__ == "__main__":
     scaler = MinMaxScaler(feature_range=(-1,1))
     y_train = scaler.fit_transform(y_train)
     y_test = scaler.transform(y_test)
-    
 
-    """
-    Currently this is my small working example for a feature map taking in data
-    of the form (batch_size, features). However, I encounter the error:
+    print("TRAINING")
+    model = Model(n_qubits=n_qubits, n_layers=depth,device=device)
+    no_drop_p = model.params
+    opt = optim.Adam(model.parameters(), lr=lr)
+    _, train_loss_hist, val_loss_hist = train(model=model, opt=opt, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test, epochs=epochs, batch_size=15)
 
-    line 70, in _unitary
-    cos_t = cos_t.repeat((2, 2, 1))
-            ^^^^^^^^^^^^^^^^^^^^^^^
-    RuntimeError: Number of dimensions of repeat dims can not be smaller than number of dimensions of tensor
-    """
-    def fm1(n_qubits):
-        ops = []
-        for i in range(n_qubits):
-            ops.append(pyq.RY(i))
-        return pyq.QuantumCircuit(n_qubits, ops)
-
-    n_qubits = 4
-    batch_size = 2
-    state = pyq.zero_state(n_qubits=n_qubits, batch_size=batch_size)
-    data = torch.rand(batch_size, n_qubits)
-    fm = fm1(n_qubits)
-    fm_out = fm(state, data)
-    print(fm_out)
-
-    #print(v.shape)
-    #fm_out = fm(pyq.zero_state(n_qubits=4, batch_size=1), v)
-    #hea = hea_ansatz(4, 1)
-    #params = {"theta_010": torch.rand(1), "theta_011": torch.rand(1), "theta_012":torch.rand(1), 
-    #          "theta_110": torch.rand(1), "theta_111": torch.rand(1), "theta_112": torch.rand(1),
-    #          "theta_210": torch.rand(1), "theta_211": torch.rand(1), "theta_212":torch.rand(1),
-    #          "theta_310": torch.rand(1), "theta_311": torch.rand(1), "theta_312":torch.rand(1)}
-    #hea_out = hea(pyq.zero_state(4), params)
-    #print("TRAINING")
-    #model = Model(n_qubits=n_qubits, n_layers=depth)
-    #print(model)
-    #print(model(torch.rand(1, 4)))
-    #opt = optim.Adam(model.parameters(), lr=lr)
-    #_, train_loss_hist, val_loss_hist = train(model=model, opt=opt, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test, epochs=epochs, batch_size=15)
+    print("DROPOUT TRAINING")
+    model = Model(n_qubits=n_qubits, n_layers=depth, dropout={"pg": 0.3, "pl": 0.1},device=device)
+    model.params = no_drop_p
+    drop_p = model.params
+    print(F"DO PARAMS MATCH: ", no_drop_p == drop_p)
+    opt = optim.Adam(model.parameters(), lr=lr)
+    _, train_loss_hist, val_loss_hist = train(model=model, opt=opt, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test, epochs=epochs, batch_size=15)
