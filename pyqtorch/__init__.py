@@ -16,7 +16,7 @@ from .noise import (
     AmplitudeDamping,
     BitFlip,
     Depolarizing,
-    GeneralizeAmplitudeDamping,
+    GeneralizedAmplitudeDamping,
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
