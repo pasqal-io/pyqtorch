@@ -399,9 +399,16 @@ def test_flip_gates(noisy_pauli_gates: Noise) -> None:
             )
         assert torch.allclose(output_state, expected_state.repeat(1, 1, batch_size))
     input_state: Tensor = random_state(n_qubits, batch_size)
-    assert torch.allclose(
-        noisy_pauli_gates(target, probability=0)(density_mat(input_state)), density_mat(input_state)
-    )
+    if noisy_pauli_gates == PauliChannel:
+        assert torch.allclose(
+            noisy_pauli_gates(target, probabilities=(0, 0, 0))(density_mat(input_state)),
+            density_mat(input_state),
+        )
+    else:
+        assert torch.allclose(
+            noisy_pauli_gates(target, probability=0)(density_mat(input_state)),
+            density_mat(input_state),
+        )
     if noisy_pauli_gates == BitFlip:
         assert torch.allclose(
             noisy_pauli_gates(target, probability=1)(density_mat(input_state)),
