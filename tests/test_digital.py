@@ -11,9 +11,9 @@ from torch import Tensor
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT, _dagger
-from pyqtorch.noise import BitFlip, Depolarizing, Noise, PauliChannel, PhaseFlip
+from pyqtorch.noise import AmplitudeDamping, BitFlip, Depolarizing, Noise, PauliChannel, PhaseFlip
 from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import Primitive, X, Y, Z
+from pyqtorch.primitive import I, Primitive, X, Y, Z
 from pyqtorch.utils import (
     ATOL,
     DensityMatrix,
@@ -309,6 +309,7 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     dm = density_mat(state)
     assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(dm, projector)
+    assert torch.allclose(dm.squeeze(), dm.squeeze() @ dm.squeeze())
     states = []
     projectors = []
     for batch in range(batch_size):
@@ -440,3 +441,40 @@ def test_flip_gates(noisy_pauli_gates: Noise) -> None:
                 + pz * density_mat(Z(target)(input_state))
             ),
         )
+
+
+def test_damping_gates() -> None:
+    n_qubits: int = torch.randint(low=1, high=8, size=(1,)).item()
+    target: int = random.choice([i for i in range(n_qubits)])
+    batch_size: int = torch.randint(low=1, high=5, size=(1,)).item()
+    state_0: Tensor = product_state("0")
+    state_1: Tensor = product_state("1")
+    dm_0: DensityMatrix = density_mat(state_0)
+    dm_1: DensityMatrix = density_mat(state_1)
+    if target == 0 or target == n_qubits - 1:
+        state_random: Tensor = random_state(n_qubits - 1)
+        dm_random: DensityMatrix = density_mat(state_random)
+        if target == 0:
+            dm_tot_0: DensityMatrix = torch.kron(dm_0, dm_random)
+            dm_tot_1: DensityMatrix = torch.kron(dm_1, dm_random)
+        else:
+            dm_tot_0, dm_tot_1 = torch.kron(dm_random, dm_0), torch.kron(dm_random, dm_1)
+    else:
+        state_random_1: Tensor = random_state(target)
+        state_random_2: Tensor = random_state(n_qubits - (target + 1))
+        dm_random_1: DensityMatrix = density_mat(state_random_1)
+        dm_random_2: DensityMatrix = density_mat(state_random_2)
+        dm_tot_0 = torch.kron(dm_random_1, torch.kron(dm_0, dm_random_2))
+        dm_tot_1 = torch.kron(dm_random_1, torch.kron(dm_1, dm_random_2))
+    dm_tot_0, dm_tot_1 = dm_tot_0.repeat(1, 1, batch_size), dm_tot_1.repeat(1, 1, batch_size)
+    rates: Tensor = torch.arange(0, 1, 10)
+    for rate in rates:
+        output_state: DensityMatrix = AmplitudeDamping(target, rate)(dm_tot_0)
+        assert output_state.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+        expected_state: DensityMatrix = I(target)(dm_tot_0)
+        assert torch.allclose(expected_state, output_state)
+    assert torch.allclose(AmplitudeDamping(target, rate=1)(dm_tot_1), X(target)(dm_tot_1))
+    state_rand: Tensor = random_state(n_qubits)
+    assert torch.allclose(
+        AmplitudeDamping(target, rate)(state_rand), density_mat(I(target)(state_rand))
+    )
