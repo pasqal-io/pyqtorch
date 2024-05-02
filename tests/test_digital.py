@@ -11,9 +11,9 @@ from torch import Tensor
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT, _dagger
-from pyqtorch.noise import BitFlip, Depolarizing, Noise, PhaseFlip
+from pyqtorch.noise import BitFlip, Depolarizing, Noise, PauliChannel, PhaseFlip
 from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import Primitive
+from pyqtorch.primitive import Primitive, X, Y, Z
 from pyqtorch.utils import (
     ATOL,
     DensityMatrix,
@@ -352,8 +352,8 @@ def test_operator_product(gate: Primitive) -> None:
     )
 
 
-@pytest.mark.parametrize("noisy_flip_gates", [BitFlip, PhaseFlip, Depolarizing])
-def test_flip_gates(noisy_flip_gates: Noise) -> None:
+@pytest.mark.parametrize("noisy_pauli_gates", [BitFlip, PhaseFlip, Depolarizing, PauliChannel])
+def test_flip_gates(noisy_pauli_gates: Noise) -> None:
     n_qubits: int = torch.randint(low=1, high=8, size=(1,)).item()
     target: int = random.choice([i for i in range(n_qubits)])
     qubits: Tensor = torch.arange(0, n_qubits)
@@ -361,24 +361,35 @@ def test_flip_gates(noisy_flip_gates: Noise) -> None:
     batch_size: int = torch.randint(low=1, high=5, size=(1,)).item()
     state_0s: Tensor = product_state("0" * n_qubits, batch_size)
     rho_0 = DensityMatrix(pyq.Projector(1, "0", "0").unitary())
-    probabilities: Tensor = torch.arange(0, 1, 10)
+    if noisy_pauli_gates == PauliChannel:
+        probabilities: Tensor = torch.rand((10, 3))
+        probabilities = probabilities / (
+            probabilities.sum(dim=1, keepdim=True) + torch.rand((1,)).item()
+        )
+    else:
+        probabilities = torch.arange(0, 1, 10)
     for probability in probabilities:
-        output_state: DensityMatrix = noisy_flip_gates(target, probability)(state_0s)
+        output_state: DensityMatrix = noisy_pauli_gates(target, probability)(state_0s)
         assert output_state.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
-        if noisy_flip_gates == pyq.BitFlip:
+        if noisy_pauli_gates == BitFlip:
             expected_state = DensityMatrix(
                 torch.tensor([[[1 - probability], [0]], [[0], [probability]]], dtype=torch.cdouble)
             )
-        elif noisy_flip_gates == pyq.PhaseFlip:
+        elif noisy_pauli_gates == PhaseFlip:
             expected_state = DensityMatrix(
                 torch.tensor([[[1], [0]], [[0], [0]]], dtype=torch.cdouble)
             )
-        else:
+        elif noisy_pauli_gates == Depolarizing:
             expected_state = DensityMatrix(
                 torch.tensor(
                     [[[1 - (2 * probability) / 3], [0]], [[0], [(2 * probability) / 3]]],
                     dtype=torch.cdouble,
                 )
+            )
+        elif noisy_pauli_gates == PauliChannel:
+            px, py = probability[0], probability[1]
+            expected_state = DensityMatrix(
+                torch.tensor([[[1 - (px + py)], [0]], [[0], [px + py]]], dtype=torch.cdouble)
             )
         for qubit in qubits:
             expected_state = torch.where(
@@ -389,26 +400,36 @@ def test_flip_gates(noisy_flip_gates: Noise) -> None:
         assert torch.allclose(output_state, expected_state.repeat(1, 1, batch_size))
     input_state: Tensor = random_state(n_qubits, batch_size)
     assert torch.allclose(
-        noisy_flip_gates(target, probability=0)(density_mat(input_state)), density_mat(input_state)
+        noisy_pauli_gates(target, probability=0)(density_mat(input_state)), density_mat(input_state)
     )
-    if noisy_flip_gates == pyq.BitFlip:
+    if noisy_pauli_gates == BitFlip:
         assert torch.allclose(
-            noisy_flip_gates(target, probability=1)(density_mat(input_state)),
-            density_mat(pyq.X(target)(input_state)),
+            noisy_pauli_gates(target, probability=1)(density_mat(input_state)),
+            density_mat(X(target)(input_state)),
         )
-    elif noisy_flip_gates == pyq.PhaseFlip:
+    elif noisy_pauli_gates == PhaseFlip:
         assert torch.allclose(
-            noisy_flip_gates(target, probability=1)(density_mat(input_state)),
-            density_mat(pyq.Z(target)(input_state)),
+            noisy_pauli_gates(target, probability=1)(density_mat(input_state)),
+            density_mat(Z(target)(input_state)),
         )
-    else:
+    elif noisy_pauli_gates == Depolarizing:
         assert torch.allclose(
-            noisy_flip_gates(target, probability=1)(density_mat(input_state)),
+            noisy_pauli_gates(target, probability=1)(density_mat(input_state)),
             1
             / 3
             * (
-                density_mat(pyq.Z(target)(input_state))
-                + density_mat(pyq.X(target)(input_state))
-                + density_mat(pyq.Y(target)(input_state))
+                density_mat(Z(target)(input_state))
+                + density_mat(X(target)(input_state))
+                + density_mat(Y(target)(input_state))
+            ),
+        )
+    elif noisy_pauli_gates == PauliChannel:
+        px, py, pz = 1 / 3, 1 / 3, 1 / 3
+        assert torch.allclose(
+            noisy_pauli_gates(target, probabilities=(px, py, pz))(density_mat(input_state)),
+            (
+                px * density_mat(X(target)(input_state))
+                + py * density_mat(Y(target)(input_state))
+                + pz * density_mat(Z(target)(input_state))
             ),
         )
