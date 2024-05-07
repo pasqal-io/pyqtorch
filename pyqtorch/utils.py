@@ -175,7 +175,7 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
     """
     Compute the Kronecker product of two operators.
 
-    This helps prevent errors related to the shape of the operators
+    Prevents errors related to the shape of the operators
     [2**n_qubits, 2**n_qubits, batch_size] when simply using `torch.kron()`.
     Use of `.contiguous()` to avoid errors related to the `torch.kron()` of a transposing tensor
 
