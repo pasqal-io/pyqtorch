@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
-from torch import Tensor, complex128, bernoulli, tensor
+from torch import Tensor, bernoulli, complex128, tensor
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
@@ -14,7 +14,9 @@ logger = getLogger(__name__)
 
 
 class QuantumCircuit(Module):
-    def __init__(self, n_qubits: int, operations: list[Module], dropout: dict[str, torch_dtype] = {}):
+    def __init__(
+        self, n_qubits: int, operations: list[Module], dropout: dict[str, str | float] = {}
+    ):
         super().__init__()
         self.n_qubits = n_qubits
         self.operations = ModuleList(operations)
@@ -59,18 +61,79 @@ class QuantumCircuit(Module):
         return self.forward(state, values)
 
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
+        if self.dropout:
+            mode = self.dropout["mode"]
+            assert mode is str
+            dropout_mode = self.select_dropout_mode(mode)
+            state = dropout_mode(state, values)
+
+        else:
+            for op in self.operations:
+                state = op(state, values)
+
+        return state
+
+    def select_dropout_mode(self, mode: str) -> Callable:
+        modes = {
+            "rotational": self.rotational_dropout,
+            "entangling": self.entangling_dropout,
+            "canonical_fwd": self.canonical_fwd_dropout,
+        }
+        return modes[mode]
+
+    def rotational_dropout(
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+    ) -> State:
         for op in self.operations:
-            if (bool(self.dropout)) & (hasattr(op, "param_name")):
+            if hasattr(op, "param_name"):
                 if values[op.param_name].requires_grad:
-                    keep = bool(1-bernoulli(tensor(self.dropout["pg"]*self.dropout["pl"])))
+                    keep = 1 - bernoulli(tensor(self.dropout["pg"] * self.dropout["pl"]))  # type: ignore
                     if keep:
                         state = op(state, values)
-                
+
                 else:
                     state = op(state, values)
-            
             else:
                 state = op(state, values)
+
+        return state
+
+    def entangling_dropout(
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+    ) -> State:
+        for op in self.operations:
+            if not (hasattr(op, "param_name")):
+                keep = bool(1 - bernoulli(tensor(self.dropout["pg"] * self.dropout["pl"])))  # type: ignore
+                if keep:
+                    state = op(state, values)
+
+                else:
+                    state = op(state, values)
+            else:
+                state = op(state, values)
+
+        return state
+
+    def canonical_fwd_dropout(
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+    ) -> State:
+        entanglers_to_drop = dict.fromkeys(range(state.ndim - 1), 0)
+        for op in self.operations:
+            if hasattr(op, "param_name"):
+                if values[op.param_name].requires_grad:
+                    keep = bool(1 - bernoulli(tensor(self.dropout["pg"] * self.dropout["pl"])))  # type: ignore
+                    if keep:
+                        state = op(state, values)
+                    else:
+                        entanglers_to_drop[op.target] = 1
+                else:
+                    state = op(state, values)
+            else:
+                if entanglers_to_drop[op.control[0]] == 1:
+                    entanglers_to_drop[op.control[0]] = 0
+                else:
+                    state = op(state, values)
+
         return state
 
     @property
