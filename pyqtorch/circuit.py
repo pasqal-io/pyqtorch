@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+from functools import reduce
 from logging import getLogger
-from typing import Any, Iterator
+from operator import add
+from typing import Any, Iterator, Tuple
 
-from torch import Tensor, complex128
+from torch import Tensor, bmm, complex128, ones_like
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
-from pyqtorch.utils import DiffMode, State, inner_prod, zero_state
+from pyqtorch.apply import apply_operator
+from pyqtorch.matrices import _dagger
+from pyqtorch.primitive import Primitive
+from pyqtorch.utils import DiffMode, State, batch_first, batch_last, inner_prod, zero_state
 
 logger = getLogger(__name__)
 
@@ -114,3 +119,73 @@ def expectation(
         return AdjointExpectation.apply(circuit, observable, state, values.keys(), *values.values())
     else:
         raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")
+
+
+class Add(QuantumCircuit):
+    def __init__(self, n_qubits: int, operations: list[Module]):
+        """The 'add' operation applies all 'operations' to 'state' and returns the sum of states."""
+        super().__init__(n_qubits=n_qubits, operations=operations)
+
+    def forward(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+        return reduce(add, (op(state, values) for op in self.operations))
+
+
+class Merge(QuantumCircuit):
+    def __init__(
+        self,
+        operations: list[Module],
+        qubits: Tuple[int, ...],
+        n_qubits: int,
+    ):
+        """
+        Merge a sequence of single qubit operations acting on the same qubit into a single
+        einsum operation.
+
+        Arguments:
+            operations: A list of single qubit operations.
+            qubits: The target qubit.
+            n_qubits: The number of qubits in the full system.
+
+        """
+        super().__init__(n_qubits, operations)
+        self.qubits = qubits
+
+    def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
+        batch_size = state.shape[-1]
+        return apply_operator(
+            state, self.unitary(values, batch_size), self.qubits, self.n_qubits, batch_size
+        )
+
+    def unitary(self, values: dict[str, Tensor] | None, batch_size: int) -> Tensor:
+        def expand(operator: Tensor) -> Tensor:
+            """In case we have a sequence of batched parametric gates mixed with primitive gates,
+            we adjust the batch_dim of the primitive gates to match."""
+            return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator
+
+        # We reverse the list of tensors here since matmul is not commutative.
+        return batch_last(
+            reduce(
+                bmm,
+                (batch_first(expand(op.unitary(values))) for op in reversed(self.operations)),
+            )
+        )
+
+
+class Scale(QuantumCircuit):
+    def __init__(self, n_qubits: int, param_name: str, operation: Primitive):
+        super().__init__(n_qubits, [operation])
+        self.param_name = param_name
+        self.qubit_support = operation.qubit_support
+
+    def forward(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+        return apply_operator(state, self.unitary(values), self.qubit_support, self.n_qubits)
+
+    def unitary(self, values: dict[str, Tensor]) -> Tensor:
+        thetas = values[self.param_name]
+        return thetas * self.operations[0].unitary(values)
+
+    def dagger(self, values: dict[str, Tensor]) -> Tensor:
+        return _dagger(self.unitary(values))
+
+    def jacobian(self, values: dict[str, Tensor]) -> Tensor:
+        return values[self.param_name] * ones_like(self.unitary(values))
