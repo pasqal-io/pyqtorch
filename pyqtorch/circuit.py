@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import reduce
 from logging import getLogger
 from operator import add
-from typing import Any, Iterator, Tuple
+from typing import Any, Iterator
 
 from torch import Tensor, bmm, complex128, ones_like
 from torch import device as torch_device
@@ -122,7 +122,6 @@ class Merge(QuantumCircuit):
         self,
         n_qubits: int,
         operations: list[Module],
-        qubits: Tuple[int, ...],    
     ):
         """
         Merge a sequence of single qubit operations acting on the same qubit into a single
@@ -134,8 +133,18 @@ class Merge(QuantumCircuit):
             n_qubits: The number of qubits in the full system.
 
         """
-        super().__init__(n_qubits, operations)
-        self.qubits = qubits
+
+        if (
+            isinstance(operations, (list, ModuleList))
+            and all([isinstance(op, (Primitive, Parametric)) for op in operations])
+            and len(list(set([op.qubit_support[0] for op in operations]))) == 1
+        ):
+            # We want all operations to act on the same qubit
+
+            super().__init__(n_qubits, operations)
+            self.qubits = operations[0].qubit_support
+        else:
+            raise TypeError(f"Require all operations to act on a single qubit. Got: {operations}.")
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
         batch_size = state.shape[-1]
@@ -180,12 +189,3 @@ class Scale(QuantumCircuit):
 
     def jacobian(self, values: dict[str, Tensor]) -> Tensor:
         return values[self.param_name] * ones_like(self.unitary(values))
-
-
-def has_same_support(operations: list[Module]) -> bool:
-    return (
-        isinstance(operations, (list, ModuleList))
-        and all([isinstance(op, (Primitive, Parametric)) for op in operations])
-        and len(list(set([op.qubitsupport[0] for op in operations]))) == 1
-        # We want all operations to act on the same qubit
-    )

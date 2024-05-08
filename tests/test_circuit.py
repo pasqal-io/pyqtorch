@@ -154,9 +154,9 @@ def test_add() -> None:
 
 
 def test_merge() -> None:
-    ops = [pyq.RX(0, 'theta_0'), pyq.RY(0, 'theta_1'), pyq.RX(0, 'theta_2')]
+    ops = [pyq.RX(0, "theta_0"), pyq.RY(0, "theta_1"), pyq.RX(0, "theta_2")]
     circ = pyq.QuantumCircuit(2, ops)
-    mergecirc = pyq.Merge(2, ops, ops[0].qubit_support)
+    mergecirc = pyq.Merge(2, ops)
     state = pyq.random_state(2)
     values = {f"theta_{i}": torch.rand(1) for i in range(3)}
     assert torch.allclose(circ(state, values), mergecirc(state, values))
