@@ -19,10 +19,10 @@ from pyqtorch.utils import DiffMode, State, batch_first, batch_last, inner_prod,
 logger = getLogger(__name__)
 
 
-class QuantumCircuit(Module):
-    def __init__(self, n_qubits: int, operations: list[Module]):
+class Sequence(Module):
+    def __init__(self, operations: list[Module]):
+        """A generic container for pyqtorch operations"""
         super().__init__()
-        self.n_qubits = n_qubits
         self.operations = ModuleList(operations)
         self._device = torch_device("cpu")
         self._dtype = complex128
@@ -38,19 +38,8 @@ class QuantumCircuit(Module):
     def __key(self) -> tuple:
         return (self.n_qubits,)
 
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, QuantumCircuit):
-            return self.__key() == other.__key()
-        else:
-            raise NotImplementedError(f"Unable to compare QuantumCircuit to {type(other)}.")
-
     def __hash__(self) -> int:
         return hash(self.__key())
-
-    def run(self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}) -> State:
-        if state is None:
-            state = self.init_state()
-        return self.forward(state, values)
 
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
         for op in self.operations:
@@ -65,15 +54,27 @@ class QuantumCircuit(Module):
     def dtype(self) -> torch_dtype:
         return self._dtype
 
-    def init_state(self, batch_size: int = 1) -> Tensor:
-        return zero_state(self.n_qubits, batch_size, device=self.device, dtype=self.dtype)
-
     def to(self, *args: Any, **kwargs: Any) -> QuantumCircuit:
         self.operations = ModuleList([op.to(*args, **kwargs) for op in self.operations])
         if len(self.operations) > 0:
             self._device = self.operations[0].device
             self._dtype = self.operations[0].dtype
         return self
+
+
+class QuantumCircuit(Sequence):
+    def __init__(self, n_qubits: int, operations: list[Module]):
+        """A QuantumCircuit defining a register / number of qubits of the full system."""
+        super().__init__(operations)
+        self.n_qubits = n_qubits
+
+    def run(self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}) -> State:
+        if state is None:
+            state = self.init_state()
+        return self.forward(state, values)
+
+    def init_state(self, batch_size: int = 1) -> Tensor:
+        return zero_state(self.n_qubits, batch_size, device=self.device, dtype=self.dtype)
 
 
 def expectation(
@@ -108,19 +109,18 @@ def expectation(
         raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")
 
 
-class Add(QuantumCircuit):
-    def __init__(self, n_qubits: int, operations: list[Module]):
+class Add(Sequence):
+    def __init__(self, operations: list[Module]):
         """The 'add' operation applies all 'operations' to 'state' and returns the sum of states."""
-        super().__init__(n_qubits=n_qubits, operations=operations)
+        super().__init__(operations=operations)
 
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
         return reduce(add, (op(state, values) for op in self.operations))
 
 
-class Merge(QuantumCircuit):
+class Merge(Sequence):
     def __init__(
         self,
-        n_qubits: int,
         operations: list[Module],
     ):
         """
@@ -141,7 +141,7 @@ class Merge(QuantumCircuit):
         ):
             # We want all operations to act on the same qubit
 
-            super().__init__(n_qubits, operations)
+            super().__init__(operations)
             self.qubits = operations[0].qubit_support
         else:
             raise TypeError(f"Require all operations to act on a single qubit. Got: {operations}.")
@@ -149,7 +149,9 @@ class Merge(QuantumCircuit):
     def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
         batch_size = state.shape[-1]
         return apply_operator(
-            state, self.unitary(values, batch_size), self.qubits, self.n_qubits, batch_size
+            state,
+            self.unitary(values, batch_size),
+            self.qubits,
         )
 
     def unitary(self, values: dict[str, Tensor] | None, batch_size: int) -> Tensor:
@@ -171,14 +173,14 @@ class Merge(QuantumCircuit):
         )
 
 
-class Scale(QuantumCircuit):
-    def __init__(self, n_qubits: int, param_name: str, operation: Primitive):
-        super().__init__(n_qubits, [operation])
+class Scale(Sequence):
+    def __init__(self, param_name: str, operation: Primitive):
+        super().__init__([operation])
         self.param_name = param_name
         self.qubit_support = operation.qubit_support
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
-        return apply_operator(state, self.unitary(values), self.qubit_support, self.n_qubits)
+        return apply_operator(state, self.unitary(values), self.qubit_support)
 
     def unitary(self, values: dict[str, Tensor]) -> Tensor:
         thetas = values[self.param_name]
