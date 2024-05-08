@@ -7,8 +7,6 @@ import torch
 from torch import Tensor
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
-from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import Primitive
 
 State = Tensor
 Operator = Tensor
@@ -42,7 +40,7 @@ class StrEnum(str, Enum):
 
 class DiffMode(StrEnum):
     """
-    Which Differentiation engine to use.
+    Which Differentiation method to use.
 
     Options: Automatic Differentiation -  Using torch.autograd.
              Adjoint Differentiation   - An implementation of "Efficient calculation of gradients
@@ -204,12 +202,3 @@ def batch_last(operator: Tensor) -> Tensor:
     """
     undo_perm = (1, 2, 0)
     return torch.permute(operator, undo_perm)
-
-
-def has_same_support(operations: list[torch.nn.Module]) -> bool:
-    return (
-        isinstance(operations, (list, torch.nn.ModuleList))
-        and all([isinstance(op, (Primitive, Parametric)) for op in operations])
-        and len(list(set([op.qubitsupport[0] for op in operations]))) == 1
-        # We want all operations to act on the same qubit
-    )

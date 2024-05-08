@@ -136,3 +136,18 @@ def test_adjoint_duplicate_params() -> None:
         exp_adjoint, tuple(values.values()), torch.ones_like(exp_adjoint)
     )[0]
     assert torch.allclose(grad_ad, grad_adjoint)
+
+
+def test_scale() -> None:
+    state = pyq.zero_state(2)
+    values = {"scale": torch.rand(1)}
+    wf = values["scale"] * pyq.QuantumCircuit(2, [pyq.X(0)])(state, {})
+    scaledwf = pyq.Scale(2, "scale", pyq.X(0))(state, values)
+    assert torch.allclose(wf, scaledwf)
+
+
+def test_add() -> None:
+    x = pyq.X(0)
+    z = pyq.Z(1)
+    state = pyq.zero_state(2)
+    assert torch.allclose(pyq.Add(2, [x, z])(state), x(state) + z(state))

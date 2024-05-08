@@ -12,6 +12,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import _dagger
+from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import DiffMode, State, batch_first, batch_last, inner_prod, zero_state
 
@@ -30,17 +31,6 @@ class QuantumCircuit(Module):
                 self._device = next(iter(set((op.device for op in self.operations))))
             except StopIteration:
                 pass
-
-    def __mul__(self, other: Module | QuantumCircuit) -> QuantumCircuit:
-        n_qubits = max(self.n_qubits, other.n_qubits)
-        if isinstance(other, QuantumCircuit):
-            return QuantumCircuit(n_qubits, self.operations.extend(other.operations))
-
-        elif isinstance(other, Module):
-            return QuantumCircuit(n_qubits, self.operations.append(other))
-
-        else:
-            raise ValueError(f"Cannot compose {type(self)} with {type(other)}")
 
     def __iter__(self) -> Iterator:
         return iter(self.operations)
@@ -77,9 +67,6 @@ class QuantumCircuit(Module):
 
     def init_state(self, batch_size: int = 1) -> Tensor:
         return zero_state(self.n_qubits, batch_size, device=self.device, dtype=self.dtype)
-
-    def reverse(self) -> QuantumCircuit:
-        return QuantumCircuit(self.n_qubits, ModuleList(list(reversed(self.operations))))
 
     def to(self, *args: Any, **kwargs: Any) -> QuantumCircuit:
         self.operations = ModuleList([op.to(*args, **kwargs) for op in self.operations])
@@ -126,7 +113,7 @@ class Add(QuantumCircuit):
         """The 'add' operation applies all 'operations' to 'state' and returns the sum of states."""
         super().__init__(n_qubits=n_qubits, operations=operations)
 
-    def forward(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+    def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
         return reduce(add, (op(state, values) for op in self.operations))
 
 
@@ -160,7 +147,11 @@ class Merge(QuantumCircuit):
         def expand(operator: Tensor) -> Tensor:
             """In case we have a sequence of batched parametric gates mixed with primitive gates,
             we adjust the batch_dim of the primitive gates to match."""
-            return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator
+            return (
+                operator.repeat(1, 1, batch_size)
+                if operator.shape != (2, 2, batch_size)
+                else operator
+            )
 
         # We reverse the list of tensors here since matmul is not commutative.
         return batch_last(
@@ -177,7 +168,7 @@ class Scale(QuantumCircuit):
         self.param_name = param_name
         self.qubit_support = operation.qubit_support
 
-    def forward(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+    def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
         return apply_operator(state, self.unitary(values), self.qubit_support, self.n_qubits)
 
     def unitary(self, values: dict[str, Tensor]) -> Tensor:
@@ -189,3 +180,12 @@ class Scale(QuantumCircuit):
 
     def jacobian(self, values: dict[str, Tensor]) -> Tensor:
         return values[self.param_name] * ones_like(self.unitary(values))
+
+
+def has_same_support(operations: list[Module]) -> bool:
+    return (
+        isinstance(operations, (list, ModuleList))
+        and all([isinstance(op, (Primitive, Parametric)) for op in operations])
+        and len(list(set([op.qubitsupport[0] for op in operations]))) == 1
+        # We want all operations to act on the same qubit
+    )
