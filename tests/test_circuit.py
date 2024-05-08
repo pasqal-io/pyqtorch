@@ -142,7 +142,7 @@ def test_scale() -> None:
     state = pyq.zero_state(2)
     values = {"scale": torch.rand(1)}
     wf = values["scale"] * pyq.QuantumCircuit(2, [pyq.X(0)])(state, {})
-    scaledwf = pyq.Scale("scale", pyq.X(0))(state, values)
+    scaledwf = pyq.Scale([pyq.X(0)], "scale")(state, values)
     assert torch.allclose(wf, scaledwf)
 
 

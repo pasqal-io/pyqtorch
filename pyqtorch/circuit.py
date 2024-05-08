@@ -5,13 +5,12 @@ from logging import getLogger
 from operator import add
 from typing import Any, Iterator
 
-from torch import Tensor, bmm, complex128, ones_like
+from torch import Tensor, bmm, complex128
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import _dagger
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import DiffMode, State, batch_first, batch_last, inner_prod, zero_state
@@ -174,20 +173,9 @@ class Merge(Sequence):
 
 
 class Scale(Sequence):
-    def __init__(self, param_name: str, operation: Primitive):
-        super().__init__([operation])
+    def __init__(self, operations: list[Module], param_name: str):
+        super().__init__(operations)
         self.param_name = param_name
-        self.qubit_support = operation.qubit_support
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
-        return apply_operator(state, self.unitary(values), self.qubit_support)
-
-    def unitary(self, values: dict[str, Tensor]) -> Tensor:
-        thetas = values[self.param_name]
-        return thetas * self.operations[0].unitary(values)
-
-    def dagger(self, values: dict[str, Tensor]) -> Tensor:
-        return _dagger(self.unitary(values))
-
-    def jacobian(self, values: dict[str, Tensor]) -> Tensor:
-        return values[self.param_name] * ones_like(self.unitary(values))
+        return values[self.param_name] * super().forward(state, values)
