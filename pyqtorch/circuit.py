@@ -35,11 +35,8 @@ class Sequence(Module):
     def __iter__(self) -> Iterator:
         return iter(self.operations)
 
-    def __key(self) -> tuple:
-        return (self.n_qubits,)
-
     def __hash__(self) -> int:
-        return hash(self.__key())
+        return hash(reduce(add, (hash(op) for op in self.operations)))
 
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
         for op in self.operations:
@@ -72,6 +69,9 @@ class QuantumCircuit(Sequence):
         if state is None:
             state = self.init_state()
         return self.forward(state, values)
+
+    def __hash__(self) -> int:
+        return hash(reduce(add, (hash(op) for op in self.operations))) + hash(self.n_qubits)
 
     def init_state(self, batch_size: int = 1) -> Tensor:
         return zero_state(self.n_qubits, batch_size, device=self.device, dtype=self.dtype)
