@@ -120,9 +120,9 @@ class Add(QuantumCircuit):
 class Merge(QuantumCircuit):
     def __init__(
         self,
-        operations: list[Module],
-        qubits: Tuple[int, ...],
         n_qubits: int,
+        operations: list[Module],
+        qubits: Tuple[int, ...],    
     ):
         """
         Merge a sequence of single qubit operations acting on the same qubit into a single
