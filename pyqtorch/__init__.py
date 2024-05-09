@@ -47,6 +47,7 @@ from .utils import (
     inner_prod,
     is_normalized,
     overlap,
+    product_state,
     random_state,
     uniform_state,
     zero_state,
