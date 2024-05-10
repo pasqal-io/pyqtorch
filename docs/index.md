@@ -256,7 +256,7 @@ DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 COMPLEX_DTYPE = torch.complex64
 REAL_DTYPE = torch.float32
 PLOT = False
-LEARNING_RATE = 0.01
+LEARNING_RATE = 0.1
 N_QUBITS = 4
 DEPTH = 3
 VARIABLES = ("x", "y")
@@ -325,7 +325,7 @@ feature_map = [RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
 ]
 ansatz, params = hea(N_QUBITS, DEPTH, "theta")
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-observable = Add([Z(i) for i in range(N_QUBITS)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+total_magnetization = Add([Z(i) for i in range(N_QUBITS)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
@@ -335,7 +335,7 @@ def exp_fn(inputs: Tensor) -> Tensor:
         circ,
         state,
         {**params, **{VARIABLES[X_POS]: inputs[:, X_POS], VARIABLES[Y_POS]: inputs[:, Y_POS]}},
-        observable,
+        total_magnetization,
         DIFF_MODE,
     )
 
@@ -360,7 +360,7 @@ for _ in range(N_EPOCHS):
 
 dqc_sol = exp_fn(domain_torch.to(DEVICE)).reshape(N_POINTS, N_POINTS).detach().cpu().numpy()
 analytic_sol = (
-    (exp(-np.pi * domain_torch[:, 0]) * sin(np.pi * domain_torch[:, 1]))
+    (exp(-np.pi * domain_torch[:, X_POS]) * sin(np.pi * domain_torch[:, Y_POS]))
     .reshape(N_POINTS, N_POINTS)
     .T
 ).numpy()
