@@ -184,10 +184,19 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
         op2 (Tensor): The second input tensor.
 
     Returns:
-        Tensor: The resulting tensor after applying the Kronecker product.
-
+        Tensor: The resulting tensor after applying the Kronecker product
     """
-    return batch_last(torch.kron(batch_first(op1).contiguous(), batch_first(op2).contiguous()))
+    batch_size_1, batch_size_2 = op1.size(2), op2.size(2)
+    if batch_size_1 > batch_size_2:
+        op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
+    elif batch_size_2 > batch_size_1:
+        op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
+    kron_product = torch.einsum(
+        "bik,bjl->bijkl", batch_first(op1).contiguous(), batch_first(op2).contiguous()
+    )
+    return batch_last(
+        kron_product.reshape(op1.size(2), op1.size(1) * op2.size(1), op1.size(0) * op2.size(0))
+    )
 
 
 def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
