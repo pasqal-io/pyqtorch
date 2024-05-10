@@ -168,3 +168,9 @@ def test_merge() -> None:
     state = pyq.random_state(2)
     values = {f"theta_{i}": torch.rand(1) for i in range(3)}
     assert torch.allclose(circ(state, values), mergecirc(state, values))
+
+
+@pytest.mark.xfail(reason="Can only merge gate acting on the same qubit support.")
+def test_merge_expect_fail() -> None:
+    ops = [pyq.RX(0, "theta_0"), pyq.RY(1, "theta_1")]
+    mergecirc = pyq.Merge(ops)
