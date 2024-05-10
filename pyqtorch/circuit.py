@@ -173,9 +173,22 @@ class Merge(Sequence):
 
 
 class Scale(Sequence):
-    def __init__(self, operations: list[Module], param_name: str):
-        super().__init__(operations)
+    def __init__(self, operations: Sequence | Primitive, param_name: str):
+        super().__init__(
+            operations.operations if isinstance(operations, Sequence) else [operations]
+        )
         self.param_name = param_name
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
-        return values[self.param_name] * super().forward(state, values)
+        return (
+            values[self.param_name] * super().forward(state, values)
+            if isinstance(self.operations, Sequence)
+            else self._forward(state, values)
+        )
+
+    def _forward(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+        return apply_operator(state, self._unitary(values), self.operations[0].qubit_support)
+
+    def _unitary(self, values: dict[str, Tensor]) -> Tensor:
+        thetas = values[self.param_name]
+        return thetas * self.operations[0].unitary(values)

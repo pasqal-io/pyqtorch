@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 import pytest
 import torch
 
@@ -138,12 +140,18 @@ def test_adjoint_duplicate_params() -> None:
     assert torch.allclose(grad_ad, grad_adjoint)
 
 
-def test_scale() -> None:
-    state = pyq.zero_state(2)
+@pytest.mark.parametrize("fn", [pyq.X, pyq.Z, pyq.Y])
+def test_scale(fn: pyq.primitive.Primitive) -> None:
+    n_qubits = torch.randint(low=1, high=4, size=(1,)).item()
+    target = random.choice([i for i in range(n_qubits)])
+    state = pyq.random_state(n_qubits)
+    gate = fn(target)
     values = {"scale": torch.rand(1)}
-    wf = values["scale"] * pyq.QuantumCircuit(2, [pyq.X(0)])(state, {})
-    scaledwf = pyq.Scale([pyq.X(0)], "scale")(state, values)
-    assert torch.allclose(wf, scaledwf)
+    wf = values["scale"] * pyq.QuantumCircuit(2, [gate])(state, {})
+    scaledwf_primitive = pyq.Scale(gate, "scale")(state, values)
+    scaledwf_composite = pyq.Scale(pyq.Sequence([gate]), "scale")(state, values)
+    assert torch.allclose(wf, scaledwf_primitive)
+    assert torch.allclose(wf, scaledwf_composite)
 
 
 def test_add() -> None:
