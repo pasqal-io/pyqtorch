@@ -3,17 +3,17 @@ from __future__ import annotations
 from functools import reduce
 from logging import getLogger
 from operator import add
-from typing import Any, Iterator
+from typing import Any, Generator, Iterator, NoReturn
 
-from torch import Tensor, bmm, complex128, ones_like
+from torch import Tensor, bmm, complex128, ones_like, rand
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import _dagger
-from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import Primitive
+from pyqtorch.parametric import RX, RY, Parametric
+from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import DiffMode, State, batch_first, batch_last, inner_prod, zero_state
 
 logger = getLogger(__name__)
@@ -207,3 +207,25 @@ class Scale(Sequence):
 
     def jacobian(self, values: dict[str, Tensor]) -> Tensor:
         return values[self.param_name] * ones_like(self.unitary(values))
+
+
+def hea(n_qubits: int, n_layers: int, param_name: str) -> tuple[ModuleList, ParameterDict]:
+    def _idx() -> Generator[int, Any, NoReturn]:
+        i = 0
+        while True:
+            yield i
+            i += 1
+
+    def idxer() -> Generator[int, Any, None]:
+        yield from _idx()
+
+    idx = idxer()
+    ops = []
+    for _ in range(n_layers):
+        layer = []
+        for i in range(n_qubits):
+            layer += [Merge([fn(i, f"{param_name}_{next(idx)}") for fn in [RX, RY, RX]])]
+        ops += layer
+        ops += [Sequence([CNOT(i % n_qubits, (i + 1) % n_qubits) for i in range(n_qubits)])]
+    params = ParameterDict({f"theta_{n}": rand(1, requires_grad=True) for n in range(next(idx))})
+    return ops, params

@@ -22,20 +22,11 @@ class Primitive(torch.nn.Module):
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
 
-    def __key(self) -> tuple:
-        return self.qubit_support
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.__key() == other.__key()
-        else:
-            return False
-
     def __hash__(self) -> int:
         return hash(self.qubit_support)
 
     def extra_repr(self) -> str:
-        return f"qubit_support={self.qubit_support}"
+        return f"{self.qubit_support}"
 
     @property
     def param_type(self) -> None:

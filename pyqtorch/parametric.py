@@ -37,6 +37,9 @@ class Parametric(Primitive):
 
         self.parse_values = parse_tensor if param_name == "" else parse_values
 
+    def extra_repr(self) -> str:
+        return f"{self.qubit_support}, {self.param_name}"
+
     def __hash__(self) -> int:
         return hash(self.qubit_support) + hash(self.param_name)
 

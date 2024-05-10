@@ -161,6 +161,7 @@ from operator import add
 from functools import reduce
 import torch
 import pyqtorch as pyq
+from pyqtorch.circuit import hea
 from pyqtorch.utils import DiffMode
 from pyqtorch.parametric import Parametric
 import matplotlib.pyplot as plt
@@ -178,52 +179,41 @@ fn = lambda x, degree: .05 * reduce(add, (torch.cos(i*x) + torch.sin(i*x) for i 
 x = torch.linspace(0, 10, 100)
 y = fn(x, 5)
 
-
-def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
-    ops = []
-    for l in range(n_layers):
-        ops += [pyq.RX(i, f'{param_name}_0_{l}_{i}') for i in range(n_qubits)]
-        ops += [pyq.RY(i, f'{param_name}_1_{l}_{i}') for i in range(n_qubits)]
-        ops += [pyq.RX(i, f'{param_name}_2_{l}_{i}') for i in range(n_qubits)]
-        ops += [pyq.CNOT(i % n_qubits, (i+1) % n_qubits) for i in range(n_qubits)]
-    return ops
-
 n_qubits = 5
 n_layers = 3
 diff_mode = DiffMode.ADJOINT
 # Lets define a feature map to encode our 'x' values
 feature_map = [pyq.RX(i, f'x') for i in range(n_qubits)]
 # To fit the function, we define a hardware-efficient ansatz with tunable parameters
-ansatz = hea(n_qubits, n_layers, 'theta')
+ansatz, params = hea(n_qubits, n_layers, 'theta')
 observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
-param_dict = torch.nn.ParameterDict({op.param_name: torch.rand(1, requires_grad=True) for op in ansatz if isinstance(op, Parametric)})
 circ = pyq.QuantumCircuit(n_qubits, feature_map + ansatz)
 # Lets move all necessary components to the DEVICE
 circ = circ.to(device=DEVICE, dtype=COMPLEX_DTYPE)
 observable = observable.to(device=DEVICE, dtype=COMPLEX_DTYPE)
-param_dict = param_dict.to(device=DEVICE, dtype=REAL_DTYPE)
+params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 x, y = x.to(device=DEVICE, dtype=REAL_DTYPE), y.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
-def exp_fn(param_dict: dict[str, torch.Tensor], inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-    return pyq.expectation(circ, state, {**param_dict,**inputs}, observable, diff_mode)
+def exp_fn(params: dict[str, torch.Tensor], inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    return pyq.expectation(circ, state, {**params,**inputs}, observable, diff_mode)
 
 with torch.no_grad():
-    y_init = exp_fn(param_dict, {'x': x})
+    y_init = exp_fn(params, {'x': x})
 
 # We need to set 'foreach' False since Adam doesnt support float64 on CUDA devices
-optimizer = torch.optim.Adam(param_dict.values(), lr=.01, foreach=False)
+optimizer = torch.optim.Adam(params.values(), lr=.01, foreach=False)
 epochs = 300
 
 for epoch in range(epochs):
     optimizer.zero_grad()
-    y_pred = exp_fn(param_dict, {'x': x})
+    y_pred = exp_fn(params, {'x': x})
     loss = mse_loss(y, y_pred)
     loss.backward()
     optimizer.step()
 
 with torch.no_grad():
-    y_final = exp_fn(param_dict, {'x': x})
+    y_final = exp_fn(params, {'x': x})
 
 plt.plot(x.numpy(), y.numpy(), label="truth")
 plt.plot(x.numpy(), y_init.numpy(), label="initial")
@@ -255,8 +245,8 @@ import numpy as np
 import torch
 from torch import Tensor, exp, linspace, ones_like, optim, rand, sin, tensor
 from torch.autograd import grad
-
-from pyqtorch import CNOT, RX, RY, QuantumCircuit, Z, expectation
+from pyqtorch.circuit import hea
+from pyqtorch import CNOT, RX, RY, QuantumCircuit, Z, expectation, Add, Sequence, Merge
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import DiffMode
 
@@ -274,24 +264,6 @@ X_POS = 0
 Y_POS = 1
 N_POINTS = 150
 N_EPOCHS = 1000
-
-
-def hea(n_qubits: int, n_layers: int, param_name: str) -> list:
-    ops = []
-    for layer in range(n_layers):
-        ops += [RX(i, f"{param_name}_0_{layer}_{i}") for i in range(n_qubits)]
-        ops += [RY(i, f"{param_name}_1_{layer}_{i}") for i in range(n_qubits)]
-        ops += [RX(i, f"{param_name}_2_{layer}_{i}") for i in range(n_qubits)]
-        ops += [CNOT(i % n_qubits, (i + 1) % n_qubits) for i in range(n_qubits)]
-    return ops
-
-
-class TotalMagnetization(QuantumCircuit):
-    def __init__(self, n_qubits: int):
-        super().__init__(n_qubits, [Z(i) for i in range(n_qubits)])
-
-    def forward(self, state, values) -> Tensor:
-        return reduce(add, [op(state, values) for op in self.operations])
 
 
 class DomainSampling(torch.nn.Module):
@@ -351,17 +323,10 @@ class DomainSampling(torch.nn.Module):
 feature_map = [RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
     RX(i, VARIABLES[Y_POS]) for i in range(N_QUBITS // 2, N_QUBITS)
 ]
-ansatz = hea(N_QUBITS, DEPTH, "theta")
-param_dict = torch.nn.ParameterDict(
-    {
-        op.param_name: torch.rand(1, requires_grad=True)
-        for op in ansatz
-        if isinstance(op, Parametric)
-    }
-)
+ansatz, params = hea(N_QUBITS, DEPTH, "theta")
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-observable = TotalMagnetization(N_QUBITS).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-param_dict = param_dict.to(device=DEVICE, dtype=REAL_DTYPE)
+observable = Add([Z(i) for i in range(N_QUBITS)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
 
@@ -369,7 +334,7 @@ def exp_fn(inputs: Tensor) -> Tensor:
     return expectation(
         circ,
         state,
-        {**param_dict, **{VARIABLES[X_POS]: inputs[:, X_POS], VARIABLES[Y_POS]: inputs[:, Y_POS]}},
+        {**params, **{VARIABLES[X_POS]: inputs[:, X_POS], VARIABLES[Y_POS]: inputs[:, Y_POS]}},
         observable,
         DIFF_MODE,
     )
@@ -378,7 +343,7 @@ def exp_fn(inputs: Tensor) -> Tensor:
 single_domain_torch = linspace(0, 1, steps=N_POINTS)
 domain_torch = tensor(list(product(single_domain_torch, single_domain_torch)))
 
-opt = optim.Adam(param_dict.values(), lr=LEARNING_RATE)
+opt = optim.Adam(params.values(), lr=LEARNING_RATE)
 sol = DomainSampling(exp_fn, len(VARIABLES), N_POINTS, DEVICE, REAL_DTYPE)
 
 for _ in range(N_EPOCHS):
