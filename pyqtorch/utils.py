@@ -40,7 +40,7 @@ class StrEnum(str, Enum):
 
 class DiffMode(StrEnum):
     """
-    Which Differentiation engine to use.
+    Which Differentiation method to use.
 
     Options: Automatic Differentiation -  Using torch.autograd.
              Adjoint Differentiation   - An implementation of "Efficient calculation of gradients
