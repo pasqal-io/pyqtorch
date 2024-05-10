@@ -140,6 +140,7 @@ class Merge(Sequence):
         if (
             isinstance(operations, (list, ModuleList))
             and all([isinstance(op, (Primitive, Parametric)) for op in operations])
+            and all(list([len(op.qubit_support) == 1 for op in operations]))
             and len(list(set([op.qubit_support[0] for op in operations]))) == 1
         ):
             # We want all operations to act on the same qubit
@@ -151,7 +152,7 @@ class Merge(Sequence):
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
         batch_size = state.shape[-1]
-        if values and len(values) > 0:
+        if values:
             batch_size = max(batch_size, max(list(map(len, values.values()))))
         return apply_operator(
             state,
