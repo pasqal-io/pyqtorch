@@ -19,8 +19,9 @@ logger = getLogger(__name__)
 
 
 class Sequence(Module):
+    """A generic container for pyqtorch operations"""
+
     def __init__(self, operations: list[Module]):
-        """A generic container for pyqtorch operations"""
         super().__init__()
         self.operations = ModuleList(operations)
         self._device = torch_device("cpu")
@@ -59,8 +60,9 @@ class Sequence(Module):
 
 
 class QuantumCircuit(Sequence):
+    """A QuantumCircuit defining a register / number of qubits of the full system."""
+
     def __init__(self, n_qubits: int, operations: list[Module]):
-        """A QuantumCircuit defining a register / number of qubits of the full system."""
         super().__init__(operations)
         self.n_qubits = n_qubits
 
@@ -109,8 +111,9 @@ def expectation(
 
 
 class Add(Sequence):
+    """The 'add' operation applies all 'operations' to 'state' and returns the sum of states."""
+
     def __init__(self, operations: list[Module]):
-        """The 'add' operation applies all 'operations' to 'state' and returns the sum of states."""
         super().__init__(operations=operations)
 
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
@@ -173,6 +176,8 @@ class Merge(Sequence):
 
 
 class Scale(Sequence):
+    """Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter."""
+
     def __init__(self, operations: Sequence | Primitive, param_name: str):
         super().__init__(
             operations.operations if isinstance(operations, Sequence) else [operations]
