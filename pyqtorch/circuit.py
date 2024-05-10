@@ -78,6 +78,15 @@ class QuantumCircuit(Sequence):
     def init_state(self, batch_size: int = 1) -> Tensor:
         return zero_state(self.n_qubits, batch_size, device=self.device, dtype=self.dtype)
 
+    def flatten(self) -> ModuleList:
+        ops = []
+        for op in self.operations:
+            if isinstance(op, Sequence):
+                ops += op.operations
+            else:
+                ops.append(op)
+        return ModuleList(ops)
+
 
 def expectation(
     circuit: QuantumCircuit,

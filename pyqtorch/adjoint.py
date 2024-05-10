@@ -37,7 +37,7 @@ class AdjointExpectation(Function):
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)
         grads_dict = {k: None for k in values.keys()}
-        for op in ctx.circuit.operations[::-1]:
+        for op in ctx.circuit.flatten()[::-1]:
             ctx.out_state = apply_operator(ctx.out_state, op.dagger(values), op.qubit_support)
             if isinstance(op, Parametric):
                 if values[op.param_name].requires_grad:
