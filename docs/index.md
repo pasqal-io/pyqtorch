@@ -134,7 +134,81 @@ $$
 
 Where $K_i$ are the Kraus operators, and satisfy the property $\sum_i K_i K^{\dagger}_i = \mathbb{I}$. As the noise is the result of system interactions with its environment, it is therefore possible to simulate quantum circuit with noise gates.
 
-Thus, `pyqtorch` implements a large selection of single qubit noise gates. The initialization of noise gates is done as primitives, but they also consider the `probability` that noise affects the system as a parameter. And either a vector or a density matrix can be used as an input, but the output will always be a density matrix.
+Thus, `pyqtorch` implements a large selection of single qubit noise gates such as:
+
+* The bit flip channel defined as:
+    $$
+        \textbf{BitFlip}(\rho) =(1-p) \rho + p X \rho X^{\dagger}
+    $$
+* The phase flip channel defined as:
+    $$
+        \textbf{PhaseFlip}(\rho) = (1-p) \rho + p Z \rho Z^{\dagger}
+    $$
+* The depolarizing channel defined as:
+    $$
+        \textbf{Depolarizing}(\rho) = (1-p) \rho + \frac{p}{3} (X \rho X^{\dagger}
+            + Y \rho Y^{\dagger}
+            + Z \rho Z^{\dagger})
+    $$ 
+* The pauli channel defined as:
+    $$
+        \textbf{PauliChannel}(\rho) = (1-p_x-p_y-p_z) \rho
+            + p_x X \rho X^{\dagger}
+            + p_y Y \rho Y^{\dagger}
+            + p_z Z \rho Z^{\dagger}
+    $$
+* The amplitude damping channel defined as:
+    $$
+        \textbf{AmplitudeDamping}(\rho) =  K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}
+    $$
+    with:
+    $\begin{equation*}
+    K_{0} \ =\begin{pmatrix}
+    1 & 0\\
+    0 & \sqrt{1-\ \gamma }
+    \end{pmatrix} ,\ K_{1} \ =\begin{pmatrix}
+    0 & \sqrt{\ \gamma }\\
+    0 & 0
+    \end{pmatrix}
+    \end{equation*}$
+* The phase damping channel defined as:
+    $$
+        \textbf{PhaseDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}
+    $$
+    with:
+    $\begin{equation*}
+    K_{0} \ =\begin{pmatrix}
+    1 & 0\\
+    0 & \sqrt{1-\ \gamma }
+    \end{pmatrix}, \ K_{1} \ =\begin{pmatrix}
+    0 & 0\\
+    0 & \sqrt{\ \gamma }
+    \end{pmatrix}
+    \end{equation*}$
+* The generalize amplitude damping channel is defined as:
+    $$
+        \textbf{GeneralizedAmplitudeDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}
+            + K_2 \rho K_2^{\dagger} + K_3 \rho K_3^{\dagger}
+    $$
+    with:
+$\begin{cases}
+K_{0} \ =\sqrt{p} \ \begin{pmatrix}
+1 & 0\\
+0 & \sqrt{1-\ \gamma }
+\end{pmatrix} ,\ K_{1} \ =\sqrt{p} \ \begin{pmatrix}
+0 & 0\\
+0 & \sqrt{\ \gamma }
+\end{pmatrix} \\
+K_{2} \ =\sqrt{1\ -p} \ \begin{pmatrix}
+\sqrt{1-\ \gamma } & 0\\
+0 & 1
+\end{pmatrix} ,\ K_{3} \ =\sqrt{1-p} \ \begin{pmatrix}
+0 & 0\\
+\sqrt{\ \gamma } & 0
+\end{pmatrix}
+\end{cases}$
+
+ The initialization of noise gates is done as primitives, but they also consider the `probability` that noise affects the system as a parameter. And either a vector or a density matrix can be used as an input, but the output will always be a density matrix.
 
 ```python exec="on" source="material-block"
 import torch
