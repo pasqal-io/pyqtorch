@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from .analog import HamiltonianEvolution
 from .apply import apply_operator
-from .circuit import QuantumCircuit, expectation
+from .circuit import Add, Merge, QuantumCircuit, Scale, Sequence, expectation
 from .noise import (
     AmplitudeDamping,
     BitFlip,

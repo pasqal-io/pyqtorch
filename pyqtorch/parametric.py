@@ -37,6 +37,9 @@ class Parametric(Primitive):
 
         self.parse_values = parse_tensor if param_name == "" else parse_values
 
+    def __hash__(self) -> int:
+        return hash(self.qubit_support) + hash(self.param_name)
+
     @staticmethod
     def _expand_values(values: torch.Tensor) -> torch.Tensor:
         return values.unsqueeze(0) if len(values.size()) == 0 else values
