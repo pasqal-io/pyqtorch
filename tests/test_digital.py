@@ -353,17 +353,37 @@ def test_operator_product(gate: Primitive) -> None:
 
 @pytest.mark.parametrize("operator,matrix", [(I, IMAT), (X, XMAT), (Z, ZMAT), (Y, YMAT), (H, HMAT)])
 def test_operator_kron(operator: Tensor, matrix: Tensor) -> None:
-    n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
-    batch_size = torch.randint(low=1, high=5, size=(1,)).item()
-    states = []
-    density_matrices = []
-    for batch in range(batch_size):
+    n_qubits = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
+    max_batch = max(batch_size_1, batch_size_2)
+    states, krons = [], []
+    for batch in range(max_batch):
         state = random_state(n_qubits)
         states.append(state)
-        density_matrice = torch.kron(density_mat(state).squeeze(), matrix).unsqueeze(2)
+        kron = torch.kron(density_mat(state).squeeze(), matrix).unsqueeze(2)
+        krons.append(kron)
+    input_state = torch.cat(states, dim=n_qubits)
+    kron_out = operator_kron(density_mat(input_state), operator(0).dagger())
+    assert kron_out.size() == torch.Size([2 ** (n_qubits + 1), 2 ** (n_qubits + 1), max_batch])
+    kron_expect = torch.cat(krons, dim=2)
+    assert torch.allclose(kron_out, kron_expect)
+    dm_1, dm_2 = density_mat(random_state(n_qubits, batch_size_1)), density_mat(
+        random_state(n_qubits, batch_size_2)
+    )
+    dm_out = operator_kron(dm_1, dm_2)
+    assert dm_out.size() == torch.Size([2 ** (2 * n_qubits), 2 ** (2 * n_qubits), max_batch])
+    if batch_size_1 > batch_size_2:
+        dm_2 = dm_2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
+    elif batch_size_2 > batch_size_1:
+        dm_1 = dm_1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
+    density_matrices = []
+    for batch in range(max_batch):
+        density_matrice = torch.kron(dm_1[:, :, batch], dm_2[:, :, batch]).unsqueeze(2)
         density_matrices.append(density_matrice)
     dm_expect = torch.cat(density_matrices, dim=2)
-    input_state = torch.cat(states, dim=n_qubits)
-    dm_output = operator_kron(density_mat(input_state), operator(0).dagger())
-    assert dm_output.size() == torch.Size([2 ** (n_qubits + 1), 2 ** (n_qubits + 1), batch_size])
-    assert torch.allclose(dm_output, dm_expect)
+    assert torch.allclose(dm_out, dm_expect)
+    assert torch.allclose(
+        torch.kron(operator(0).dagger().contiguous(), I(0).unitary()),
+        operator_kron(operator(0).dagger(), I(0).unitary()),
+    )
