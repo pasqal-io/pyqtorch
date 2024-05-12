@@ -149,7 +149,7 @@ Thus, `pyqtorch` implements a large selection of single qubit noise gates such a
         \textbf{Depolarizing}(\rho) = (1-p) \rho + \frac{p}{3} (X \rho X^{\dagger}
             + Y \rho Y^{\dagger}
             + Z \rho Z^{\dagger})
-    $$ 
+    $$
 * The pauli channel defined as:
     $$
         \textbf{PauliChannel}(\rho) = (1-p_x-p_y-p_z) \rho
