@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 import pytest
 import torch
 
@@ -136,3 +138,39 @@ def test_adjoint_duplicate_params() -> None:
         exp_adjoint, tuple(values.values()), torch.ones_like(exp_adjoint)
     )[0]
     assert torch.allclose(grad_ad, grad_adjoint)
+
+
+@pytest.mark.parametrize("fn", [pyq.X, pyq.Z, pyq.Y])
+def test_scale(fn: pyq.primitive.Primitive) -> None:
+    n_qubits = torch.randint(low=1, high=4, size=(1,)).item()
+    target = random.choice([i for i in range(n_qubits)])
+    state = pyq.random_state(n_qubits)
+    gate = fn(target)
+    values = {"scale": torch.rand(1)}
+    wf = values["scale"] * pyq.QuantumCircuit(2, [gate])(state, {})
+    scaledwf_primitive = pyq.Scale(gate, "scale")(state, values)
+    scaledwf_composite = pyq.Scale(pyq.Sequence([gate]), "scale")(state, values)
+    assert torch.allclose(wf, scaledwf_primitive)
+    assert torch.allclose(wf, scaledwf_composite)
+
+
+def test_add() -> None:
+    x = pyq.X(0)
+    z = pyq.Z(1)
+    state = pyq.zero_state(2)
+    assert torch.allclose(pyq.Add([x, z])(state), x(state) + z(state))
+
+
+def test_merge() -> None:
+    ops = [pyq.RX(0, "theta_0"), pyq.RY(0, "theta_1"), pyq.RX(0, "theta_2")]
+    circ = pyq.QuantumCircuit(2, ops)
+    mergecirc = pyq.Merge(ops)
+    state = pyq.random_state(2)
+    values = {f"theta_{i}": torch.rand(1) for i in range(3)}
+    assert torch.allclose(circ(state, values), mergecirc(state, values))
+
+
+@pytest.mark.xfail(reason="Can only merge gate acting on the same qubit support.")
+def test_merge_expect_fail() -> None:
+    ops = [pyq.RX(0, "theta_0"), pyq.RY(1, "theta_1")]
+    mergecirc = pyq.Merge(ops)
