@@ -16,7 +16,6 @@ class Primitive(torch.nn.Module):
         super().__init__()
         self.target: int = target
         self.qubit_support: tuple[int, ...] = (target,)
-        self.n_qubits: int = max(self.qubit_support)
         self.register_buffer("pauli", pauli)
         self._param_type = None
         self._device = self.pauli.device
@@ -123,7 +122,6 @@ class SWAP(Primitive):
         super().__init__(OPERATIONS_DICT["SWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.qubit_support = self.control + (target,)
-        self.n_qubits = max(self.qubit_support)
 
 
 class CSWAP(Primitive):
@@ -132,7 +130,6 @@ class CSWAP(Primitive):
         self.control = (control,) if isinstance(control, int) else control
         self.target = target
         self.qubit_support = self.control + (target,)
-        self.n_qubits = max(self.qubit_support)
 
 
 class ControlledOperationGate(Primitive):
@@ -146,7 +143,6 @@ class ControlledOperationGate(Primitive):
         ).squeeze(2)
         super().__init__(mat, target)
         self.qubit_support = self.control + (target,)
-        self.n_qubits = max(self.qubit_support)
 
 
 class CNOT(ControlledOperationGate):

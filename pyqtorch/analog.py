@@ -14,13 +14,9 @@ class HamiltonianEvolution(torch.nn.Module):
     def __init__(
         self,
         qubit_support: Tuple[int, ...],
-        n_qubits: int = None,
     ):
         super().__init__()
         self.qubit_support: Tuple[int, ...] = qubit_support
-        if n_qubits is None:
-            n_qubits = len(qubit_support)
-        self.n_qubits: int = n_qubits
 
         def _diag_operator(hamiltonian: Operator, time_evolution: torch.Tensor) -> Operator:
             evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view((-1, 1))
@@ -45,9 +41,9 @@ class HamiltonianEvolution(torch.nn.Module):
     ) -> State:
         if len(hamiltonian.size()) < 3:
             hamiltonian = hamiltonian.unsqueeze(2)
-        self.batch_size = max(hamiltonian.size()[2], len(time_evolution))
+        batch_size = max(hamiltonian.shape[BATCH_DIM], len(time_evolution))
         diag_check = torch.tensor(
-            [is_diag(hamiltonian[..., i]) for i in range(hamiltonian.size()[BATCH_DIM])]
+            [is_diag(hamiltonian[..., i]) for i in range(hamiltonian.shape[BATCH_DIM])]
         )
         evolve_operator = (
             self._evolve_diag_operator
@@ -58,6 +54,6 @@ class HamiltonianEvolution(torch.nn.Module):
             state,
             evolve_operator(hamiltonian, time_evolution),
             self.qubit_support,
-            self.n_qubits,
-            self.batch_size,
+            len(state.size()) - 1,
+            batch_size,
         )

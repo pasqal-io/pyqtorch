@@ -78,7 +78,7 @@ hermitian_matrix = matrix + matrix.T.conj()
 # To be evolved for a batch of times
 t_list = torch.tensor([0.0, 0.5, 1.0, 2.0])
 
-hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
+hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)])
 
 # Starting from a uniform state
 psi_start = uniform_state(n_qubits)
@@ -173,39 +173,37 @@ DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 # We can also choose the precision we want to train on
 COMPLEX_DTYPE = torch.complex64
 REAL_DTYPE = torch.float32
+N_QUBITS = 4
+DEPTH = 2
+LR = .2
+DIFF_MODE = DiffMode.ADJOINT
+N_EPOCHS = 75
 
 # Target function and some training data
 fn = lambda x, degree: .05 * reduce(add, (torch.cos(i*x) + torch.sin(i*x) for i in range(degree)), 0)
 x = torch.linspace(0, 10, 100)
 y = fn(x, 5)
-
-n_qubits = 5
-n_layers = 3
-diff_mode = DiffMode.ADJOINT
 # Lets define a feature map to encode our 'x' values
-feature_map = [pyq.RX(i, f'x') for i in range(n_qubits)]
+feature_map = [pyq.RX(i, f'x') for i in range(N_QUBITS)]
 # To fit the function, we define a hardware-efficient ansatz with tunable parameters
-ansatz, params = hea(n_qubits, n_layers, 'theta')
-observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
-circ = pyq.QuantumCircuit(n_qubits, feature_map + ansatz)
+ansatz, params = hea(N_QUBITS, DEPTH, 'theta')
 # Lets move all necessary components to the DEVICE
-circ = circ.to(device=DEVICE, dtype=COMPLEX_DTYPE)
-observable = observable.to(device=DEVICE, dtype=COMPLEX_DTYPE)
+circ = pyq.QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+observable = pyq.QuantumCircuit(N_QUBITS, [pyq.Z(0)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 x, y = x.to(device=DEVICE, dtype=REAL_DTYPE), y.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
 def exp_fn(params: dict[str, torch.Tensor], inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-    return pyq.expectation(circ, state, {**params,**inputs}, observable, diff_mode)
+    return pyq.expectation(circ, state, {**params,**inputs}, observable, DIFF_MODE)
 
 with torch.no_grad():
     y_init = exp_fn(params, {'x': x})
 
 # We need to set 'foreach' False since Adam doesnt support float64 on CUDA devices
-optimizer = torch.optim.Adam(params.values(), lr=.01, foreach=False)
-epochs = 300
+optimizer = torch.optim.Adam(params.values(), lr=LR, foreach=False)
 
-for epoch in range(epochs):
+for _ in range(N_EPOCHS):
     optimizer.zero_grad()
     y_pred = exp_fn(params, {'x': x})
     loss = mse_loss(y, y_pred)
@@ -255,30 +253,29 @@ DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 # We can also choose the precision we want to train on
 COMPLEX_DTYPE = torch.complex64
 REAL_DTYPE = torch.float32
-PLOT = False
-LEARNING_RATE = 0.1
+LR = .15
 N_QUBITS = 4
 DEPTH = 3
 VARIABLES = ("x", "y")
-X_POS = 0
-Y_POS = 1
-N_POINTS = 150
-N_EPOCHS = 1000
+N_VARIABLES = len(VARIABLES)
+X_POS, Y_POS = [i for i in range(N_VARIABLES)]
+BATCH_SIZE = 500
+N_EPOCHS = 500
 
 
 class DomainSampling(torch.nn.Module):
     def __init__(
-        self, exp_fn: Callable[[Tensor], Tensor], n_inputs: int, n_points: int, device: torch.device, dtype: torch.dtype
+        self, exp_fn: Callable[[Tensor], Tensor], n_inputs: int, batch_size: int, device: torch.device, dtype: torch.dtype
     ) -> None:
         super().__init__()
         self.exp_fn = exp_fn
         self.n_inputs = n_inputs
-        self.n_points = n_points
+        self.batch_size = batch_size
         self.device = device
         self.dtype = dtype
 
     def sample(self, requires_grad: bool = False) -> Tensor:
-        return rand((self.n_points, self.n_inputs), requires_grad=requires_grad, device=self.device, dtype=self.dtype)
+        return rand((self.batch_size, self.n_inputs), requires_grad=requires_grad, device=self.device, dtype=self.dtype)
 
     def left_boundary(self) -> Tensor:  # u(0,y)=0
         sample = self.sample()
@@ -308,13 +305,11 @@ class DomainSampling(torch.nn.Module):
             sample,
             ones_like(f),
             create_graph=True,
-            retain_graph=True,
         )[0]
         dfdxxdyy = grad(
             dfdxy,
             sample,
             ones_like(dfdxy),
-            retain_graph=True,
         )[0]
 
         return (dfdxxdyy[:, X_POS] + dfdxxdyy[:, Y_POS]).pow(2).mean()
@@ -340,11 +335,11 @@ def exp_fn(inputs: Tensor) -> Tensor:
     )
 
 
-single_domain_torch = linspace(0, 1, steps=N_POINTS)
+single_domain_torch = linspace(0, 1, steps=BATCH_SIZE)
 domain_torch = tensor(list(product(single_domain_torch, single_domain_torch)))
 
-opt = optim.Adam(params.values(), lr=LEARNING_RATE)
-sol = DomainSampling(exp_fn, len(VARIABLES), N_POINTS, DEVICE, REAL_DTYPE)
+opt = optim.Adam(params.values(), lr=LR)
+sol = DomainSampling(exp_fn, len(VARIABLES), BATCH_SIZE, DEVICE, REAL_DTYPE)
 
 for _ in range(N_EPOCHS):
     opt.zero_grad()
@@ -358,10 +353,10 @@ for _ in range(N_EPOCHS):
     loss.backward()
     opt.step()
 
-dqc_sol = exp_fn(domain_torch.to(DEVICE)).reshape(N_POINTS, N_POINTS).detach().cpu().numpy()
+dqc_sol = exp_fn(domain_torch.to(DEVICE)).reshape(BATCH_SIZE, BATCH_SIZE).detach().cpu().numpy()
 analytic_sol = (
     (exp(-np.pi * domain_torch[:, X_POS]) * sin(np.pi * domain_torch[:, Y_POS]))
-    .reshape(N_POINTS, N_POINTS)
+    .reshape(BATCH_SIZE, BATCH_SIZE)
     .T
 ).numpy()
 

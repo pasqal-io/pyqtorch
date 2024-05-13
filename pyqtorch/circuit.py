@@ -236,5 +236,7 @@ def hea(n_qubits: int, n_layers: int, param_name: str) -> tuple[ModuleList, Para
             layer += [Merge([fn(i, f"{param_name}_{next(idx)}") for fn in [RX, RY, RX]])]
         ops += layer
         ops += [Sequence([CNOT(i % n_qubits, (i + 1) % n_qubits) for i in range(n_qubits)])]
-    params = ParameterDict({f"theta_{n}": rand(1, requires_grad=True) for n in range(next(idx))})
+    params = ParameterDict(
+        {f"{param_name}_{n}": rand(1, requires_grad=True) for n in range(next(idx))}
+    )
     return ops, params
