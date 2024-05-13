@@ -6,7 +6,7 @@ import pytest
 import torch
 
 import pyqtorch as pyq
-from pyqtorch.circuit import DiffMode, expectation
+from pyqtorch import DiffMode, expectation
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.utils import GRADCHECK_ATOL
 

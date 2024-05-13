@@ -6,10 +6,11 @@ from torch import Tensor, no_grad
 from torch.autograd import Function
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.circuit import Hamiltonian, QuantumCircuit
+from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.hamiltonian import Hamiltonian
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import inner_prod, param_dict
+from pyqtorch.utils import DiffMode, inner_prod, param_dict
 
 
 class AdjointExpectation(Function):
@@ -84,3 +85,35 @@ class AdjointExpectation(Function):
                     f"AdjointExpectation does not support operation: {type(op)}."
                 )
         return (None, None, None, None, *grads_dict.values())
+
+
+def expectation(
+    circuit: QuantumCircuit,
+    state: Tensor,
+    values: dict[str, Tensor],
+    observable: Hamiltonian,
+    diff_mode: DiffMode = DiffMode.AD,
+) -> Tensor:
+    """Compute the expectation value of the circuit given a state and observable.
+    Arguments:
+        circuit: QuantumCircuit instance
+        state: An input state
+        values: A dictionary of parameter values
+        observable: Hamiltonian representing the observable
+        diff_mode: The differentiation mode
+    Returns:
+        A expectation value.
+    """
+    if observable is None:
+        raise ValueError("Please provide an observable to compute expectation.")
+    if state is None:
+        state = circuit.init_state(batch_size=1)
+    if diff_mode == DiffMode.AD:
+        state = circuit.run(state, values)
+        return inner_prod(state, observable.forward(state, values)).real
+    elif diff_mode == DiffMode.ADJOINT:
+        from pyqtorch.adjoint import AdjointExpectation
+
+        return AdjointExpectation.apply(circuit, observable, state, values.keys(), *values.values())
+    else:
+        raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")

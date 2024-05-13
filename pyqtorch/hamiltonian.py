@@ -5,9 +5,21 @@ from typing import Tuple
 import torch
 
 from pyqtorch.apply import apply_operator
+from pyqtorch.circuit import Add
+from pyqtorch.parametric import Parametric
 from pyqtorch.utils import Operator, State, is_diag
 
 BATCH_DIM = 2
+
+
+class Hamiltonian(Add):
+    def __init__(self, operations: list[torch.nn.Module]):
+        if all([not isinstance(op, (Parametric)) for op in operations]):
+            super().__init__(operations)
+        else:
+            raise TypeError(
+                "Hamiltonian can only contain the following operations: [Primitive, Scale, Add]."
+            )
 
 
 class HamiltonianEvolution(torch.nn.Module):

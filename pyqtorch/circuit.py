@@ -14,7 +14,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import _dagger
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import DiffMode, State, batch_first, batch_last, inner_prod, zero_state
+from pyqtorch.utils import State, batch_first, batch_last, zero_state
 
 logger = getLogger(__name__)
 
@@ -88,38 +88,6 @@ class QuantumCircuit(Sequence):
         return ModuleList(ops)
 
 
-def expectation(
-    circuit: QuantumCircuit,
-    state: State,
-    values: dict[str, Tensor],
-    observable: Hamiltonian,
-    diff_mode: DiffMode = DiffMode.AD,
-) -> Tensor:
-    """Compute the expectation value of the circuit given a state and observable.
-    Arguments:
-        circuit: QuantumCircuit instance
-        state: An input state
-        values: A dictionary of parameter values
-        observable: Hamiltonian representing the observable
-        diff_mode: The differentiation mode
-    Returns:
-        A expectation value.
-    """
-    if observable is None:
-        raise ValueError("Please provide an observable to compute expectation.")
-    if state is None:
-        state = circuit.init_state(batch_size=1)
-    if diff_mode == DiffMode.AD:
-        state = circuit.run(state, values)
-        return inner_prod(state, observable.forward(state, values)).real
-    elif diff_mode == DiffMode.ADJOINT:
-        from pyqtorch.adjoint import AdjointExpectation
-
-        return AdjointExpectation.apply(circuit, observable, state, values.keys(), *values.values())
-    else:
-        raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")
-
-
 class Add(Sequence):
     """The 'add' operation applies all 'operations' to 'state' and returns the sum of states."""
 
@@ -141,8 +109,6 @@ class Merge(Sequence):
 
         Arguments:
             operations: A list of single qubit operations.
-            qubits: The target qubit.
-            n_qubits: The number of qubits in the full system.
 
         """
 
@@ -216,16 +182,6 @@ class Scale(Sequence):
 
     def jacobian(self, values: dict[str, Tensor]) -> Tensor:
         return values[self.param_name] * ones_like(self.unitary(values))
-
-
-class Hamiltonian(Add):
-    def __init__(self, operations: list[Module]):
-        if all([not isinstance(op, (Parametric)) for op in operations]):
-            super().__init__(operations)
-        else:
-            raise TypeError(
-                "Hamiltonian can only contain the following operations: [Primitive, Scale, Add]."
-            )
 
 
 def hea(n_qubits: int, n_layers: int, param_name: str) -> tuple[ModuleList, ParameterDict]:
