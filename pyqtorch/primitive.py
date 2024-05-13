@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from math import log2
 from typing import Any
 
 import torch
@@ -139,7 +138,7 @@ class ControlledOperationGate(Primitive):
         mat = _controlled(
             unitary=mat.unsqueeze(2),
             batch_size=1,
-            n_control_qubits=len(self.control) - (int)(log2(mat.shape[0])) + 1,
+            n_control_qubits=len(self.control),
         ).squeeze(2)
         super().__init__(mat, target)
         self.qubit_support = self.control + (target,)

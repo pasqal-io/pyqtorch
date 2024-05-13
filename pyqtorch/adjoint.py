@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Tuple
 
-from torch import Tensor, no_grad, zeros
+from torch import Tensor, no_grad
 from torch.autograd import Function
 
 from pyqtorch.apply import apply_operator
@@ -43,8 +43,6 @@ class AdjointExpectation(Function):
                 if values[op.param_name].requires_grad:
                     mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
                     grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
-                else:
-                    grad = zeros(1)
                 if grads_dict[op.param_name] is not None:
                     grads_dict[op.param_name] += grad
                 else:
