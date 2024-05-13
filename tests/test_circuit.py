@@ -196,3 +196,9 @@ def test_merge_different_batchsize(batch_size: int) -> None:
     for bs in [1, batch_size]:
         mergecirc(pyq.random_state(2, bs), {"theta_0": torch.rand(batch_size)})
         mergecirc(pyq.random_state(2, batch_size), {"theta_0": torch.rand(bs)})
+
+
+@pytest.mark.xfail(reason="Hamiltonians can only be constructed from Scale, Add and Primitive.")
+def test_ham_expect_fail() -> None:
+    ops = [pyq.Z(0), pyq.RY(1, "theta_1")]
+    ham = pyq.Hamiltonian(ops)

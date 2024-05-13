@@ -92,7 +92,7 @@ def expectation(
     circuit: QuantumCircuit,
     state: State,
     values: dict[str, Tensor],
-    observable: QuantumCircuit,
+    observable: Hamiltonian,
     diff_mode: DiffMode = DiffMode.AD,
 ) -> Tensor:
     """Compute the expectation value of the circuit given a state and observable.
@@ -100,7 +100,7 @@ def expectation(
         circuit: QuantumCircuit instance
         state: An input state
         values: A dictionary of parameter values
-        observable: QuantumCircuit representing the observable
+        observable: Hamiltonian representing the observable
         diff_mode: The differentiation mode
     Returns:
         A expectation value.
@@ -216,6 +216,16 @@ class Scale(Sequence):
 
     def jacobian(self, values: dict[str, Tensor]) -> Tensor:
         return values[self.param_name] * ones_like(self.unitary(values))
+
+
+class Hamiltonian(Add):
+    def __init__(self, operations: list[Module]):
+        if all([not isinstance(op, (Parametric)) for op in operations]):
+            super().__init__(operations)
+        else:
+            raise TypeError(
+                "Hamiltonian can only contain the following operations: [Primitive, Scale, Add]."
+            )
 
 
 def hea(n_qubits: int, n_layers: int, param_name: str) -> tuple[ModuleList, ParameterDict]:
