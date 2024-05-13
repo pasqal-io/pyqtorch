@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Tuple
 
 from torch import Tensor, no_grad, zeros
 from torch.autograd import Function
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.circuit import QuantumCircuit, Sequence
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import inner_prod, param_dict
 
@@ -17,7 +17,7 @@ class AdjointExpectation(Function):
     def forward(
         ctx: Any,
         circuit: QuantumCircuit,
-        observable: QuantumCircuit,
+        observable: Sequence,
         state: Tensor,
         param_names: list[str],
         *param_values: Tensor,
@@ -33,7 +33,7 @@ class AdjointExpectation(Function):
 
     @staticmethod
     @no_grad()
-    def backward(ctx: Any, grad_out: Tensor) -> tuple:
+    def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)
         grads_dict = {k: None for k in values.keys()}
