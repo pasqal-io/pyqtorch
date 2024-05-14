@@ -93,7 +93,7 @@ class HamiltonianEvolution(torch.nn.Module):
 
     def forward(
         self,
-        hamiltonian: Operator,
+        hamiltonian: torch.Tensor,
         time_evolution: torch.Tensor,
         state: State,
     ) -> State:
@@ -101,7 +101,8 @@ class HamiltonianEvolution(torch.nn.Module):
             hamiltonian = hamiltonian.unsqueeze(2)
         batch_size = max(hamiltonian.shape[BATCH_DIM], len(time_evolution))
         diag_check = torch.tensor(
-            [is_diag(hamiltonian[..., i]) for i in range(hamiltonian.shape[BATCH_DIM])]
+            [is_diag(hamiltonian[..., i]) for i in range(hamiltonian.shape[BATCH_DIM])],
+            device=hamiltonian.device,
         )
         evolve_operator = (
             self._evolve_diag_operator

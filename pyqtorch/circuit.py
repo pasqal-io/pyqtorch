@@ -51,7 +51,7 @@ class Sequence(Module):
     def dtype(self) -> torch_dtype:
         return self._dtype
 
-    def to(self, *args: Any, **kwargs: Any) -> QuantumCircuit:
+    def to(self, *args: Any, **kwargs: Any) -> Sequence:
         self.operations = ModuleList([op.to(*args, **kwargs) for op in self.operations])
         if len(self.operations) > 0:
             self._device = self.operations[0].device
