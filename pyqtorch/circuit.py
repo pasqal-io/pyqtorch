@@ -143,7 +143,7 @@ class Merge(Sequence):
             reduce(
                 bmm,
                 (
-                    batch_first(expand(op.unitary(values, batch_size)))
+                    batch_first(expand(op.unitary(values), batch_size))
                     for op in reversed(self.operations)
                 ),
             )

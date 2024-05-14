@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import reduce
 from operator import add
-from typing import Tuple
+from typing import Tuple, Union
 
 import torch
 from torch import Tensor, ones_like
@@ -65,39 +65,23 @@ class Add(Sequence):
         return reduce(add, (op.tensor(values, n_qubits) for op in self.operations), mat)
 
 
-TGenerator = torch.nn.ModuleList | list[Primitive | Sequence] | Tensor | Primitive | None
+TGenerator = Union[torch.nn.ModuleList, list, Tensor, Primitive, None]
 
 
 class Hamiltonian(Add):
     def __init__(
         self,
         qubit_support: Tuple[int, ...],
-        generator: TGenerator = [],
+        generator: (
+            torch.nn.ModuleList | list[Primitive | Sequence] | Tensor | Primitive | None
+        ) = [],
     ):
         if isinstance(generator, Tensor):
-            generator = [Primitive(generator, target=qubit_support)]
+            generator = [Primitive(generator, target=qubit_support[0])]
         elif generator is None:
             raise NotImplementedError
-        # else:
-        #     raise TypeError(
-        #         "Hamiltonian can only contain the following operations:\
-        #         [Primitive, Scale, Add, Tensor]."
-        #     )
-
         super().__init__(operations=generator)
         self.qubit_support = qubit_support
-
-
-def exp_diag(hamiltonian: Operator, time_evolution: torch.Tensor) -> Operator:
-    evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view((-1, 1))
-    evol_operator = torch.diag_embed(torch.exp(evol_operator))
-    return torch.transpose(evol_operator, 0, -1)
-
-
-def exp_full(hamiltonian: Operator, time_evolution: torch.Tensor) -> Operator:
-    evol_operator = torch.transpose(hamiltonian, 0, -1) * (-1j * time_evolution).view((-1, 1, 1))
-    evol_operator = torch.linalg.matrix_exp(evol_operator)
-    return torch.transpose(evol_operator, 0, -1)
 
 
 def is_diag_hamiltonian(hamiltonian: Tensor) -> bool:
@@ -109,8 +93,15 @@ def is_diag_hamiltonian(hamiltonian: Tensor) -> bool:
 
 
 def evolve(hamiltonian: Operator, time_evolution: torch.Tensor) -> Tensor:
-    evolve_fn = exp_diag if is_diag_hamiltonian(hamiltonian) else exp_full
-    return evolve_fn(hamiltonian, time_evolution)
+    if is_diag_hamiltonian(hamiltonian):
+        evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view((-1, 1))
+        evol_operator = torch.diag_embed(torch.exp(evol_operator))
+    else:
+        evol_operator = torch.transpose(hamiltonian, 0, -1) * (-1j * time_evolution).view(
+            (-1, 1, 1)
+        )
+        evol_operator = torch.linalg.matrix_exp(evol_operator)
+    return torch.transpose(evol_operator, 0, -1)
 
 
 class HamiltonianEvolution(Hamiltonian):
