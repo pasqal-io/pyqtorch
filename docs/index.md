@@ -62,7 +62,7 @@ new_state = rx(state, torch.rand(1))
 
 ## Analog Operations
 
-`pyqtorch` also contains a `analog` module which allows for global state evolution through the `HamiltonianEvolution` class. Note that it only accepts a `torch.Tensor` as a generator which is expected to be an Hermitian matrix. To build arbitrary Pauli hamiltonians, we recommend using [Qadence](https://pasqal-io.github.io/qadence/v1.0.3/tutorials/hamiltonians/).
+`pyqtorch` also contains a `analog` module which allows for global state evolution through the `HamiltonianEvolution` class. Note that it only accepts a `torch.Tensor` as a generator which is expected to be an Hermitian matrix. To build arbitrary Pauli hamiltonians, we recommend using [Qadence](https://pasqal-io.github.io/qadence/latest/tutorials/hamiltonians/).
 
 ```python exec="on" source="material-block" html="1"
 import torch
@@ -78,16 +78,13 @@ hermitian_matrix = matrix + matrix.T.conj()
 # To be evolved for a batch of times
 t_list = torch.tensor([0.0, 0.5, 1.0, 2.0])
 
-hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)])
+hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], generator=hermitian_matrix,  t_list)
 
 # Starting from a uniform state
 psi_start = uniform_state(n_qubits)
 
 # Returns an evolved state at each time value
-psi_end = hamiltonian_evolution(
-    hamiltonian=hermitian_matrix,
-    time_evolution=t_list,
-    state = psi_start)
+psi_end = hamiltonian_evolution(state = psi_start)
 
 assert is_normalized(psi_end, atol=1e-05)
 ```

@@ -31,7 +31,7 @@ class Primitive(torch.nn.Module):
         return self._param_type
 
     def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return self.pauli.unsqueeze(2)
+        return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return apply_operator(
@@ -55,11 +55,8 @@ class Primitive(torch.nn.Module):
         self._dtype = self.pauli.dtype
         return self
 
-    def tensor(self, values: dict[str, Tensor], n_qubits: int = None) -> Tensor:
-        if n_qubits is not None:
-            raise NotImplementedError("To be added.")
-        else:
-            return self.unitary(values)
+    def tensor(self, values: dict[str, Tensor], n_qubits: int = 1) -> Tensor:
+        return self.unitary(values)
 
 
 class X(Primitive):

@@ -56,7 +56,9 @@ class Add(Sequence):
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
         return reduce(add, (op(state, values) for op in self.operations))
 
-    def tensor(self, values: dict = dict(), n_qubits: int = None) -> Tensor:
+    def tensor(self, values: dict = dict(), n_qubits: int = 1) -> Tensor:
+        if len(self.operations) == 1:
+            return self.operations[0].tensor({})
         mat = torch.zeros((2, 2, 1), device=self.device)
         for _ in range(n_qubits - 1):
             mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
@@ -72,18 +74,16 @@ class Hamiltonian(Add):
         qubit_support: Tuple[int, ...],
         generator: TGenerator = [],
     ):
-        
         if isinstance(generator, Tensor):
-            generator = Primitive(generator, target=qubit_support[0])
-            breakpoint()
+            generator = [Primitive(generator, target=qubit_support)]
         elif generator is None:
             raise NotImplementedError
-        else:
-            raise TypeError(
-                "Hamiltonian can only contain the following operations:\
-                [Primitive, Scale, Add, Tensor]."
-            )
-        
+        # else:
+        #     raise TypeError(
+        #         "Hamiltonian can only contain the following operations:\
+        #         [Primitive, Scale, Add, Tensor]."
+        #     )
+
         super().__init__(operations=generator)
         self.qubit_support = qubit_support
 
