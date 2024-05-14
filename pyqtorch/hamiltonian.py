@@ -20,8 +20,8 @@ BATCH_DIM = 2
 class Scale(Sequence):
     """Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter."""
 
-    def __init__(self, operations: Sequence | Primitive, param_name: str):
-        super().__init__(operations)
+    def __init__(self, operations: list[Module], param_name: str):
+        super().__init__(operations=operations)
         self.param_name = param_name
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:

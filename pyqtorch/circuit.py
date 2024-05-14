@@ -62,9 +62,9 @@ class Sequence(Module):
         return self
 
     def tensor(self, values: dict[str, Tensor], n_qubits: int) -> Tensor:
-        mat = torch.eye((2, 2, 1), device=self.device)
+        mat = torch.eye(2, device=self.device).unsqueeze(2)
         for _ in range(n_qubits - 1):
-            mat = torch.kron(mat, torch.eye((2, 2, 1), device=self.device))
+            mat = torch.kron(mat, torch.eye(2, device=self.device).unsqueeze(2))
 
         return reduce(
             bmm,
