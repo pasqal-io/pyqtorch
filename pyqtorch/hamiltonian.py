@@ -45,8 +45,8 @@ class Scale(Sequence):
 
     def jacobian(self, values: dict[str, Tensor]) -> Tensor:
         return values[self.param_name] * ones_like(self.unitary(values))
-    
-    def tensor(self, values: dict) -> Tensor:
+
+    def tensor(self, values: dict[str, Tensor], n_qubits: int) -> Tensor:
         return values[self.param_name] * self.operations[0].tensor(values)
 
 
