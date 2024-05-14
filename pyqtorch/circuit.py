@@ -5,13 +5,12 @@ from logging import getLogger
 from operator import add
 from typing import Any, Generator, Iterator, NoReturn
 
-from torch import Tensor, bmm, complex128, ones_like, rand
+from torch import Tensor, bmm, complex128, rand
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import _dagger
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, batch_first, batch_last, zero_state
@@ -88,16 +87,6 @@ class QuantumCircuit(Sequence):
         return ModuleList(ops)
 
 
-class Add(Sequence):
-    """The 'add' operation applies all 'operations' to 'state' and returns the sum of states."""
-
-    def __init__(self, operations: list[Module]):
-        super().__init__(operations=operations)
-
-    def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
-        return reduce(add, (op(state, values) for op in self.operations))
-
-
 class Merge(Sequence):
     def __init__(
         self,
@@ -152,36 +141,6 @@ class Merge(Sequence):
                 (batch_first(expand(op.unitary(values))) for op in reversed(self.operations)),
             )
         )
-
-
-class Scale(Sequence):
-    """Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter."""
-
-    def __init__(self, operations: Sequence | Primitive, param_name: str):
-        super().__init__(
-            operations.operations if isinstance(operations, Sequence) else [operations]
-        )
-        self.param_name = param_name
-
-    def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
-        return (
-            values[self.param_name] * super().forward(state, values)
-            if isinstance(self.operations, Sequence)
-            else self._forward(state, values)
-        )
-
-    def _forward(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
-        return apply_operator(state, self.unitary(values), self.operations[0].qubit_support)
-
-    def unitary(self, values: dict[str, Tensor]) -> Tensor:
-        thetas = values[self.param_name]
-        return thetas * self.operations[0].unitary(values)
-
-    def dagger(self, values: dict[str, Tensor]) -> Tensor:
-        return _dagger(self.unitary(values))
-
-    def jacobian(self, values: dict[str, Tensor]) -> Tensor:
-        return values[self.param_name] * ones_like(self.unitary(values))
 
 
 def hea(n_qubits: int, n_layers: int, param_name: str) -> tuple[ModuleList, ParameterDict]:
