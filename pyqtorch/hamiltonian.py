@@ -47,7 +47,7 @@ class Scale(Sequence):
         return values[self.param_name] * ones_like(self.unitary(values))
 
     def tensor(self, values: dict[str, Tensor], n_qubits: int) -> Tensor:
-        return values[self.param_name] * self.operations[0].tensor(values)
+        return values[self.param_name] * self.operations[0].tensor(values, n_qubits)
 
 
 class Add(Sequence):
@@ -68,21 +68,19 @@ class Add(Sequence):
         return reduce(add, (op.tensor(values, n_qubits) for op in self.operations), mat)
 
 
-TGenerator = Union[torch.nn.ModuleList, list, Tensor, Primitive, None]
+TGenerator = Union[torch.nn.ModuleList, list, Tensor, Primitive]
 
 
 class Hamiltonian(Add):
     def __init__(
         self,
         qubit_support: Tuple[int, ...],
-        generator: (
-            torch.nn.ModuleList | list[Primitive | Sequence] | Tensor | Primitive | None
-        ) = [],
+        generator: TGenerator,
     ):
         if isinstance(generator, Tensor):
             generator = [Primitive(generator, target=qubit_support[0])]
-        elif generator is None:
-            raise NotImplementedError
+        elif isinstance(generator, Primitive):
+            generator = torch.nn.ModuleList([generator])
         super().__init__(operations=generator)
         self.qubit_support = qubit_support
 

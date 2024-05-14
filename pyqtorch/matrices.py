@@ -112,7 +112,24 @@ COMPLEX_TO_REAL_DTYPES = {
 }
 
 
-def expand(operator: Tensor, batch_size: int = 1) -> Tensor:
+def add_batch_dim(operator: Tensor, batch_size: int = 1) -> Tensor:
     """In case we have a sequence of batched parametric gates mixed with primitive gates,
     we adjust the batch_dim of the primitive gates to match."""
     return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator
+
+
+def expand_operator(
+    mat: torch.Tensor,
+    support: tuple[int, ...],
+    full_sup: tuple[int, ...],
+) -> torch.Tensor:
+    support = tuple(sorted(support))
+    initmat = IMAT.clone().to(mat.device) if support[0] != full_sup[0] else mat
+    for i in full_sup[1:]:
+        if i == support[0]:
+            other = initmat
+            mat = torch.kron(mat.contiguous(), other.contiguous())
+        elif i not in support:
+            other = IMAT.clone().to(mat.device)
+            mat = torch.kron(mat.contiguous(), other.contiguous())
+    return mat

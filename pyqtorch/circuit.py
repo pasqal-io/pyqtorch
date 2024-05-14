@@ -12,7 +12,7 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import expand
+from pyqtorch.matrices import add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, batch_first, batch_last, zero_state
@@ -67,7 +67,10 @@ class Sequence(Module):
 
         return reduce(
             bmm,
-            (batch_first(expand(op.tensor(values, n_qubits))) for op in reversed(self.operations)),
+            (
+                batch_first(add_batch_dim(op.tensor(values, n_qubits)))
+                for op in reversed(self.operations)
+            ),
             mat,
         )
 
@@ -143,7 +146,7 @@ class Merge(Sequence):
             reduce(
                 bmm,
                 (
-                    batch_first(expand(op.unitary(values), batch_size))
+                    batch_first(add_batch_dim(op.unitary(values), batch_size))
                     for op in reversed(self.operations)
                 ),
             )
