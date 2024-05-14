@@ -112,7 +112,7 @@ COMPLEX_TO_REAL_DTYPES = {
 }
 
 
-def expand(operator: Tensor, batch_size: int) -> Tensor:
+def expand(operator: Tensor, batch_size: int = 1) -> Tensor:
     """In case we have a sequence of batched parametric gates mixed with primitive gates,
     we adjust the batch_dim of the primitive gates to match."""
     return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator
