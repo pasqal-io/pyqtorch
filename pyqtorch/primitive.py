@@ -55,6 +55,12 @@ class Primitive(torch.nn.Module):
         self._dtype = self.pauli.dtype
         return self
 
+    def tensor(self, values: dict[str, Tensor], n_qubits: int = None) -> Tensor:
+        if n_qubits is not None:
+            raise NotImplementedError("To be added.")
+        else:
+            return self.unitary(values)
+
 
 class X(Primitive):
     def __init__(self, target: int):

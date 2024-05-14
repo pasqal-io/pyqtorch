@@ -11,7 +11,6 @@ from torch.nn import Module, ParameterDict
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.matrices import _dagger
-from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import Operator, State, is_diag
 
@@ -57,62 +56,76 @@ class Add(Sequence):
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
         return reduce(add, (op(state, values) for op in self.operations))
 
+    def tensor(self, values: dict = dict(), n_qubits: int = None) -> Tensor:
+        mat = torch.zeros((2, 2, 1), device=self.device)
+        for _ in range(n_qubits - 1):
+            mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
+        return reduce(add, (op.tensor(values, n_qubits) for op in self.operations), mat)
+
+
+TGenerator = torch.nn.ModuleList | list[Primitive | Sequence] | Tensor | Primitive | None
+
 
 class Hamiltonian(Add):
-    def __init__(self, operations: list[torch.nn.Module]):
-        if all([not isinstance(op, (Parametric)) for op in operations]):
-            super().__init__(operations)
-        else:
-            raise TypeError(
-                "Hamiltonian can only contain the following operations: [Primitive, Scale, Add]."
-            )
-
-
-class HamiltonianEvolution(torch.nn.Module):
     def __init__(
         self,
         qubit_support: Tuple[int, ...],
+        generator: TGenerator = [],
     ):
-        super().__init__()
-        self.qubit_support: Tuple[int, ...] = qubit_support
-
-        def _diag_operator(hamiltonian: Operator, time_evolution: torch.Tensor) -> Operator:
-            evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view((-1, 1))
-            evol_operator = torch.diag_embed(torch.exp(evol_operator))
-            return torch.transpose(evol_operator, 0, -1)
-
-        def _matrixexp_operator(hamiltonian: Operator, time_evolution: torch.Tensor) -> Operator:
-            evol_operator = torch.transpose(hamiltonian, 0, -1) * (-1j * time_evolution).view(
-                (-1, 1, 1)
+        
+        if isinstance(generator, Tensor):
+            generator = Primitive(generator, target=qubit_support[0])
+            breakpoint()
+        elif generator is None:
+            raise NotImplementedError
+        else:
+            raise TypeError(
+                "Hamiltonian can only contain the following operations:\
+                [Primitive, Scale, Add, Tensor]."
             )
-            evol_operator = torch.linalg.matrix_exp(evol_operator)
-            return torch.transpose(evol_operator, 0, -1)
+        
+        super().__init__(operations=generator)
+        self.qubit_support = qubit_support
 
-        self._evolve_diag_operator = _diag_operator
-        self._evolve_matrixexp_operator = _matrixexp_operator
 
-    def forward(
-        self,
-        hamiltonian: torch.Tensor,
-        time_evolution: torch.Tensor,
-        state: State,
-    ) -> State:
-        if len(hamiltonian.size()) < 3:
-            hamiltonian = hamiltonian.unsqueeze(2)
-        batch_size = max(hamiltonian.shape[BATCH_DIM], len(time_evolution))
-        diag_check = torch.tensor(
-            [is_diag(hamiltonian[..., i]) for i in range(hamiltonian.shape[BATCH_DIM])],
-            device=hamiltonian.device,
-        )
-        evolve_operator = (
-            self._evolve_diag_operator
-            if bool(torch.prod(diag_check))
-            else self._evolve_matrixexp_operator
-        )
+def exp_diag(hamiltonian: Operator, time_evolution: torch.Tensor) -> Operator:
+    evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view((-1, 1))
+    evol_operator = torch.diag_embed(torch.exp(evol_operator))
+    return torch.transpose(evol_operator, 0, -1)
+
+
+def exp_full(hamiltonian: Operator, time_evolution: torch.Tensor) -> Operator:
+    evol_operator = torch.transpose(hamiltonian, 0, -1) * (-1j * time_evolution).view((-1, 1, 1))
+    evol_operator = torch.linalg.matrix_exp(evol_operator)
+    return torch.transpose(evol_operator, 0, -1)
+
+
+def is_diag_hamiltonian(hamiltonian: Tensor) -> bool:
+    diag_check = torch.tensor(
+        [is_diag(hamiltonian[..., i]) for i in range(hamiltonian.shape[BATCH_DIM])],
+        device=hamiltonian.device,
+    )
+    return bool(torch.prod(diag_check))
+
+
+def evolve(hamiltonian: Operator, time_evolution: torch.Tensor) -> Tensor:
+    evolve_fn = exp_diag if is_diag_hamiltonian(hamiltonian) else exp_full
+    return evolve_fn(hamiltonian, time_evolution)
+
+
+class HamiltonianEvolution(Hamiltonian):
+    def __init__(self, qubit_support: Tuple[int, ...], generator: TGenerator, time: Tensor | str):
+        super().__init__(qubit_support, generator)
+        self.time = time
+
+    def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
+        hamiltonian = self.tensor(values, len(self.qubit_support))
+        time_evolution = values[self.time] if isinstance(self.time, str) else self.time
+
         return apply_operator(
-            state,
-            evolve_operator(hamiltonian, time_evolution),
-            self.qubit_support,
-            len(state.size()) - 1,
-            batch_size,
+            state=state,
+            operator=evolve(hamiltonian, time_evolution),
+            qubits=self.qubit_support,
+            n_qubits=len(state.size()) - 1,
+            batch_size=max(hamiltonian.shape[BATCH_DIM], len(time_evolution)),
         )

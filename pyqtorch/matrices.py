@@ -110,3 +110,9 @@ COMPLEX_TO_REAL_DTYPES = {
     torch.complex64: torch.float32,
     torch.complex32: torch.float16,
 }
+
+
+def expand(operator: Tensor, batch_size: int) -> Tensor:
+    """In case we have a sequence of batched parametric gates mixed with primitive gates,
+    we adjust the batch_dim of the primitive gates to match."""
+    return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator

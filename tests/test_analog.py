@@ -136,8 +136,8 @@ def test_hamevo_endianness() -> None:
         dtype=torch.complex128,
     )
     iszero = torch.tensor([False, True, False, True])
-    op = pyq.HamiltonianEvolution(qubit_support=(0, 1))
-    st = op(h, t, pyq.zero_state(2)).flatten()
+    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), generator=h, time=t)
+    st = op(pyq.zero_state(2)).flatten()
     assert torch.allclose(
         st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
     )
@@ -152,8 +152,8 @@ def test_hamevo_endianness() -> None:
         dtype=torch.complex128,
     )
     iszero = torch.tensor([False, False, True, True])
-    op = pyq.HamiltonianEvolution(qubit_support=(0, 1))
-    st = op(h, t, pyq.zero_state(2)).flatten()
+    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), generator=h, time= t)
+    st = op(pyq.zero_state(2)).flatten()
     assert torch.allclose(
         st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
     )

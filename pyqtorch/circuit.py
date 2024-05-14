@@ -5,12 +5,14 @@ from logging import getLogger
 from operator import add
 from typing import Any, Generator, Iterator, NoReturn
 
+import torch
 from torch import Tensor, bmm, complex128, rand
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
+from pyqtorch.matrices import expand
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, batch_first, batch_last, zero_state
@@ -57,6 +59,17 @@ class Sequence(Module):
             self._device = self.operations[0].device
             self._dtype = self.operations[0].dtype
         return self
+
+    def tensor(self, values: dict[str, Tensor], n_qubits: int) -> Tensor:
+        mat = torch.eye((2, 2, 1), device=self.device)
+        for _ in range(n_qubits - 1):
+            mat = torch.kron(mat, torch.eye((2, 2, 1), device=self.device))
+
+        return reduce(
+            bmm,
+            (batch_first(expand(op.tensor(values, n_qubits))) for op in reversed(self.operations)),
+            mat,
+        )
 
 
 class QuantumCircuit(Sequence):
@@ -125,20 +138,14 @@ class Merge(Sequence):
         )
 
     def unitary(self, values: dict[str, Tensor] | None, batch_size: int) -> Tensor:
-        def expand(operator: Tensor) -> Tensor:
-            """In case we have a sequence of batched parametric gates mixed with primitive gates,
-            we adjust the batch_dim of the primitive gates to match."""
-            return (
-                operator.repeat(1, 1, batch_size)
-                if operator.shape != (2, 2, batch_size)
-                else operator
-            )
-
         # We reverse the list of tensors here since matmul is not commutative.
         return batch_last(
             reduce(
                 bmm,
-                (batch_first(expand(op.unitary(values))) for op in reversed(self.operations)),
+                (
+                    batch_first(expand(op.unitary(values, batch_size)))
+                    for op in reversed(self.operations)
+                ),
             )
         )
 
