@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from functools import reduce
 from logging import getLogger
 from operator import add
@@ -101,6 +102,34 @@ class QuantumCircuit(Sequence):
             else:
                 ops.append(op)
         return ModuleList(ops)
+
+    def sample(
+        self,
+        values: dict[str, Tensor] = {},
+        n_shots: int = 1,
+        state: Tensor = None,
+    ) -> list[Counter]:
+
+        if n_shots < 1:
+            raise ValueError("You can only call sample with n_shots>0.")
+
+        def _sample(p: Tensor) -> Counter:
+            return Counter(
+                {
+                    format(k, "0{}b".format(self.n_qubits)): count.item()
+                    for k, count in enumerate(
+                        torch.bincount(
+                            torch.multinomial(input=p, num_samples=n_shots, replacement=True)
+                        )
+                    )
+                    if count > 0
+                }
+            )
+
+        with torch.no_grad():
+            state = torch.flatten(self.run(values=values, state=state), start_dim=0, end_dim=-2).t()
+            probs = torch.abs(torch.pow(state, 2))
+            return list(map(lambda p: _sample(p), probs))
 
 
 class Merge(Sequence):

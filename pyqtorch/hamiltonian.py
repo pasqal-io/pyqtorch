@@ -21,9 +21,7 @@ class Scale(Sequence):
     """Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter."""
 
     def __init__(self, operations: Sequence | Primitive, param_name: str):
-        super().__init__(
-            operations.operations if isinstance(operations, Sequence) else [operations]
-        )
+        super().__init__(operations)
         self.param_name = param_name
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
@@ -47,7 +45,7 @@ class Scale(Sequence):
         return values[self.param_name] * ones_like(self.unitary(values))
 
     def tensor(self, values: dict[str, Tensor], n_qubits: int) -> Tensor:
-        return values[self.param_name] * self.operations[0].tensor(values, n_qubits)
+        return values[self.param_name] * super().tensor(values, n_qubits)
 
 
 class Add(Sequence):
@@ -59,9 +57,7 @@ class Add(Sequence):
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
         return reduce(add, (op(state, values) for op in self.operations))
 
-    def tensor(self, values: dict = dict(), n_qubits: int = 1) -> Tensor:
-        if len(self.operations) == 1:
-            return self.operations[0].tensor({})
+    def tensor(self, values: dict, n_qubits: int) -> Tensor:
         mat = torch.zeros((2, 2, 1), device=self.device)
         for _ in range(n_qubits - 1):
             mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
