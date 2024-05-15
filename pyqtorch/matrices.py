@@ -124,12 +124,12 @@ def expand_operator(
     full_sup: tuple[int, ...],
 ) -> torch.Tensor:
     support = tuple(sorted(support))
-    initmat = IMAT.clone().to(mat.device) if support[0] != full_sup[0] else mat
+    initmat = IMAT.clone().to(mat.device).unsqueeze(2) if support[0] != full_sup[0] else mat
     for i in full_sup[1:]:
         if i == support[0]:
             other = initmat
             mat = torch.kron(mat.contiguous(), other.contiguous())
         elif i not in support:
-            other = IMAT.clone().to(mat.device)
+            other = IMAT.clone().to(mat.device).unsqueeze(2)
             mat = torch.kron(mat.contiguous(), other.contiguous())
     return mat
