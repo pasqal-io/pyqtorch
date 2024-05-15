@@ -189,7 +189,7 @@ feature_map = [pyq.RX(i, f'x') for i in range(N_QUBITS)]
 ansatz, params = hea(N_QUBITS, DEPTH, 'theta')
 # Lets move all necessary components to the DEVICE
 circ = pyq.QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-observable = pyq.QuantumCircuit(N_QUBITS, [pyq.Z(0)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+observable = pyq.Hamiltonian([pyq.Z(0)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 x, y = x.to(device=DEVICE, dtype=REAL_DTYPE), y.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
@@ -244,7 +244,7 @@ import torch
 from torch import Tensor, exp, linspace, ones_like, optim, rand, sin, tensor
 from torch.autograd import grad
 from pyqtorch.circuit import hea
-from pyqtorch import CNOT, RX, RY, QuantumCircuit, Z, expectation, Add, Sequence, Merge
+from pyqtorch import CNOT, RX, RY, QuantumCircuit, Z, expectation, Hamiltonian, Sequence, Merge
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import DiffMode
 
@@ -259,8 +259,8 @@ DEPTH = 3
 VARIABLES = ("x", "y")
 N_VARIABLES = len(VARIABLES)
 X_POS, Y_POS = [i for i in range(N_VARIABLES)]
-BATCH_SIZE = 500
-N_EPOCHS = 500
+BATCH_SIZE = 250
+N_EPOCHS = 750
 
 
 class DomainSampling(torch.nn.Module):
@@ -320,7 +320,7 @@ feature_map = [RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
 ]
 ansatz, params = hea(N_QUBITS, DEPTH, "theta")
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-total_magnetization = Add([Z(i) for i in range(N_QUBITS)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+total_magnetization = Hamiltonian([Z(i) for i in range(N_QUBITS)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
