@@ -16,6 +16,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: Linting
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+        - name: Checkout main code and submodules
+          uses: actions/checkout@v4
+        - name: Set up Python ${{ matrix.python-version }}
+          uses: actions/setup-python@v4
+          with:
+            python-version: ${{ matrix.python-version }}
+        - name: Install hatch
+          run: |
+            python -m pip install hatch
+        - name: Install main dependencies
+          run: |
+            python -m hatch -v -e tests
+        - name: Lint
+          run: |
+            python -m hatch -e tests run pre-commit run --all-files
 
   unit_tests:
     name: Unit testing
@@ -42,6 +64,29 @@ jobs:
         - name: Perform unit tests
           run: |
             python -m hatch -e tests run pytest -n auto
+
+  test_docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+        - name: Checkout main code and submodules
+          uses: actions/checkout@v4
+        - name: Set up Python ${{ matrix.python-version }}
+          uses: actions/setup-python@v4
+          with:
+            python-version: ${{ matrix.python-version }}
+        - name: Install hatch
+          run: |
+            python -m pip install hatch
+        - name: Install main dependencies
+          run: |
+            python -m hatch -v -e docs
+        - name: Test docs
+          run: |
+            python -m hatch run docs:build
 
   publish:
     name: Publish to PyPI

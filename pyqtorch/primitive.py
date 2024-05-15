@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import logging
 from logging import getLogger
-from math import log2
-from typing import Tuple
+from typing import Any
 
 import torch
+from torch import Tensor
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import Operator, State, product_state
+from pyqtorch.utils import product_state
 
 logger = getLogger(__name__)
 
@@ -31,14 +31,14 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 
 
 class Primitive(torch.nn.Module):
-    def __init__(self, pauli: torch.Tensor, target: int) -> None:
+    def __init__(self, pauli: Tensor, target: int) -> None:
         super().__init__()
         self.target: int = target
-        self.qubit_support: Tuple[int, ...] = (target,)
-        self.n_qubits: int = max(self.qubit_support)
+        self.qubit_support: tuple[int, ...] = (target,)
         self.register_buffer("pauli", pauli)
-        self._param_type = None
         self._device = self.pauli.device
+        self._dtype = self.pauli.dtype
+
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
             # WARNING: incurs performance penalty
@@ -60,30 +60,31 @@ class Primitive(torch.nn.Module):
         return hash(self.qubit_support)
 
     def extra_repr(self) -> str:
-        return f"qubit_support={self.qubit_support}"
+        return f"{self.qubit_support}"
 
-    @property
-    def param_type(self) -> None:
-        return self._param_type
-
-    def unitary(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
+    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return self.pauli.unsqueeze(2)
 
-    def forward(self, state: State, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> State:
+    def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return apply_operator(
             state, self.unitary(values), self.qubit_support, len(state.size()) - 1
         )
 
-    def dagger(self, values: dict[str, torch.Tensor] | torch.Tensor = {}) -> Operator:
+    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return _dagger(self.unitary(values))
 
     @property
     def device(self) -> torch.device:
         return self._device
 
-    def to(self, device: torch.device) -> Primitive:
-        super().to(device)
-        self._device = device
+    @property
+    def dtype(self) -> torch.dtype:
+        return self._dtype
+
+    def to(self, *args: Any, **kwargs: Any) -> Primitive:
+        super().to(*args, **kwargs)
+        self._device = self.pauli.device
+        self._dtype = self.pauli.dtype
         return self
 
 
@@ -106,7 +107,7 @@ class I(Primitive):  # noqa: E742
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["I"], target)
 
-    def forward(self, state: State, values: dict[str, torch.Tensor] = None) -> State:
+    def forward(self, state: Tensor, values: dict[str, Tensor] = None) -> Tensor:
         return state
 
 
@@ -152,34 +153,31 @@ class SWAP(Primitive):
         super().__init__(OPERATIONS_DICT["SWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.qubit_support = self.control + (target,)
-        self.n_qubits = max(self.qubit_support)
 
 
 class CSWAP(Primitive):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__(OPERATIONS_DICT["CSWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.target = target
         self.qubit_support = self.control + (target,)
-        self.n_qubits = max(self.qubit_support)
 
 
 class ControlledOperationGate(Primitive):
-    def __init__(self, gate: str, control: int | Tuple[int, ...], target: int):
+    def __init__(self, gate: str, control: int | tuple[int, ...], target: int):
         self.control = (control,) if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
         mat = _controlled(
             unitary=mat.unsqueeze(2),
             batch_size=1,
-            n_control_qubits=len(self.control) - (int)(log2(mat.shape[0])) + 1,
+            n_control_qubits=len(self.control),
         ).squeeze(2)
         super().__init__(mat, target)
         self.qubit_support = self.control + (target,)
-        self.n_qubits = max(self.qubit_support)
 
 
 class CNOT(ControlledOperationGate):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("X", control, target)
 
 
@@ -187,15 +185,15 @@ CX = CNOT
 
 
 class CY(ControlledOperationGate):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("Y", control, target)
 
 
 class CZ(ControlledOperationGate):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("Z", control, target)
 
 
 class Toffoli(ControlledOperationGate):
-    def __init__(self, control: int | Tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("X", control, target)

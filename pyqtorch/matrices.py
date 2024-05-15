@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+DEFAULT_REAL_DTYPE = torch.float64
 DEFAULT_MATRIX_DTYPE = torch.cdouble
 
 IMAT = torch.eye(2, dtype=DEFAULT_MATRIX_DTYPE)
@@ -96,9 +97,16 @@ def _jacobian(
 
 def _controlled(unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 1) -> torch.Tensor:
     _controlled: torch.Tensor = (
-        torch.eye(2 ** (n_control_qubits + 1), dtype=DEFAULT_MATRIX_DTYPE)
+        torch.eye(2 ** (n_control_qubits + 1), dtype=unitary.dtype)
         .unsqueeze(2)
         .repeat(1, 1, batch_size)
     )
     _controlled[2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :] = unitary
     return _controlled
+
+
+COMPLEX_TO_REAL_DTYPES = {
+    torch.complex128: torch.float64,
+    torch.complex64: torch.float32,
+    torch.complex32: torch.float16,
+}

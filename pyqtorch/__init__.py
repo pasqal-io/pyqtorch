@@ -52,9 +52,10 @@ if LOG_LEVEL:
     logger.debug("PyQTorch logger successfully setup")
 
 
-from .analog import HamiltonianEvolution
+from .adjoint import expectation
+from .analog import Add, Hamiltonian, HamiltonianEvolution, Scale
 from .apply import apply_operator
-from .circuit import QuantumCircuit, expectation
+from .circuit import Merge, QuantumCircuit, Sequence
 from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
 from .primitive import (
     CNOT,
@@ -75,6 +76,9 @@ from .primitive import (
     Z,
 )
 from .utils import (
+    DEFAULT_MATRIX_DTYPE,
+    DEFAULT_REAL_DTYPE,
+    DiffMode,
     inner_prod,
     is_normalized,
     overlap,
