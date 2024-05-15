@@ -16,7 +16,6 @@ class Primitive(torch.nn.Module):
         self.target: int = target
         self.qubit_support: tuple[int, ...] = (target,)
         self.register_buffer("pauli", pauli)
-        self._param_type = None
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
 
@@ -25,10 +24,6 @@ class Primitive(torch.nn.Module):
 
     def extra_repr(self) -> str:
         return f"{self.qubit_support}"
-
-    @property
-    def param_type(self) -> None:
-        return self._param_type
 
     def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return self.pauli.unsqueeze(2)

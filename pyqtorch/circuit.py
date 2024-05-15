@@ -143,7 +143,7 @@ class Merge(Sequence):
         )
 
 
-def hea(n_qubits: int, n_layers: int, param_name: str) -> tuple[ModuleList, ParameterDict]:
+def hea(n_qubits: int, depth: int, param_name: str) -> tuple[ModuleList, ParameterDict]:
     def _idx() -> Generator[int, Any, NoReturn]:
         i = 0
         while True:
@@ -155,7 +155,7 @@ def hea(n_qubits: int, n_layers: int, param_name: str) -> tuple[ModuleList, Para
 
     idx = idxer()
     ops = []
-    for _ in range(n_layers):
+    for _ in range(depth):
         layer = []
         for i in range(n_qubits):
             layer += [Merge([fn(i, f"{param_name}_{next(idx)}") for fn in [RX, RY, RX]])]

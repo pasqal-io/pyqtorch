@@ -10,9 +10,9 @@
 from __future__ import annotations
 
 from .adjoint import expectation
+from .analog import Add, Hamiltonian, HamiltonianEvolution, Scale
 from .apply import apply_operator
 from .circuit import Merge, QuantumCircuit, Sequence
-from .hamiltonian import Add, Hamiltonian, HamiltonianEvolution, Scale
 from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
 from .primitive import (
     CNOT,

@@ -5,9 +5,9 @@ from typing import Any, Tuple
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
+from pyqtorch.analog import Hamiltonian
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.hamiltonian import Hamiltonian
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import DiffMode, inner_prod, param_dict
