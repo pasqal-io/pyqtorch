@@ -318,7 +318,7 @@ class GeneralizedAmplitudeDamping(Noise):
         K0 = sqrt(p) * [[1, 0], [0, sqrt(1 - rate)]]
         K1 = sqrt(p) * [[0, sqrt(rate)], [0, 0]]
         K2 = sqrt(1-p) * [[sqrt(1 - rate), 0], [0, 1]]
-        K1 = sqrt(1-p) * [[0, 0], [sqrt(rate), 0]]
+        K3 = sqrt(1-p) * [[0, 0], [sqrt(rate), 0]]
 
     Args:
         target (int): The index of the qubit being affected by the noise.
