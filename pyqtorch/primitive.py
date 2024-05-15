@@ -47,15 +47,6 @@ class Primitive(torch.nn.Module):
             self.register_forward_pre_hook(pre_forward_hook)
             self.register_full_backward_pre_hook(pre_backward_hook)
 
-    def __key(self) -> tuple:
-        return self.qubit_support
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.__key() == other.__key()
-        else:
-            return False
-
     def __hash__(self) -> int:
         return hash(self.qubit_support)
 
