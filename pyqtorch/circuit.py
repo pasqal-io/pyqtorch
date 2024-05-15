@@ -5,7 +5,7 @@ from logging import getLogger
 from operator import add
 from typing import Any, Generator, Iterator, NoReturn
 
-from torch import Tensor, bmm, complex128, rand
+from torch import Tensor, complex128, einsum, rand
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
@@ -13,7 +13,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 from pyqtorch.apply import apply_operator
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import State, batch_first, batch_last, zero_state
+from pyqtorch.utils import State, add_batch_dim, zero_state
 
 logger = getLogger(__name__)
 
@@ -125,21 +125,10 @@ class Merge(Sequence):
         )
 
     def unitary(self, values: dict[str, Tensor] | None, batch_size: int) -> Tensor:
-        def expand(operator: Tensor) -> Tensor:
-            """In case we have a sequence of batched parametric gates mixed with primitive gates,
-            we adjust the batch_dim of the primitive gates to match."""
-            return (
-                operator.repeat(1, 1, batch_size)
-                if operator.shape != (2, 2, batch_size)
-                else operator
-            )
-
         # We reverse the list of tensors here since matmul is not commutative.
-        return batch_last(
-            reduce(
-                bmm,
-                (batch_first(expand(op.unitary(values))) for op in reversed(self.operations)),
-            )
+        return reduce(
+            lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
+            (add_batch_dim(op.unitary(values), batch_size) for op in reversed(self.operations)),
         )
 
 

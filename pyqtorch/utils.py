@@ -176,29 +176,7 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     return operator
 
 
-def batch_first(operator: Tensor) -> Tensor:
-    """
-    Permute the operator's batch dimension on first dimension.
-
-    Args:
-        operator (Tensor): Operator in size [2**n_qubits, 2**n_qubits,batch_size].
-
-    Returns:
-        Tensor: Operator in size [batch_size, 2**n_qubits, 2**n_qubits].
-    """
-    batch_first_perm = (2, 0, 1)
-    return torch.permute(operator, batch_first_perm)
-
-
-def batch_last(operator: Tensor) -> Tensor:
-    """
-    Permute the operator's batch dimension on last dimension.
-
-    Args:
-        operator (Tensor): Operator in size [batch_size,2**n_qubits, 2**n_qubits].
-
-    Returns:
-        Tensor: Operator in size [2**n_qubits, 2**n_qubits,batch_size].
-    """
-    undo_perm = (1, 2, 0)
-    return torch.permute(operator, undo_perm)
+def add_batch_dim(operator: Tensor, batch_size: int = 1) -> Tensor:
+    """In case we have a sequence of batched parametric gates mixed with primitive gates,
+    we adjust the batch_dim of the primitive gates to match."""
+    return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator
