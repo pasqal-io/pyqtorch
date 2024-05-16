@@ -208,7 +208,7 @@ K_{2} \ =\sqrt{1\ -p} \ \begin{pmatrix}
 \end{pmatrix}
 \end{cases}$
 
- The initialization of noise gates is done as primitives, but they also consider the `probability` that noise affects the system as a parameter. And either a vector or a density matrix can be used as an input, but the output will always be a density matrix.
+ Noise gates are `Primitive` types, but they also request a `probability` argument to represent the noise affecting the system. And either a vector or a density matrix can be used as an input, but the output will always be a density matrix.
 
 ```python exec="on" source="material-block"
 import torch
