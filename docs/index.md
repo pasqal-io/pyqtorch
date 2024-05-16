@@ -228,16 +228,20 @@ Noisy circuit initialization is the same as noiseless ones and the output will a
 We know that an $X$ gate flips the state of the qubit, for instance $X|0\rangle = |1\rangle$. In practice, it's common for the target qubit to stay in its original state after applying $X$ due to the interactions between it and its environment. The possibility of failure can be represented by a `BitFlip` gate, which flips the state again after the application of the $X$ gate, returning it to its original state with a probability `1 - gate_fidelity`.
 
 ```python exec="on" source="material-block"
-import torch
-import pyqtorch as pyq
-
 import matplotlib.pyplot as plt
+import torch
 
-input_state = pyq.product_state('00')
-x = pyq.X(0)
+from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.noise import Bitflip
+from pyqtorch.primitive import X
+from pyqtorch.utils import product_state
+
+
+input_state = product_state('00')
+x = X(0)
 gate_fidelity = 0.9
-bf = pyq.BitFlip(0,1.-gate_fidelity)
-circ = pyq.QuantumCircuit(2,[x,bf])
+bf = BitFlip(0,1.-gate_fidelity)
+circ = QuantumCircuit(2,[x,bf])
 output_state = circ(input_state)
 output_state_diag = output_state.diagonal(dim1=0).real
 
