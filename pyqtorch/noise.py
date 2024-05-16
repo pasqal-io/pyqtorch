@@ -116,8 +116,8 @@ class BitFlip(Noise):
             raise ValueError("The probability value is not a correct probability")
         K0: Tensor = sqrt(1.0 - probability) * IMAT
         K1: Tensor = sqrt(probability) * XMAT
-        Kraus_Bitflip: list[Tensor] = [K0, K1]
-        super().__init__(Kraus_Bitflip, target, probability)
+        kraus_bitflip: list[Tensor] = [K0, K1]
+        super().__init__(kraus_bitflip, target, probability)
 
 
 class PhaseFlip(Noise):
@@ -146,8 +146,8 @@ class PhaseFlip(Noise):
             raise ValueError("The probability value is not a correct probability")
         K0: Tensor = sqrt(1.0 - probability) * IMAT
         K1: Tensor = sqrt(probability) * ZMAT
-        Kraus_Phase: list[Tensor] = [K0, K1]
-        super().__init__(Kraus_Phase, target, probability)
+        kraus_phaseflip: list[Tensor] = [K0, K1]
+        super().__init__(kraus_phaseflip, target, probability)
 
 
 class Depolarizing(Noise):
@@ -181,8 +181,8 @@ class Depolarizing(Noise):
         K1: Tensor = sqrt(probability / 3) * XMAT
         K2: Tensor = sqrt(probability / 3) * YMAT
         K3: Tensor = sqrt(probability / 3) * ZMAT
-        Kraus_Depolarizing: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(Kraus_Depolarizing, target, probability)
+        kraus_depolarizing: list[Tensor] = [K0, K1, K2, K3]
+        super().__init__(kraus_depolarizing, target, probability)
 
 
 class PauliChannel(Noise):
@@ -221,8 +221,8 @@ class PauliChannel(Noise):
         K1: Tensor = sqrt(px) * XMAT
         K2: Tensor = sqrt(py) * YMAT
         K3: Tensor = sqrt(pz) * ZMAT
-        Kraus_PauliChannel: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(Kraus_PauliChannel, target, probabilities)
+        kraus_paulichannel: list[Tensor] = [K0, K1, K2, K3]
+        super().__init__(kraus_paulichannel, target, probabilities)
 
 
 class AmplitudeDamping(Noise):
@@ -259,8 +259,8 @@ class AmplitudeDamping(Noise):
             raise ValueError("The damping rate is not a correct probability")
         K0: Tensor = torch.tensor([[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE)
         K1: Tensor = torch.tensor([[0, sqrt(rate)], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE)
-        Kraus_AmplitudeDamping: list[Tensor] = [K0, K1]
-        super().__init__(Kraus_AmplitudeDamping, target, rate)
+        kraus_amplitude_damping: list[Tensor] = [K0, K1]
+        super().__init__(kraus_amplitude_damping, target, rate)
 
 
 class PhaseDamping(Noise):
@@ -297,8 +297,8 @@ class PhaseDamping(Noise):
             raise ValueError("The damping rate is not a correct probability")
         K0: Tensor = torch.tensor([[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE)
         K1: Tensor = torch.tensor([[0, 0], [0, sqrt(rate)]], dtype=DEFAULT_MATRIX_DTYPE)
-        Kraus_GeneralizeAmplitudeDamping: list[Tensor] = [K0, K1]
-        super().__init__(Kraus_GeneralizeAmplitudeDamping, target, rate)
+        kraus_phasedamping: list[Tensor] = [K0, K1]
+        super().__init__(kraus_phasedamping, target, rate)
 
 
 class GeneralizedAmplitudeDamping(Noise):
@@ -352,5 +352,5 @@ class GeneralizedAmplitudeDamping(Noise):
         K3: Tensor = sqrt(1.0 - probability) * torch.tensor(
             [[0, 0], [sqrt(rate), 0]], dtype=DEFAULT_MATRIX_DTYPE
         )
-        Kraus_GeneralizedAmplitudeDamping: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(Kraus_GeneralizedAmplitudeDamping, target, probability)
+        kraus_generalized_amplitude_damping: list[Tensor] = [K0, K1, K2, K3]
+        super().__init__(kraus_generalized_amplitude_damping, target, probability)
