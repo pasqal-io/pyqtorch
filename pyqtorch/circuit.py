@@ -11,9 +11,10 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
+from pyqtorch.matrices import add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import State, add_batch_dim, zero_state
+from pyqtorch.utils import State, zero_state
 
 logger = getLogger(__name__)
 

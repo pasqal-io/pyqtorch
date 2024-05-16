@@ -47,9 +47,9 @@ def Hamiltonian_diag(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
 def test_hamevo_general(n_qubits: int, batch_size: int) -> None:
     H = Hamiltonian_general(n_qubits, batch_size)
     t_evo = torch.rand(1, dtype=DEFAULT_REAL_DTYPE)
-    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]))
+    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), H, t_evo)
     psi = pyq.random_state(n_qubits, batch_size)
-    psi_star = hamevo(H, t_evo, psi)
+    psi_star = hamevo(psi)
     assert is_normalized(psi_star, atol=ATOL)
 
 
@@ -58,9 +58,9 @@ def test_hamevo_single() -> None:
     n_qubits = 4
     H = Hamiltonian(1)
     t_evo = torch.tensor([torch.pi / 4], dtype=DEFAULT_MATRIX_DTYPE)
-    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]))
+    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), H, t_evo)
     psi = pyq.uniform_state(n_qubits)
-    psi_star = hamevo(H, t_evo, psi)
+    psi_star = hamevo(psi)
     result = overlap(psi_star, psi)
     assert torch.isclose(result, torch.tensor([0.5], dtype=torch.float64), rtol=RTOL, atol=ATOL)
 
@@ -71,9 +71,9 @@ def test_hamevo_batch() -> None:
     batch_size = 2
     H = Hamiltonian(batch_size)
     t_evo = torch.tensor([torch.pi / 4], dtype=DEFAULT_MATRIX_DTYPE)
-    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]))
+    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), H, t_evo)
     psi = pyq.uniform_state(n_qubits, batch_size)
-    psi_star = hamevo(H, t_evo, psi)
+    psi_star = hamevo(psi)
     result = overlap(psi_star, psi)
     assert torch.allclose(
         result, torch.tensor([0.5, 0.5], dtype=torch.float64), rtol=RTOL, atol=ATOL
@@ -116,9 +116,9 @@ def test_hamiltonianevolution_with_types(
     batch_size: int,
 ) -> None:
     n_qubits = 4
-    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]))
+    hamevo = pyq.HamiltonianEvolution(tuple([i for i in range(n_qubits)]), H, t_evo)
     psi = pyq.uniform_state(n_qubits)
-    psi_star = hamevo(H, t_evo, psi)
+    psi_star = hamevo(psi)
     result = overlap(psi_star, psi)
     assert result.size() == (batch_size,)
     assert torch.allclose(result, target, rtol=RTOL, atol=ATOL)
@@ -136,8 +136,8 @@ def test_hamevo_endianness() -> None:
         dtype=torch.complex128,
     )
     iszero = torch.tensor([False, True, False, True])
-    op = pyq.HamiltonianEvolution(qubit_support=(0, 1))
-    st = op(h, t, pyq.zero_state(2)).flatten()
+    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), generator=h, time=t)
+    st = op(pyq.zero_state(2)).flatten()
     assert torch.allclose(
         st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
     )
@@ -152,8 +152,8 @@ def test_hamevo_endianness() -> None:
         dtype=torch.complex128,
     )
     iszero = torch.tensor([False, False, True, True])
-    op = pyq.HamiltonianEvolution(qubit_support=(0, 1))
-    st = op(h, t, pyq.zero_state(2)).flatten()
+    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), generator=h, time=t)
+    st = op(pyq.zero_state(2)).flatten()
     assert torch.allclose(
         st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
     )

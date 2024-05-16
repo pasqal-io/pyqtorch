@@ -6,7 +6,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
+from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger, expand_operator
 from pyqtorch.utils import product_state
 
 
@@ -26,7 +26,7 @@ class Primitive(torch.nn.Module):
         return f"{self.qubit_support}"
 
     def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return self.pauli.unsqueeze(2)
+        return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return apply_operator(
@@ -49,6 +49,14 @@ class Primitive(torch.nn.Module):
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
         return self
+
+    def tensor(self, values: dict[str, Tensor], n_qubits: int = 1) -> Tensor:
+        t = self.unitary(values)
+        return (
+            expand_operator(t, self.qubit_support, tuple(i for i in range(n_qubits)))
+            if n_qubits > 1
+            else t
+        )
 
 
 class X(Primitive):

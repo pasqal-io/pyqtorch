@@ -225,9 +225,9 @@ def test_parametric_phase_hamevo(
     state = state_fn(n_qubits, batch_size=batch_size)
     phi = torch.rand(1, dtype=DEFAULT_MATRIX_DTYPE)
     H = (ZMAT - IMAT) / 2
-    hamevo = pyq.HamiltonianEvolution(qubit_support=(target,))
+    hamevo = pyq.HamiltonianEvolution((target,), H, phi)
     phase = pyq.PHASE(target, "phi")
-    assert torch.allclose(phase(state, {"phi": phi}), hamevo(H, phi, state))
+    assert torch.allclose(phase(state, {"phi": phi}), hamevo(state))
 
 
 @pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
