@@ -225,7 +225,7 @@ output_state = pf(output_state)
 
 Noisy circuit initialization is the same as noiseless ones and the output will always be a density matrix. Let’s show its usage through the simulation of a realistic $X$ gate.
 
-We know that a $X$ gate flips the state of the qubit, for instance $X|0\rangle = |1\rangle$. However, in practice, it's common for the target qubit to stay in its original state after applying $X$ due to the interactions between it and its environment. The possibility of failure can be represented by a Bitflip gate, which flips the state again after the application of the $X$ gate, returning it to its original state with a probability of `1 - gate_fidelity`.
+We know that an $X$ gate flips the state of the qubit, for instance $X|0\rangle = |1\rangle$. In practice, it's common for the target qubit to stay in its original state after applying $X$ due to the interactions between it and its environment. The possibility of failure can be represented by a `BitFlip` gate, which flips the state again after the application of the $X$ gate, returning it to its original state with a probability `1 - gate_fidelity`.
 
 ```python exec="on" source="material-block"
 import torch
