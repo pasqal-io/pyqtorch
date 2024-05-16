@@ -125,6 +125,34 @@ def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tenso
     return {key: val for key, val in zip(keys, values)}
 
 
+def batch_first(operator: Tensor) -> Tensor:
+    """
+    Permute the operator's batch dimension on first dimension.
+
+    Args:
+        operator (Tensor): Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+
+    Returns:
+        Tensor: Operator in size [batch_size, 2**n_qubits, 2**n_qubits].
+    """
+    batch_first_perm = (2, 0, 1)
+    return torch.permute(operator, batch_first_perm)
+
+
+def batch_last(operator: Tensor) -> Tensor:
+    """
+    Permute the operator's batch dimension on last dimension.
+
+    Args:
+        operator (Tensor): Operator in size [batch_size,2**n_qubits, 2**n_qubits].
+
+    Returns:
+        Tensor: Operator in size [2**n_qubits, 2**n_qubits,batch_size].
+    """
+    undo_perm = (1, 2, 0)
+    return torch.permute(operator, undo_perm)
+
+
 def density_mat(state: Tensor) -> Tensor:
     """
     Computes the density matrix from a pure state vector.
@@ -140,8 +168,35 @@ def density_mat(state: Tensor) -> Tensor:
     batch_size = state.shape[-1]
     batch_first_perm = [batch_dim] + list(range(batch_dim))
     state = torch.permute(state, batch_first_perm).reshape(batch_size, 2**n_qubits)
-    undo_perm = (1, 2, 0)
-    return torch.permute(torch.einsum("bi,bj->bij", (state, state.conj())), undo_perm)
+    return batch_last(torch.einsum("bi,bj->bij", (state, state.conj())))
+
+
+def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
+    """
+    Compute the Kronecker product of two operators.
+
+    Prevents errors related to the shape of the operators
+    [2**n_qubits, 2**n_qubits, batch_size] when simply using `torch.kron()`.
+    Use of `.contiguous()` to avoid errors related to the `torch.kron()` of a transposing tensor
+
+    Args:
+        op1 (Tensor): The first input tensor.
+        op2 (Tensor): The second input tensor.
+
+    Returns:
+        Tensor: The resulting tensor after applying the Kronecker product
+    """
+    batch_size_1, batch_size_2 = op1.size(2), op2.size(2)
+    if batch_size_1 > batch_size_2:
+        op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
+    elif batch_size_2 > batch_size_1:
+        op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
+    kron_product = torch.einsum(
+        "bik,bjl->bijkl", batch_first(op1).contiguous(), batch_first(op2).contiguous()
+    )
+    return batch_last(
+        kron_product.reshape(op1.size(2), op1.size(1) * op2.size(1), op1.size(0) * op2.size(0))
+    )
 
 
 def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
@@ -170,8 +225,8 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     for qubit in qubits:
         operator = torch.where(
             target > qubit,
-            torch.kron(I(target).unitary(), operator.contiguous()),
-            torch.kron(operator.contiguous(), I(target).unitary()),
+            operator_kron(I(target).unitary(), operator),
+            operator_kron(operator, I(target).unitary()),
         )
     return operator
 
