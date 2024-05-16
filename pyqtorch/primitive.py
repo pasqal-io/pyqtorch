@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from math import log2
 from typing import Any
 
 import torch
@@ -16,30 +15,15 @@ class Primitive(torch.nn.Module):
         super().__init__()
         self.target: int = target
         self.qubit_support: tuple[int, ...] = (target,)
-        self.n_qubits: int = max(self.qubit_support)
         self.register_buffer("pauli", pauli)
-        self._param_type = None
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
-
-    def __key(self) -> tuple:
-        return self.qubit_support
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.__key() == other.__key()
-        else:
-            return False
 
     def __hash__(self) -> int:
         return hash(self.qubit_support)
 
     def extra_repr(self) -> str:
-        return f"qubit_support={self.qubit_support}"
-
-    @property
-    def param_type(self) -> None:
-        return self._param_type
+        return f"{self.qubit_support}"
 
     def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return self.pauli.unsqueeze(2)
@@ -141,7 +125,6 @@ class SWAP(Primitive):
         super().__init__(OPERATIONS_DICT["SWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.qubit_support = self.control + (target,)
-        self.n_qubits = max(self.qubit_support)
 
 
 class CSWAP(Primitive):
@@ -150,7 +133,6 @@ class CSWAP(Primitive):
         self.control = (control,) if isinstance(control, int) else control
         self.target = target
         self.qubit_support = self.control + (target,)
-        self.n_qubits = max(self.qubit_support)
 
 
 class ControlledOperationGate(Primitive):
@@ -160,11 +142,10 @@ class ControlledOperationGate(Primitive):
         mat = _controlled(
             unitary=mat.unsqueeze(2),
             batch_size=1,
-            n_control_qubits=len(self.control) - (int)(log2(mat.shape[0])) + 1,
+            n_control_qubits=len(self.control),
         ).squeeze(2)
         super().__init__(mat, target)
         self.qubit_support = self.control + (target,)
-        self.n_qubits = max(self.qubit_support)
 
 
 class CNOT(ControlledOperationGate):

@@ -9,9 +9,10 @@
 # # limitations under the License.
 from __future__ import annotations
 
-from .analog import HamiltonianEvolution
+from .adjoint import expectation
+from .analog import Add, Hamiltonian, HamiltonianEvolution, Scale
 from .apply import apply_operator
-from .circuit import Add, Merge, QuantumCircuit, Scale, Sequence, expectation
+from .circuit import Merge, QuantumCircuit, Sequence
 from .noise import (
     AmplitudeDamping,
     BitFlip,

@@ -7,7 +7,7 @@ from numpy import array, log2
 from numpy.typing import NDArray
 from torch import Tensor, einsum
 
-from pyqtorch.utils import batch_first, batch_last, promote_operator
+from pyqtorch.utils import promote_operator
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -85,4 +85,4 @@ def operator_product(op1: Tensor, op2: Tensor, target: int) -> Tensor:
     elif batch_size_2 > batch_size_1:
         op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
 
-    return batch_last(torch.bmm(batch_first(op1), batch_first(op2)))
+    return torch.einsum("ijb,jkb->ikb", op1, op2)
