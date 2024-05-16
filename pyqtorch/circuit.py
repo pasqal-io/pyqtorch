@@ -5,6 +5,7 @@ from functools import reduce
 from logging import getLogger
 from operator import add
 from typing import Any, Generator, Iterator, NoReturn
+from typing import Any, Generator, Iterator, NoReturn
 
 import torch
 from torch import Tensor, complex128, einsum, eye, rand
@@ -13,6 +14,9 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
+from pyqtorch.parametric import RX, RY, Parametric
+from pyqtorch.primitive import CNOT, Primitive
+from pyqtorch.utils import State, add_batch_dim, zero_state
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, add_batch_dim, zero_state
@@ -53,6 +57,7 @@ class Sequence(Module):
     def dtype(self) -> torch_dtype:
         return self._dtype
 
+    def to(self, *args: Any, **kwargs: Any) -> Sequence:
     def to(self, *args: Any, **kwargs: Any) -> Sequence:
         self.operations = ModuleList([op.to(*args, **kwargs) for op in self.operations])
         if len(self.operations) > 0:
@@ -146,6 +151,7 @@ class Merge(Sequence):
             isinstance(operations, (list, ModuleList))
             and all([isinstance(op, (Primitive, Parametric)) for op in operations])
             and all(list([len(op.qubit_support) == 1 for op in operations]))
+            and all(list([len(op.qubit_support) == 1 for op in operations]))
             and len(list(set([op.qubit_support[0] for op in operations]))) == 1
         ):
             # We want all operations to act on the same qubit
@@ -158,6 +164,7 @@ class Merge(Sequence):
     def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
         batch_size = state.shape[-1]
         if values:
+        if values:
             batch_size = max(batch_size, max(list(map(len, values.values()))))
         return apply_operator(
             state,
@@ -167,6 +174,34 @@ class Merge(Sequence):
 
     def unitary(self, values: dict[str, Tensor] | None, batch_size: int) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
+        return reduce(
+            lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
+            (add_batch_dim(op.unitary(values), batch_size) for op in reversed(self.operations)),
+        )
+
+
+def hea(n_qubits: int, depth: int, param_name: str) -> tuple[ModuleList, ParameterDict]:
+    def _idx() -> Generator[int, Any, NoReturn]:
+        i = 0
+        while True:
+            yield i
+            i += 1
+
+    def idxer() -> Generator[int, Any, None]:
+        yield from _idx()
+
+    idx = idxer()
+    ops = []
+    for _ in range(depth):
+        layer = []
+        for i in range(n_qubits):
+            layer += [Merge([fn(i, f"{param_name}_{next(idx)}") for fn in [RX, RY, RX]])]
+        ops += layer
+        ops += [Sequence([CNOT(i % n_qubits, (i + 1) % n_qubits) for i in range(n_qubits)])]
+    params = ParameterDict(
+        {f"{param_name}_{n}": rand(1, requires_grad=True) for n in range(next(idx))}
+    )
+    return ops, params
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
             (add_batch_dim(op.unitary(values), batch_size) for op in reversed(self.operations)),

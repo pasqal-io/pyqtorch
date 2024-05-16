@@ -78,7 +78,7 @@ hermitian_matrix = matrix + matrix.T.conj()
 # To be evolved for a batch of times
 t_list = torch.tensor([0.0, 0.5, 1.0, 2.0])
 
-hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], generator=hermitian_matrix,  t_list)
+hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)], n_qubits=n_qubits)
 
 # Starting from a uniform state
 psi_start = uniform_state(n_qubits)
@@ -250,7 +250,9 @@ DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 # We can also choose the precision we want to train on
 COMPLEX_DTYPE = torch.complex64
 REAL_DTYPE = torch.float32
-LR = .15
+LR=.15
+PLOT = False
+LEARNING_RATE = 0.01
 N_QUBITS = 4
 DEPTH = 3
 VARIABLES = ("x", "y")
@@ -267,6 +269,7 @@ class DomainSampling(torch.nn.Module):
         super().__init__()
         self.exp_fn = exp_fn
         self.n_inputs = n_inputs
+        self.batch_size = batch_size
         self.batch_size = batch_size
         self.device = device
         self.dtype = dtype
