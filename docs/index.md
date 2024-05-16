@@ -232,7 +232,7 @@ import matplotlib.pyplot as plt
 import torch
 
 from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.noise import Bitflip
+from pyqtorch.noise import BitFlip
 from pyqtorch.primitive import X
 from pyqtorch.utils import product_state
 
