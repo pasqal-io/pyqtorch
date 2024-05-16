@@ -235,6 +235,40 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     return operator
 
 
+def random_dm_promotion(target: int, dm_input: DensityMatrix, n_qubits: int) -> DensityMatrix:
+    """
+    Promotes the density matrix `dm_input` at the specified target qubit with random states.
+
+    Args:
+        target (int): The index of the target qubit where the promotion will be applied.
+        dm_input (DensityMatrix): The input density matrix to promote.
+        n_qubits (int): The total number of qubits in the quantum system.
+
+    Returns:
+        DensityMatrix: The density matrix after applying random promotion.
+
+    Raises:
+        ValueError: If `target` is not within the valid range [0, n_qubits - 1].
+    """
+    if target > n_qubits - 1:
+        raise ValueError("The target must be a valid qubit index within the circuit's range.")
+    torch.manual_seed(
+        n_qubits
+    )  # To ensure reproducibility, when calling it multiple times in the same test.
+    if target == 0 or target == n_qubits - 1:
+        state_random: Tensor = random_state(n_qubits - 1)
+        dm_random: DensityMatrix = density_mat(state_random)
+        if target == 0:
+            dm_input = operator_kron(dm_input, dm_random)
+        else:
+            dm_input = operator_kron(dm_random, dm_input)
+    else:
+        state_random_1, state_random_2 = random_state(target), random_state(n_qubits - (target + 1))
+        dm_random_1, dm_random_2 = density_mat(state_random_1), density_mat(state_random_2)
+        dm_input = operator_kron(dm_random_1, operator_kron(dm_input, dm_random_2))
+    return dm_input
+
+
 def add_batch_dim(operator: Tensor, batch_size: int = 1) -> Tensor:
     """In case we have a sequence of batched parametric gates mixed with primitive gates,
     we adjust the batch_dim of the primitive gates to match."""

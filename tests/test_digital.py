@@ -11,7 +11,16 @@ from torch import Tensor
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, HMAT, IMAT, XMAT, YMAT, ZMAT, _dagger
-from pyqtorch.noise import AmplitudeDamping, BitFlip, Depolarizing, Noise, PauliChannel, PhaseFlip
+from pyqtorch.noise import (
+    AmplitudeDamping,
+    BitFlip,
+    Depolarizing,
+    GeneralizedAmplitudeDamping,
+    Noise,
+    PauliChannel,
+    PhaseDamping,
+    PhaseFlip,
+)
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import H, I, Primitive, X, Y, Z
 from pyqtorch.utils import (
@@ -21,6 +30,7 @@ from pyqtorch.utils import (
     operator_kron,
     product_state,
     promote_operator,
+    random_dm_promotion,
     random_state,
 )
 
@@ -396,76 +406,77 @@ def test_kron_batch() -> None:
     assert torch.allclose(dm_out, dm_expect)
 
 
-@pytest.mark.parametrize("noisy_pauli_gates", [BitFlip, PhaseFlip, Depolarizing, PauliChannel])
-def test_flip_gates(noisy_pauli_gates: Noise) -> None:
-    n_qubits: int = torch.randint(low=1, high=8, size=(1,)).item()
+@pytest.mark.parametrize("FlipGate", [BitFlip, PhaseFlip, Depolarizing, PauliChannel])
+def test_flip_gates(FlipGate: Noise) -> None:
+    n_qubits: int = torch.randint(low=2, high=8, size=(1,)).item()
     target: int = random.choice([i for i in range(n_qubits)])
     qubits: Tensor = torch.arange(0, n_qubits)
     qubits = qubits[qubits != target]
     batch_size: int = torch.randint(low=1, high=5, size=(1,)).item()
-    state_0s: Tensor = product_state("0" * n_qubits, batch_size)
-    rho_0 = DensityMatrix(pyq.Projector(1, "0", "0").unitary())
-    if noisy_pauli_gates == PauliChannel:
+    rho_0: DensityMatrix = density_mat(product_state("0", batch_size))
+    rho_input: DensityMatrix = random_dm_promotion(target, rho_0, n_qubits)
+    if FlipGate == PauliChannel:
         probabilities: Tensor = torch.rand((10, 3))
         probabilities = probabilities / (
             probabilities.sum(dim=1, keepdim=True) + torch.rand((1,)).item()
-        )
+        )  # To ensure that the sum of the probabilities is lower than 1.
     else:
         probabilities = torch.arange(0, 1, 10)
     for probability in probabilities:
-        output_state: DensityMatrix = noisy_pauli_gates(target, probability)(state_0s)
+        output_state: DensityMatrix = FlipGate(target, probability)(rho_input)
         assert output_state.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
-        if noisy_pauli_gates == BitFlip:
+        if FlipGate == BitFlip:
             expected_state = DensityMatrix(
                 torch.tensor([[[1 - probability], [0]], [[0], [probability]]], dtype=torch.cdouble)
             )
-        elif noisy_pauli_gates == PhaseFlip:
+        elif FlipGate == PhaseFlip:
             expected_state = DensityMatrix(
                 torch.tensor([[[1], [0]], [[0], [0]]], dtype=torch.cdouble)
             )
-        elif noisy_pauli_gates == Depolarizing:
+        elif FlipGate == Depolarizing:
             expected_state = DensityMatrix(
                 torch.tensor(
                     [[[1 - (2 * probability) / 3], [0]], [[0], [(2 * probability) / 3]]],
                     dtype=torch.cdouble,
                 )
             )
-        elif noisy_pauli_gates == PauliChannel:
+        elif FlipGate == PauliChannel:
             px, py = probability[0], probability[1]
             expected_state = DensityMatrix(
                 torch.tensor([[[1 - (px + py)], [0]], [[0], [px + py]]], dtype=torch.cdouble)
             )
-        for qubit in qubits:
-            expected_state = torch.where(
-                target > qubit,
-                torch.kron(rho_0, expected_state),
-                torch.kron(expected_state, rho_0),
-            )
-        assert torch.allclose(output_state, expected_state.repeat(1, 1, batch_size))
+        expected_state = random_dm_promotion(target, expected_state, n_qubits).repeat(
+            1, 1, batch_size
+        )
+        assert torch.allclose(output_state, expected_state)
     input_state: Tensor = random_state(n_qubits, batch_size)
-    if noisy_pauli_gates == PauliChannel:
+    if FlipGate == PauliChannel:
         assert torch.allclose(
-            noisy_pauli_gates(target, probabilities=(0, 0, 0))(density_mat(input_state)),
+            FlipGate(
+                target,
+                probabilities=torch.zeros(
+                    3,
+                ),
+            )(density_mat(input_state)),
             density_mat(input_state),
         )
     else:
         assert torch.allclose(
-            noisy_pauli_gates(target, probability=0)(density_mat(input_state)),
-            density_mat(input_state),
+            FlipGate(target, probability=0)(density_mat(input_state)), density_mat(input_state)
         )
-    if noisy_pauli_gates == BitFlip:
+    if FlipGate == BitFlip:
         assert torch.allclose(
-            noisy_pauli_gates(target, probability=1)(density_mat(input_state)),
+            FlipGate(target, probability=1)(density_mat(input_state)),
             density_mat(X(target)(input_state)),
         )
-    elif noisy_pauli_gates == PhaseFlip:
+    elif FlipGate == PhaseFlip:
         assert torch.allclose(
-            noisy_pauli_gates(target, probability=1)(density_mat(input_state)),
+            FlipGate(target, probability=1)(density_mat(input_state)),
             density_mat(Z(target)(input_state)),
         )
-    elif noisy_pauli_gates == Depolarizing:
+    elif FlipGate == Depolarizing:
         assert torch.allclose(
-            noisy_pauli_gates(target, probability=1)(density_mat(input_state)),
+            FlipGate(target, probability=1)(density_mat(input_state)),
             1
             / 3
             * (
@@ -474,10 +485,10 @@ def test_flip_gates(noisy_pauli_gates: Noise) -> None:
                 + density_mat(Y(target)(input_state))
             ),
         )
-    elif noisy_pauli_gates == PauliChannel:
+    elif FlipGate == PauliChannel:
         px, py, pz = 1 / 3, 1 / 3, 1 / 3
         assert torch.allclose(
-            noisy_pauli_gates(target, probabilities=(px, py, pz))(density_mat(input_state)),
+            FlipGate(target, probabilities=(px, py, pz))(density_mat(input_state)),
             (
                 px * density_mat(X(target)(input_state))
                 + py * density_mat(Y(target)(input_state))
@@ -486,38 +497,47 @@ def test_flip_gates(noisy_pauli_gates: Noise) -> None:
         )
 
 
-def test_damping_gates() -> None:
+@pytest.mark.parametrize(
+    "DampingGate", [AmplitudeDamping, PhaseDamping, GeneralizedAmplitudeDamping]
+)
+def test_damping_gates(DampingGate: Noise) -> None:
     n_qubits: int = torch.randint(low=1, high=8, size=(1,)).item()
     target: int = random.choice([i for i in range(n_qubits)])
     batch_size: int = torch.randint(low=1, high=5, size=(1,)).item()
-    state_0: Tensor = product_state("0")
-    state_1: Tensor = product_state("1")
-    dm_0: DensityMatrix = density_mat(state_0)
-    dm_1: DensityMatrix = density_mat(state_1)
-    if target == 0 or target == n_qubits - 1:
-        state_random: Tensor = random_state(n_qubits - 1)
-        dm_random: DensityMatrix = density_mat(state_random)
-        if target == 0:
-            dm_tot_0: DensityMatrix = torch.kron(dm_0, dm_random)
-            dm_tot_1: DensityMatrix = torch.kron(dm_1, dm_random)
-        else:
-            dm_tot_0, dm_tot_1 = torch.kron(dm_random, dm_0), torch.kron(dm_random, dm_1)
-    else:
-        state_random_1: Tensor = random_state(target)
-        state_random_2: Tensor = random_state(n_qubits - (target + 1))
-        dm_random_1: DensityMatrix = density_mat(state_random_1)
-        dm_random_2: DensityMatrix = density_mat(state_random_2)
-        dm_tot_0 = torch.kron(dm_random_1, torch.kron(dm_0, dm_random_2))
-        dm_tot_1 = torch.kron(dm_random_1, torch.kron(dm_1, dm_random_2))
-    dm_tot_0, dm_tot_1 = dm_tot_0.repeat(1, 1, batch_size), dm_tot_1.repeat(1, 1, batch_size)
+    rho_0: DensityMatrix = density_mat(product_state("0", batch_size))
+    rho_1: DensityMatrix = density_mat(product_state("1", batch_size))
+    rho_input: DensityMatrix = random_dm_promotion(target, rho_0, n_qubits)
     rates: Tensor = torch.arange(0, 1, 10)
+    if DampingGate == GeneralizedAmplitudeDamping:
+        rates = torch.rand((10, 2))  # prob and rate
     for rate in rates:
-        output_state: DensityMatrix = AmplitudeDamping(target, rate)(dm_tot_0)
-        assert output_state.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
-        expected_state: DensityMatrix = I(target)(dm_tot_0)
-        assert torch.allclose(expected_state, output_state)
-    assert torch.allclose(AmplitudeDamping(target, rate=1)(dm_tot_1), X(target)(dm_tot_1))
-    state_rand: Tensor = random_state(n_qubits)
-    assert torch.allclose(
-        AmplitudeDamping(target, rate)(state_rand), density_mat(I(target)(state_rand))
-    )
+        if DampingGate == GeneralizedAmplitudeDamping:
+            p, r = rate[0], rate[1]
+            apply_gate: DensityMatrix = DampingGate(target, p, r)(rho_input)
+            expected_state = DensityMatrix(
+                torch.tensor([[[1 - (r - p * r)], [0]], [[0], [r - p * r]]], dtype=torch.cdouble)
+            )
+            expected_state = random_dm_promotion(target, expected_state, n_qubits).repeat(
+                1, 1, batch_size
+            )
+        else:
+            apply_gate = DampingGate(target, rate)(rho_input)
+            expected_state = I(target)(rho_input)
+        assert apply_gate.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+        assert torch.allclose(apply_gate, expected_state)
+    input_state: Tensor = random_state(n_qubits)
+    if DampingGate == GeneralizedAmplitudeDamping:
+        assert torch.allclose(
+            DampingGate(target, probability=0, rate=0)(input_state),
+            density_mat(I(target)(input_state)),
+        )
+    else:
+        assert torch.allclose(
+            DampingGate(target, rate=0)(input_state), density_mat(I(target)(input_state))
+        )
+    if DampingGate == AmplitudeDamping:
+        assert torch.allclose(DampingGate(target, rate=1)(rho_1), rho_0)
+    elif DampingGate == PhaseDamping:
+        assert torch.allclose(DampingGate(target, rate=1)(rho_1), I(target)(rho_1))
+    elif DampingGate == GeneralizedAmplitudeDamping:
+        assert torch.allclose(DampingGate(target, probability=1, rate=1)(rho_1), rho_0)

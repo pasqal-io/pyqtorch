@@ -4,11 +4,23 @@ import random
 
 import pytest
 import torch
+from torch import Tensor
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
+from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
-from pyqtorch.utils import GRADCHECK_ATOL
+from pyqtorch.noise import (
+    AmplitudeDamping,
+    BitFlip,
+    Depolarizing,
+    GeneralizedAmplitudeDamping,
+    PauliChannel,
+    PhaseDamping,
+    PhaseFlip,
+)
+from pyqtorch.primitive import H, I, X, Y, Z
+from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix, random_state
 
 
 def test_adjoint_diff() -> None:
@@ -202,3 +214,59 @@ def test_merge_different_batchsize(batch_size: int) -> None:
 def test_ham_expect_fail() -> None:
     ops = [pyq.Z(0), pyq.RY(1, "theta_1")]
     ham = pyq.Hamiltonian(ops)
+
+
+@pytest.mark.parametrize("n_qubits", torch.randint(low=2, high=5, size=(5, 1)))
+def test_noise_circ(n_qubits: int) -> None:
+    GATES: list = [X, Y, Z, I, H]
+    NOISE_GATES: list = [
+        BitFlip,
+        PhaseFlip,
+        PauliChannel,
+        Depolarizing,
+        AmplitudeDamping,
+        PhaseDamping,
+        GeneralizedAmplitudeDamping,
+    ]
+    batch_size: int = torch.randint(low=1, high=5, size=(1,)).item()
+    input_state: Tensor = random_state(n_qubits, batch_size)
+    op1, op2 = random.choice(GATES), random.choice(GATES)
+    op1 = op1(torch.randint(0, n_qubits, (1,)).item())
+    op2 = op2(torch.randint(0, n_qubits, (1,)).item())
+    noise_1, noise_2 = random.choice(NOISE_GATES), random.choice(NOISE_GATES)
+    if noise_1 == PauliChannel:
+        noise_prob_1: Tensor = torch.rand(size=(3,))
+        noise_prob_1 = noise_prob_1 / (
+            noise_prob_1.sum(dim=0, keepdim=True) + torch.rand((1,)).item()
+        )
+        noise_1 = noise_1(torch.randint(0, n_qubits, (1,)).item(), noise_prob_1)
+    elif noise_1 == GeneralizedAmplitudeDamping:
+        noise_prob_1 = torch.rand(size=(2,))
+        p, r = noise_prob_1[0], noise_prob_1[1]
+        noise_1 = noise_1(torch.randint(0, n_qubits, (1,)).item(), p, r)
+    else:
+        noise_prob_1 = torch.rand(size=(1,)).item()
+        noise_1 = noise_1(torch.randint(0, n_qubits, (1,)).item(), noise_prob_1)
+    if noise_2 == PauliChannel:
+        noise_prob_2: Tensor = torch.rand(size=(3,))
+        noise_prob_2 = noise_prob_2 / (
+            noise_prob_2.sum(dim=0, keepdim=True) + torch.rand((1,)).item()
+        )  # To ensure that the sum of the probabilities is lower than 1.
+        noise_2 = noise_2(torch.randint(0, n_qubits, (1,)).item(), noise_prob_2)
+    elif noise_2 == GeneralizedAmplitudeDamping:
+        noise_prob_2 = torch.rand(size=(2,))
+        p, r = noise_prob_2[0], noise_prob_2[1]
+        noise_2 = noise_2(torch.randint(0, n_qubits, (1,)).item(), p, r)
+    else:
+        noise_prob_2 = torch.rand(size=(1,)).item()
+        noise_2 = noise_2(torch.randint(0, n_qubits, (1,)).item(), noise_prob_2)
+    circ = QuantumCircuit(n_qubits, [op1, op2, noise_1, noise_2])
+    output_state = circ(input_state)
+    assert isinstance(output_state, DensityMatrix)
+    assert output_state.shape == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+    diag_sums: list = []
+    for i in range(batch_size):
+        diag_batch: Tensor = torch.diagonal(output_state[:, :, i], dim1=0, dim2=1)
+        diag_sums.append(torch.sum(diag_batch))
+    diag_sum: Tensor = torch.stack(diag_sums)
+    assert torch.allclose(diag_sum, torch.ones((batch_size,), dtype=torch.cdouble))
