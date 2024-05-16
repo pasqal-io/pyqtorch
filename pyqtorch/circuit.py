@@ -3,18 +3,17 @@ from __future__ import annotations
 from functools import reduce
 from logging import getLogger
 from operator import add
-from typing import Any, Iterator
+from typing import Any, Generator, Iterator, NoReturn
 
-from torch import Tensor, bmm, complex128, ones_like
+from torch import Tensor, complex128, einsum, rand
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import _dagger
-from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import Primitive
-from pyqtorch.utils import DiffMode, State, batch_first, batch_last, inner_prod, zero_state
+from pyqtorch.parametric import RX, RY, Parametric
+from pyqtorch.primitive import CNOT, Primitive
+from pyqtorch.utils import State, add_batch_dim, zero_state
 
 logger = getLogger(__name__)
 
@@ -52,7 +51,7 @@ class Sequence(Module):
     def dtype(self) -> torch_dtype:
         return self._dtype
 
-    def to(self, *args: Any, **kwargs: Any) -> QuantumCircuit:
+    def to(self, *args: Any, **kwargs: Any) -> Sequence:
         self.operations = ModuleList([op.to(*args, **kwargs) for op in self.operations])
         if len(self.operations) > 0:
             self._device = self.operations[0].device
@@ -78,47 +77,14 @@ class QuantumCircuit(Sequence):
     def init_state(self, batch_size: int = 1) -> Tensor:
         return zero_state(self.n_qubits, batch_size, device=self.device, dtype=self.dtype)
 
-
-def expectation(
-    circuit: QuantumCircuit,
-    state: State,
-    values: dict[str, Tensor],
-    observable: QuantumCircuit,
-    diff_mode: DiffMode = DiffMode.AD,
-) -> Tensor:
-    """Compute the expectation value of the circuit given a state and observable.
-    Arguments:
-        circuit: QuantumCircuit instance
-        state: An input state
-        values: A dictionary of parameter values
-        observable: QuantumCircuit representing the observable
-        diff_mode: The differentiation mode
-    Returns:
-        A expectation value.
-    """
-    if observable is None:
-        raise ValueError("Please provide an observable to compute expectation.")
-    if state is None:
-        state = circuit.init_state(batch_size=1)
-    if diff_mode == DiffMode.AD:
-        state = circuit.run(state, values)
-        return inner_prod(state, observable.forward(state, values)).real
-    elif diff_mode == DiffMode.ADJOINT:
-        from pyqtorch.adjoint import AdjointExpectation
-
-        return AdjointExpectation.apply(circuit, observable, state, values.keys(), *values.values())
-    else:
-        raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")
-
-
-class Add(Sequence):
-    """The 'add' operation applies all 'operations' to 'state' and returns the sum of states."""
-
-    def __init__(self, operations: list[Module]):
-        super().__init__(operations=operations)
-
-    def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
-        return reduce(add, (op(state, values) for op in self.operations))
+    def flatten(self) -> ModuleList:
+        ops = []
+        for op in self.operations:
+            if isinstance(op, Sequence):
+                ops += op.operations
+            else:
+                ops.append(op)
+        return ModuleList(ops)
 
 
 class Merge(Sequence):
@@ -132,14 +98,13 @@ class Merge(Sequence):
 
         Arguments:
             operations: A list of single qubit operations.
-            qubits: The target qubit.
-            n_qubits: The number of qubits in the full system.
 
         """
 
         if (
             isinstance(operations, (list, ModuleList))
             and all([isinstance(op, (Primitive, Parametric)) for op in operations])
+            and all(list([len(op.qubit_support) == 1 for op in operations]))
             and len(list(set([op.qubit_support[0] for op in operations]))) == 1
         ):
             # We want all operations to act on the same qubit
@@ -151,7 +116,7 @@ class Merge(Sequence):
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
         batch_size = state.shape[-1]
-        if values and len(values) > 0:
+        if values:
             batch_size = max(batch_size, max(list(map(len, values.values()))))
         return apply_operator(
             state,
@@ -160,49 +125,32 @@ class Merge(Sequence):
         )
 
     def unitary(self, values: dict[str, Tensor] | None, batch_size: int) -> Tensor:
-        def expand(operator: Tensor) -> Tensor:
-            """In case we have a sequence of batched parametric gates mixed with primitive gates,
-            we adjust the batch_dim of the primitive gates to match."""
-            return (
-                operator.repeat(1, 1, batch_size)
-                if operator.shape != (2, 2, batch_size)
-                else operator
-            )
-
         # We reverse the list of tensors here since matmul is not commutative.
-        return batch_last(
-            reduce(
-                bmm,
-                (batch_first(expand(op.unitary(values))) for op in reversed(self.operations)),
-            )
+        return reduce(
+            lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
+            (add_batch_dim(op.unitary(values), batch_size) for op in reversed(self.operations)),
         )
 
 
-class Scale(Sequence):
-    """Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter."""
+def hea(n_qubits: int, depth: int, param_name: str) -> tuple[ModuleList, ParameterDict]:
+    def _idx() -> Generator[int, Any, NoReturn]:
+        i = 0
+        while True:
+            yield i
+            i += 1
 
-    def __init__(self, operations: Sequence | Primitive, param_name: str):
-        super().__init__(
-            operations.operations if isinstance(operations, Sequence) else [operations]
-        )
-        self.param_name = param_name
+    def idxer() -> Generator[int, Any, None]:
+        yield from _idx()
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
-        return (
-            values[self.param_name] * super().forward(state, values)
-            if isinstance(self.operations, Sequence)
-            else self._forward(state, values)
-        )
-
-    def _forward(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
-        return apply_operator(state, self.unitary(values), self.operations[0].qubit_support)
-
-    def unitary(self, values: dict[str, Tensor]) -> Tensor:
-        thetas = values[self.param_name]
-        return thetas * self.operations[0].unitary(values)
-
-    def dagger(self, values: dict[str, Tensor]) -> Tensor:
-        return _dagger(self.unitary(values))
-
-    def jacobian(self, values: dict[str, Tensor]) -> Tensor:
-        return values[self.param_name] * ones_like(self.unitary(values))
+    idx = idxer()
+    ops = []
+    for _ in range(depth):
+        layer = []
+        for i in range(n_qubits):
+            layer += [Merge([fn(i, f"{param_name}_{next(idx)}") for fn in [RX, RY, RX]])]
+        ops += layer
+        ops += [Sequence([CNOT(i % n_qubits, (i + 1) % n_qubits) for i in range(n_qubits)])]
+    params = ParameterDict(
+        {f"{param_name}_{n}": rand(1, requires_grad=True) for n in range(next(idx))}
+    )
+    return ops, params

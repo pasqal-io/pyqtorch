@@ -6,7 +6,7 @@ import pytest
 import torch
 
 import pyqtorch as pyq
-from pyqtorch.circuit import DiffMode, expectation
+from pyqtorch import DiffMode, expectation
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.utils import GRADCHECK_ATOL
 
@@ -155,10 +155,17 @@ def test_scale(fn: pyq.primitive.Primitive) -> None:
 
 
 def test_add() -> None:
-    x = pyq.X(0)
-    z = pyq.Z(1)
-    state = pyq.zero_state(2)
-    assert torch.allclose(pyq.Add([x, z])(state), x(state) + z(state))
+    num_gates = 2
+    fns = [pyq.X, pyq.Y, pyq.Z, pyq.S, pyq.H, pyq.T]
+    ops = []
+    n_qubits = torch.randint(low=1, high=4, size=(1,)).item()
+    state = pyq.random_state(n_qubits)
+    chosen_gate_ids = torch.randint(0, len(fns) - 1, size=(num_gates,))
+    for id in chosen_gate_ids:
+        target = random.choice([i for i in range(n_qubits)])
+        ops.append(fns[id](target))
+
+    assert torch.allclose(pyq.Add(ops)(state), ops[0](state) + ops[1](state))
 
 
 def test_merge() -> None:
@@ -170,7 +177,28 @@ def test_merge() -> None:
     assert torch.allclose(circ(state, values), mergecirc(state, values))
 
 
-@pytest.mark.xfail(reason="Can only merge gate acting on the same qubit support.")
-def test_merge_expect_fail() -> None:
+@pytest.mark.xfail(reason="Can only merge single qubit gates acting on the same qubit support.")
+def test_merge_different_sup_expect_fail() -> None:
     ops = [pyq.RX(0, "theta_0"), pyq.RY(1, "theta_1")]
     mergecirc = pyq.Merge(ops)
+
+
+@pytest.mark.xfail(reason="Can only merge single qubit gates acting on the same qubit support.")
+def test_merge_multiqubit_expect_fail() -> None:
+    ops = [pyq.CNOT(0, 1), pyq.RY(1, "theta_1")]
+    mergecirc = pyq.Merge(ops)
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 3])
+def test_merge_different_batchsize(batch_size: int) -> None:
+    ops = [pyq.X(0), pyq.RX(0, "theta_0")]
+    mergecirc = pyq.Merge(ops)
+    for bs in [1, batch_size]:
+        mergecirc(pyq.random_state(2, bs), {"theta_0": torch.rand(batch_size)})
+        mergecirc(pyq.random_state(2, batch_size), {"theta_0": torch.rand(bs)})
+
+
+@pytest.mark.xfail(reason="Hamiltonians can only be constructed from Scale, Add and Primitive.")
+def test_ham_expect_fail() -> None:
+    ops = [pyq.Z(0), pyq.RY(1, "theta_1")]
+    ham = pyq.Hamiltonian(ops)

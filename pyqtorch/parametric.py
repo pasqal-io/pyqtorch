@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from math import log2
 from typing import Any, Tuple
 
 import torch
@@ -36,6 +35,9 @@ class Parametric(Primitive):
             return Parametric._expand_values(values)
 
         self.parse_values = parse_tensor if param_name == "" else parse_values
+
+    def extra_repr(self) -> str:
+        return f"{self.qubit_support}, {self.param_name}"
 
     def __hash__(self) -> int:
         return hash(self.qubit_support) + hash(self.param_name)
@@ -111,13 +113,12 @@ class ControlledRotationGate(Parametric):
         self.control = control if isinstance(control, tuple) else (control,)
         super().__init__(gate, target, param_name)
         self.qubit_support = self.control + (self.target,)
-        self.n_qubits = max(list(self.qubit_support))
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = self.parse_values(values)
         batch_size = len(thetas)
         mat = _unitary(thetas, self.pauli, self.identity, batch_size)
-        return _controlled(mat, batch_size, len(self.control) - (int)(log2(mat.shape[0])) + 1)
+        return _controlled(mat, batch_size, len(self.control))
 
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = self.parse_values(values)
