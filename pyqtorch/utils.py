@@ -258,10 +258,11 @@ def random_dm_promotion(target: int, dm_input: DensityMatrix, n_qubits: int) -> 
     if target == 0 or target == n_qubits - 1:
         state_random: Tensor = random_state(n_qubits - 1)
         dm_random: DensityMatrix = density_mat(state_random)
-        if target == 0:
-            dm_input = operator_kron(dm_input, dm_random)
-        else:
-            dm_input = operator_kron(dm_random, dm_input)
+        dm_input = torch.where(
+            torch.tensor(target) == 0,
+            operator_kron(dm_input, dm_random),
+            operator_kron(dm_random, dm_input),
+        )
     else:
         state_random_1, state_random_2 = random_state(target), random_state(n_qubits - (target + 1))
         dm_random_1, dm_random_2 = density_mat(state_random_1), density_mat(state_random_2)

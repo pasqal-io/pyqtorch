@@ -221,8 +221,8 @@ class PauliChannel(Noise):
         K1: Tensor = sqrt(px) * XMAT
         K2: Tensor = sqrt(py) * YMAT
         K3: Tensor = sqrt(pz) * ZMAT
-        kraus_paulichannel: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(kraus_paulichannel, target, probabilities)
+        kraus_pauli_channel: list[Tensor] = [K0, K1, K2, K3]
+        super().__init__(kraus_pauli_channel, target, probabilities)
 
 
 class AmplitudeDamping(Noise):
@@ -297,8 +297,8 @@ class PhaseDamping(Noise):
             raise ValueError("The damping rate is not a correct probability")
         K0: Tensor = torch.tensor([[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE)
         K1: Tensor = torch.tensor([[0, 0], [0, sqrt(rate)]], dtype=DEFAULT_MATRIX_DTYPE)
-        kraus_phasedamping: list[Tensor] = [K0, K1]
-        super().__init__(kraus_phasedamping, target, rate)
+        kraus_phase_damping: list[Tensor] = [K0, K1]
+        super().__init__(kraus_phase_damping, target, rate)
 
 
 class GeneralizedAmplitudeDamping(Noise):
