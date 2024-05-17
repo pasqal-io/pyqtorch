@@ -172,7 +172,7 @@ class HamiltonianEvolution(Sequence):
         self.qubit_support = qubit_support  # type: ignore
         self.time = time
 
-        self._generator_map = {
+        self._generator_map: dict[GeneratorType, Callable[[dict], Tensor]] = {
             GeneratorType.SYMBOL: self._symbolic_generator,
             GeneratorType.TENSOR: self._tensor_generator,
             GeneratorType.OPERATION: self._tensor_generator,
@@ -194,11 +194,11 @@ class HamiltonianEvolution(Sequence):
         return self.generator[0].tensor(values, len(self.qubit_support))
 
     @property
-    def hamiltonian(self) -> Callable[[dict[str, Tensor]], Tensor]:
+    def create_hamiltonian(self) -> Callable[[dict], Tensor]:
         return self._generator_map[self.generator_type]
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
-        hamiltonian = self.hamiltonian(values)
+        hamiltonian = self.create_hamiltonian(values)
         time_evolution = values[self.time] if isinstance(self.time, str) else self.time
 
         return apply_operator(
