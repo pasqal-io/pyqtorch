@@ -43,6 +43,9 @@ class Sequence(Module):
     def __iter__(self) -> Iterator:
         return iter(self.operations)
 
+    def __len__(self) -> int:
+        return len(self.operations)
+
     def __hash__(self) -> int:
         return hash(reduce(add, (hash(op) for op in self.operations)))
 

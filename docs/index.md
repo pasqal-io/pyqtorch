@@ -78,7 +78,7 @@ hermitian_matrix = matrix + matrix.T.conj()
 # To be evolved for a batch of times
 t_list = torch.tensor([0.0, 0.5, 1.0, 2.0])
 
-hamiltonian_evolution = HamiltonianEvolution([i for i in range(n_qubits)], hermitian_matrix, t_list)
+hamiltonian_evolution = HamiltonianEvolution(hermitian_matrix, t_list, [i for i in range(n_qubits)])
 
 # Starting from a uniform state
 psi_start = uniform_state(n_qubits)
@@ -123,9 +123,9 @@ from pyqtorch.utils import DiffMode
 n_qubits = 3
 batch_size = 1
 
-rx = pyq.RX(0, param_name="x")
+ry = pyq.RY(0, param_name="x")
 cnot = pyq.CNOT(1, 2)
-ops = [rx, cnot]
+ops = [ry, cnot]
 n_qubits = 3
 circ = pyq.QuantumCircuit(n_qubits, ops)
 
@@ -318,7 +318,7 @@ feature_map = [RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
 ]
 ansatz, params = hea(N_QUBITS, DEPTH, "theta")
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-total_magnetization = Hamiltonian(tuple(i for i in range(N_QUBITS)), Sequence([Z(i) for i in range(N_QUBITS)])).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+total_magnetization = Hamiltonian(Sequence([Z(i) for i in range(N_QUBITS)]),tuple(i for i in range(N_QUBITS))).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
