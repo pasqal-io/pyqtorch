@@ -78,15 +78,13 @@ hermitian_matrix = matrix + matrix.T.conj()
 # To be evolved for a batch of times
 t_list = torch.tensor([0.0, 0.5, 1.0, 2.0])
 
-hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)])
+hamiltonian_evolution = HamiltonianEvolution([i for i in range(n_qubits)], hermitian_matrix, t_list)
 
 # Starting from a uniform state
 psi_start = uniform_state(n_qubits)
 
 # Returns an evolved state at each time value
 psi_end = hamiltonian_evolution(
-    hamiltonian=hermitian_matrix,
-    time_evolution=t_list,
     state = psi_start)
 
 assert is_normalized(psi_end, atol=1e-05)
@@ -189,7 +187,7 @@ feature_map = [pyq.RX(i, f'x') for i in range(N_QUBITS)]
 ansatz, params = hea(N_QUBITS, DEPTH, 'theta')
 # Lets move all necessary components to the DEVICE
 circ = pyq.QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-observable = pyq.Hamiltonian([pyq.Z(0)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+observable = pyq.Hamiltonian((0,),[pyq.Z(0)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 x, y = x.to(device=DEVICE, dtype=REAL_DTYPE), y.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
@@ -320,7 +318,7 @@ feature_map = [RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
 ]
 ansatz, params = hea(N_QUBITS, DEPTH, "theta")
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-total_magnetization = Hamiltonian([Z(i) for i in range(N_QUBITS)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+total_magnetization = Hamiltonian(tuple(i for i in range(N_QUBITS)), Sequence([Z(i) for i in range(N_QUBITS)])).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 

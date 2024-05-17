@@ -12,21 +12,35 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import Operator, State, is_diag
+from pyqtorch.utils import Operator, State, StrEnum, is_diag
 
 BATCH_DIM = 2
+
+
+class GeneratorType(StrEnum):
+    """
+    Which type of generator is used in HamiltonianEvolution.
+    """
+
+    OPERATION_PARAMETRIC = "operation_parametric"
+    OPERATION = "operation"
+    TENSOR = "tensor"
+    SYMBOL = "symbol"
 
 
 class Scale(Sequence):
     """Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter."""
 
-    def __init__(self, operations: list[Module], param_name: str):
-        super().__init__(operations=operations)
-        self.param_name = param_name
+    def __init__(self, operations: list[Module], param_name: str | Tensor):
+        super().__init__(
+            operations.operations if isinstance(operations, Sequence) else [operations]
+        )
+        self.param = param_name
+        assert len(self.operations) == 1
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
         return (
-            values[self.param_name] * super().forward(state, values)
+            values[self.param] * super().forward(state, values)
             if isinstance(self.operations, Sequence)
             else self._forward(state, values)
         )
@@ -35,17 +49,19 @@ class Scale(Sequence):
         return apply_operator(state, self.unitary(values), self.operations[0].qubit_support)
 
     def unitary(self, values: dict[str, Tensor]) -> Tensor:
-        thetas = values[self.param_name]
+        thetas = values[self.param] if isinstance(self.param, str) else self.param
         return thetas * self.operations[0].unitary(values)
 
     def dagger(self, values: dict[str, Tensor]) -> Tensor:
         return _dagger(self.unitary(values))
 
     def jacobian(self, values: dict[str, Tensor]) -> Tensor:
-        return values[self.param_name] * ones_like(self.unitary(values))
+        thetas = values[self.param] if isinstance(self.param, str) else self.param
+        return thetas * ones_like(self.unitary(values))
 
-    def tensor(self, values: dict[str, Tensor], n_qubits: int) -> Tensor:
-        return values[self.param_name] * super().tensor(values, n_qubits)
+    def tensor(self, values: dict[str, Tensor] = {}, n_qubits: int = 1) -> Tensor:
+        thetas = values[self.param] if isinstance(self.param, str) else self.param
+        return thetas * self.operations[0].tensor(values, n_qubits)
 
 
 class Add(Sequence):
@@ -57,7 +73,7 @@ class Add(Sequence):
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
         return reduce(add, (op(state, values) for op in self.operations))
 
-    def tensor(self, values: dict, n_qubits: int) -> Tensor:
+    def tensor(self, values: dict = {}, n_qubits: int = 1) -> Tensor:
         mat = torch.zeros((2, 2, 1), device=self.device)
         for _ in range(n_qubits - 1):
             mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
@@ -73,12 +89,14 @@ class Hamiltonian(Add):
         qubit_support: Tuple[int, ...],
         generator: TGenerator,
     ):
+        assert len(generator) == 1, "Generator can be: primitive, tensor or sequence"
         if isinstance(generator, Tensor):
             generator = [Primitive(generator, target=qubit_support[0])]
         elif isinstance(generator, Primitive):
-            generator = torch.nn.ModuleList([generator])
+            generator = [generator]
         super().__init__(operations=generator)
         self.qubit_support = qubit_support
+        self.generator = self.operations
 
 
 def is_diag_hamiltonian(hamiltonian: Tensor) -> bool:
@@ -101,13 +119,65 @@ def evolve(hamiltonian: Operator, time_evolution: torch.Tensor) -> Tensor:
     return torch.transpose(evol_operator, 0, -1)
 
 
-class HamiltonianEvolution(Hamiltonian):
-    def __init__(self, qubit_support: Tuple[int, ...], generator: TGenerator, time: Tensor | str):
-        super().__init__(qubit_support, generator)
+class HamiltonianEvolution(Add):
+    def __init__(
+        self,
+        generator: TGenerator,
+        time: Tensor | str,
+        qubit_support: Tuple[int, ...] = None,
+        generator_parametric: bool = False,
+    ):
+        if isinstance(generator, Tensor):
+            assert (
+                qubit_support is not None
+            ), "When using a Tensor generator, please pass a qubit_support."
+            # In case the user passes a Tensor as a generator
+            if len(generator.shape) < 3:
+                generator = generator.unsqueeze(2)
+            _generator = Primitive(generator, target=-1)
+            self.qubit_support = qubit_support
+            generator = [_generator]
+            self.generator_type: GeneratorType = GeneratorType.TENSOR
+        elif isinstance(generator, str):
+            assert (
+                qubit_support is not None
+            ), "When using a Tensor generator, please pass a qubit_support."
+            # In case the user passes a Tensor as a generator
+            # in case users pass a generator in the values dict
+            self.generator_type = GeneratorType.SYMBOL
+            self.generator_name = generator
+            generator = []
+        elif isinstance(generator, (Primitive, Sequence)):
+            # In case the user passes a primitive operation, we wrap it in a list
+
+            if generator_parametric:
+                generator = [generator]
+                self.generator_type = GeneratorType.OPERATION_PARAMETRIC
+            else:
+                # TODO infer n_qubits
+                _generator = Primitive(
+                    generator.tensor({}, len(generator.qubit_support)),
+                    target=generator.qubit_support[0],
+                )
+                qubit_support = generator.qubit_support
+                generator = [_generator]
+                self.generator_type = GeneratorType.OPERATION
+        super().__init__(generator)
+        self.qubit_support = qubit_support
         self.time = time
+        self.generator = self.operations
+
+    def unitary(self, values: dict[str, Tensor] | ParameterDict) -> Tensor:
+        if self.generator_type in [GeneratorType.TENSOR, GeneratorType.OPERATION]:
+            return self.generator[0].pauli
+        elif self.generator_type == GeneratorType.SYMBOL:
+            hamiltonian = values[self.generator_name]
+            return hamiltonian.unsqueeze(2) if len(hamiltonian.shape) == 2 else hamiltonian
+        elif self.generator_type == GeneratorType.OPERATION_PARAMETRIC:
+            return self.generator[0].tensor(values, len(self.qubit_support))
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
-        hamiltonian = self.tensor(values, len(self.qubit_support))
+        hamiltonian = self.unitary(values)
         time_evolution = values[self.time] if isinstance(self.time, str) else self.time
 
         return apply_operator(

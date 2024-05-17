@@ -50,7 +50,7 @@ class Primitive(torch.nn.Module):
         self._dtype = self.pauli.dtype
         return self
 
-    def tensor(self, values: dict[str, Tensor], n_qubits: int = 1) -> Tensor:
+    def tensor(self, values: dict[str, Tensor] = {}, n_qubits: int = 1) -> Tensor:
         t = self.unitary(values)
         return (
             expand_operator(t, self.qubit_support, tuple(i for i in range(n_qubits)))
