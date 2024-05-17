@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import reduce
 from operator import add
-from typing import Tuple, Union
+from typing import Callable, Tuple, Union
 
 import torch
 from torch import Tensor, ones_like
@@ -141,15 +141,14 @@ class HamiltonianEvolution(Sequence):
             ), "When using a Tensor generator, please pass a qubit_support."
             if len(generator.shape) < 3:
                 generator = generator.unsqueeze(2)
-            self.qubit_support = qubit_support
             generator = [Primitive(generator, target=-1)]
-            self.generator_type: GeneratorType = GeneratorType.TENSOR
+            self.generator_type = GeneratorType.TENSOR
         elif isinstance(generator, str):
             assert (
                 qubit_support is not None
             ), "When using a Tensor generator, please pass a qubit_support."
             self.generator_type = GeneratorType.SYMBOL
-            self.generator_name = generator
+            self.generator_symbol = generator
             generator = []
         elif isinstance(generator, (Primitive, Sequence)):
             qubit_support = generator.qubit_support
@@ -173,23 +172,33 @@ class HamiltonianEvolution(Sequence):
         self.qubit_support = qubit_support  # type: ignore
         self.time = time
 
+        self._generator_map = {
+            GeneratorType.SYMBOL: self._symbolic_generator,
+            GeneratorType.TENSOR: self._tensor_generator,
+            GeneratorType.OPERATION: self._tensor_generator,
+            GeneratorType.OPERATION_PARAMETRIC: self._parametric_generator,
+        }
+
     @property
     def generator(self) -> TGenerator:
         return self.operations
 
-    def unitary(self, values: dict[str, Tensor] | ParameterDict) -> Tensor:
-        hamiltonian: Tensor
-        if self.generator_type in [GeneratorType.TENSOR, GeneratorType.OPERATION]:
-            hamiltonian = self.generator[0].pauli
-        elif self.generator_type == GeneratorType.SYMBOL:
-            hamiltonian = values[self.generator_name]
-            hamiltonian = hamiltonian.unsqueeze(2) if len(hamiltonian.shape) == 2 else hamiltonian
-        elif self.generator_type == GeneratorType.OPERATION_PARAMETRIC:
-            hamiltonian = self.generator[0].tensor(values, len(self.qubit_support))
-        return hamiltonian
+    def _symbolic_generator(self, values: dict) -> Tensor:
+        hamiltonian = values[self.generator_symbol]
+        return hamiltonian.unsqueeze(2) if len(hamiltonian.shape) == 2 else hamiltonian
+
+    def _tensor_generator(self, values: dict = {}) -> Tensor:
+        return self.generator[0].pauli
+
+    def _parametric_generator(self, values: dict) -> Tensor:
+        return self.generator[0].tensor(values, len(self.qubit_support))
+
+    @property
+    def hamiltonian(self) -> Callable[[dict[str, Tensor]], Tensor]:
+        return self._generator_map[self.generator_type]
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
-        hamiltonian = self.unitary(values)
+        hamiltonian = self.hamiltonian(values)
         time_evolution = values[self.time] if isinstance(self.time, str) else self.time
 
         return apply_operator(
