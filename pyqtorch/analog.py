@@ -99,17 +99,20 @@ class Hamiltonian(Add):
     def __init__(
         self,
         generator: TGenerator,
-        qubit_support: Tuple[int, ...],
+        qubit_support: Tuple[int, ...] | None = None,
     ):
         assert isinstance(
             generator, (Tensor, Primitive, Sequence)
         ), "Generator can be: primitive, tensor or sequence"
         if isinstance(generator, Tensor):
+            assert (
+                qubit_support is not None
+            ), "Please pass a qubit_support when using Tensor generators."
             generator = [Primitive(generator, target=qubit_support[0])]
         elif isinstance(generator, Primitive):
             generator = [generator]
         super().__init__(operations=generator)
-        self.qubit_support = qubit_support
+        self.qubit_support = qubit_support  # type: ignore[assignment]
         self.generator = self.operations
 
 
