@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from string import ascii_letters as ABC
 
-import torch
 from numpy import array, log2
 from numpy.typing import NDArray
 from torch import Tensor, einsum
@@ -85,4 +84,4 @@ def operator_product(op1: Tensor, op2: Tensor, target: int) -> Tensor:
     elif batch_size_2 > batch_size_1:
         op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
 
-    return torch.einsum("ijb,jkb->ikb", op1, op2)
+    return einsum("ijb,jkb->ikb", op1, op2)

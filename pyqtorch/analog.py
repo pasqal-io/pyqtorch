@@ -185,7 +185,7 @@ class HamiltonianEvolution(Sequence):
         elif isinstance(generator, str):
             assert (
                 qubit_support is not None
-            ), "When using a Tensor generator, please pass a qubit_support."
+            ), "When using a symbolic generator, please pass a qubit_support."
             self.generator_type = GeneratorType.SYMBOL
             self.generator_symbol = generator
             generator = []
