@@ -69,9 +69,11 @@ class Scale(Sequence):
         thetas = values[self.param] if isinstance(self.param, str) else self.param
         return thetas * ones_like(self.unitary(values))
 
-    def tensor(self, values: dict[str, Tensor] = {}, n_qubits: int = 1) -> Tensor:
+    def tensor(
+        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
         thetas = values[self.param] if isinstance(self.param, str) else self.param
-        return thetas * self.operations[0].tensor(values, n_qubits)
+        return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
 
 
 class Add(Sequence):
@@ -85,11 +87,15 @@ class Add(Sequence):
     ) -> State:
         return reduce(add, (op(state, values) for op in self.operations))
 
-    def tensor(self, values: dict = {}, n_qubits: int = 1) -> Tensor:
+    def tensor(
+        self, values: dict = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
         mat = torch.zeros((2, 2, 1), device=self.device)
         for _ in range(n_qubits - 1):
             mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
-        return reduce(add, (op.tensor(values, n_qubits) for op in self.operations), mat)
+        return reduce(
+            add, (op.tensor(values, n_qubits, diagonal) for op in self.operations), mat
+        )
 
 
 TGenerator = Union[torch.nn.ModuleList, list, Tensor, Primitive]
@@ -124,7 +130,9 @@ class Observable(Sequence):
     ):
 
         if is_const_diag and isinstance(operations, (Primitive, Sequence)):
-            self.register_buffer("operation", operations.tensor(diagonal=True))
+            self.register_buffer(
+                "operation", operations.tensor({}, len(self.qubit_support), True)
+            )
             self._forward = lambda self, state, values: pyqify(
                 self.operation * unpyqify(state), n_qubits=len(state.size()) - 1
             )

@@ -13,7 +13,7 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import add_batch_dim
+from pyqtorch.matrices import add_batch_dim, IMAT
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, zero_state
@@ -77,6 +77,26 @@ class Sequence(Module):
             self._device = self.operations[0].device
             self._dtype = self.operations[0].dtype
         return self
+
+    def tensor(
+        self, values: dict[str, Tensor], n_qubits: int, diagonal: bool = False
+    ) -> Tensor:
+        if diagonal:
+            raise NotImplementedError
+        if n_qubits is None:
+            n_qubits = len(self.qubit_support)
+        mat = IMAT.clone().unsqueeze(2).to(self.device)
+        for _ in range(n_qubits - 1):
+            mat = torch.kron(mat, IMAT.clone().unsqueeze(2).to(self.device))
+
+        return reduce(
+            lambda t0, t1: einsum("ijb,jkb->ikb", t0, t1),
+            (
+                add_batch_dim(op.tensor(values, n_qubits))
+                for op in reversed(self.operations)
+            ),
+            mat,
+        )
 
 
 class QuantumCircuit(Sequence):
