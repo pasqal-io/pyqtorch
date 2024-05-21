@@ -13,7 +13,10 @@ ZMAT = torch.tensor([[1, 0], [0, -1]], dtype=DEFAULT_MATRIX_DTYPE)
 SMAT = torch.tensor([[1, 0], [0, 1j]], dtype=DEFAULT_MATRIX_DTYPE)
 SDAGGERMAT = torch.tensor([[1, 0], [0, -1j]], dtype=DEFAULT_MATRIX_DTYPE)
 TMAT = torch.tensor(
-    [[1, 0], [0, torch.exp(torch.tensor(1.0j * torch.pi / 4, dtype=DEFAULT_MATRIX_DTYPE))]],
+    [
+        [1, 0],
+        [0, torch.exp(torch.tensor(1.0j * torch.pi / 4, dtype=DEFAULT_MATRIX_DTYPE))],
+    ],
     dtype=DEFAULT_MATRIX_DTYPE,
 )
 NMAT = torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE)
@@ -95,13 +98,17 @@ def _jacobian(
     return -1 / 2 * (sin_t * batch_imat + 1j * cos_t * batch_operation_mat)
 
 
-def _controlled(unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 1) -> torch.Tensor:
+def _controlled(
+    unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 1
+) -> torch.Tensor:
     _controlled: torch.Tensor = (
         torch.eye(2 ** (n_control_qubits + 1), dtype=unitary.dtype)
         .unsqueeze(2)
         .repeat(1, 1, batch_size)
     )
-    _controlled[2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :] = unitary
+    _controlled[
+        2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :
+    ] = unitary
     return _controlled
 
 
@@ -115,7 +122,11 @@ COMPLEX_TO_REAL_DTYPES = {
 def add_batch_dim(operator: Tensor, batch_size: int = 1) -> Tensor:
     """In case we have a sequence of batched parametric gates mixed with primitive gates,
     we adjust the batch_dim of the primitive gates to match."""
-    return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator
+    return (
+        operator.repeat(1, 1, batch_size)
+        if operator.shape != (2, 2, batch_size)
+        else operator
+    )
 
 
 def expand_operator(
@@ -124,7 +135,9 @@ def expand_operator(
     full_sup: tuple[int, ...],
 ) -> torch.Tensor:
     support = tuple(sorted(support))
-    initmat = IMAT.clone().to(mat.device).unsqueeze(2) if support[0] != full_sup[0] else mat
+    initmat = (
+        IMAT.clone().to(mat.device).unsqueeze(2) if support[0] != full_sup[0] else mat
+    )
     for i in full_sup[1:]:
         if i == support[0]:
             other = initmat

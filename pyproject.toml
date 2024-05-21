@@ -34,7 +34,7 @@ dependencies = ["torch", "numpy"]
 [project.optional-dependencies]
 dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert", "matplotlib"]
 
-[tool.hatch.envs.tests]
+[hatch.envs.tests]
 features = [
   "dev",
 ]
@@ -44,7 +44,7 @@ test = "pytest -n auto {args}"
 test-docs = "hatch -e docs run mkdocs build --clean --strict"
 test-cov = "pytest -n auto --cov=pyqtorch tests/"
 
-[tool.hatch.envs.docs]
+[hatch.envs.docs]
 dependencies = [
   "mkdocs",
   "mkdocs-material",
@@ -58,28 +58,28 @@ dependencies = [
   "matplotlib",
 ]
 
-[tool.hatch.envs.docs.scripts]
+[hatch.envs.docs.scripts]
 build = "mkdocs build --clean --strict"
 serve = "mkdocs serve --dev-addr localhost:8000"
 
-[tool.ruff]
+[lint.ruff]
 select = ["E", "F", "I", "Q"]
 extend-ignore = ["F841"]
 line-length = 100
 
-[tool.ruff.isort]
+[lint.ruff.isort]
 required-imports = ["from __future__ import annotations"]
 
-[tool.ruff.per-file-ignores]
+[lint.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 
-[tool.ruff.mccabe]
+[lint.ruff.mccabe]
 max-complexity = 15
 
-[tool.ruff.flake8-quotes]
+[lint.ruff.flake8-quotes]
 docstring-quotes = "double"
 
-[tool.black]
+[lint.black]
 line-length = 100
 include = '\.pyi?$'
 exclude = '''
@@ -96,7 +96,7 @@ exclude = '''
 )/
 '''
 
-[tool.isort]
+[lint.isort]
 line_length = 100
 combine_as_imports = true
 balanced_wrapping = true
@@ -104,7 +104,7 @@ lines_after_imports = 2
 include_trailing_comma = true
 multi_line_output = 5
 
-[tool.mypy]
+[lint.mypy]
 python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true

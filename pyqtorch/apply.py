@@ -16,8 +16,8 @@ def apply_operator(
     state: Tensor,
     operator: Tensor,
     qubits: tuple[int, ...] | list[int],
-    n_qubits: int = None,
-    batch_size: int = None,
+    n_qubits: int | None = None,
+    batch_size: int | None = None,
 ) -> Tensor:
     """Applies an operator, i.e. a single tensor of shape [2, 2, ...], on a given state
        of shape [2 for _ in range(n_qubits)] for a given set of (target and control) qubits.

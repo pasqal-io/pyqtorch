@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from math import log2
 from typing import Sequence
 
 import torch
@@ -65,7 +66,9 @@ def is_diag(H: Tensor) -> bool:
     """
     Returns True if Hamiltonian H is diagonal.
     """
-    return len(torch.abs(torch.triu(H, diagonal=1)).to_sparse().coalesce().values()) == 0
+    return (
+        len(torch.abs(torch.triu(H, diagonal=1)).to_sparse().coalesce().values()) == 0
+    )
 
 
 def product_state(
@@ -114,7 +117,10 @@ def random_state(
         sumx = torch.sum(x)
         phases = torch.rand(N) * 2.0 * torch.pi
         return _normalize(
-            (torch.sqrt(x / sumx) * torch.exp(1j * phases)).reshape(N, 1).type(dtype).to(device)
+            (torch.sqrt(x / sumx) * torch.exp(1j * phases))
+            .reshape(N, 1)
+            .type(dtype)
+            .to(device)
         )
 
     state = torch.concat(tuple(_rand(n_qubits) for _ in range(batch_size)), dim=1)
@@ -164,7 +170,9 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
         ValueError: If `target` is outside the valid range of qubits.
     """
     if target > n_qubits - 1:
-        raise ValueError("The target must be a valid qubit index within the circuit's range.")
+        raise ValueError(
+            "The target must be a valid qubit index within the circuit's range."
+        )
     qubits = torch.arange(0, n_qubits)
     qubits = qubits[qubits != target]
     for qubit in qubits:
@@ -174,3 +182,20 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
             torch.kron(operator.contiguous(), I(target).unitary()),
         )
     return operator
+
+
+def pyqify(state: Tensor, n_qubits: int | None = None) -> Tensor:
+    """Convert a state of shape (batch_size, 2**n_qubits) to [2] * n_qubits + [batch_size]."""
+    if n_qubits is None:
+        n_qubits = int(log2(state.shape[1]))
+    if len(state.shape) != 2 or (state.shape[1] != 2**n_qubits):
+        raise ValueError(
+            "The initial state must be composed of tensors/arrays of size "
+            f"(batch_size, 2**n_qubits). Found: {state.shape = }."
+        )
+    return state.T.reshape([2] * n_qubits + [state.shape[0]])
+
+
+def unpyqify(state: Tensor) -> Tensor:
+    """Convert a state of shape [2] * n_qubits + [batch_size] to (batch_size, 2**n_qubits)."""
+    return torch.flatten(state, start_dim=0, end_dim=-2).t()

@@ -12,7 +12,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import Operator, State, StrEnum, is_diag
+from pyqtorch.utils import State, StrEnum, inner_prod, is_diag, pyqify, unpyqify
 
 BATCH_DIM = 2
 
@@ -44,7 +44,9 @@ class Scale(Sequence):
         self.param = param_name
         assert len(self.operations) == 1
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
+    def forward(
+        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+    ) -> Tensor:
         return (
             values[self.param] * super().forward(state, values)
             if isinstance(self.operations, Sequence)
@@ -52,7 +54,9 @@ class Scale(Sequence):
         )
 
     def _forward(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
-        return apply_operator(state, self.unitary(values), self.operations[0].qubit_support)
+        return apply_operator(
+            state, self.unitary(values), self.operations[0].qubit_support
+        )
 
     def unitary(self, values: dict[str, Tensor]) -> Tensor:
         thetas = values[self.param] if isinstance(self.param, str) else self.param
@@ -76,7 +80,9 @@ class Add(Sequence):
     def __init__(self, operations: list[Module]):
         super().__init__(operations=operations)
 
-    def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = dict()) -> State:
+    def forward(
+        self, state: State, values: dict[str, Tensor] | ParameterDict = dict()
+    ) -> State:
         return reduce(add, (op(state, values) for op in self.operations))
 
     def tensor(self, values: dict = {}, n_qubits: int = 1) -> Tensor:
@@ -107,6 +113,34 @@ class Hamiltonian(Add):
         self.generator = self.operations
 
 
+class Observable(Sequence):
+    def __init__(
+        self,
+        operations: list[Module] | Primitive | Sequence,
+        is_const_diag: bool = True,
+    ):
+
+        if is_const_diag and isinstance(operations, (Primitive, Sequence)):
+            self.register_buffer("operation", operations.tensor(diagonal=True))
+            self._forward = lambda self, state, values: pyqify(
+                self.operation * unpyqify(state), n_qubits=len(state.size()) - 1
+            )
+        else:
+            self = Sequence(operations)
+        super().__init__(operations)
+
+    def _diagonal_forward(self, state, values) -> Tensor:
+        return pyqify(self.operation * unpyqify(state), n_qubits=len(state.size()) - 1)
+
+    def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+        return self._forward(self, state, values)
+
+    def forward(
+        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+    ) -> Tensor:
+        return inner_prod(state, self.run(state, values)).real
+
+
 def is_diag_hamiltonian(hamiltonian: Tensor) -> bool:
     diag_check = torch.tensor(
         [is_diag(hamiltonian[..., i]) for i in range(hamiltonian.shape[BATCH_DIM])],
@@ -115,14 +149,16 @@ def is_diag_hamiltonian(hamiltonian: Tensor) -> bool:
     return bool(torch.prod(diag_check))
 
 
-def evolve(hamiltonian: Operator, time_evolution: torch.Tensor) -> Tensor:
+def evolve(hamiltonian: Tensor, time_evolution: Tensor) -> Tensor:
     if is_diag_hamiltonian(hamiltonian):
-        evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view((-1, 1))
+        evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
+            (-1, 1)
+        )
         evol_operator = torch.diag_embed(torch.exp(evol_operator))
     else:
-        evol_operator = torch.transpose(hamiltonian, 0, -1) * (-1j * time_evolution).view(
-            (-1, 1, 1)
-        )
+        evol_operator = torch.transpose(hamiltonian, 0, -1) * (
+            -1j * time_evolution
+        ).view((-1, 1, 1))
         evol_operator = torch.linalg.matrix_exp(evol_operator)
     return torch.transpose(evol_operator, 0, -1)
 
@@ -132,7 +168,7 @@ class HamiltonianEvolution(Sequence):
         self,
         generator: TGenerator,
         time: Tensor | str,
-        qubit_support: Tuple[int, ...] = None,
+        qubit_support: Tuple[int, ...] | None = None,
         generator_parametric: bool = False,
     ):
         if isinstance(generator, Tensor):
@@ -197,9 +233,13 @@ class HamiltonianEvolution(Sequence):
     def create_hamiltonian(self) -> Callable[[dict], Tensor]:
         return self._generator_map[self.generator_type]
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()) -> Tensor:
-        hamiltonian = self.create_hamiltonian(values)
-        time_evolution = values[self.time] if isinstance(self.time, str) else self.time
+    def forward(
+        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+    ) -> Tensor:
+        hamiltonian: torch.Tensor = self.create_hamiltonian(values)
+        time_evolution: torch.Tensor = (
+            values[self.time] if isinstance(self.time, str) else self.time
+        )
 
         return apply_operator(
             state=state,

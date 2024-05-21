@@ -45,7 +45,9 @@ def test_adjoint_diff() -> None:
     exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 
-    grad_ad = torch.autograd.grad(exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad))
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad)
+    )
 
     grad_adjoint = torch.autograd.grad(
         exp_adjoint, tuple(values_adjoint.values()), torch.ones_like(exp_adjoint)
@@ -59,7 +61,9 @@ def test_adjoint_diff() -> None:
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 @pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize("n_qubits", [3, 4])
-def test_differentiate_circuit(dtype: torch.dtype, batch_size: int, n_qubits: int) -> None:
+def test_differentiate_circuit(
+    dtype: torch.dtype, batch_size: int, n_qubits: int
+) -> None:
     ops = [
         pyq.Y(1),
         pyq.RX(0, "theta_0"),
@@ -90,7 +94,12 @@ def test_differentiate_circuit(dtype: torch.dtype, batch_size: int, n_qubits: in
     theta_3_adjoint = torch.tensor([theta_3_value], requires_grad=True)
 
     values_ad = torch.nn.ParameterDict(
-        {"theta_0": theta_0_ad, "theta_1": theta_1_ad, "theta_2": theta_2_ad, "theta_3": theta_3_ad}
+        {
+            "theta_0": theta_0_ad,
+            "theta_1": theta_1_ad,
+            "theta_2": theta_2_ad,
+            "theta_3": theta_3_ad,
+        }
     ).to(COMPLEX_TO_REAL_DTYPES[dtype])
     values_adjoint = torch.nn.ParameterDict(
         {
@@ -105,7 +114,9 @@ def test_differentiate_circuit(dtype: torch.dtype, batch_size: int, n_qubits: in
     exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 
-    grad_ad = torch.autograd.grad(exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad))
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad)
+    )
 
     grad_adjoint = torch.autograd.grad(
         exp_adjoint, tuple(values_adjoint.values()), torch.ones_like(exp_adjoint)
@@ -133,7 +144,9 @@ def test_adjoint_duplicate_params() -> None:
     values = {"theta_0": theta_vals}
     exp_ad = expectation(circ, init_state, values, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, init_state, values, obs, DiffMode.ADJOINT)
-    grad_ad = torch.autograd.grad(exp_ad, tuple(values.values()), torch.ones_like(exp_ad))[0]
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values.values()), torch.ones_like(exp_ad)
+    )[0]
     grad_adjoint = torch.autograd.grad(
         exp_adjoint, tuple(values.values()), torch.ones_like(exp_adjoint)
     )[0]
@@ -177,16 +190,20 @@ def test_merge() -> None:
     assert torch.allclose(circ(state, values), mergecirc(state, values))
 
 
-@pytest.mark.xfail(reason="Can only merge single qubit gates acting on the same qubit support.")
+@pytest.mark.xfail(
+    reason="Can only merge single qubit gates acting on the same qubit support."
+)
 def test_merge_different_sup_expect_fail() -> None:
     ops = [pyq.RX(0, "theta_0"), pyq.RY(1, "theta_1")]
-    mergecirc = pyq.Merge(ops)
+    pyq.Merge(ops)
 
 
-@pytest.mark.xfail(reason="Can only merge single qubit gates acting on the same qubit support.")
+@pytest.mark.xfail(
+    reason="Can only merge single qubit gates acting on the same qubit support."
+)
 def test_merge_multiqubit_expect_fail() -> None:
     ops = [pyq.CNOT(0, 1), pyq.RY(1, "theta_1")]
-    mergecirc = pyq.Merge(ops)
+    pyq.Merge(ops)
 
 
 @pytest.mark.parametrize("batch_size", [1, 2, 3])

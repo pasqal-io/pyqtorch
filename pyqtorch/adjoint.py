@@ -67,10 +67,14 @@ class AdjointExpectation(Function):
         grads_dict = {k: None for k in values.keys()}
         for op in ctx.circuit.flatten()[::-1]:
             if isinstance(op, Primitive):
-                ctx.out_state = apply_operator(ctx.out_state, op.dagger(values), op.qubit_support)
+                ctx.out_state = apply_operator(
+                    ctx.out_state, op.dagger(values), op.qubit_support
+                )
                 if isinstance(op, Parametric):
                     if values[op.param_name].requires_grad:
-                        mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
+                        mu = apply_operator(
+                            ctx.out_state, op.jacobian(values), op.qubit_support
+                        )
                         grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
                     if grads_dict[op.param_name] is not None:
                         grads_dict[op.param_name] += grad
@@ -114,6 +118,8 @@ def expectation(
     elif diff_mode == DiffMode.ADJOINT:
         from pyqtorch.adjoint import AdjointExpectation
 
-        return AdjointExpectation.apply(circuit, observable, state, values.keys(), *values.values())
+        return AdjointExpectation.apply(
+            circuit, observable, state, values.keys(), *values.values()
+        )
     else:
         raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")

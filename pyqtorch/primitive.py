@@ -28,7 +28,9 @@ class Primitive(torch.nn.Module):
     def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+    def forward(
+        self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
         return apply_operator(
             state, self.unitary(values), self.qubit_support, len(state.size()) - 1
         )
@@ -50,7 +52,11 @@ class Primitive(torch.nn.Module):
         self._dtype = self.pauli.dtype
         return self
 
-    def tensor(self, values: dict[str, Tensor] = {}, n_qubits: int = 1) -> Tensor:
+    def tensor(
+        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
+        if diagonal:
+            raise NotImplementedError
         t = self.unitary(values)
         return (
             expand_operator(t, self.qubit_support, tuple(i for i in range(n_qubits)))
@@ -78,7 +84,7 @@ class I(Primitive):  # noqa: E742
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["I"], target)
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] = None) -> Tensor:
+    def forward(self, state: Tensor, values: dict[str, Tensor] = dict()) -> Tensor:
         return state
 
 

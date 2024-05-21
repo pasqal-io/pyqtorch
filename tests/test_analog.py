@@ -23,7 +23,9 @@ def Hamiltonian(batch_size: int = 1) -> torch.Tensor:
 
 
 def Hamiltonian_general(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
-    H_batch = torch.zeros((2**n_qubits, 2**n_qubits, batch_size), dtype=DEFAULT_MATRIX_DTYPE)
+    H_batch = torch.zeros(
+        (2**n_qubits, 2**n_qubits, batch_size), dtype=DEFAULT_MATRIX_DTYPE
+    )
     for i in range(batch_size):
         H_0 = torch.randn((2**n_qubits, 2**n_qubits), dtype=DEFAULT_MATRIX_DTYPE)
         H = (H_0 + torch.conj(H_0.transpose(0, 1))).to(DEFAULT_MATRIX_DTYPE)
@@ -32,7 +34,9 @@ def Hamiltonian_general(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
 
 
 def Hamiltonian_diag(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
-    H_batch = torch.zeros((2**n_qubits, 2**n_qubits, batch_size), dtype=DEFAULT_MATRIX_DTYPE)
+    H_batch = torch.zeros(
+        (2**n_qubits, 2**n_qubits, batch_size), dtype=DEFAULT_MATRIX_DTYPE
+    )
     for i in range(batch_size):
         H_0 = torch.randn((2**n_qubits, 2**n_qubits), dtype=DEFAULT_MATRIX_DTYPE)
         H = H_0 + torch.conj(H_0.transpose(0, 1))
@@ -62,7 +66,9 @@ def test_hamevo_single() -> None:
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(psi)
     result = overlap(psi_star, psi)
-    assert torch.isclose(result, torch.tensor([0.5], dtype=torch.float64), rtol=RTOL, atol=ATOL)
+    assert torch.isclose(
+        result, torch.tensor([0.5], dtype=torch.float64), rtol=RTOL, atol=ATOL
+    )
 
 
 @pytest.mark.flaky(max_runs=5)
@@ -165,14 +171,16 @@ def test_hevo_parametric_gen() -> None:
     parametric = True
     generator = pyq.Add([pyq.Scale(pyq.Z(0), vparam), pyq.Scale(pyq.Z(1), vparam)])
     hamevo = pyq.HamiltonianEvolution(generator, vparam, sup, parametric)
-    state = hamevo(pyq.zero_state(2), {"theta": torch.rand(1)})
+    hamevo(pyq.zero_state(2), {"theta": torch.rand(1)})
 
 
 def test_hevo_constant_gen() -> None:
     sup = (0, 1)
-    generator = pyq.Add([pyq.Scale(pyq.Z(0), torch.rand(1)), pyq.Scale(pyq.Z(1), torch.rand(1))])
+    generator = pyq.Add(
+        [pyq.Scale(pyq.Z(0), torch.rand(1)), pyq.Scale(pyq.Z(1), torch.rand(1))]
+    )
     hamevo = pyq.HamiltonianEvolution(generator, torch.rand(1), sup)
-    state = hamevo(pyq.zero_state(2))
+    hamevo(pyq.zero_state(2))
 
 
 @pytest.mark.parametrize(
@@ -202,7 +210,9 @@ def test_symbol_hamevo(
 ) -> None:
     symbol = "h"
     n_qubits = 4
-    hamevo = pyq.HamiltonianEvolution(symbol, t_evo, tuple([i for i in range(n_qubits)]))
+    hamevo = pyq.HamiltonianEvolution(
+        symbol, t_evo, tuple([i for i in range(n_qubits)])
+    )
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(psi, {symbol: H})
     state = overlap(psi_star, psi)

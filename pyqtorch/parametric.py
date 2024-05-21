@@ -28,10 +28,14 @@ class Parametric(Primitive):
         self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
 
-        def parse_values(values: dict[str, torch.Tensor] | torch.Tensor = {}) -> torch.Tensor:
+        def parse_values(
+            values: dict[str, torch.Tensor] | torch.Tensor = {}
+        ) -> torch.Tensor:
             return Parametric._expand_values(values[self.param_name])
 
-        def parse_tensor(values: dict[str, torch.Tensor] | torch.Tensor = {}) -> torch.Tensor:
+        def parse_tensor(
+            values: dict[str, torch.Tensor] | torch.Tensor = {}
+        ) -> torch.Tensor:
             return Parametric._expand_values(values)
 
         self.parse_values = parse_tensor if param_name == "" else parse_values
@@ -94,7 +98,9 @@ class PHASE(Parametric):
     def jacobian(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = self.parse_values(values)
         batch_mat = (
-            torch.zeros((2, 2), dtype=self.identity.dtype).unsqueeze(2).repeat(1, 1, len(thetas))
+            torch.zeros((2, 2), dtype=self.identity.dtype)
+            .unsqueeze(2)
+            .repeat(1, 1, len(thetas))
         )
         batch_mat[1, 1, :] = 1j * torch.exp(1j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
@@ -188,7 +194,11 @@ class CPHASE(ControlledRotationGate):
         thetas = self.parse_values(values)
         batch_size = len(thetas)
         n_control = len(self.control)
-        jU = torch.zeros((2, 2), dtype=self.identity.dtype).unsqueeze(2).repeat(1, 1, len(thetas))
+        jU = (
+            torch.zeros((2, 2), dtype=self.identity.dtype)
+            .unsqueeze(2)
+            .repeat(1, 1, len(thetas))
+        )
         jU[1, 1, :] = 1j * torch.exp(1j * thetas).unsqueeze(0).unsqueeze(1)
         n_dim = 2 ** (n_control + 1)
         jC = (
@@ -258,5 +268,7 @@ class U(Parametric):
             RZ(self.qubit_support[0], self.omega),
         ]
 
-    def jacobian_decomposed(self, values: dict[str, torch.Tensor] = {}) -> list[Operator]:
+    def jacobian_decomposed(
+        self, values: dict[str, torch.Tensor] = {}
+    ) -> list[Operator]:
         return [op.jacobian(values) for op in self.digital_decomposition()]

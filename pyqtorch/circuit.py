@@ -37,7 +37,12 @@ class Sequence(Module):
         self.qubit_support = tuple(
             set(
                 sum(
-                    [op.qubit_support for op in self.operations if hasattr(op, "qubit_support")], ()
+                    [
+                        op.qubit_support
+                        for op in self.operations
+                        if hasattr(op, "qubit_support")
+                    ],
+                    (),
                 )
             )
         )
@@ -51,7 +56,9 @@ class Sequence(Module):
     def __hash__(self) -> int:
         return hash(reduce(add, (hash(op) for op in self.operations)))
 
-    def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
+    def forward(
+        self, state: State, values: dict[str, Tensor] | ParameterDict = {}
+    ) -> State:
         for op in self.operations:
             state = op(state, values)
         return state
@@ -79,16 +86,22 @@ class QuantumCircuit(Sequence):
         super().__init__(operations)
         self.n_qubits = n_qubits
 
-    def run(self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}) -> State:
+    def run(
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+    ) -> State:
         if state is None:
             state = self.init_state()
         return self.forward(state, values)
 
     def __hash__(self) -> int:
-        return hash(reduce(add, (hash(op) for op in self.operations))) + hash(self.n_qubits)
+        return hash(reduce(add, (hash(op) for op in self.operations))) + hash(
+            self.n_qubits
+        )
 
     def init_state(self, batch_size: int = 1) -> Tensor:
-        return zero_state(self.n_qubits, batch_size, device=self.device, dtype=self.dtype)
+        return zero_state(
+            self.n_qubits, batch_size, device=self.device, dtype=self.dtype
+        )
 
     def flatten(self) -> ModuleList:
         ops = []
@@ -115,7 +128,9 @@ class QuantumCircuit(Sequence):
                     format(k, "0{}b".format(self.n_qubits)): count.item()
                     for k, count in enumerate(
                         torch.bincount(
-                            torch.multinomial(input=p, num_samples=n_shots, replacement=True)
+                            torch.multinomial(
+                                input=p, num_samples=n_shots, replacement=True
+                            )
                         )
                     )
                     if count > 0
@@ -123,7 +138,9 @@ class QuantumCircuit(Sequence):
             )
 
         with torch.no_grad():
-            state = torch.flatten(self.run(values=values, state=state), start_dim=0, end_dim=-2).t()
+            state = torch.flatten(
+                self.run(values=values, state=state), start_dim=0, end_dim=-2
+            ).t()
             probs = torch.abs(torch.pow(state, 2))
             return list(map(lambda p: _sample(p), probs))
 
@@ -153,7 +170,9 @@ class Merge(Sequence):
             super().__init__(operations)
             self.qubits = operations[0].qubit_support
         else:
-            raise TypeError(f"Require all operations to act on a single qubit. Got: {operations}.")
+            raise TypeError(
+                f"Require all operations to act on a single qubit. Got: {operations}."
+            )
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
         batch_size = state.shape[-1]
@@ -169,7 +188,10 @@ class Merge(Sequence):
         # We reverse the list of tensors here since matmul is not commutative.
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
-            (add_batch_dim(op.unitary(values), batch_size) for op in reversed(self.operations)),
+            (
+                add_batch_dim(op.unitary(values), batch_size)
+                for op in reversed(self.operations)
+            ),
         )
 
 
@@ -188,9 +210,13 @@ def hea(n_qubits: int, depth: int, param_name: str) -> tuple[ModuleList, Paramet
     for _ in range(depth):
         layer = []
         for i in range(n_qubits):
-            layer += [Merge([fn(i, f"{param_name}_{next(idx)}") for fn in [RX, RY, RX]])]
+            layer += [
+                Merge([fn(i, f"{param_name}_{next(idx)}") for fn in [RX, RY, RX]])
+            ]
         ops += layer
-        ops += [Sequence([CNOT(i % n_qubits, (i + 1) % n_qubits) for i in range(n_qubits)])]
+        ops += [
+            Sequence([CNOT(i % n_qubits, (i + 1) % n_qubits) for i in range(n_qubits)])
+        ]
     params = ParameterDict(
         {f"{param_name}_{n}": rand(1, requires_grad=True) for n in range(next(idx))}
     )

@@ -13,7 +13,13 @@ from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT, _dagger
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import ATOL, density_mat, product_state, promote_operator, random_state
+from pyqtorch.utils import (
+    ATOL,
+    density_mat,
+    product_state,
+    promote_operator,
+    random_state,
+)
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -46,21 +52,33 @@ def test_projectors() -> None:
     assert torch.allclose(t2, pyq.Projector(0, ket="1", bra="1")(product_state("1")))
     assert torch.allclose(t0, pyq.Projector(0, ket="1", bra="1")(product_state("0")))
     t00 = torch.tensor(
-        [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]], dtype=torch.complex128
+        [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+        dtype=torch.complex128,
     )
     t01 = torch.tensor(
-        [[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]], dtype=torch.complex128
+        [[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
+        dtype=torch.complex128,
     )
     t10 = torch.tensor(
-        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]], dtype=torch.complex128
+        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]],
+        dtype=torch.complex128,
     )
     t11 = torch.tensor(
-        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]], dtype=torch.complex128
+        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]],
+        dtype=torch.complex128,
     )
-    assert torch.allclose(pyq.Projector((0, 1), ket="00", bra="00")(product_state("00")), t00)
-    assert torch.allclose(pyq.Projector((0, 1), ket="10", bra="01")(product_state("01")), t10)
-    assert torch.allclose(pyq.Projector((0, 1), ket="01", bra="10")(product_state("10")), t01)
-    assert torch.allclose(pyq.Projector((0, 1), ket="11", bra="11")(product_state("11")), t11)
+    assert torch.allclose(
+        pyq.Projector((0, 1), ket="00", bra="00")(product_state("00")), t00
+    )
+    assert torch.allclose(
+        pyq.Projector((0, 1), ket="10", bra="01")(product_state("01")), t10
+    )
+    assert torch.allclose(
+        pyq.Projector((0, 1), ket="01", bra="10")(product_state("10")), t01
+    )
+    assert torch.allclose(
+        pyq.Projector((0, 1), ket="11", bra="11")(product_state("11")), t11
+    )
     t000 = torch.tensor(
         [
             [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
@@ -217,7 +235,9 @@ def test_multi_controlled_gates(
     assert torch.allclose(out, expected_state)
 
 
-@pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
+@pytest.mark.parametrize(
+    "state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state]
+)
 def test_parametric_phase_hamevo(
     state_fn: Callable, batch_size: int = 1, n_qubits: int = 1
 ) -> None:
@@ -230,10 +250,14 @@ def test_parametric_phase_hamevo(
     assert torch.allclose(phase(state, {"phi": phi}), hamevo(state))
 
 
-@pytest.mark.parametrize("state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state])
+@pytest.mark.parametrize(
+    "state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state]
+)
 @pytest.mark.parametrize("batch_size", [1, 2, 4])
 @pytest.mark.parametrize("n_qubits", [1, 2, 4])
-def test_parametrized_phase_gate(state_fn: Callable, batch_size: int, n_qubits: int) -> None:
+def test_parametrized_phase_gate(
+    state_fn: Callable, batch_size: int, n_qubits: int
+) -> None:
     target: int = torch.randint(low=0, high=n_qubits, size=(1,)).item()
     state = state_fn(n_qubits, batch_size=batch_size)
     phi = torch.tensor([torch.pi / 2], dtype=DEFAULT_MATRIX_DTYPE)
@@ -243,7 +267,18 @@ def test_parametrized_phase_gate(state_fn: Callable, batch_size: int, n_qubits: 
 
 
 def test_dagger_single_qubit() -> None:
-    for cls in [pyq.X, pyq.Y, pyq.Z, pyq.S, pyq.H, pyq.T, pyq.RX, pyq.RY, pyq.RZ, pyq.PHASE]:
+    for cls in [
+        pyq.X,
+        pyq.Y,
+        pyq.Z,
+        pyq.S,
+        pyq.H,
+        pyq.T,
+        pyq.RX,
+        pyq.RY,
+        pyq.RZ,
+        pyq.PHASE,
+    ]:
         n_qubits = torch.randint(low=1, high=4, size=(1,)).item()
         target = random.choice([i for i in range(n_qubits)])
         state = pyq.random_state(n_qubits)
@@ -252,14 +287,25 @@ def test_dagger_single_qubit() -> None:
                 op = cls(target, param_name)  # type: ignore[arg-type]
             else:
                 op = cls(target)  # type: ignore[assignment, call-arg]
-            values = {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
+            values = (
+                {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
+            )
             new_state = apply_operator(state, op.unitary(values), [target])
             daggered_back = apply_operator(new_state, op.dagger(values), [target])
             assert torch.allclose(daggered_back, state)
 
 
 def test_dagger_nqubit() -> None:
-    for cls in [pyq.SWAP, pyq.CNOT, pyq.CY, pyq.CZ, pyq.CRX, pyq.CRY, pyq.CRZ, pyq.CPHASE]:
+    for cls in [
+        pyq.SWAP,
+        pyq.CNOT,
+        pyq.CY,
+        pyq.CZ,
+        pyq.CRX,
+        pyq.CRY,
+        pyq.CRZ,
+        pyq.CPHASE,
+    ]:
         qubit_support: Tuple[int, ...]
         n_qubits = torch.randint(low=3, high=8, size=(1,)).item()
         target = random.choice([i for i in range(n_qubits - 2)])
@@ -274,7 +320,9 @@ def test_dagger_nqubit() -> None:
             else:
                 op = cls(target - 1, target)  # type: ignore[call-arg]
                 qubit_support = (target + 1, target)
-            values = {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
+            values = (
+                {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
+            )
             new_state = apply_operator(state, op.unitary(values), qubit_support)
             daggered_back = apply_operator(new_state, op.dagger(values), qubit_support)
             assert torch.allclose(daggered_back, state)
@@ -288,7 +336,8 @@ def test_U() -> None:
     values = {param: torch.rand(1) for param in params}
     state = pyq.random_state(n_qubits)
     assert torch.allclose(
-        u(state, values), pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values)
+        u(state, values),
+        pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values),
     )
 
 
@@ -334,11 +383,16 @@ def test_operator_product(gate: Primitive) -> None:
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
     max_batch = max(batch_size_2, batch_size_1)
-    op_prom = promote_operator(gate(target).unitary(), target, n_qubits).repeat(1, 1, batch_size_1)
+    op_prom = promote_operator(gate(target).unitary(), target, n_qubits).repeat(
+        1, 1, batch_size_1
+    )
     op_mul = operator_product(
         gate(target).unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
     )
     assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
     assert torch.allclose(
-        op_mul, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, max_batch)
+        op_mul,
+        torch.eye(2**n_qubits, dtype=torch.cdouble)
+        .unsqueeze(2)
+        .repeat(1, 1, max_batch),
     )
