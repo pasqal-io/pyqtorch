@@ -126,25 +126,31 @@ class Observable(Sequence):
     def __init__(
         self,
         operations: list[Module] | Primitive | Sequence,
-        is_const_diag: bool = True,
     ):
-
-        if is_const_diag and isinstance(operations, (Primitive, Sequence)):
-            self.register_buffer(
-                "operation", operations.tensor({}, len(self.qubit_support), True)
-            )
-            self._forward = lambda self, state, values: pyqify(
-                self.operation * unpyqify(state), n_qubits=len(state.size()) - 1
-            )
-        else:
-            self = Sequence(operations)
         super().__init__(operations)
 
-    def _diagonal_forward(self, state, values) -> Tensor:
-        return pyqify(self.operation * unpyqify(state), n_qubits=len(state.size()) - 1)
+    def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+        for op in self.operations:
+            state = op(state, values)
+        return state
+
+    def forward(
+        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+    ) -> Tensor:
+        return inner_prod(state, self.run(state, values)).real
+
+
+class DiagonalObservable(Primitive):
+    def __init__(
+        self,
+        operations: Primitive | Sequence,
+    ):
+        hamiltonian = operations.tensor({}, 1).squeeze(2).reshape(1, -1)
+        super().__init__(torch.diag(hamiltonian), operations.qubit_support[0])
+        self.qubit_support = operations.qubit_support
 
     def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
-        return self._forward(self, state, values)
+        return pyqify(self.pauli * unpyqify(state), n_qubits=len(state.size()) - 1)
 
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()

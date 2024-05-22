@@ -187,15 +187,15 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
 def pyqify(state: Tensor, n_qubits: int | None = None) -> Tensor:
     """Convert a state of shape (batch_size, 2**n_qubits) to [2] * n_qubits + [batch_size]."""
     if n_qubits is None:
-        n_qubits = int(log2(state.shape[1]))
-    if len(state.shape) != 2 or (state.shape[1] != 2**n_qubits):
+        n_qubits = int(log2(state.shape[0]))
+    if len(state.shape) != 2 or (state.shape[0] != 2**n_qubits):
         raise ValueError(
             "The initial state must be composed of tensors/arrays of size "
             f"(batch_size, 2**n_qubits). Found: {state.shape = }."
         )
-    return state.T.reshape([2] * n_qubits + [state.shape[0]])
+    return state.reshape([2] * n_qubits + [state.shape[-1]])
 
 
 def unpyqify(state: Tensor) -> Tensor:
     """Convert a state of shape [2] * n_qubits + [batch_size] to (batch_size, 2**n_qubits)."""
-    return torch.flatten(state, start_dim=0, end_dim=-2).t()
+    return torch.flatten(state, start_dim=0, end_dim=-2)
