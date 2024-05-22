@@ -54,8 +54,8 @@ class AdjointExpectation(Function):
         ctx.observable = observable
         ctx.param_names = param_names
         values = param_dict(param_names, param_values)
-        ctx.out_state = circuit(state, values)
-        ctx.projected_state = observable(ctx.out_state, values)
+        ctx.out_state = circuit.run(state, values)
+        ctx.projected_state = observable.run(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
         return inner_prod(ctx.out_state, ctx.projected_state).real
 
@@ -114,7 +114,7 @@ def expectation(
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
         state = circuit.run(state, values)
-        return inner_prod(state, observable.forward(state, values)).real
+        return inner_prod(state, observable.run(state, values)).real
     elif diff_mode == DiffMode.ADJOINT:
         from pyqtorch.adjoint import AdjointExpectation
 
