@@ -90,11 +90,8 @@ class Sequence(Module):
             mat = torch.kron(mat, IMAT.clone().unsqueeze(2).to(self.device))
 
         return reduce(
-            lambda t0, t1: einsum("ijb,jkb->ikb", t0, t1),
-            (
-                add_batch_dim(op.tensor(values, n_qubits))
-                for op in reversed(self.operations)
-            ),
+            lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
+            (add_batch_dim(op.tensor(values, n_qubits)) for op in self.operations),
             mat,
         )
 
