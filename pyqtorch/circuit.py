@@ -4,6 +4,7 @@ from collections import Counter
 from functools import reduce
 from logging import getLogger
 from operator import add
+from numpy import int64
 from typing import Any, Generator, Iterator, NoReturn
 
 import torch
@@ -34,7 +35,8 @@ class Sequence(Module):
                 self._device = next(iter(set((op.device for op in self.operations))))
             except StopIteration:
                 pass
-        self.qubit_support = tuple(
+
+        self._qubit_support = tuple(
             set(
                 sum(
                     [
@@ -46,6 +48,18 @@ class Sequence(Module):
                 )
             )
         )
+
+        self._qubit_support = tuple(
+            map(
+                lambda x: x if isinstance(x, (int, int64)) else x[0],
+                self._qubit_support,
+            )
+        )
+        assert all([isinstance(q, (int, int64)) for q in self._qubit_support])
+
+    @property
+    def qubit_support(self) -> tuple:
+        return self._qubit_support
 
     def __iter__(self) -> Iterator:
         return iter(self.operations)

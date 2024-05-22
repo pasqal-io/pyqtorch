@@ -118,7 +118,6 @@ class Hamiltonian(Add):
         elif isinstance(generator, Primitive):
             generator = [generator]
         super().__init__(operations=generator)
-        self.qubit_support = qubit_support  # type: ignore[assignment]
         self.generator = self.operations
 
 
@@ -222,7 +221,7 @@ class HamiltonianEvolution(Sequence):
                             allowed types are: [Tensor, str, Primitive, Sequence]"
             )
         super().__init__(generator)
-        self.qubit_support = qubit_support  # type: ignore
+        self._qubit_support = qubit_support  # type: ignore
         self.time = time
 
         self._generator_map: dict[GeneratorType, Callable[[dict], Tensor]] = {
