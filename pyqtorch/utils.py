@@ -251,7 +251,7 @@ def random_dm_promotion(target: int, dm_input: DensityMatrix, n_qubits: int) -> 
         ValueError: If `target` is not within the valid range [0, n_qubits - 1].
     """
     if target > n_qubits - 1:
-        raise ValueError("The target must be a valid qubit index within the circuit's range.")
+        raise ValueError("The target must be a valid qubit index within the circuit range.")
     torch.manual_seed(
         n_qubits
     )  # To ensure reproducibility, when calling it multiple times in the same test.
