@@ -6,13 +6,13 @@ from typing import Callable, Tuple, Union
 
 import torch
 from torch import Tensor, ones_like
-from torch.nn import Module, ParameterDict
+from torch.nn import Module, ParameterDict, ModuleList
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import State, StrEnum, inner_prod, is_diag, pyqify, unpyqify
+from pyqtorch.utils import State, StrEnum, inner_prod, is_diag, pyqify
 
 BATCH_DIM = 2
 
@@ -98,14 +98,16 @@ class Add(Sequence):
         )
 
 
-TGenerator = Union[torch.nn.ModuleList, list, Tensor, Primitive]
-
-
 class Observable(Sequence):
-    def __init__(self, operations: list[Module] | Primitive | Sequence, n_qubits: int):
+    def __init__(
+        self,
+        operations: list[Module] | Primitive | Sequence,
+        n_qubits: int | None = None,
+    ):
+        super().__init__(operations)
         if n_qubits is None:
             n_qubits = max(self.qubit_support) + 1
-        super().__init__(operations)
+        self.n_qubits = n_qubits
 
     def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
         for op in self.operations:
@@ -122,7 +124,7 @@ class DiagonalObservable(Primitive):
     def __init__(
         self,
         operations: Primitive | Sequence,
-        n_qubits: int,
+        n_qubits: int | None = None,
     ):
         if n_qubits is None:
             n_qubits = max(operations.qubit_support) + 1
@@ -131,12 +133,15 @@ class DiagonalObservable(Primitive):
             torch.diag(hamiltonian).reshape(-1, 1), operations.qubit_support[0]
         )
         self.qubit_support = operations.qubit_support
+        self.n_qubits = n_qubits
 
     def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
         return pyqify(
-            torch.einsum("ij,ib->ib", self.pauli, unpyqify(state)),
+            torch.einsum(
+                "ij,ib->ib", self.pauli, state.flatten(start_dim=0, end_dim=-2)
+            ),
             n_qubits=len(state.size()) - 1,
-        )
+        ).reshape([2] * self.n_qubits + [state.shape[-1]])
 
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
@@ -169,7 +174,7 @@ def evolve(hamiltonian: Tensor, time_evolution: Tensor) -> Tensor:
 class HamiltonianEvolution(Sequence):
     def __init__(
         self,
-        generator: TGenerator,
+        generator: Union[torch.nn.ModuleList, list, Tensor, Primitive],
         time: Tensor | str,
         qubit_support: Tuple[int, ...] | None = None,
         generator_parametric: bool = False,
@@ -219,7 +224,7 @@ class HamiltonianEvolution(Sequence):
         }
 
     @property
-    def generator(self) -> TGenerator:
+    def generator(self) -> ModuleList:
         return self.operations
 
     def _symbolic_generator(self, values: dict) -> Tensor:
