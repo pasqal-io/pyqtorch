@@ -12,7 +12,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import State, StrEnum, inner_prod, is_diag, pyqify
+from pyqtorch.utils import State, StrEnum, inner_prod, is_diag
 
 BATCH_DIM = 2
 
@@ -126,6 +126,7 @@ class DiagonalObservable(Primitive):
         operations: Primitive | Sequence,
         n_qubits: int | None = None,
     ):
+        """In case the 'operations' / hamiltonian is diagonal, we simply do a element-wise vector-product instead of a tensordot."""
         if n_qubits is None:
             n_qubits = max(operations.qubit_support) + 1
         hamiltonian = operations.tensor({}, n_qubits).squeeze(2)
@@ -136,11 +137,10 @@ class DiagonalObservable(Primitive):
         self.n_qubits = n_qubits
 
     def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
-        return pyqify(
-            torch.einsum(
-                "ij,ib->ib", self.pauli, state.flatten(start_dim=0, end_dim=-2)
-            ),
-            n_qubits=len(state.size()) - 1,
+        # We flatten the state, do a element-wise multiplication with the diagonal hamiltonian
+        # and reshape it back to pyq-shape.
+        return torch.einsum(
+            "ij,ib->ib", self.pauli, state.flatten(start_dim=0, end_dim=-2)
         ).reshape([2] * self.n_qubits + [state.shape[-1]])
 
     def forward(
