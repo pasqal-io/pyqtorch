@@ -12,7 +12,6 @@ from __future__ import annotations
 from .adjoint import expectation
 from .analog import (
     Add,
-    Hamiltonian,
     HamiltonianEvolution,
     Scale,
     Observable,
@@ -54,7 +53,6 @@ from .utils import (
 __all__ = [
     "expectation",
     "Add",
-    "Hamiltonian",
     "HamiltonianEvolution",
     "Scale",
     "Merge",

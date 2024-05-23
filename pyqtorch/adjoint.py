@@ -5,7 +5,7 @@ from typing import Any, Tuple
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-from pyqtorch.analog import Hamiltonian
+from pyqtorch.analog import Observable
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.parametric import Parametric
@@ -45,7 +45,7 @@ class AdjointExpectation(Function):
     def forward(
         ctx: Any,
         circuit: QuantumCircuit,
-        observable: Hamiltonian,
+        observable: Observable,
         state: Tensor,
         param_names: list[str],
         *param_values: Tensor,
@@ -95,7 +95,7 @@ def expectation(
     circuit: QuantumCircuit,
     state: Tensor,
     values: dict[str, Tensor],
-    observable: Hamiltonian,
+    observable: Observable,
     diff_mode: DiffMode = DiffMode.AD,
 ) -> Tensor:
     """Compute the expectation value of the circuit given a state and observable.

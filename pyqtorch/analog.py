@@ -101,31 +101,10 @@ class Add(Sequence):
 TGenerator = Union[torch.nn.ModuleList, list, Tensor, Primitive]
 
 
-class Hamiltonian(Add):
-    def __init__(
-        self,
-        generator: TGenerator,
-        qubit_support: Tuple[int, ...] | None = None,
-    ):
-        assert isinstance(
-            generator, (Tensor, Primitive, Sequence)
-        ), "Generator can be: primitive, tensor or sequence"
-        if isinstance(generator, Tensor):
-            assert (
-                qubit_support is not None
-            ), "Please pass a qubit_support when using Tensor generators."
-            generator = [Primitive(generator, target=qubit_support[0])]
-        elif isinstance(generator, Primitive):
-            generator = [generator]
-        super().__init__(operations=generator)
-        self.generator = self.operations
-
-
 class Observable(Sequence):
-    def __init__(
-        self,
-        operations: list[Module] | Primitive | Sequence,
-    ):
+    def __init__(self, operations: list[Module] | Primitive | Sequence, n_qubits: int):
+        if n_qubits is None:
+            n_qubits = max(self.qubit_support) + 1
         super().__init__(operations)
 
     def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
@@ -143,13 +122,21 @@ class DiagonalObservable(Primitive):
     def __init__(
         self,
         operations: Primitive | Sequence,
+        n_qubits: int,
     ):
-        hamiltonian = operations.tensor({}, 1).squeeze(2).reshape(1, -1)
-        super().__init__(torch.diag(hamiltonian), operations.qubit_support[0])
+        if n_qubits is None:
+            n_qubits = max(operations.qubit_support) + 1
+        hamiltonian = operations.tensor({}, n_qubits).squeeze(2)
+        super().__init__(
+            torch.diag(hamiltonian).reshape(-1, 1), operations.qubit_support[0]
+        )
         self.qubit_support = operations.qubit_support
 
     def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
-        return pyqify(self.pauli * unpyqify(state), n_qubits=len(state.size()) - 1)
+        return pyqify(
+            torch.einsum("ij,ib->ib", self.pauli, unpyqify(state)),
+            n_qubits=len(state.size()) - 1,
+        )
 
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()

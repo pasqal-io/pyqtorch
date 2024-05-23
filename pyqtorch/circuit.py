@@ -92,6 +92,15 @@ class Sequence(Module):
             self._dtype = self.operations[0].dtype
         return self
 
+    def flatten(self) -> ModuleList:
+        ops = []
+        for op in self.operations:
+            if isinstance(op, Sequence):
+                ops += op.flatten()
+            else:
+                ops.append(op)
+        return ModuleList(ops)
+
     def tensor(
         self, values: dict[str, Tensor], n_qubits: int, diagonal: bool = False
     ) -> Tensor:
@@ -133,15 +142,6 @@ class QuantumCircuit(Sequence):
         return zero_state(
             self.n_qubits, batch_size, device=self.device, dtype=self.dtype
         )
-
-    def flatten(self) -> ModuleList:
-        ops = []
-        for op in self.operations:
-            if isinstance(op, Sequence):
-                ops += op.operations
-            else:
-                ops.append(op)
-        return ModuleList(ops)
 
     def sample(
         self,
