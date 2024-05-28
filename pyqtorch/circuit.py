@@ -18,7 +18,6 @@ from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, add_batch_dim, zero_state
 
 logger = getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 def forward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
