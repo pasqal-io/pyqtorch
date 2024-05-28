@@ -102,12 +102,15 @@ class Sequence(Module):
         return ModuleList(ops)
 
     def tensor(
-        self, values: dict[str, Tensor], n_qubits: int, diagonal: bool = False
+        self,
+        values: dict[str, Tensor] = dict(),
+        n_qubits: int | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         if diagonal:
             raise NotImplementedError
         if n_qubits is None:
-            n_qubits = len(self.qubit_support)
+            n_qubits = max(self.qubit_support) + 1
         mat = IMAT.clone().unsqueeze(2).to(self.device)
         for _ in range(n_qubits - 1):
             mat = torch.kron(mat, IMAT.clone().unsqueeze(2).to(self.device))
@@ -127,10 +130,19 @@ class QuantumCircuit(Sequence):
         self.n_qubits = n_qubits
 
     def run(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+        self,
+        state: State = None,
+        values: dict[str, Tensor] | ParameterDict = {},
+        pyqify_state: bool = False,
     ) -> State:
         if state is None:
             state = self.init_state()
+        else:
+            state = (
+                state.T.reshape([2] * self.n_qubits + [state.shape[0]])
+                if pyqify_state
+                else state
+            )
         return self.forward(state, values)
 
     def __hash__(self) -> int:
@@ -148,8 +160,10 @@ class QuantumCircuit(Sequence):
         values: dict[str, Tensor] = {},
         n_shots: int = 1,
         state: Tensor = None,
+        pyqify_state: bool = False,
     ) -> list[Counter]:
-
+        if state is not None and pyqify_state:
+            state = state.T.reshape([2] * self.n_qubits + [state.shape[0]])
         if n_shots < 1:
             raise ValueError("You can only call sample with n_shots>0.")
 
@@ -169,9 +183,13 @@ class QuantumCircuit(Sequence):
             )
 
         with torch.no_grad():
+
             state = torch.flatten(
-                self.run(values=values, state=state), start_dim=0, end_dim=-2
+                self.run(values=values, state=state, pyqify_state=pyqify_state),
+                start_dim=0,
+                end_dim=-2,
             ).t()
+
             probs = torch.abs(torch.pow(state, 2))
             return list(map(lambda p: _sample(p), probs))
 

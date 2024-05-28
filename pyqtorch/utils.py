@@ -181,3 +181,14 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
             torch.kron(operator.contiguous(), I(target).unitary()),
         )
     return operator
+
+
+def operator_to_sparse_diagonal(operator: Tensor) -> Tensor:
+    operator = torch.diag(operator)
+    indices, values, size = (
+        torch.nonzero(operator),
+        operator[operator != 0],
+        len(operator),
+    )
+    indices = torch.stack((indices.flatten(), indices.flatten()))
+    return torch.sparse_coo_tensor(indices, values, (size, size))

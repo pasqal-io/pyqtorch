@@ -12,7 +12,13 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import State, StrEnum, inner_prod, is_diag
+from pyqtorch.utils import (
+    State,
+    StrEnum,
+    inner_prod,
+    is_diag,
+    operator_to_sparse_diagonal,
+)
 
 BATCH_DIM = 2
 
@@ -70,7 +76,10 @@ class Scale(Sequence):
         return thetas * ones_like(self.unitary(values))
 
     def tensor(
-        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+        self,
+        values: dict[str, Tensor] = dict(),
+        n_qubits: int | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         thetas = values[self.param] if isinstance(self.param, str) else self.param
         return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
@@ -88,8 +97,10 @@ class Add(Sequence):
         return reduce(add, (op(state, values) for op in self.operations))
 
     def tensor(
-        self, values: dict = {}, n_qubits: int = 1, diagonal: bool = False
+        self, values: dict = {}, n_qubits: int | None = None, diagonal: bool = False
     ) -> Tensor:
+        if n_qubits is None:
+            n_qubits = max(self.qubit_support) + 1
         mat = torch.zeros((2, 2, 1), device=self.device)
         for _ in range(n_qubits - 1):
             mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
@@ -125,14 +136,17 @@ class DiagonalObservable(Primitive):
         self,
         operations: Primitive | Sequence,
         n_qubits: int | None = None,
+        to_sparse: bool = False,
     ):
         """In case the 'operations' / hamiltonian is diagonal, we simply do a element-wise vector-product instead of a tensordot."""
         if n_qubits is None:
             n_qubits = max(operations.qubit_support) + 1
         hamiltonian = operations.tensor({}, n_qubits).squeeze(2)
-        super().__init__(
-            torch.diag(hamiltonian).reshape(-1, 1), operations.qubit_support[0]
-        )
+        if to_sparse:
+            operator = operator_to_sparse_diagonal(hamiltonian)
+        else:
+            operator = torch.diag(hamiltonian).reshape(-1, 1)
+        super().__init__(operator, operations.qubit_support[0])
         self.qubit_support = operations.qubit_support
         self.n_qubits = n_qubits
 

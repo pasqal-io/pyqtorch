@@ -217,3 +217,17 @@ def test_symbol_hamevo(
     psi_star = hamevo(psi, {symbol: H})
     state = overlap(psi_star, psi)
     assert torch.allclose(state, expected_state, rtol=RTOL, atol=ATOL)
+
+
+# def test_hamevo_endianness() -> None:
+#     n_qubits = 2
+#     pyq.Scale(pyq.Add([pyq.I(0),pyq.Z(0)]),
+#     generator = pyq.Scale()
+#     gen = -0.5 * kron(I(0) - Z(0), I(1) - X(1))
+#     evo = HamEvo(gen, tensor([PI / 2]))
+#     circ = QuantumCircuit(n_qubits, evo)
+#     cnotgate = CNOT(0, 1)
+#     qc_cnot = QuantumCircuit(2, cnotgate)
+#     bkd = backend_factory(backend=backend)
+#     conv_cnot = bkd.convert(qc_cnot)
+#     state_10 = product_state("10")

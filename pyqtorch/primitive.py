@@ -6,7 +6,12 @@ import torch
 from torch import Tensor
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger, expand_operator
+from pyqtorch.matrices import (
+    OPERATIONS_DICT,
+    _controlled,
+    _dagger,
+    IMAT,
+)
 from pyqtorch.utils import product_state
 
 
@@ -57,12 +62,24 @@ class Primitive(torch.nn.Module):
     ) -> Tensor:
         if diagonal:
             raise NotImplementedError
-        t = self.unitary(values)
-        return (
-            expand_operator(t, self.qubit_support, tuple(i for i in range(n_qubits)))
-            if n_qubits > 1
-            else t
+        blockmat = self.unitary(values)
+        if n_qubits == 1:
+            return blockmat
+        full_sup = tuple(i for i in range(n_qubits))
+        support = tuple(sorted(self.qubit_support))
+        mat = (
+            IMAT.clone().to(self.device).unsqueeze(2)
+            if support[0] != full_sup[0]
+            else blockmat
         )
+        for i in full_sup[1:]:
+            if i == support[0]:
+                other = blockmat
+                mat = torch.kron(mat.contiguous(), other.contiguous())
+            elif i not in support:
+                other = IMAT.clone().to(self.device).unsqueeze(2)
+                mat = torch.kron(mat.contiguous(), other.contiguous())
+        return mat
 
 
 class X(Primitive):
