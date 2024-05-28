@@ -10,10 +10,17 @@ from torch import Tensor
 
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, ZMAT, _dagger
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, HMAT, IMAT, XMAT, YMAT, ZMAT, _dagger
 from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import Primitive
-from pyqtorch.utils import ATOL, density_mat, product_state, promote_operator, random_state
+from pyqtorch.primitive import H, I, Primitive, X, Y, Z
+from pyqtorch.utils import (
+    ATOL,
+    density_mat,
+    operator_kron,
+    product_state,
+    promote_operator,
+    random_state,
+)
 
 state_000 = product_state("000")
 state_001 = product_state("001")
@@ -342,3 +349,45 @@ def test_operator_product(gate: Primitive) -> None:
     assert torch.allclose(
         op_mul, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, max_batch)
     )
+
+
+@pytest.mark.parametrize("operator,matrix", [(I, IMAT), (X, XMAT), (Z, ZMAT), (Y, YMAT), (H, HMAT)])
+def test_operator_kron(operator: Tensor, matrix: Tensor) -> None:
+    n_qubits = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size = torch.randint(low=1, high=5, size=(1,)).item()
+    states, krons = [], []
+    for batch in range(batch_size):
+        state = random_state(n_qubits)
+        states.append(state)
+        kron = torch.kron(density_mat(state).squeeze(), matrix).unsqueeze(2)
+        krons.append(kron)
+    input_state = torch.cat(states, dim=n_qubits)
+    kron_out = operator_kron(density_mat(input_state), operator(0).dagger())
+    assert kron_out.size() == torch.Size([2 ** (n_qubits + 1), 2 ** (n_qubits + 1), batch_size])
+    kron_expect = torch.cat(krons, dim=2)
+    assert torch.allclose(kron_out, kron_expect)
+    assert torch.allclose(
+        torch.kron(operator(0).dagger().contiguous(), I(0).unitary()),
+        operator_kron(operator(0).dagger(), I(0).unitary()),
+    )
+
+
+def test_kron_batch() -> None:
+    n_qubits = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
+    max_batch = max(batch_size_1, batch_size_2)
+    dm_1 = density_mat(random_state(n_qubits, batch_size_1))
+    dm_2 = density_mat(random_state(n_qubits, batch_size_2))
+    dm_out = operator_kron(dm_1, dm_2)
+    assert dm_out.size() == torch.Size([2 ** (2 * n_qubits), 2 ** (2 * n_qubits), max_batch])
+    if batch_size_1 > batch_size_2:
+        dm_2 = dm_2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
+    elif batch_size_2 > batch_size_1:
+        dm_1 = dm_1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
+    density_matrices = []
+    for batch in range(max_batch):
+        density_matrice = torch.kron(dm_1[:, :, batch], dm_2[:, :, batch]).unsqueeze(2)
+        density_matrices.append(density_matrice)
+    dm_expect = torch.cat(density_matrices, dim=2)
+    assert torch.allclose(dm_out, dm_expect)
