@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 from enum import Enum
+from logging import getLogger
 from typing import Sequence
 
 import torch
@@ -15,12 +17,22 @@ ATOL = 1e-06
 RTOL = 0.0
 GRADCHECK_ATOL = 1e-06
 
+logger = getLogger(__name__)
+
 
 def inner_prod(bra: Tensor, ket: Tensor) -> Tensor:
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Inner prod calculation")
+        torch.cuda.nvtx.range_push("inner_prod")
+
     n_qubits = len(bra.size()) - 1
     bra = bra.reshape((2**n_qubits, bra.size(-1)))
     ket = ket.reshape((2**n_qubits, ket.size(-1)))
-    return torch.einsum("ib,ib->b", bra.conj(), ket)
+    res = torch.einsum("ib,ib->b", bra.conj(), ket)
+    if logger.isEnabledFor(logging.DEBUG):
+        torch.cuda.nvtx.range_pop()
+        logger.debug("Inner prod complete")
+    return res
 
 
 def overlap(bra: Tensor, ket: Tensor) -> Tensor:
