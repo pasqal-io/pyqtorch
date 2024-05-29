@@ -13,13 +13,9 @@ from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, HMAT, IMAT, XMAT, YMAT, ZMAT, _dagger
 from pyqtorch.noise import (
     AmplitudeDamping,
-    BitFlip,
-    Depolarizing,
     GeneralizedAmplitudeDamping,
     Noise,
-    PauliChannel,
     PhaseDamping,
-    PhaseFlip,
 )
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import H, I, Primitive, X, Y, Z
@@ -311,8 +307,9 @@ def test_U() -> None:
     )
 
 
-@pytest.mark.parametrize("n_qubits,batch_size", torch.randint(1, 6, (8, 2)))
-def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
+@pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
+@pytest.mark.parametrize("batch_size", [{"low": 1, "high": 5}], indirect=True)
+def test_dm(n_qubits: int, batch_size: int) -> None:
     state = random_state(n_qubits)
     projector = torch.outer(state.flatten(), state.conj().flatten()).view(
         2**n_qubits, 2**n_qubits, 1
@@ -337,9 +334,8 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     assert torch.allclose(dm, dm_proj)
 
 
-def test_promote(gate: Primitive) -> None:
-    n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
-    target = random.choice([i for i in range(n_qubits)])
+@pytest.mark.parametrize("n_qubits", [{"low": 1, "high": 8}], indirect=True)
+def test_promote(gate: Primitive, n_qubits: int, target: int) -> None:
     op_prom = promote_operator(gate(target).unitary(), target, n_qubits)
     assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(
@@ -347,10 +343,10 @@ def test_promote(gate: Primitive) -> None:
         torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2),
     )
 
+
 @pytest.mark.parametrize("n_qubits", [{"low": 1, "high": 8}], indirect=True)
-def test_operator_product(random_gate: Primitive, n_qubits: int) -> None:
+def test_operator_product(random_gate: Primitive, n_qubits: int, target: int) -> None:
     op = random_gate
-    target = random.choice([i for i in range(n_qubits)])
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
     max_batch = max(batch_size_2, batch_size_1)
@@ -406,95 +402,30 @@ def test_kron_batch() -> None:
     assert torch.allclose(dm_out, dm_expect)
 
 
-@pytest.mark.parametrize("FlipGate", [BitFlip, PhaseFlip, Depolarizing, PauliChannel])
-def test_flip_gates(FlipGate: Noise) -> None:
-    n_qubits: int = torch.randint(low=2, high=8, size=(1,)).item()
-    target: int = random.choice([i for i in range(n_qubits)])
-    qubits: Tensor = torch.arange(0, n_qubits)
-    qubits = qubits[qubits != target]
-    batch_size: int = torch.randint(low=1, high=5, size=(1,)).item()
-    rho_0: DensityMatrix = density_mat(product_state("0", batch_size))
-    rho_input: DensityMatrix = random_dm_promotion(target, rho_0, n_qubits)
-    if FlipGate == PauliChannel:
-        probabilities: Tensor = torch.rand((10, 3))
-        probabilities = probabilities / (
-            probabilities.sum(dim=1, keepdim=True) + torch.rand((1,)).item()
-        )  # To ensure that the sum of the probabilities is lower than 1.
-    else:
-        probabilities = torch.arange(0, 1, 10)
-    for probability in probabilities:
-        output_state: DensityMatrix = FlipGate(target, probability)(rho_input)
-        assert output_state.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
-        if FlipGate == BitFlip:
-            expected_state = DensityMatrix(
-                torch.tensor([[[1 - probability], [0]], [[0], [probability]]], dtype=torch.cdouble)
-            )
-        elif FlipGate == PhaseFlip:
-            expected_state = DensityMatrix(
-                torch.tensor([[[1], [0]], [[0], [0]]], dtype=torch.cdouble)
-            )
-        elif FlipGate == Depolarizing:
-            expected_state = DensityMatrix(
-                torch.tensor(
-                    [[[1 - (2 * probability) / 3], [0]], [[0], [(2 * probability) / 3]]],
-                    dtype=torch.cdouble,
-                )
-            )
-        elif FlipGate == PauliChannel:
-            px, py = probability[0], probability[1]
-            expected_state = DensityMatrix(
-                torch.tensor([[[1 - (px + py)], [0]], [[0], [px + py]]], dtype=torch.cdouble)
-            )
-        expected_state = random_dm_promotion(target, expected_state, n_qubits).repeat(
-            1, 1, batch_size
-        )
-        assert torch.allclose(output_state, expected_state)
-    input_state: Tensor = random_state(n_qubits, batch_size)
-    if FlipGate == PauliChannel:
-        assert torch.allclose(
-            FlipGate(
-                target,
-                probabilities=torch.zeros(
-                    3,
-                ),
-            )(density_mat(input_state)),
-            density_mat(input_state),
-        )
-    else:
-        assert torch.allclose(
-            FlipGate(target, probability=0)(density_mat(input_state)), density_mat(input_state)
-        )
-    if FlipGate == BitFlip:
-        assert torch.allclose(
-            FlipGate(target, probability=1)(density_mat(input_state)),
-            density_mat(X(target)(input_state)),
-        )
-    elif FlipGate == PhaseFlip:
-        assert torch.allclose(
-            FlipGate(target, probability=1)(density_mat(input_state)),
-            density_mat(Z(target)(input_state)),
-        )
-    elif FlipGate == Depolarizing:
-        assert torch.allclose(
-            FlipGate(target, probability=1)(density_mat(input_state)),
-            1
-            / 3
-            * (
-                density_mat(Z(target)(input_state))
-                + density_mat(X(target)(input_state))
-                + density_mat(Y(target)(input_state))
-            ),
-        )
-    elif FlipGate == PauliChannel:
-        px, py, pz = 1 / 3, 1 / 3, 1 / 3
-        assert torch.allclose(
-            FlipGate(target, probabilities=(px, py, pz))(density_mat(input_state)),
-            (
-                px * density_mat(X(target)(input_state))
-                + py * density_mat(Y(target)(input_state))
-                + pz * density_mat(Z(target)(input_state))
-            ),
-        )
+@pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
+@pytest.mark.parametrize("batch_size", [{"low": 1, "high": 5}], indirect=True)
+def test_flip_gates(
+    n_qubits: int,
+    target: int,
+    batch_size: int,
+    random_flip_gate: Noise,
+    flip_expected_state: DensityMatrix,
+    flip_probability: Tensor | float,
+    flip_gates_prob_0: Noise,
+    flip_gates_prob_1: tuple,
+    random_input_state: Tensor,
+) -> None:
+    rho_0 = density_mat(product_state("0", batch_size))
+    rho_input = random_dm_promotion(target, rho_0, n_qubits)
+    FlipGate = random_flip_gate
+    output_state: DensityMatrix = FlipGate(target, flip_probability)(rho_input)
+    assert output_state.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+    assert torch.allclose(output_state, flip_expected_state)
+
+    input_state = random_input_state  # fix the same random state for every call
+    assert torch.allclose(flip_gates_prob_0(density_mat(input_state)), density_mat(input_state))
+    FlipGate_1, expected_op = flip_gates_prob_1
+    assert torch.allclose(FlipGate_1(density_mat(input_state)), expected_op)
 
 
 @pytest.mark.parametrize(
