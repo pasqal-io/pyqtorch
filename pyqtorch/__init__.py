@@ -9,6 +9,43 @@
 # # limitations under the License.
 from __future__ import annotations
 
+import logging
+import os
+import sys
+
+logging_levels = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+
+LOG_LEVEL: str = os.environ.get("PYQ_LOG_LEVEL", "").upper()
+
+
+# if LOG_LEVEL:
+LOG_LEVEL: int = logging_levels.get(LOG_LEVEL, logging.INFO)  # type: ignore[arg-type, no-redef]
+# If logger not setup, add handler to stderr
+# else use setup presumably from Qadence
+handle = None
+if __name__ not in logging.Logger.manager.loggerDict.keys():
+    handle = logging.StreamHandler(sys.stderr)
+    handle.set_name("console")
+
+logger = logging.getLogger(__name__)
+if handle:
+    logger.addHandler(handle)
+[
+    h.setLevel(LOG_LEVEL)  # type: ignore[func-returns-value]
+    for h in logger.handlers
+    if h.get_name() == "console"
+]
+logger.setLevel(LOG_LEVEL)
+
+logger.info(f"PyQTorch logger successfully setup with log level {LOG_LEVEL}")
+
+
 from .adjoint import expectation
 from .analog import (
     Add,

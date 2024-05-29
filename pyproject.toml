@@ -62,21 +62,21 @@ dependencies = [
 build = "mkdocs build --clean --strict"
 serve = "mkdocs serve --dev-addr localhost:8000"
 
-[lint.ruff]
-select = ["E", "F", "I", "Q"]
-extend-ignore = ["F841"]
+[tool.ruff]
+lint.select = ["E", "F", "I", "Q"]
+lint.extend-ignore = ["F841"]
 line-length = 100
 
-[lint.ruff.isort]
+[tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
 
-[lint.ruff.per-file-ignores]
-"__init__.py" = ["F401"]
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "E402"]
 
-[lint.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 15
 
-[lint.ruff.flake8-quotes]
+[tool.ruff.lint.flake8-quotes]
 docstring-quotes = "double"
 
 [lint.black]
