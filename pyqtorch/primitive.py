@@ -9,10 +9,10 @@ from torch import Tensor
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import (
+    IMAT,
     OPERATIONS_DICT,
     _controlled,
     _dagger,
-    IMAT,
 )
 from pyqtorch.utils import product_state
 

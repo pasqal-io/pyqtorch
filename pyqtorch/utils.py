@@ -212,7 +212,9 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
         "bik,bjl->bijkl", batch_first(op1).contiguous(), batch_first(op2).contiguous()
     )
     return batch_last(
-        kron_product.reshape(op1.size(2), op1.size(1) * op2.size(1), op1.size(0) * op2.size(0))
+        kron_product.reshape(
+            op1.size(2), op1.size(1) * op2.size(1), op1.size(0) * op2.size(0)
+        )
     )
 
 

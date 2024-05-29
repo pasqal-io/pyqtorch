@@ -5,17 +5,17 @@ from collections import Counter
 from functools import reduce
 from logging import getLogger
 from operator import add
-from numpy import int64
 from typing import Any, Generator, Iterator, NoReturn
 
 import torch
+from numpy import int64
 from torch import Tensor, complex128, einsum, rand
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import add_batch_dim, IMAT
+from pyqtorch.matrices import IMAT, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, zero_state
@@ -90,10 +90,6 @@ class Sequence(Module):
     def qubit_support(self) -> tuple:
         return self._qubit_support
 
-    @property
-    def qubit_support(self) -> tuple:
-        return self._qubit_support
-
     def __iter__(self) -> Iterator:
         return iter(self.operations)
 
@@ -109,11 +105,6 @@ class Sequence(Module):
         for op in self.operations:
             state = op(state, values)
         return state
-
-    def run(self, state: State = None, values: dict[str, Tensor] = {}) -> State:
-        if state is None:
-            state = self.init_state()
-        return self.forward(state, values)
 
     @property
     def device(self) -> torch_device:

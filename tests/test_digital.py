@@ -10,7 +10,15 @@ from torch import Tensor
 
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, HMAT, IMAT, XMAT, YMAT, ZMAT, _dagger
+from pyqtorch.matrices import (
+    DEFAULT_MATRIX_DTYPE,
+    HMAT,
+    IMAT,
+    XMAT,
+    YMAT,
+    ZMAT,
+    _dagger,
+)
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import H, I, Primitive, X, Y, Z
 from pyqtorch.utils import (
@@ -399,7 +407,9 @@ def test_operator_product(gate: Primitive) -> None:
     )
 
 
-@pytest.mark.parametrize("operator,matrix", [(I, IMAT), (X, XMAT), (Z, ZMAT), (Y, YMAT), (H, HMAT)])
+@pytest.mark.parametrize(
+    "operator,matrix", [(I, IMAT), (X, XMAT), (Z, ZMAT), (Y, YMAT), (H, HMAT)]
+)
 def test_operator_kron(operator: Tensor, matrix: Tensor) -> None:
     n_qubits = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size = torch.randint(low=1, high=5, size=(1,)).item()
@@ -411,7 +421,9 @@ def test_operator_kron(operator: Tensor, matrix: Tensor) -> None:
         krons.append(kron)
     input_state = torch.cat(states, dim=n_qubits)
     kron_out = operator_kron(density_mat(input_state), operator(0).dagger())
-    assert kron_out.size() == torch.Size([2 ** (n_qubits + 1), 2 ** (n_qubits + 1), batch_size])
+    assert kron_out.size() == torch.Size(
+        [2 ** (n_qubits + 1), 2 ** (n_qubits + 1), batch_size]
+    )
     kron_expect = torch.cat(krons, dim=2)
     assert torch.allclose(kron_out, kron_expect)
     assert torch.allclose(
@@ -428,7 +440,9 @@ def test_kron_batch() -> None:
     dm_1 = density_mat(random_state(n_qubits, batch_size_1))
     dm_2 = density_mat(random_state(n_qubits, batch_size_2))
     dm_out = operator_kron(dm_1, dm_2)
-    assert dm_out.size() == torch.Size([2 ** (2 * n_qubits), 2 ** (2 * n_qubits), max_batch])
+    assert dm_out.size() == torch.Size(
+        [2 ** (2 * n_qubits), 2 ** (2 * n_qubits), max_batch]
+    )
     if batch_size_1 > batch_size_2:
         dm_2 = dm_2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
     elif batch_size_2 > batch_size_1:

@@ -49,10 +49,10 @@ logger.info(f"PyQTorch logger successfully setup with log level {LOG_LEVEL}")
 from .adjoint import expectation
 from .analog import (
     Add,
-    HamiltonianEvolution,
-    Scale,
-    Observable,
     DiagonalObservable,
+    HamiltonianEvolution,
+    Observable,
+    Scale,
 )
 from .apply import apply_operator
 from .circuit import Merge, QuantumCircuit, Sequence

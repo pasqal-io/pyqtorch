@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import torch
-from pyqtorch import X, Y, Z, I, Sequence
-import pytest
 import numpy as np
+import pytest
+import torch
+
+from pyqtorch import I, Sequence, X, Y, Z
 
 
 @pytest.mark.parametrize("n_qubits", [3, 5, 7])

@@ -8,7 +8,7 @@ from typing import Callable, Tuple, Union
 
 import torch
 from torch import Tensor, ones_like
-from torch.nn import Module, ParameterDict, ModuleList
+from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
@@ -163,7 +163,8 @@ class DiagonalObservable(Primitive):
         n_qubits: int | None = None,
         to_sparse: bool = False,
     ):
-        """In case the 'operations' / hamiltonian is diagonal, we simply do a element-wise vector-product instead of a tensordot."""
+        """In case the 'operations' / hamiltonian is diagonal,
+        we simply do a element-wise vector-product instead of a tensordot."""
         if n_qubits is None:
             n_qubits = max(operations.qubit_support) + 1
         hamiltonian = operations.tensor({}, n_qubits).squeeze(2)
