@@ -335,8 +335,8 @@ def test_dm(n_qubits: int, batch_size: int) -> None:
 
 
 @pytest.mark.parametrize("n_qubits", [{"low": 1, "high": 8}], indirect=True)
-def test_promote(gate: Primitive, n_qubits: int, target: int) -> None:
-    op_prom = promote_operator(gate(target).unitary(), target, n_qubits)
+def test_promote(random_gate: Primitive, n_qubits: int, target: int) -> None:
+    op_prom = promote_operator(random_gate.unitary(), target, n_qubits)
     assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(
         operator_product(op_prom, _dagger(op_prom), target),
@@ -350,10 +350,8 @@ def test_operator_product(random_gate: Primitive, n_qubits: int, target: int) ->
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
     max_batch = max(batch_size_2, batch_size_1)
-    op_prom = promote_operator(op(target).unitary(), target, n_qubits).repeat(1, 1, batch_size_1)
-    op_mul = operator_product(
-        op(target).unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
-    )
+    op_prom = promote_operator(op.unitary(), target, n_qubits).repeat(1, 1, batch_size_1)
+    op_mul = operator_product(op.unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target)
     assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
     assert torch.allclose(
         op_mul, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, max_batch)

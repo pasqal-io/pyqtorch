@@ -49,10 +49,10 @@ def random_input_state(n_qubits: int, batch_size: int) -> Any:
 
 
 @pytest.fixture
-def random_gate(n_qubits: int) -> Any:
+def random_gate(n_qubits: int, target: int) -> Any:
     GATES = [X, Y, Z, I, H]
     gate = random.choice(GATES)
-    return gate(torch.randint(0, n_qubits, (1,)).item())
+    return gate(target)
 
 
 @pytest.fixture
