@@ -10,6 +10,7 @@ from pyqtorch import DiffMode, expectation
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.noise import Noise
+from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix, random_state
 
@@ -214,13 +215,15 @@ def test_noise_circ(
     batch_size: int,
     random_gate: Primitive,
     random_noise_gate: Noise,
+    random_rotation_gate: Parametric,
 ) -> None:
-    OPERATORS = [random_gate, random_noise_gate]
+    OPERATORS = [random_gate, random_noise_gate, random_rotation_gate]
     random.shuffle(OPERATORS)
     circ = QuantumCircuit(n_qubits, OPERATORS)
 
     input_state = random_state(n_qubits, batch_size)
-    output_state = circ(input_state)
+    values = {random_rotation_gate.param_name: torch.rand(1)}
+    output_state = circ(input_state, values)
     assert isinstance(output_state, DensityMatrix)
     assert output_state.shape == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
 

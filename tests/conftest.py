@@ -18,6 +18,7 @@ from pyqtorch.noise import (
     PhaseDamping,
     PhaseFlip,
 )
+from pyqtorch.parametric import PHASE, RX, RY, RZ
 from pyqtorch.primitive import H, I, X, Y, Z
 from pyqtorch.utils import DensityMatrix, density_mat, random_dm_promotion, random_state
 
@@ -49,10 +50,17 @@ def random_input_state(n_qubits: int, batch_size: int) -> Any:
 
 
 @pytest.fixture
-def random_gate(n_qubits: int, target: int) -> Any:
+def random_gate(target: int) -> Any:
     GATES = [X, Y, Z, I, H]
     gate = random.choice(GATES)
     return gate(target)
+
+
+@pytest.fixture
+def random_rotation_gate(target: int) -> Any:
+    ROTATION_GATES = [RX, RY, RZ, PHASE]
+    rotation_gate = random.choice(ROTATION_GATES)
+    return rotation_gate(target, "theta")
 
 
 @pytest.fixture
