@@ -16,13 +16,7 @@ from pyqtorch.noise import (
     PhaseDamping,
     PhaseFlip,
 )
-from pyqtorch.primitive import H, I, Primitive, S, T, X, Y, Z
-
-
-@pytest.fixture(params=[I, X, Y, Z, H, T, S])
-def gate(request: Primitive) -> Any:
-    return request.param
-
+from pyqtorch.primitive import H, I, Primitive, X, Y, Z
 
 # Parametrized fixture
 @pytest.fixture
