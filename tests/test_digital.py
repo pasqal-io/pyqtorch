@@ -26,7 +26,6 @@ from pyqtorch.utils import (
     operator_kron,
     product_state,
     promote_operator,
-    random_dm_promotion,
     random_state,
 )
 
@@ -406,6 +405,7 @@ def test_flip_gates(
     n_qubits: int,
     target: int,
     batch_size: int,
+    rho_input: Tensor,
     random_flip_gate: Noise,
     flip_expected_state: DensityMatrix,
     flip_probability: Tensor | float,
@@ -413,8 +413,6 @@ def test_flip_gates(
     flip_gates_prob_1: tuple,
     random_input_state: Tensor,
 ) -> None:
-    rho_0 = density_mat(product_state("0", batch_size))
-    rho_input = random_dm_promotion(target, rho_0, n_qubits)
     FlipGate = random_flip_gate
     output_state: DensityMatrix = FlipGate(target, flip_probability)(rho_input)
     assert output_state.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
@@ -422,48 +420,34 @@ def test_flip_gates(
 
     input_state = random_input_state  # fix the same random state for every call
     assert torch.allclose(flip_gates_prob_0(density_mat(input_state)), density_mat(input_state))
+
     FlipGate_1, expected_op = flip_gates_prob_1
     assert torch.allclose(FlipGate_1(density_mat(input_state)), expected_op)
 
 
-@pytest.mark.parametrize(
-    "DampingGate", [AmplitudeDamping, PhaseDamping, GeneralizedAmplitudeDamping]
-)
-def test_damping_gates(DampingGate: Noise) -> None:
-    n_qubits: int = torch.randint(low=1, high=8, size=(1,)).item()
-    target: int = random.choice([i for i in range(n_qubits)])
-    batch_size: int = torch.randint(low=1, high=5, size=(1,)).item()
+@pytest.mark.parametrize("n_qubits", [{"low": 1, "high": 6}], indirect=True)
+@pytest.mark.parametrize("batch_size", [{"low": 1, "high": 5}], indirect=True)
+def test_damping_gates(
+    n_qubits: int,
+    target: int,
+    batch_size: int,
+    random_damping_gate: Noise,
+    damping_expected_state: tuple,
+    damping_rate: Tensor,
+    damping_gates_prob_0: Tensor,
+    random_input_state: Tensor,
+    rho_input: Tensor,
+) -> None:
+    DampingGate, expected_state = damping_expected_state
+    apply_gate = DampingGate(rho_input)
+    assert apply_gate.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+    assert torch.allclose(apply_gate, expected_state)
+
+    input_state = random_input_state
+    assert torch.allclose(damping_gates_prob_0(input_state), density_mat(I(target)(input_state)))
+
     rho_0: DensityMatrix = density_mat(product_state("0", batch_size))
     rho_1: DensityMatrix = density_mat(product_state("1", batch_size))
-    rho_input: DensityMatrix = random_dm_promotion(target, rho_0, n_qubits)
-    rates: Tensor = torch.arange(0, 1, 10)
-    if DampingGate == GeneralizedAmplitudeDamping:
-        rates = torch.rand((10, 2))  # prob and rate
-    for rate in rates:
-        if DampingGate == GeneralizedAmplitudeDamping:
-            p, r = rate[0], rate[1]
-            apply_gate: DensityMatrix = DampingGate(target, p, r)(rho_input)
-            expected_state = DensityMatrix(
-                torch.tensor([[[1 - (r - p * r)], [0]], [[0], [r - p * r]]], dtype=torch.cdouble)
-            )
-            expected_state = random_dm_promotion(target, expected_state, n_qubits).repeat(
-                1, 1, batch_size
-            )
-        else:
-            apply_gate = DampingGate(target, rate)(rho_input)
-            expected_state = I(target)(rho_input)
-        assert apply_gate.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
-        assert torch.allclose(apply_gate, expected_state)
-    input_state: Tensor = random_state(n_qubits)
-    if DampingGate == GeneralizedAmplitudeDamping:
-        assert torch.allclose(
-            DampingGate(target, probability=0, rate=0)(input_state),
-            density_mat(I(target)(input_state)),
-        )
-    else:
-        assert torch.allclose(
-            DampingGate(target, rate=0)(input_state), density_mat(I(target)(input_state))
-        )
     if DampingGate == AmplitudeDamping:
         assert torch.allclose(DampingGate(target, rate=1)(rho_1), rho_0)
     elif DampingGate == PhaseDamping:

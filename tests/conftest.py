@@ -20,7 +20,13 @@ from pyqtorch.noise import (
 )
 from pyqtorch.parametric import PHASE, RX, RY, RZ
 from pyqtorch.primitive import H, I, X, Y, Z
-from pyqtorch.utils import DensityMatrix, density_mat, random_dm_promotion, random_state
+from pyqtorch.utils import (
+    DensityMatrix,
+    density_mat,
+    product_state,
+    random_dm_promotion,
+    random_state,
+)
 
 
 # Parametrized fixture
@@ -47,6 +53,13 @@ def batch_size(request: FixtureRequest) -> Any:
 @pytest.fixture
 def random_input_state(n_qubits: int, batch_size: int) -> Any:
     return random_state(n_qubits, batch_size)
+
+
+@pytest.fixture
+def rho_input(batch_size: int, target: int, n_qubits: int) -> Any:
+    rho_0: DensityMatrix = density_mat(product_state("0", batch_size))
+    rho_input: DensityMatrix = random_dm_promotion(target, rho_0, n_qubits)
+    return rho_input
 
 
 @pytest.fixture
@@ -172,3 +185,52 @@ def flip_gates_prob_1(random_flip_gate: Noise, target: int, random_input_state: 
             + pz * density_mat(Z(target)(random_input_state))
         )
     return FlipGate_1, expected_op
+
+
+@pytest.fixture
+def random_damping_gate() -> Any:
+    DAMPING_GATES = [AmplitudeDamping, PhaseDamping, GeneralizedAmplitudeDamping]
+    # The gate is not initialize
+    return random.choice(DAMPING_GATES)
+
+
+@pytest.fixture
+def damping_rate(random_damping_gate: Noise) -> Any:
+    if random_damping_gate == GeneralizedAmplitudeDamping:
+        rate = torch.rand((2,))  # prob and rate
+    else:
+        rate = torch.rand(1).item()
+    return rate
+
+
+@pytest.fixture
+def damping_expected_state(
+    n_qubits: int,
+    target: int,
+    random_damping_gate: Noise,
+    damping_rate: Tensor,
+    batch_size: int,
+    rho_input: Tensor,
+) -> Any:
+    if random_damping_gate == GeneralizedAmplitudeDamping:
+        p, r = damping_rate[0], damping_rate[1]
+        expected_state = DensityMatrix(
+            torch.tensor([[[1 - (r - p * r)], [0]], [[0], [r - p * r]]], dtype=torch.cdouble)
+        )
+        DampingGate = random_damping_gate(target, p, r)
+        expected_state = random_dm_promotion(target, expected_state, n_qubits).repeat(
+            1, 1, batch_size
+        )
+    else:
+        expected_state = I(target)(rho_input)
+        DampingGate = random_damping_gate(target, damping_rate)
+    return DampingGate, expected_state
+
+
+@pytest.fixture
+def damping_gates_prob_0(random_damping_gate: Noise, target: int) -> Any:
+    if random_damping_gate == GeneralizedAmplitudeDamping:
+        damping_gate_0 = random_damping_gate(target, probability=0, rate=0)
+    else:
+        damping_gate_0 = random_damping_gate(target, rate=0)
+    return damping_gate_0
