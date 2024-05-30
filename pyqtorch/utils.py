@@ -157,7 +157,7 @@ class DensityMatrix(Tensor):
     pass
 
 
-def density_mat(state: Tensor) -> Tensor:
+def density_mat(state: Tensor) -> DensityMatrix:
     """
     Computes the density matrix from a pure state vector.
 
