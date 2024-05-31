@@ -64,7 +64,7 @@ def test_differentiate_circuit(dtype: torch.dtype, batch_size: int, n_qubits: in
         pyq.Y(1),
         pyq.RX(0, "theta_0"),
         pyq.PHASE(0, "theta_1"),
-        pyq.CSWAP(2, (0, 1)),
+        pyq.CSWAP(0, (1, 2)),
         pyq.CRX(1, 2, "theta_2"),
         pyq.CPHASE(1, 2, "theta_3"),
         pyq.CNOT(0, 1),
