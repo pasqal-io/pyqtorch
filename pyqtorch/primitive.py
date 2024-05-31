@@ -147,13 +147,13 @@ class SWAP(Primitive):
 
 
 class CSWAP(Primitive):
-    def __init__(self, control: tuple[int, ...], target: int):
-        if not isinstance(control, tuple) or len(control) < 2:
-            raise ValueError("Control qubits must be a tuple with two qubits")
+    def __init__(self, control: int | tuple[int, ...], target: tuple[int, ...]):
+        if not isinstance(target, tuple) or len(target) != 2:
+            raise ValueError("Target qubits must be a tuple with two qubits")
         super().__init__(OPERATIONS_DICT["CSWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.target = target
-        self.qubit_support = self.control + (target,)
+        self.qubit_support = self.control + target
 
 
 class ControlledOperationGate(Primitive):
