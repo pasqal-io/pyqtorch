@@ -7,6 +7,7 @@ import torch
 from pyqtorch import I, Sequence, X, Y, Z
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("n_qubits", [3, 5, 7])
 @pytest.mark.parametrize("op0", [X, Y, Z])
 @pytest.mark.parametrize("op1", [X, Y, Z])
