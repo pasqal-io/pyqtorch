@@ -112,7 +112,7 @@ class ControlledRotationGate(Parametric):
     ):
         self.control = control if isinstance(control, tuple) else (control,)
         super().__init__(gate, target, param_name)
-        self.qubit_support = self.control + (self.target,)
+        self.qubit_support = self.control + (self.target,)  # type: ignore
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = self.parse_values(values)

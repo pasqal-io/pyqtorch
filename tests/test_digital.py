@@ -25,9 +25,9 @@ from pyqtorch.utils import (
 state_000 = product_state("000")
 state_001 = product_state("001")
 state_100 = product_state("100")
-state_101 = product_state("101")  
+state_101 = product_state("101")
 state_110 = product_state("110")
-state_011 = product_state("011") 
+state_011 = product_state("011")
 state_111 = product_state("111")
 state_0000 = product_state("0000")
 state_1110 = product_state("1110")
@@ -166,8 +166,8 @@ def test_CSWAP_state110_controlqubit_0() -> None:
         (state_000, state_000),
         (state_001, state_001),
         (state_100, state_100),
-        (state_101, state_011), 
-        (state_110, state_110), 
+        (state_101, state_011),
+        (state_110, state_110),
     ],
 )
 def test_CSWAP_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:

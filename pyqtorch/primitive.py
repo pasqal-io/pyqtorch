@@ -31,10 +31,10 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 
 
 class Primitive(torch.nn.Module):
-    def __init__(self, pauli: Tensor, target: int) -> None:
+    def __init__(self, pauli: Tensor, target: int | tuple[int, ...]) -> None:
         super().__init__()
-        self.target: int = target
-        self.qubit_support: tuple[int, ...] = (target,)
+        self.target: int | tuple[int, ...] = target
+        self.qubit_support: tuple[int, ...] = (target,) if isinstance(target, int) else target
         self.register_buffer("pauli", pauli)
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
