@@ -180,7 +180,7 @@ def flip_gates_prob_1(random_flip_gate: Noise, target: int, random_input_state: 
         px, py, pz = 1 / 3, 1 / 3, 1 / 3
         FlipGate_1 = random_flip_gate(target, probabilities=(px, py, pz))
         expected_op = (
-            px * density_mat(X(target)(random_input_state))
+            px * density_mat(X(target)(random_input_state))  # type: ignore
             + py * density_mat(Y(target)(random_input_state))
             + pz * density_mat(Z(target)(random_input_state))
         )
