@@ -19,7 +19,7 @@ from pyqtorch.noise import (
     PhaseFlip,
 )
 from pyqtorch.parametric import PHASE, RX, RY, RZ
-from pyqtorch.primitive import H, I, X, Y, Z
+from pyqtorch.primitive import CNOT, CSWAP, CY, CZ, H, I, X, Y, Z
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -74,6 +74,16 @@ def random_rotation_gate(target: int) -> Any:
     ROTATION_GATES = [RX, RY, RZ, PHASE]
     rotation_gate = random.choice(ROTATION_GATES)
     return rotation_gate(target, "theta")
+
+
+@pytest.fixture
+def random_controlled_gate(n_qubits: int, target: int) -> Any:
+    if n_qubits < 2:
+        raise ValueError("The controlled gates are defined on 2 qubits minimum")
+    CONTROLLED_GATES = [CSWAP, CNOT, CY, CZ]
+    controlled_gate = random.choice(CONTROLLED_GATES)
+    control = random.choice([i for i in range(n_qubits) if i != target])
+    return controlled_gate(control, target)
 
 
 @pytest.fixture

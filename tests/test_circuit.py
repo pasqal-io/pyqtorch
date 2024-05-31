@@ -4,6 +4,7 @@ import random
 
 import pytest
 import torch
+from torch import Tensor
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
@@ -12,7 +13,7 @@ from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.noise import Noise
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix, random_state
+from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix
 
 
 def test_adjoint_diff() -> None:
@@ -213,17 +214,18 @@ def test_ham_expect_fail() -> None:
 def test_noise_circ(
     n_qubits: int,
     batch_size: int,
+    random_input_state: Tensor,
     random_gate: Primitive,
     random_noise_gate: Noise,
     random_rotation_gate: Parametric,
+    random_controlled_gate: Primitive,
 ) -> None:
-    OPERATORS = [random_gate, random_noise_gate, random_rotation_gate]
+    OPERATORS = [random_gate, random_noise_gate, random_rotation_gate, random_controlled_gate]
     random.shuffle(OPERATORS)
     circ = QuantumCircuit(n_qubits, OPERATORS)
 
-    input_state = random_state(n_qubits, batch_size)
     values = {random_rotation_gate.param_name: torch.rand(1)}
-    output_state = circ(input_state, values)
+    output_state = circ(random_input_state, values)
     assert isinstance(output_state, DensityMatrix)
     assert output_state.shape == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
 
