@@ -150,28 +150,18 @@ def test_CRY_state01_controlqubit_0() -> None:
     assert torch.allclose(product_state("11"), result, atol=ATOL)
 
 
-def test_CSWAP_state101_controlqubit_0() -> None:
-    result: Tensor = pyq.CSWAP(2, (0, 1))(product_state("101"), None)
-    assert torch.allclose(product_state("011"), result)
-
-
-def test_CSWAP_state110_controlqubit_0() -> None:
-    result: Tensor = pyq.CSWAP(2, (0, 1))(product_state("110"), None)
-    assert torch.allclose(product_state("110"), result)
-
-
 @pytest.mark.parametrize(
     "initial_state,expected_state",
     [
         (state_000, state_000),
         (state_001, state_001),
         (state_100, state_100),
-        (state_101, state_011),
-        (state_110, state_110),
+        (state_101, state_110),
+        (state_110, state_101),
     ],
 )
 def test_CSWAP_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> None:
-    cswap = pyq.CSWAP(2, (0, 1))
+    cswap = pyq.CSWAP(0, (1, 2))
     assert torch.allclose(cswap(initial_state, None), expected_state)
 
 
