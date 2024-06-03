@@ -52,6 +52,23 @@ class DiffMode(StrEnum):
     ADJOINT = "adjoint"
 
 
+class DropoutMode(StrEnum):
+    """
+    Which Dropout mode to use.
+
+    Options: none          - No dropout is used.
+             rotational    - Randomly drops entangling rotational gates.
+             entangling    - Randomly drops entangling gates.
+             canonical_fwd - Randomly drops rotational gates and next immediate entangling
+                            gates whose target bit is located on dropped rotational gates.
+    """
+
+    NONE = "none"
+    ROTATIONAL = "rotational"
+    ENTANGLING = "entangling"
+    CANONICAL_FWD = "canonical_fwd"
+
+
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
     n_qubits = len(state.size()) - 1
     batch_size = state.size()[-1]

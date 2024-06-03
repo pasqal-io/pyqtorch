@@ -58,7 +58,7 @@ def fm2(n_qubits):
 
 
 class Model(torch.nn.Module):
-    def __init__(self, n_qubits, n_layers, device, dropout={}):
+    def __init__(self, n_qubits, n_layers, device, dropout_mode="none", dropout_prob=1):
         super().__init__()
         self.n_qubits = n_qubits
         self.n_layers = n_layers
@@ -78,7 +78,10 @@ class Model(torch.nn.Module):
 
         params = torch.nn.ParameterDict(params)
         training_circuit = pyq.QuantumCircuit(
-            n_qubits=n_qubits, operations=operations, dropout=dropout
+            n_qubits=n_qubits,
+            operations=operations,
+            dropout_mode=dropout_mode,
+            dropout_prob=dropout_prob,
         )
         eval_circuit = pyq.QuantumCircuit(n_qubits=n_qubits, operations=operations)
 
@@ -150,8 +153,8 @@ def train(model, opt, x_train, y_train, x_test, y_test, epochs, batch_size):
         train_preds = model(x_batch, training=False)
         train_loss = torch.nn.MSELoss()(train_preds, y_batch.flatten()).detach().numpy()
 
-        train_loss_history.append(train_loss.detach().numpy())
-        validation_loss_history.append(test_loss.detach().numpy())
+        train_loss_history.append(train_loss)
+        validation_loss_history.append(test_loss)
 
         if epoch % 100 == 0:
             print(f"epoch: {epoch}, train loss {train_loss}, val loss: {test_loss}")
@@ -214,7 +217,8 @@ if __name__ == "__main__":
     model = Model(
         n_qubits=n_qubits,
         n_layers=depth,
-        dropout={"mode": "canonical_fwd", "pg": 0.3, "pl": 0.1},
+        dropout_mode="rotational",
+        dropout_prob=0.03,
         device=device,
     )
     model.params = no_drop_p
