@@ -28,16 +28,16 @@ class Parametric(Primitive):
         self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
 
-        def parse_values(values: dict[str, torch.Tensor] | torch.Tensor = {}) -> torch.Tensor:
+        def parse_values(values: dict[str, torch.Tensor] | torch.Tensor = dict()) -> torch.Tensor:
             return Parametric._expand_values(values[self.param_name])
 
-        def parse_tensor(values: dict[str, torch.Tensor] | torch.Tensor = {}) -> torch.Tensor:
+        def parse_tensor(values: dict[str, torch.Tensor] | torch.Tensor = dict()) -> torch.Tensor:
             return Parametric._expand_values(values)
 
         self.parse_values = parse_tensor if param_name == "" else parse_values
 
     def extra_repr(self) -> str:
-        return f"{self.qubit_support}, {self.param_name}"
+        return f"target:{self.qubit_support}, param:{self.param_name}"
 
     def __hash__(self) -> int:
         return hash(self.qubit_support) + hash(self.param_name)
@@ -112,7 +112,12 @@ class ControlledRotationGate(Parametric):
     ):
         self.control = control if isinstance(control, tuple) else (control,)
         super().__init__(gate, target, param_name)
-        self.qubit_support = self.control + (self.target,)  # type: ignore
+        self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
+        # In this class, target is always an int but herit from Parametric and Primitive that:
+        # target : int | tuple[int,...]
+
+    def extra_repr(self) -> str:
+        return f"target: {self.control}, target:{(self.target,)}, param:{self.param_name}"
 
     def unitary(self, values: dict[str, torch.Tensor] = {}) -> Operator:
         thetas = self.parse_values(values)

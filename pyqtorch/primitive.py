@@ -153,7 +153,10 @@ class CSWAP(Primitive):
         super().__init__(OPERATIONS_DICT["CSWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.target = target
-        self.qubit_support = self.control + target
+        self.qubit_support = self.control + self.target
+
+    def extra_repr(self) -> str:
+        return f"control:{self.control}, target:{self.target}"
 
 
 class ControlledOperationGate(Primitive):
@@ -166,7 +169,10 @@ class ControlledOperationGate(Primitive):
             n_control_qubits=len(self.control),
         ).squeeze(2)
         super().__init__(mat, target)
-        self.qubit_support = self.control + (target,)
+        self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
+
+    def extra_repr(self) -> str:
+        return f"control:{self.control}, target:{(self.target,)}"
 
 
 class CNOT(ControlledOperationGate):
