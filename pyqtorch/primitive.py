@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+from logging import getLogger
 from typing import Any
 
 import torch
@@ -8,6 +10,24 @@ from torch import Tensor
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
 from pyqtorch.utils import DensityMatrix, product_state
+
+logger = getLogger(__name__)
+
+
+def forward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    torch.cuda.nvtx.range_pop()
+
+
+def pre_forward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    torch.cuda.nvtx.range_push("Primitive.forward")
+
+
+def backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    torch.cuda.nvtx.range_pop()
+
+
+def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    torch.cuda.nvtx.range_push("Primitive.backward")
 
 
 class Primitive(torch.nn.Module):
@@ -18,6 +38,14 @@ class Primitive(torch.nn.Module):
         self.register_buffer("pauli", pauli)
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
+
+        if logger.isEnabledFor(logging.DEBUG):
+            # When Debugging let's add logging and NVTX markers
+            # WARNING: incurs performance penalty
+            self.register_forward_hook(forward_hook, always_call=True)
+            self.register_full_backward_hook(backward_hook)
+            self.register_forward_pre_hook(pre_forward_hook)
+            self.register_full_backward_pre_hook(pre_backward_hook)
 
     def __hash__(self) -> int:
         return hash(self.qubit_support)

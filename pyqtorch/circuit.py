@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import logging
 from functools import reduce
 from logging import getLogger
 from operator import add
 from typing import Any, Generator, Iterator, NoReturn
 
+import torch
 from torch import Tensor, complex128, einsum, rand
 from torch import device as torch_device
 from torch import dtype as torch_dtype
@@ -16,6 +18,26 @@ from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, add_batch_dim, zero_state
 
 logger = getLogger(__name__)
+
+
+def forward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    logger.debug("Forward complete")
+    torch.cuda.nvtx.range_pop()
+
+
+def pre_forward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    logger.debug("Executing forward")
+    torch.cuda.nvtx.range_push("QuantumCircuit.forward")
+
+
+def backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    logger.debug("Backward complete")
+    torch.cuda.nvtx.range_pop()
+
+
+def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    logger.debug("Executed backward")
+    torch.cuda.nvtx.range_push("QuantumCircuit.backward")
 
 
 class Sequence(Module):
@@ -31,6 +53,14 @@ class Sequence(Module):
                 self._device = next(iter(set((op.device for op in self.operations))))
             except StopIteration:
                 pass
+        logger.debug("QuantumCircuit initialized")
+        if logger.isEnabledFor(logging.DEBUG):
+            # When Debugging let's add logging and NVTX markers
+            # WARNING: incurs performance penalty
+            self.register_forward_hook(forward_hook, always_call=True)
+            self.register_full_backward_hook(backward_hook)
+            self.register_forward_pre_hook(pre_forward_hook)
+            self.register_full_backward_pre_hook(pre_backward_hook)
 
     def __iter__(self) -> Iterator:
         return iter(self.operations)
@@ -42,6 +72,11 @@ class Sequence(Module):
         for op in self.operations:
             state = op(state, values)
         return state
+
+    def run(self, state: State = None, values: dict[str, Tensor] = {}) -> State:
+        if state is None:
+            state = self.init_state()
+        return self.forward(state, values)
 
     @property
     def device(self) -> torch_device:
