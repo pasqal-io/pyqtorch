@@ -53,7 +53,7 @@ class GeneratorType(StrEnum):
     Options for types of generators allowed in HamiltonianEvolution.
     """
 
-    OPERATION_PARAMETRIC = "operation_parametric"
+    PARAMETRIC_OPERATION = "parametric_operation"
     """Generators of type Primitive or Sequence which contain
        possibly trainable or non-trainable parameters."""
     OPERATION = "operation"
@@ -238,7 +238,7 @@ class HamiltonianEvolution(Sequence):
             qubit_support = generator.qubit_support
             if generator_parametric:
                 generator = [generator]
-                self.generator_type = GeneratorType.OPERATION_PARAMETRIC
+                self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
                 generator = [
                     Primitive(
@@ -268,7 +268,7 @@ class HamiltonianEvolution(Sequence):
             GeneratorType.SYMBOL: self._symbolic_generator,
             GeneratorType.TENSOR: self._tensor_generator,
             GeneratorType.OPERATION: self._tensor_generator,
-            GeneratorType.OPERATION_PARAMETRIC: self._parametric_generator,
+            GeneratorType.PARAMETRIC_OPERATION: self._parametric_generator,
         }
 
     @property
