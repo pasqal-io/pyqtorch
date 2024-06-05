@@ -34,6 +34,10 @@ class QuantumCircuit(Module):
             except StopIteration:
                 pass
 
+        self.dropout_fn = (
+            None if self.dropout_mode == "none" else self.get_dropout_fn(self.dropout_mode)
+        )
+
     def __mul__(self, other: Module | QuantumCircuit) -> QuantumCircuit:
         n_qubits = max(self.n_qubits, other.n_qubits)
         if isinstance(other, QuantumCircuit):
@@ -66,23 +70,19 @@ class QuantumCircuit(Module):
         return self.forward(state, values)
 
     def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
-        if self.dropout_mode == DropoutMode.ROTATIONAL:
-            state = self.rotational_dropout(state, values)
-
-        elif self.dropout_mode == DropoutMode.ENTANGLING:
-            state = self.entangling_dropout(state, values)
-
-        elif self.dropout_mode == DropoutMode.CANONICAL_FWD:
-            state = self.canonical_fwd_dropout(state, values)
-
-        elif self.dropout_mode == DropoutMode.NONE:
+        if self.dropout_fn:
+            state = self.dropout_fn(state, values)
+        else:
             for op in self.operations:
                 state = op(state, values)
 
-        else:
-            raise ValueError(f"Requested dropout_mode '{self.dropout_mode}' not supported.")
-
         return state
+
+    def get_dropout_fn(self, dropout_mode: str) -> Any:
+        dropout_fn = getattr(self, dropout_mode)
+        if not callable(dropout_fn):
+            raise ValueError(f"No dropout mode named {dropout_mode} found")
+        return dropout_fn
 
     def rotational_dropout(
         self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}

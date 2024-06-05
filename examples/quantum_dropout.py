@@ -217,7 +217,7 @@ if __name__ == "__main__":
     model = Model(
         n_qubits=n_qubits,
         n_layers=depth,
-        dropout_mode="rotational",
+        dropout_mode="rotational_dropout",
         dropout_prob=0.03,
         device=device,
     )
