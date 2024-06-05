@@ -23,7 +23,7 @@ from pyqtorch.utils import (
 )
 
 BATCH_DIM = 2
-
+TGenerator = Union[Tensor, str, Primitive, Sequence]
 
 logger = getLogger(__name__)
 
@@ -214,7 +214,7 @@ def evolve(hamiltonian: Tensor, time_evolution: Tensor) -> Tensor:
 class HamiltonianEvolution(Sequence):
     def __init__(
         self,
-        generator: Union[torch.nn.ModuleList, list, Tensor, Primitive],
+        generator: TGenerator,
         time: Tensor | str,
         qubit_support: Tuple[int, ...] | None = None,
         generator_parametric: bool = False,
@@ -295,7 +295,8 @@ class HamiltonianEvolution(Sequence):
         hamiltonian: torch.Tensor = self.create_hamiltonian(values)
         time_evolution: torch.Tensor = (
             values[self.time] if isinstance(self.time, str) else self.time
-        )
+        )  # If `self.time` is a string / hence, a Parameter,
+        # we expect the user to pass it in the `values` dict
 
         return apply_operator(
             state=state,
