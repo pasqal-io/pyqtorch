@@ -36,10 +36,10 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 
 
 class Primitive(torch.nn.Module):
-    def __init__(self, pauli: Tensor, target: int) -> None:
+    def __init__(self, pauli: Tensor, target: int | tuple[int, ...]) -> None:
         super().__init__()
-        self.target: int = target
-        self.qubit_support: tuple[int, ...] = (target,)
+        self.target: int | tuple[int, ...] = target
+        self.qubit_support: tuple[int, ...] = (target,) if isinstance(target, int) else target
         self.register_buffer("pauli", pauli)
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
@@ -178,11 +178,16 @@ class SWAP(Primitive):
 
 
 class CSWAP(Primitive):
-    def __init__(self, control: int | tuple[int, ...], target: int):
+    def __init__(self, control: int | tuple[int, ...], target: tuple[int, ...]):
+        if not isinstance(target, tuple) or len(target) != 2:
+            raise ValueError("Target qubits must be a tuple with two qubits")
         super().__init__(OPERATIONS_DICT["CSWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.target = target
-        self.qubit_support = self.control + (target,)
+        self.qubit_support = self.control + self.target
+
+    def extra_repr(self) -> str:
+        return f"control:{self.control}, target:{self.target}"
 
 
 class ControlledOperationGate(Primitive):
@@ -195,7 +200,10 @@ class ControlledOperationGate(Primitive):
             n_control_qubits=len(self.control),
         ).squeeze(2)
         super().__init__(mat, target)
-        self.qubit_support = self.control + (target,)
+        self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
+
+    def extra_repr(self) -> str:
+        return f"control:{self.control}, target:{(self.target,)}"
 
 
 class CNOT(ControlledOperationGate):

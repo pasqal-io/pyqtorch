@@ -142,34 +142,6 @@ def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tenso
     return {key: val for key, val in zip(keys, values)}
 
 
-def batch_first(operator: Tensor) -> Tensor:
-    """
-    Permute the operator's batch dimension on first dimension.
-
-    Args:
-        operator (Tensor): Operator in size [2**n_qubits, 2**n_qubits,batch_size].
-
-    Returns:
-        Tensor: Operator in size [batch_size, 2**n_qubits, 2**n_qubits].
-    """
-    batch_first_perm = (2, 0, 1)
-    return torch.permute(operator, batch_first_perm)
-
-
-def batch_last(operator: Tensor) -> Tensor:
-    """
-    Permute the operator's batch dimension on last dimension.
-
-    Args:
-        operator (Tensor): Operator in size [batch_size,2**n_qubits, 2**n_qubits].
-
-    Returns:
-        Tensor: Operator in size [2**n_qubits, 2**n_qubits,batch_size].
-    """
-    undo_perm = (1, 2, 0)
-    return torch.permute(operator, undo_perm)
-
-
 def density_mat(state: Tensor) -> Tensor:
     """
     Computes the density matrix from a pure state vector.
@@ -181,11 +153,9 @@ def density_mat(state: Tensor) -> Tensor:
         Tensor: The density matrix :math:`\\rho = |\psi \\rangle \\langle\\psi|`.
     """
     n_qubits = len(state.size()) - 1
-    batch_dim = state.dim() - 1
     batch_size = state.shape[-1]
-    batch_first_perm = [batch_dim] + list(range(batch_dim))
-    state = torch.permute(state, batch_first_perm).reshape(batch_size, 2**n_qubits)
-    return batch_last(torch.einsum("bi,bj->bij", (state, state.conj())))
+    state = state.reshape(2**n_qubits, batch_size)
+    return torch.einsum("ib,jb->ijb", (state, state.conj()))
 
 
 def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
@@ -208,14 +178,8 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
         op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
     elif batch_size_2 > batch_size_1:
         op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
-    kron_product = torch.einsum(
-        "bik,bjl->bijkl", batch_first(op1).contiguous(), batch_first(op2).contiguous()
-    )
-    return batch_last(
-        kron_product.reshape(
-            op1.size(2), op1.size(1) * op2.size(1), op1.size(0) * op2.size(0)
-        )
-    )
+    kron_product = torch.einsum("ikb,jlb->ijklb", op1.contiguous(), op2.contiguous())
+    return kron_product.reshape(op1.size(0) * op2.size(0), op1.size(1) * op2.size(1), op1.size(2))
 
 
 def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
