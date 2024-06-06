@@ -219,6 +219,21 @@ def test_symbol_hamevo(
     assert torch.allclose(state, expected_state, rtol=RTOL, atol=ATOL)
 
 
+def test_hamevo_tensor() -> None:
+    hermitian_matrix = torch.tensor([[2.0, 1.0], [1.0, 3.0]], dtype=torch.complex128)
+    hamiltonian_evolution = pyq.HamiltonianEvolution(
+        generator=hermitian_matrix, time=torch.tensor([1.0j]), qubit_support=(0,)
+    )
+
+    expected_evo_result = torch.tensor(
+        [[[13.1815 + 0.0j], [14.8839 + 0.0j]], [[14.8839 + 0.0j], [28.0655 + 0.0j]]],
+        dtype=torch.complex128,
+    )
+    assert torch.allclose(
+        hamiltonian_evolution.tensor(), expected_evo_result, atol=1.0e-4
+    )
+
+
 # def test_hamevo_endianness() -> None:
 #     n_qubits = 2
 #     pyq.Scale(pyq.Add([pyq.I(0),pyq.Z(0)]),

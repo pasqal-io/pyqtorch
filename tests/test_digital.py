@@ -140,6 +140,104 @@ def test_projectors() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "projector, exp_projector_mat",
+    [
+        (
+            pyq.Projector(0, bra="1", ket="1"),
+            torch.tensor(
+                [[0.0 + 0.0j, 0.0 + 0.0j], [0.0 + 0.0j, 1.0 + 0.0j]],
+                dtype=torch.complex128,
+            ),
+        ),
+        (
+            pyq.N(0),
+            (IMAT - ZMAT) / 2.0,
+        ),
+        (
+            pyq.CNOT(0, 1),
+            torch.tensor(
+                [
+                    [
+                        [1.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                        [0.0 + 0.0j, 1.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+                        [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j, 1.0 + 0.0j],
+                        [0.0 + 0.0j, 0.0 + 0.0j, 1.0 + 0.0j, 0.0 + 0.0j],
+                    ]
+                ],
+                dtype=torch.complex128,
+            ),
+        ),
+    ],
+)
+def test_projector_tensor(
+    projector: Primitive, exp_projector_mat: torch.Tensor
+) -> None:
+
+    nbqubits = int(log2(exp_projector_mat.shape[-1]))
+    projector_mat = projector.tensor(
+        n_qubits=nbqubits, values={"theta": torch.Tensor([1.0])}
+    ).squeeze(-1)
+    assert torch.allclose(projector_mat, exp_projector_mat, atol=1.0e-4)
+
+
+czop_example = pyq.CZ(control=(0, 1), target=2)
+crxop_example = pyq.CRX(control=(0, 1), target=2, param_name="theta")
+
+
+@pytest.mark.parametrize(
+    "projector, initial_state, final_state",
+    [
+        (czop_example, state_101, state_101),
+        (czop_example, state_111, -state_111),
+        (crxop_example, state_001, state_001),
+        (
+            crxop_example,
+            state_110,
+            torch.tensor(
+                [
+                    [
+                        [[0.0000 + 0.0000j], [0.0000 + 0.0000j]],
+                        [[0.0000 + 0.0000j], [0.0000 + 0.0000j]],
+                    ],
+                    [
+                        [[0.0000 + 0.0000j], [0.0000 + 0.0000j]],
+                        [[0.8776 + 0.0000j], [0.0000 - 0.4794j]],
+                    ],
+                ],
+                dtype=torch.complex128,
+            ),
+        ),
+        (
+            crxop_example,
+            state_111,
+            torch.tensor(
+                [
+                    [
+                        [[0.0000 + 0.0000j], [0.0000 + 0.0000j]],
+                        [[0.0000 + 0.0000j], [0.0000 + 0.0000j]],
+                    ],
+                    [
+                        [[0.0000 + 0.0000j], [0.0000 + 0.0000j]],
+                        [[0.0000 - 0.4794j], [0.8776 + 0.0000j]],
+                    ],
+                ],
+                dtype=torch.complex128,
+            ),
+        ),
+    ],
+)
+def test_multicontrol_rotation(
+    projector: Primitive, initial_state: torch.Tensor, final_state: torch.Tensor
+) -> None:
+
+    val_param = {"theta": torch.Tensor([1.0])}
+    projector_apply_res = projector(initial_state, val_param)
+    print(final_state, projector_apply_res)
+
+    assert torch.allclose(final_state, projector_apply_res, atol=1.0e-4)
+
+
 def test_CNOT_state00_controlqubit_0() -> None:
     result: Tensor = pyq.CNOT(0, 1)(product_state("00"), None)
     assert torch.equal(product_state("00"), result)
@@ -453,3 +551,44 @@ def test_kron_batch() -> None:
         density_matrices.append(density_matrice)
     dm_expect = torch.cat(density_matrices, dim=2)
     assert torch.allclose(dm_out, dm_expect)
+
+
+def test_circuit_tensor() -> None:
+    ops = [pyq.RX(0, "theta_0"), pyq.RY(0, "theta_1"), pyq.RX(1, "theta_2")]
+    circ = pyq.QuantumCircuit(2, ops)
+    values = {f"theta_{i}": torch.Tensor([float(i)]) for i in range(3)}
+    tensorcirc = circ.tensor(values)
+    assert tensorcirc.size() == (4, 4, 1)
+    assert torch.allclose(
+        tensorcirc,
+        torch.tensor(
+            [
+                [
+                    [0.4742 + 0.0000j],
+                    [0.0000 - 0.7385j],
+                    [-0.2590 + 0.0000j],
+                    [0.0000 + 0.4034j],
+                ],
+                [
+                    [0.0000 - 0.7385j],
+                    [0.4742 + 0.0000j],
+                    [0.0000 + 0.4034j],
+                    [-0.2590 + 0.0000j],
+                ],
+                [
+                    [0.2590 + 0.0000j],
+                    [0.0000 - 0.4034j],
+                    [0.4742 + 0.0000j],
+                    [0.0000 - 0.7385j],
+                ],
+                [
+                    [0.0000 - 0.4034j],
+                    [0.2590 + 0.0000j],
+                    [0.0000 - 0.7385j],
+                    [0.4742 + 0.0000j],
+                ],
+            ],
+            dtype=torch.complex128,
+        ),
+        atol=1.0e-4,
+    )

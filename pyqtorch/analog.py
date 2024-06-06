@@ -305,3 +305,15 @@ class HamiltonianEvolution(Sequence):
             n_qubits=len(state.size()) - 1,
             batch_size=max(hamiltonian.shape[BATCH_DIM], len(time_evolution)),
         )
+
+    def tensor(
+        self,
+        values: dict = {},
+        n_qubits: int | None = None,
+        diagonal: bool = False,
+    ) -> Tensor:
+        hamiltonian: torch.Tensor = self.create_hamiltonian(values)
+        time_evolution: torch.Tensor = (
+            values[self.time] if isinstance(self.time, str) else self.time
+        )
+        return evolve(hamiltonian, time_evolution)
