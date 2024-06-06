@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from string import ascii_letters as ABC
 
-import torch
 from numpy import array, log2
 from numpy.typing import NDArray
 from torch import Tensor, einsum
 
-from pyqtorch.utils import promote_operator
+from pyqtorch.utils import DensityMatrix, dm_kron, dm_partial_trace, operator_product
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -59,30 +58,34 @@ def apply_operator(
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
-def operator_product(op1: Tensor, op2: Tensor, target: int) -> Tensor:
+def apply_operator_dm(
+    state: DensityMatrix,
+    operator: Tensor,
+    qubits: tuple[int, ...] | list[int],
+    values: dict[str, Tensor] | Tensor = dict(),
+    n_qubits: int = None,
+) -> DensityMatrix:
     """
-    Compute the product of two operators.
+    Applies an operator to a state representing by a density matrix.
 
     Args:
-        op1 (Tensor): The first operator.
-        op2 (Tensor): The second operator.
-        target (int): The target qubit index.
+        state (DensityMatrix): The density matrix representing the state.
+        operator (Tensor): The operator to apply to the state.
+        qubits (tuple[int, ...] | list[int]): Indices of the target/control qubits.
+        n_qubits (int, optional): The total number of qubits. Defaults to None.
 
     Returns:
-        Tensor: The product of the two operators.
+        DensityMatrix: The density matrix representing the state after applying the operator.
     """
-
-    n_qubits_1 = int(log2(op1.size(1)))
-    n_qubits_2 = int(log2(op2.size(1)))
-    batch_size_1 = op1.size(-1)
-    batch_size_2 = op2.size(-1)
-    if n_qubits_1 > n_qubits_2:
-        op2 = promote_operator(op2, target, n_qubits_1)
-    elif n_qubits_1 < n_qubits_2:
-        op1 = promote_operator(op1, target, n_qubits_2)
-    if batch_size_1 > batch_size_2:
-        op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
-    elif batch_size_2 > batch_size_1:
-        op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
-
-    return torch.einsum("ijb,jkb->ikb", op1, op2)
+    qubits = list(qubits)
+    if n_qubits is None:
+        n_qubits = int(log2(state.size(0)))
+    other_qubits = [i for i in range(n_qubits) if i not in qubits]
+    state_in = dm_partial_trace(state, keep_indices=qubits)
+    state_out = operator_product(
+        operator.unitary(values), operator_product(state_in, operator.dagger(values))
+    )
+    state_out = dm_kron(
+        state_out, dm_partial_trace(state, keep_indices=other_qubits), qubits, other_qubits
+    )
+    return state_out  # type: ignore[no-any-return]

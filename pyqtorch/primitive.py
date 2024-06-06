@@ -7,9 +7,9 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator
+from pyqtorch.apply import apply_operator, apply_operator_dm
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import product_state
+from pyqtorch.utils import DensityMatrix, product_state
 
 logger = getLogger(__name__)
 
@@ -57,9 +57,12 @@ class Primitive(torch.nn.Module):
         return self.pauli.unsqueeze(2)
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return apply_operator(
-            state, self.unitary(values), self.qubit_support, len(state.size()) - 1
-        )
+        if isinstance(state, DensityMatrix):
+            return DensityMatrix(apply_operator_dm(state, self, self.qubit_support, values))
+        else:
+            return apply_operator(
+                state, self.unitary(values), self.qubit_support, len(state.size()) - 1
+            )
 
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return _dagger(self.unitary(values))

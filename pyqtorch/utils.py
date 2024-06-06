@@ -3,9 +3,13 @@ from __future__ import annotations
 import logging
 from enum import Enum
 from logging import getLogger
+from math import log2
+from string import ascii_uppercase as ABC
 from typing import Sequence
 
 import torch
+from numpy import array
+from numpy import ndarray as NDArray
 from torch import Tensor
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
@@ -16,6 +20,7 @@ Operator = Tensor
 ATOL = 1e-06
 RTOL = 0.0
 GRADCHECK_ATOL = 1e-06
+ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)
 
@@ -137,7 +142,11 @@ def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tenso
     return {key: val for key, val in zip(keys, values)}
 
 
-def density_mat(state: Tensor) -> Tensor:
+class DensityMatrix(Tensor):
+    pass
+
+
+def density_mat(state: DensityMatrix) -> DensityMatrix:
     """
     Computes the density matrix from a pure state vector.
 
@@ -150,12 +159,12 @@ def density_mat(state: Tensor) -> Tensor:
     n_qubits = len(state.size()) - 1
     batch_size = state.shape[-1]
     state = state.reshape(2**n_qubits, batch_size)
-    return torch.einsum("ib,jb->ijb", (state, state.conj()))
+    return DensityMatrix(torch.einsum("ib,jb->ijb", (state, state.conj())))
 
 
 def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
     """
-    Compute the Kronecker product of two operators.
+    Computes the Kronecker product of two operators.
 
     Prevents errors related to the shape of the operators
     [2**n_qubits, 2**n_qubits, batch_size] when simply using `torch.kron()`.
@@ -177,39 +186,120 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
     return kron_product.reshape(op1.size(0) * op2.size(0), op1.size(1) * op2.size(1), op1.size(2))
 
 
-def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
-    from pyqtorch.primitive import I
-
-    """
-    Promotes `operator` to the size of the circuit (number of qubits and batch).
-    Targeting the first qubit implies target = 0, so target > n_qubits - 1.
-
-    Args:
-        operator (Tensor): The operator tensor to be promoted.
-        target (int): The index of the target qubit to which the operator is applied.
-            Targeting the first qubit implies target = 0, so target > n_qubits - 1.
-        n_qubits (int): Number of qubits in the circuit.
-
-    Returns:
-        Tensor: The promoted operator tensor.
-
-    Raises:
-        ValueError: If `target` is outside the valid range of qubits.
-    """
-    if target > n_qubits - 1:
-        raise ValueError("The target must be a valid qubit index within the circuit's range.")
-    qubits = torch.arange(0, n_qubits)
-    qubits = qubits[qubits != target]
-    for qubit in qubits:
-        operator = torch.where(
-            target > qubit,
-            operator_kron(I(target).unitary(), operator),
-            operator_kron(operator, I(target).unitary()),
-        )
-    return operator
-
-
 def add_batch_dim(operator: Tensor, batch_size: int = 1) -> Tensor:
     """In case we have a sequence of batched parametric gates mixed with primitive gates,
     we adjust the batch_dim of the primitive gates to match."""
     return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator
+
+
+def dm_partial_trace(rho: DensityMatrix, keep_indices: list[int]) -> DensityMatrix:
+    """
+    Computes the partial trace of a density matrix for a system of several qubits with batch size.
+    This function also permutes the qubits according to the order specified in keep_indices.
+
+    Args:
+        rho (DensityMatrix) : Density matrix of shape [2**n_qubits, 2**n_qubits, batch_size].
+        keep_indices (list[int]): Index of the qubit subsystems to keep.
+
+    Returns:
+        DensityMatrix: Reduced density matrix after the partial trace,
+        of shape [2**n_keep, 2**n_keep, batch_size].
+    """
+    n_qubits = int(log2((rho.shape[0])))
+    batch_size = rho.shape[2]
+    rho = rho.reshape(([2] * n_qubits * 2 + [batch_size]))
+
+    rho_subscripts = "".join(ABC_ARRAY[: n_qubits * 2 + 1])
+    keep_subscripts = "".join([rho_subscripts[i] for i in keep_indices]) + "".join(
+        [rho_subscripts[i + n_qubits] for i in keep_indices]
+    )
+    einsum_subscripts = rho_subscripts + "->" + keep_subscripts + rho_subscripts[n_qubits * 2]
+
+    rho_reduced = torch.einsum(einsum_subscripts, rho)
+    n_keep = len(keep_indices)
+    return rho_reduced.reshape(2**n_keep, 2**n_keep, batch_size)  # type: ignore[no-any-return]
+
+
+def operator_product(op1: Tensor, op2: Tensor) -> Tensor:
+    """
+    Computes the product of two operators.
+
+    Args:
+        op1 (Tensor): The first operator.
+        op2 (Tensor): The second operator.
+        target (int): The target qubit index.
+
+    Returns:
+        Tensor: The product of the two operators.
+
+    Raises:
+        ValueError: If the number of qubits of the input operators are not equal.
+    """
+    n_qubits_1 = int(log2(op1.size(1)))
+    n_qubits_2 = int(log2(op2.size(1)))
+    if n_qubits_1 != n_qubits_2:
+        raise ValueError("The operators must have the same qubit number")
+    batch_size_1 = op1.size(-1)
+    batch_size_2 = op2.size(-1)
+    if batch_size_1 > batch_size_2:
+        op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
+    elif batch_size_2 > batch_size_1:
+        op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
+    return torch.einsum("ijb,jkb->ikb", op1, op2)
+
+
+def dm_kron(
+    dm1: DensityMatrix, dm2: DensityMatrix, qubits_dm1: list[int], qubits_dm2: list[int]
+) -> DensityMatrix:
+    """
+    Computes the Kronecker product of density matrices representing subsystems to reconstruct
+    the density matrix of the global system.
+    It allows flexibility in the order or indices of the subsystems provided.
+    The order of qubits in qubits_dm1 and in qubits_dm2 determines how the subsystems are combined.
+
+    Args:
+        dm1 (DensityMatrix): The first input tensor.
+        dm2 (DensityMatrix): The second input tensor.
+        qubits_dm1 (list[int]): Indices of qubits for the first operator.
+        qubits_dm2 (list[int]): Indices of qubits for the second operator.
+
+    Returns:
+        DensityMatrix: The density matrix of the global system.
+
+    Raises:
+        ValueError: If the batch sizes of the input operators are not equal.
+    """
+    batch_size_1 = dm1.size(-1)
+    batch_size_2 = dm2.size(-1)
+    if batch_size_1 != batch_size_2:
+        raise ValueError("The batch sizes of the input operators must be equal.")
+    n_qubits_1 = len(qubits_dm1)
+    n_qubits_2 = len(qubits_dm2)
+    total_qubits = sorted(qubits_dm1 + qubits_dm2)
+    n_total_qubits = len(total_qubits)
+    dm1 = dm1.reshape(([2] * n_qubits_1 * 2 + [batch_size_1]))
+    dm2 = dm2.reshape(([2] * n_qubits_2 * 2 + [batch_size_1]))
+
+    subscripts_dm1 = ABC_ARRAY[: n_qubits_1 * 2 + 1]
+    subscripts_dm2 = [ABC_ARRAY[i + n_qubits_1 * 2 + 1] for i in range(n_qubits_2 * 2 + 1)]
+    subscripts_dm2[-1] = subscripts_dm1[-1]
+    subscripts_dm1, subscripts_dm2 = list(  # type: ignore[assignment]
+        map(lambda e: "".join(list(e)), [subscripts_dm1, subscripts_dm2])
+    )
+    output_subscripts = [""] * n_total_qubits * 2 + [""]
+    for idx, qubit in enumerate(total_qubits):
+        if qubit in qubits_dm1:
+            output_subscripts[idx] = subscripts_dm1[qubits_dm1.index(qubit)]
+            output_subscripts[idx + n_total_qubits] = subscripts_dm1[
+                qubits_dm1.index(qubit) + n_qubits_1
+            ]
+        else:
+            output_subscripts[idx] = subscripts_dm2[qubits_dm2.index(qubit)]
+            output_subscripts[idx + n_total_qubits] = subscripts_dm2[
+                qubits_dm2.index(qubit) + n_qubits_2
+            ]
+    output_subscripts[-1] = subscripts_dm1[-1]
+
+    einsum_notation = f"{subscripts_dm1},{subscripts_dm2}->" + "".join(output_subscripts)
+    kron_product = torch.einsum(einsum_notation, dm1, dm2)
+    return kron_product.reshape((2**n_total_qubits, 2**n_total_qubits, batch_size_1))  # type: ignore[no-any-return]

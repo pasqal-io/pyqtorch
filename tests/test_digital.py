@@ -10,7 +10,7 @@ from torch import Tensor
 
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, HMAT, IMAT, XMAT, YMAT, ZMAT, _dagger
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, HMAT, IMAT, XMAT, YMAT, ZMAT
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import H, I, Primitive, X, Y, Z
 from pyqtorch.utils import (
@@ -18,7 +18,6 @@ from pyqtorch.utils import (
     density_mat,
     operator_kron,
     product_state,
-    promote_operator,
     random_state,
 )
 
@@ -324,30 +323,20 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     assert torch.allclose(dm, dm_proj)
 
 
-def test_promote(gate: Primitive) -> None:
-    n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
-    target = random.choice([i for i in range(n_qubits)])
-    op_prom = promote_operator(gate(target).unitary(), target, n_qubits)
-    assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
-    assert torch.allclose(
-        operator_product(op_prom, _dagger(op_prom), target),
-        torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2),
-    )
-
-
+# TODO: Change this test as rm promote_operator
 def test_operator_product(gate: Primitive) -> None:
     n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
     max_batch = max(batch_size_2, batch_size_1)
-    op_prom = promote_operator(gate(target).unitary(), target, n_qubits).repeat(1, 1, batch_size_1)
     op_mul = operator_product(
-        gate(target).unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
+        gate(target).unitary().repeat(1, 1, max_batch),
+        gate(target).dagger().repeat(1, 1, max_batch),
     )
-    assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
+    assert op_mul.size() == torch.Size([2, 2, max_batch])
     assert torch.allclose(
-        op_mul, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, max_batch)
+        op_mul, torch.eye(2, dtype=torch.cdouble).unsqueeze(2).repeat(1, 1, max_batch)
     )
 
 
