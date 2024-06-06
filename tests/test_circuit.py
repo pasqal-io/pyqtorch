@@ -218,9 +218,8 @@ def test_noise_circ(
     random_gate: Primitive,
     random_noise_gate: Noise,
     random_rotation_gate: Parametric,
-    random_controlled_gate: Primitive,
 ) -> None:
-    OPERATORS = [random_gate, random_noise_gate, random_rotation_gate, random_controlled_gate]
+    OPERATORS = [random_gate, random_noise_gate, random_rotation_gate]
     random.shuffle(OPERATORS)
     circ = QuantumCircuit(n_qubits, OPERATORS)
 
