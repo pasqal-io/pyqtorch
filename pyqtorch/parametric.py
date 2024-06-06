@@ -145,7 +145,7 @@ class ControlledRotationGate(Parametric):
 class CRX(ControlledRotationGate):
     def __init__(
         self,
-        control: int | Tuple[int],
+        control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
     ):
@@ -155,7 +155,7 @@ class CRX(ControlledRotationGate):
 class CRY(ControlledRotationGate):
     def __init__(
         self,
-        control: int | Tuple[int],
+        control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
     ):
@@ -165,7 +165,7 @@ class CRY(ControlledRotationGate):
 class CRZ(ControlledRotationGate):
     def __init__(
         self,
-        control: Tuple[int],
+        control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
     ):
@@ -177,7 +177,7 @@ class CPHASE(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int],
+        control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
     ):
