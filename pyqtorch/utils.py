@@ -179,7 +179,9 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
     elif batch_size_2 > batch_size_1:
         op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
     kron_product = torch.einsum("ikb,jlb->ijklb", op1.contiguous(), op2.contiguous())
-    return kron_product.reshape(op1.size(0) * op2.size(0), op1.size(1) * op2.size(1), op1.size(2))
+    return kron_product.reshape(
+        op1.size(0) * op2.size(0), op1.size(1) * op2.size(1), op1.size(2)
+    )
 
 
 def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:

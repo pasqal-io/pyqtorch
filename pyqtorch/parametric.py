@@ -120,7 +120,9 @@ class ControlledRotationGate(Parametric):
         # target : int | tuple[int,...]
 
     def extra_repr(self) -> str:
-        return f"target: {self.control}, target:{(self.target,)}, param:{self.param_name}"
+        return (
+            f"target: {self.control}, target:{(self.target,)}, param:{self.param_name}"
+        )
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         thetas = self.parse_values(values)
