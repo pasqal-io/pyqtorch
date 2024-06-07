@@ -4,10 +4,29 @@ import pytest
 import torch
 
 import pyqtorch as pyq
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
-from pyqtorch.utils import ATOL, RTOL, is_normalized, overlap
+from pyqtorch.analog import Sequence
+from pyqtorch.apply import apply_operator
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT, XMAT, ZMAT
+from pyqtorch.utils import (
+    ATOL,
+    RTOL,
+    is_normalized,
+    operator_kron,
+    overlap,
+    product_state,
+    random_state,
+)
 
 pi = torch.tensor(torch.pi)
+
+
+def _calc_mat_vec_wavefunction(
+    block: Sequence, n_qubits: int, init_state: torch.Tensor, values: dict = {}
+) -> torch.Tensor:
+    mat = block.tensor(n_qubits=n_qubits, values=values)
+    return apply_operator(
+        init_state, mat, qubits=tuple(range(n_qubits)), n_qubits=n_qubits
+    )
 
 
 def Hamiltonian(batch_size: int = 1) -> torch.Tensor:
@@ -130,48 +149,18 @@ def test_hamiltonianevolution_with_types(
     assert torch.allclose(result, target, rtol=RTOL, atol=ATOL)
 
 
-def test_hamevo_endianness() -> None:
-    t = torch.ones(1)
-    h = torch.tensor(
-        [
-            [0.9701, 0.0000, 0.7078, 0.0000],
-            [0.0000, 0.9701, 0.0000, 0.7078],
-            [0.4594, 0.0000, 0.9207, 0.0000],
-            [0.0000, 0.4594, 0.0000, 0.9207],
-        ],
-        dtype=torch.complex128,
-    )
-    iszero = torch.tensor([False, True, False, True])
-    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), generator=h, time=t)
-    st = op(pyq.zero_state(2)).flatten()
-    assert torch.allclose(
-        st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
-    )
-
-    h = torch.tensor(
-        [
-            [0.9701, 0.7078, 0.0000, 0.0000],
-            [0.4594, 0.9207, 0.0000, 0.0000],
-            [0.0000, 0.0000, 0.9701, 0.7078],
-            [0.0000, 0.0000, 0.4594, 0.9207],
-        ],
-        dtype=torch.complex128,
-    )
-    iszero = torch.tensor([False, False, True, True])
-    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), generator=h, time=t)
-    st = op(pyq.zero_state(2)).flatten()
-    assert torch.allclose(
-        st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
-    )
-
-
 def test_hevo_parametric_gen() -> None:
     vparam = "theta"
     sup = (0, 1)
+    n_qubits = len(sup)
     parametric = True
     generator = pyq.Add([pyq.Scale(pyq.Z(0), vparam), pyq.Scale(pyq.Z(1), vparam)])
     hamevo = pyq.HamiltonianEvolution(generator, vparam, sup, parametric)
-    hamevo(pyq.zero_state(2), {"theta": torch.rand(1)})
+    vals = {"theta": torch.rand(1)}
+    psi = random_state(n_qubits)
+    psi_star = hamevo(psi, vals)
+    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 def test_hevo_constant_gen() -> None:
@@ -180,7 +169,10 @@ def test_hevo_constant_gen() -> None:
         [pyq.Scale(pyq.Z(0), torch.rand(1)), pyq.Scale(pyq.Z(1), torch.rand(1))]
     )
     hamevo = pyq.HamiltonianEvolution(generator, torch.rand(1), sup)
-    hamevo(pyq.zero_state(2))
+    psi = pyq.zero_state(2)
+    psi_star = hamevo(psi)
+    psi_expected = _calc_mat_vec_wavefunction(hamevo, len(sup), psi)
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize(
@@ -234,15 +226,53 @@ def test_hamevo_tensor() -> None:
     )
 
 
-# def test_hamevo_endianness() -> None:
-#     n_qubits = 2
-#     pyq.Scale(pyq.Add([pyq.I(0),pyq.Z(0)]),
-#     generator = pyq.Scale()
-#     gen = -0.5 * kron(I(0) - Z(0), I(1) - X(1))
-#     evo = HamEvo(gen, tensor([PI / 2]))
-#     circ = QuantumCircuit(n_qubits, evo)
-#     cnotgate = CNOT(0, 1)
-#     qc_cnot = QuantumCircuit(2, cnotgate)
-#     bkd = backend_factory(backend=backend)
-#     conv_cnot = bkd.convert(qc_cnot)
-#     state_10 = product_state("10")
+def test_hamevo_endianness() -> None:
+    t = torch.ones(1)
+    h = torch.tensor(
+        [
+            [0.9701, 0.0000, 0.7078, 0.0000],
+            [0.0000, 0.9701, 0.0000, 0.7078],
+            [0.4594, 0.0000, 0.9207, 0.0000],
+            [0.0000, 0.4594, 0.0000, 0.9207],
+        ],
+        dtype=torch.complex128,
+    )
+    iszero = torch.tensor([False, True, False, True])
+    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), generator=h, time=t)
+    st = op(pyq.zero_state(2)).flatten()
+    assert torch.allclose(
+        st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
+    )
+
+    h = torch.tensor(
+        [
+            [0.9701, 0.7078, 0.0000, 0.0000],
+            [0.4594, 0.9207, 0.0000, 0.0000],
+            [0.0000, 0.0000, 0.9701, 0.7078],
+            [0.0000, 0.0000, 0.4594, 0.9207],
+        ],
+        dtype=torch.complex128,
+    )
+    iszero = torch.tensor([False, False, True, True])
+    op = pyq.HamiltonianEvolution(qubit_support=(0, 1), generator=h, time=t)
+    st = op(pyq.zero_state(2)).flatten()
+    assert torch.allclose(
+        st[iszero], torch.zeros(1, dtype=DEFAULT_MATRIX_DTYPE), rtol=RTOL, atol=ATOL
+    )
+
+
+def test_hamevo_endianness_cnot() -> None:
+    n_qubits = 2
+    state_10 = product_state("10")
+
+    gen = -0.5 * operator_kron((IMAT - ZMAT).unsqueeze(-1), (IMAT - XMAT).unsqueeze(-1))
+    hamiltonian_evolution = pyq.HamiltonianEvolution(
+        generator=gen,
+        time=torch.tensor([torch.pi / 2.0]),
+        qubit_support=tuple(range(n_qubits)),
+    )
+    wf_hamevo = hamiltonian_evolution(state_10)
+
+    cnot_op = pyq.CNOT(0, 1)
+    wf_cnot = cnot_op(state_10)
+    assert torch.allclose(wf_cnot, wf_hamevo, rtol=RTOL, atol=ATOL)
