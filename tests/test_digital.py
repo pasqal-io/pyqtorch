@@ -16,6 +16,7 @@ from pyqtorch.primitive import H, I, Primitive, X, Y, Z
 from pyqtorch.utils import (
     ATOL,
     density_mat,
+    dm_partial_trace,
     operator_kron,
     product_state,
     promote_operator,
@@ -382,3 +383,18 @@ def test_kron_batch() -> None:
         density_matrices.append(density_matrice)
     dm_expect = torch.cat(density_matrices, dim=2)
     assert torch.allclose(dm_out, dm_expect)
+
+
+def test_dm_partial_trace() -> None:
+    n_qubits = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size = torch.randint(low=1, high=5, size=(1,)).item()
+    state_str = "".join(random.choice("01") for _ in range(n_qubits))
+    rho = density_mat(product_state(state_str, batch_size=batch_size))
+    keep_indices = random.sample(range(n_qubits), k=random.randint(1, n_qubits))
+    n_keep = len(keep_indices)
+    state_reduice_str = "".join([state_str[i] for i in keep_indices])
+    rho_reduice = dm_partial_trace(rho, keep_indices)
+    assert rho_reduice.shape == torch.Size([2**n_keep, 2**n_keep, batch_size])
+    assert torch.allclose(
+        rho_reduice, density_mat(product_state(state_reduice_str, batch_size=batch_size))
+    )
