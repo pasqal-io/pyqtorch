@@ -4,6 +4,7 @@ import logging
 from logging import getLogger
 from typing import Any
 
+import numpy as np
 import torch
 from torch import Tensor
 
@@ -39,9 +40,12 @@ class Primitive(torch.nn.Module):
     def __init__(self, pauli: Tensor, target: int | tuple[int, ...]) -> None:
         super().__init__()
         self.target: int | tuple[int, ...] = target
+
         self.qubit_support: tuple[int, ...] = (
             (target,) if isinstance(target, int) else target
         )
+        if isinstance(target, np.integer):
+            self.qubit_support = (target.item(),)
         self.register_buffer("pauli", pauli)
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
