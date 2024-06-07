@@ -3,9 +3,12 @@ from __future__ import annotations
 import logging
 from enum import Enum
 from logging import getLogger
+from string import ascii_uppercase as ABC
 from typing import Sequence
 
 import torch
+from numpy import array, log2
+from numpy import ndarray as NDArray
 from torch import Tensor
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
@@ -16,6 +19,7 @@ Operator = Tensor
 ATOL = 1e-06
 RTOL = 0.0
 GRADCHECK_ATOL = 1e-06
+ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)
 
@@ -213,3 +217,31 @@ def add_batch_dim(operator: Tensor, batch_size: int = 1) -> Tensor:
     """In case we have a sequence of batched parametric gates mixed with primitive gates,
     we adjust the batch_dim of the primitive gates to match."""
     return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator
+
+
+def dm_partial_trace(rho: Tensor, keep_indices: list[int]) -> Tensor:
+    """
+    Computes the partial trace of a density matrix for a system of several qubits with batch size.
+    This function also permutes the qubits according to the order specified in keep_indices.
+
+    Args:
+        rho (DensityMatrix) : Density matrix of shape [2**n_qubits, 2**n_qubits, batch_size].
+        keep_indices (list[int]): Index of the qubit subsystems to keep.
+
+    Returns:
+        DensityMatrix: Reduced density matrix after the partial trace,
+        of shape [2**n_keep, 2**n_keep, batch_size].
+    """
+    n_qubits = int(log2((rho.shape[0])))
+    batch_size = rho.shape[2]
+    rho = rho.reshape(([2] * n_qubits * 2 + [batch_size]))
+
+    rho_subscripts = "".join(ABC_ARRAY[: n_qubits * 2 + 1])
+    keep_subscripts = "".join([rho_subscripts[i] for i in keep_indices]) + "".join(
+        [rho_subscripts[i + n_qubits] for i in keep_indices]
+    )
+    einsum_subscripts = rho_subscripts + "->" + keep_subscripts + rho_subscripts[n_qubits * 2]
+
+    rho_reduced = torch.einsum(einsum_subscripts, rho)
+    n_keep = len(keep_indices)
+    return rho_reduced.reshape(2**n_keep, 2**n_keep, batch_size)  # type: ignore[no-any-return]
