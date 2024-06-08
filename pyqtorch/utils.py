@@ -116,15 +116,16 @@ def random_state(
     batch_size: int = 1,
     device: str | torch.device = "cpu",
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
+    generator: torch.Generator = None,
 ) -> Tensor:
     def _normalize(wf: Tensor) -> Tensor:
         return wf / torch.sqrt((wf.abs() ** 2).sum())
 
     def _rand(n_qubits: int) -> Tensor:
         N = 2**n_qubits
-        x = -torch.log(torch.rand(N))
+        x = -torch.log(torch.rand(N, generator=generator))
         sumx = torch.sum(x)
-        phases = torch.rand(N) * 2.0 * torch.pi
+        phases = torch.rand(N, generator=generator) * 2.0 * torch.pi
         return _normalize(
             (torch.sqrt(x / sumx) * torch.exp(1j * phases)).reshape(N, 1).type(dtype).to(device)
         )
@@ -230,11 +231,9 @@ def random_dm_promotion(target: int, dm_input: DensityMatrix, n_qubits: int) -> 
     """
     if target > n_qubits - 1:
         raise ValueError("The target must be a valid qubit index within the circuit range.")
-    torch.manual_seed(
-        n_qubits
-    )  # To ensure reproducibility, when calling it multiple times in the same test.
+    rng = torch.Generator().manual_seed(n_qubits)
     if target == 0 or target == n_qubits - 1:
-        state_random: Tensor = random_state(n_qubits - 1)
+        state_random: Tensor = random_state(n_qubits - 1, generator=rng)
         dm_random: DensityMatrix = density_mat(state_random)
         dm_input = torch.where(
             torch.tensor(target) == 0,
@@ -242,7 +241,8 @@ def random_dm_promotion(target: int, dm_input: DensityMatrix, n_qubits: int) -> 
             operator_kron(dm_random, dm_input),
         )
     else:
-        state_random_1, state_random_2 = random_state(target), random_state(n_qubits - (target + 1))
+        state_random_1 = random_state(target, generator=rng)
+        state_random_2 = random_state(n_qubits - (target + 1), generator=rng)
         dm_random_1, dm_random_2 = density_mat(state_random_1), density_mat(state_random_2)
         dm_input = operator_kron(dm_random_1, operator_kron(dm_input, dm_random_2))
     return dm_input
