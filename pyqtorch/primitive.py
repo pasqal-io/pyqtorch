@@ -58,11 +58,12 @@ class Primitive(torch.nn.Module):
 
     def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         if isinstance(state, DensityMatrix):
+            # error type int | tuple[int, ...] expected "int" but for now it hande only 1-qubit gate
             return DensityMatrix(
                 operator_product(
                     self.unitary(values),
-                    operator_product(state, self.dagger(values), self.target),
-                    self.target,
+                    operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
+                    self.target,  # type: ignore [arg-type]
                 )
             )
         else:

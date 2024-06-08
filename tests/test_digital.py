@@ -306,8 +306,6 @@ def test_U() -> None:
     )
 
 
-@pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
-@pytest.mark.parametrize("batch_size", [{"low": 1, "high": 5}], indirect=True)
 def test_dm(n_qubits: int, batch_size: int) -> None:
     state = random_state(n_qubits)
     projector = torch.outer(state.flatten(), state.conj().flatten()).view(
@@ -333,7 +331,6 @@ def test_dm(n_qubits: int, batch_size: int) -> None:
     assert torch.allclose(dm, dm_proj)
 
 
-@pytest.mark.parametrize("n_qubits", [{"low": 1, "high": 8}], indirect=True)
 def test_promote(random_gate: Primitive, n_qubits: int, target: int) -> None:
     op_prom = promote_operator(random_gate.unitary(), target, n_qubits)
     assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
@@ -343,7 +340,6 @@ def test_promote(random_gate: Primitive, n_qubits: int, target: int) -> None:
     )
 
 
-@pytest.mark.parametrize("n_qubits", [{"low": 1, "high": 8}], indirect=True)
 def test_operator_product(random_gate: Primitive, n_qubits: int, target: int) -> None:
     op = random_gate
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
@@ -400,7 +396,6 @@ def test_kron_batch() -> None:
 
 
 @pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
-@pytest.mark.parametrize("batch_size", [{"low": 1, "high": 5}], indirect=True)
 def test_flip_gates(
     n_qubits: int,
     target: int,
@@ -425,8 +420,6 @@ def test_flip_gates(
     assert torch.allclose(FlipGate_1(density_mat(input_state)), expected_op)
 
 
-@pytest.mark.parametrize("n_qubits", [{"low": 1, "high": 6}], indirect=True)
-@pytest.mark.parametrize("batch_size", [{"low": 1, "high": 5}], indirect=True)
 def test_damping_gates(
     n_qubits: int,
     target: int,

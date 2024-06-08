@@ -32,8 +32,9 @@ from pyqtorch.utils import (
 # Parametrized fixture
 @pytest.fixture
 def n_qubits(request: FixtureRequest) -> Any:
-    low: int = request.param.get("low", 1)
-    high: int = request.param.get("high", 6)
+    params = getattr(request, "param", {})
+    low: int = params.get("low", 1)
+    high: int = params.get("high", 6)
     return torch.randint(low=low, high=high, size=(1,)).item()
 
 
@@ -45,8 +46,9 @@ def target(n_qubits: int) -> int:
 # Parametrized fixture
 @pytest.fixture
 def batch_size(request: FixtureRequest) -> Any:
-    low: int = request.param.get("low", 1)
-    high: int = request.param.get("high", 5)
+    params = getattr(request, "param", {})
+    low: int = params.get("low", 1)
+    high: int = params.get("high", 5)
     return torch.randint(low=low, high=high, size=(1,)).item()
 
 
