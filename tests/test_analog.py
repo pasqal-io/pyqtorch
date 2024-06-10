@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from typing import Callable
+
 import pytest
 import torch
+from conftest import _calc_mat_vec_wavefunction
 
 import pyqtorch as pyq
-from pyqtorch.analog import Sequence
-from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT, XMAT, ZMAT
 from pyqtorch.utils import (
     ATOL,
@@ -18,15 +19,6 @@ from pyqtorch.utils import (
 )
 
 pi = torch.tensor(torch.pi)
-
-
-def _calc_mat_vec_wavefunction(
-    block: Sequence, n_qubits: int, init_state: torch.Tensor, values: dict = {}
-) -> torch.Tensor:
-    mat = block.tensor(n_qubits=n_qubits, values=values)
-    return apply_operator(
-        init_state, mat, qubits=tuple(range(n_qubits)), n_qubits=n_qubits
-    )
 
 
 def Hamiltonian(batch_size: int = 1) -> torch.Tensor:
@@ -224,6 +216,21 @@ def test_hamevo_tensor() -> None:
     assert torch.allclose(
         hamiltonian_evolution.tensor(), expected_evo_result, atol=1.0e-4
     )
+
+
+@pytest.mark.parametrize(
+    "state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state]
+)
+def test_parametric_phase_hamevo(
+    state_fn: Callable, batch_size: int = 1, n_qubits: int = 1
+) -> None:
+    target = 0
+    state = state_fn(n_qubits, batch_size=batch_size)
+    phi = torch.rand(1, dtype=DEFAULT_MATRIX_DTYPE)
+    H = (ZMAT - IMAT) / 2
+    hamevo = pyq.HamiltonianEvolution(H, phi, (target,))
+    phase = pyq.PHASE(target, "phi")
+    assert torch.allclose(phase(state, {"phi": phi}), hamevo(state))
 
 
 def test_hamevo_endianness() -> None:

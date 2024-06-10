@@ -6,6 +6,7 @@ from typing import Callable, Tuple
 
 import pytest
 import torch
+from conftest import _calc_mat_vec_wavefunction
 from torch import Tensor
 
 import pyqtorch as pyq
@@ -20,9 +21,10 @@ from pyqtorch.matrices import (
     _dagger,
 )
 from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import H, I, Primitive, X, Y, Z
+from pyqtorch.primitive import H, I, Primitive, S, T, X, Y, Z
 from pyqtorch.utils import (
     ATOL,
+    RTOL,
     density_mat,
     operator_kron,
     product_state,
@@ -51,6 +53,17 @@ def test_N() -> None:
     null_state = torch.zeros_like(pyq.zero_state(1))
     assert torch.allclose(null_state, pyq.N(0)(product_state("0"), None))
     assert torch.allclose(product_state("1"), pyq.N(0)(product_state("1"), None))
+
+
+@pytest.mark.parametrize("gate", [I, X, Y, Z, H, T, S])
+@pytest.mark.parametrize("n_qubits", [1, 2, 4])
+def test_single_qubit_gates(gate: Primitive, n_qubits: int) -> None:
+    target = torch.randint(0, n_qubits, (1,)).item()
+    block = gate(target)  # type: ignore[operator]
+    init_state = pyq.random_state(n_qubits)
+    wf_pyq = block(init_state, None)
+    wf_mat = _calc_mat_vec_wavefunction(block, n_qubits, init_state)
+    assert torch.allclose(wf_mat, wf_pyq, rtol=RTOL, atol=ATOL)
 
 
 def test_projectors() -> None:
@@ -331,21 +344,6 @@ def test_multi_controlled_gates(
         else initial_state
     )
     assert torch.allclose(out, expected_state)
-
-
-@pytest.mark.parametrize(
-    "state_fn", [pyq.random_state, pyq.zero_state, pyq.uniform_state]
-)
-def test_parametric_phase_hamevo(
-    state_fn: Callable, batch_size: int = 1, n_qubits: int = 1
-) -> None:
-    target = 0
-    state = state_fn(n_qubits, batch_size=batch_size)
-    phi = torch.rand(1, dtype=DEFAULT_MATRIX_DTYPE)
-    H = (ZMAT - IMAT) / 2
-    hamevo = pyq.HamiltonianEvolution(H, phi, (target,))
-    phase = pyq.PHASE(target, "phi")
-    assert torch.allclose(phase(state, {"phi": phi}), hamevo(state))
 
 
 @pytest.mark.parametrize(
