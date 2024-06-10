@@ -24,9 +24,9 @@ def _calc_mat_vec_wavefunction(
         Tensor: The new wavefunction after applying the block.
 
     """
-    mat = block.tensor(n_qubits=n_qubits, values=values)
+    mat = block.tensor(n_qubits=len(block.qubit_support), values=values)
     return apply_operator(
-        init_state, mat, qubits=tuple(range(n_qubits)), n_qubits=n_qubits
+        init_state, mat, qubits=block.qubit_support, n_qubits=n_qubits
     )
 
 

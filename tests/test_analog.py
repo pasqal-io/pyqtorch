@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Callable
 
+import numpy as np
 import pytest
 import torch
 from conftest import _calc_mat_vec_wavefunction
@@ -63,7 +64,7 @@ def test_hamevo_general(n_qubits: int, batch_size: int) -> None:
     H = Hamiltonian_general(n_qubits, batch_size)
     t_evo = torch.rand(1, dtype=DEFAULT_REAL_DTYPE)
     hamevo = pyq.HamiltonianEvolution(H, t_evo, tuple([i for i in range(n_qubits)]))
-    psi = pyq.random_state(n_qubits, batch_size)
+    psi = random_state(n_qubits, batch_size)
     psi_star = hamevo(psi)
     assert is_normalized(psi_star, atol=ATOL)
 
@@ -141,12 +142,16 @@ def test_hamiltonianevolution_with_types(
     assert torch.allclose(result, target, rtol=RTOL, atol=ATOL)
 
 
-def test_hevo_parametric_gen() -> None:
+@pytest.mark.parametrize("n_qubits", [2])
+def test_hevo_parametric_gen(n_qubits: int) -> None:
+    dim = torch.randint(1, n_qubits + 1, (1,)).item()
     vparam = "theta"
-    sup = (0, 1)
-    n_qubits = len(sup)
+    sup = tuple(range(dim))
     parametric = True
-    generator = pyq.Add([pyq.Scale(pyq.Z(0), vparam), pyq.Scale(pyq.Z(1), vparam)])
+    ops = [pyq.X, pyq.Y, pyq.Z]
+    # generator = pyq.Add([pyq.Scale(pyq.Z(0), vparam), pyq.Scale(pyq.Z(1), vparam)])
+    qubit_targets = np.random.choice(dim, len(ops), replace=True)
+    generator = pyq.Add([pyq.Scale(op(q), vparam) for op, q in zip(ops, qubit_targets)])
     hamevo = pyq.HamiltonianEvolution(generator, vparam, sup, parametric)
     vals = {"theta": torch.rand(1)}
     psi = random_state(n_qubits)
