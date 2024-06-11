@@ -17,32 +17,29 @@ class Noise(torch.nn.Module):
         super().__init__()
         self.target: int = target
         self.qubit_support: tuple[int, ...] = (self.target,)
-        self.kraus: list = []
         for index, tensor in enumerate(kraus):
             self.register_buffer(f"kraus_{index}", tensor)
-            self.kraus.append(tensor)
-        self._device: torch.device = self.kraus[0].device
+        self._device: torch.device = kraus[0].device
         self.probabilities: tuple[float, ...] | float = probabilities
-
-    @property
-    def name(self) -> str:
-        return self.__class__.__name__
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
-            return self.name == other.name and self.probabilties == other.probabilties
+            return (
+                self.__class__.__name__ == other.__class__.__name__
+                and self.probabilities == other.probabilities
+            )
         return False
 
     def extra_repr(self) -> str:
         return f"'qubit_support'={self.qubit_support}, 'probabilities'={self.probabilities}"
 
     @property
-    def kraus_operator(self) -> list[Tensor]:
-        return self.kraus
+    def kraus_operators(self) -> list[Tensor]:
+        return [getattr(self, f"kraus_{i}") for i in range(len(self._buffers))]
 
     def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> list[Tensor]:
         # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
-        return [kraus_op.unsqueeze(2) for kraus_op in self.kraus]
+        return [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
 
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> list[Tensor]:
         return [_dagger(kraus_op) for kraus_op in self.unitary(values)]
@@ -66,8 +63,6 @@ class Noise(torch.nn.Module):
         Raises:
             TypeError: If the input `state` or `kraus_list` is not a Tensor.
         """
-        if not isinstance(state, Tensor):
-            raise TypeError("The input must be a Tensor")
         if not isinstance(state, DensityMatrix):
             state = density_mat(state)
         rho_evols: list[Tensor] = []
