@@ -13,7 +13,7 @@ from pyqtorch.utils import DiffMode, DropoutMode, State, inner_prod, zero_state
 logger = getLogger(__name__)
 
 
-class QuantumCircuit(Module):
+class DropoutQuantumCircuit(Module):
     def __init__(
         self,
         n_qubits: int,
