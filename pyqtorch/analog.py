@@ -137,8 +137,8 @@ class Add(Sequence):
 class Observable(Sequence):
     def __init__(
         self,
+        n_qubits: int | None,
         operations: list[Module] | Primitive | Sequence,
-        n_qubits: int | None = None,
     ):
         super().__init__(operations)
         if n_qubits is None:
@@ -159,12 +159,14 @@ class Observable(Sequence):
 class DiagonalObservable(Primitive):
     def __init__(
         self,
-        operations: Primitive | Sequence,
-        n_qubits: int | None = None,
+        n_qubits: int | None,
+        operations: list[Module] | Primitive | Sequence,
         to_sparse: bool = False,
     ):
         """In case the 'operations' / hamiltonian is diagonal,
         we simply do a element-wise vector-product instead of a tensordot."""
+        if isinstance(operations, list):
+            operations = Sequence(operations)
         if n_qubits is None:
             n_qubits = max(operations.qubit_support) + 1
         hamiltonian = operations.tensor({}, n_qubits).squeeze(2)

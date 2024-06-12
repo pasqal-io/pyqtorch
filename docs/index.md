@@ -187,7 +187,7 @@ feature_map = [pyq.RX(i, f'x') for i in range(N_QUBITS)]
 ansatz, params = hea(N_QUBITS, DEPTH, 'theta')
 # Lets move all necessary components to the DEVICE
 circ = pyq.QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-observable = pyq.DiagonalObservable(pyq.Z(0),N_QUBITS).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+observable = pyq.DiagonalObservable(N_QUBITS, pyq.Z(0)).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 x, y = x.to(device=DEVICE, dtype=REAL_DTYPE), y.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
@@ -318,7 +318,7 @@ feature_map = [RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
 ]
 ansatz, params = hea(N_QUBITS, DEPTH, "theta")
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-total_magnetization = DiagonalObservable(Add(Sequence([Z(i) for i in range(N_QUBITS)]))).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+total_magnetization = DiagonalObservable(N_QUBITS, Add(Sequence([Z(i) for i in range(N_QUBITS)]))).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
