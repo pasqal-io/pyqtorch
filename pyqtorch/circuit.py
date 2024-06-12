@@ -7,7 +7,7 @@ from operator import add
 from typing import Any, Generator, Iterator, NoReturn
 
 import torch
-from torch import Tensor, complex128, einsum, rand
+from torch import Tensor, bernoulli, complex128, einsum, rand, tensor
 from torch import device as torch_device
 from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
@@ -15,7 +15,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 from pyqtorch.apply import apply_operator
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import State, add_batch_dim, zero_state
+from pyqtorch.utils import DropoutMode, State, add_batch_dim, zero_state
 
 logger = getLogger(__name__)
 
@@ -120,6 +120,84 @@ class QuantumCircuit(Sequence):
             else:
                 ops.append(op)
         return ModuleList(ops)
+
+
+class DropoutQuantumCircuit(QuantumCircuit):
+    def __init__(
+        self,
+        n_qubits: int,
+        operations: list[Module],
+        dropout_mode: DropoutMode = DropoutMode.ROTATIONAL,
+        dropout_prob: float = 1.0,
+    ):
+        super().__init__(n_qubits, operations)
+        self.dropout_mode = dropout_mode
+        self.dropout_prob = dropout_prob
+
+        self.dropout_fn =  getattr(self, dropout_mode)
+
+    def forward(self, state: State, values: dict[str, Tensor] | ParameterDict = {}) -> State:
+        if self.training:
+            state = self.dropout_fn(state, values)
+        else:
+            for op in self.operations:
+                state = op(state, values)
+        return state
+
+    def rotational_dropout(
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+    ) -> State:
+        for op in self.operations:
+            if hasattr(op, "param_name"):
+                if values[op.param_name].requires_grad:
+                    keep = 1 - bernoulli(tensor(self.dropout_prob))  # type: ignore
+                    if keep:
+                        state = op(state, values)
+
+                else:
+                    state = op(state, values)
+            else:
+                state = op(state, values)
+
+        return state
+
+    def entangling_dropout(
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+    ) -> State:
+        for op in self.operations:
+            if not (hasattr(op, "param_name")):
+                keep = bool(1 - bernoulli(tensor(self.dropout_prob)))  # type: ignore
+                if keep:
+                    state = op(state, values)
+
+                else:
+                    state = op(state, values)
+            else:
+                state = op(state, values)
+
+        return state
+
+    def canonical_fwd_dropout(
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+    ) -> State:
+        entanglers_to_drop = dict.fromkeys(range(state.ndim - 1), 0)  # type: ignore
+        for op in self.operations:
+            if hasattr(op, "param_name"):
+                if values[op.param_name].requires_grad:
+                    keep = bool(1 - bernoulli(tensor(self.dropout_prob)))  # type: ignore
+                    if keep:
+                        state = op(state, values)
+                    else:
+                        entanglers_to_drop[op.target] = 1
+                else:
+                    state = op(state, values)
+            else:
+                if entanglers_to_drop[op.control[0]] == 1:
+                    entanglers_to_drop[op.control[0]] = 0
+                else:
+                    state = op(state, values)
+
+        return state
 
 
 class Merge(Sequence):
