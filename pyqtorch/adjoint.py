@@ -5,7 +5,7 @@ from typing import Any, Tuple
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-from pyqtorch.analog import Observable
+from pyqtorch.analog import Observable, Scale
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.parametric import Parametric
@@ -81,6 +81,32 @@ class AdjointExpectation(Function):
                     else:
                         grads_dict[op.param_name] = grad
 
+                ctx.projected_state = apply_operator(
+                    ctx.projected_state, op.dagger(values), op.qubit_support
+                )
+            elif isinstance(op, Scale):
+                assert (
+                    len(op.operations) == 1
+                ), "Adjoint can only be used on Scale with Primitive blocks."
+                ctx.out_state = apply_operator(
+                    ctx.out_state, op.dagger(values), op.qubit_support
+                )
+                scaled_pyq_op = op.operations[0]
+                if (
+                    isinstance(scaled_pyq_op, Parametric)
+                    and values[scaled_pyq_op.param_name].requires_grad
+                ):
+                    mu = apply_operator(
+                        ctx.out_state,
+                        scaled_pyq_op.jacobian(values),
+                        scaled_pyq_op.qubit_support,
+                    )
+                    grads_dict[scaled_pyq_op.param_name] = (
+                        grad_out * 2 * inner_prod(ctx.projected_state, mu).real
+                    )
+
+                if values[op.param_name].requires_grad:
+                    grads_dict[op.param_name] = grad_out * 2 * -values[op.param_name]
                 ctx.projected_state = apply_operator(
                     ctx.projected_state, op.dagger(values), op.qubit_support
                 )

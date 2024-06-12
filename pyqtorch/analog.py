@@ -7,7 +7,7 @@ from operator import add
 from typing import Callable, Tuple, Union
 
 import torch
-from torch import Tensor, ones_like
+from torch import Tensor
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
@@ -72,14 +72,14 @@ class Scale(Sequence):
         super().__init__(
             operations.operations if isinstance(operations, Sequence) else [operations]
         )
-        self.param = param_name
+        self.param_name = param_name
         assert len(self.operations) == 1
 
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> Tensor:
         return (
-            values[self.param] * super().forward(state, values)
+            values[self.param_name] * super().forward(state, values)
             if isinstance(self.operations, Sequence)
             else self._forward(state, values)
         )
@@ -90,15 +90,20 @@ class Scale(Sequence):
         )
 
     def unitary(self, values: dict[str, Tensor]) -> Tensor:
-        thetas = values[self.param] if isinstance(self.param, str) else self.param
+        thetas = (
+            values[self.param_name]
+            if isinstance(self.param_name, str)
+            else self.param_name
+        )
         return thetas * self.operations[0].unitary(values)
 
     def dagger(self, values: dict[str, Tensor]) -> Tensor:
         return _dagger(self.unitary(values))
 
     def jacobian(self, values: dict[str, Tensor]) -> Tensor:
-        thetas = values[self.param] if isinstance(self.param, str) else self.param
-        return thetas * ones_like(self.unitary(values))
+        raise NotImplementedError
+        # thetas = values[self.param] if isinstance(self.param, str) else self.param_name
+        # return thetas * ones_like(self.unitary(values))
 
     def tensor(
         self,
@@ -106,8 +111,15 @@ class Scale(Sequence):
         n_qubits: int | None = None,
         diagonal: bool = False,
     ) -> Tensor:
-        thetas = values[self.param] if isinstance(self.param, str) else self.param
+        thetas = (
+            values[self.param_name]
+            if isinstance(self.param_name, str)
+            else self.param_name
+        )
         return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
+
+    def flatten(self) -> list[Scale]:
+        return [self]  # we dont want to flatten this
 
 
 class Add(Sequence):

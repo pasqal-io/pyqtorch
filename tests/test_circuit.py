@@ -213,3 +213,46 @@ def test_merge_different_batchsize(batch_size: int) -> None:
     for bs in [1, batch_size]:
         mergecirc(pyq.random_state(2, bs), {"theta_0": torch.rand(batch_size)})
         mergecirc(pyq.random_state(2, batch_size), {"theta_0": torch.rand(bs)})
+
+
+@pytest.mark.xfail  # investigate
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("n_qubits", [2])
+def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> None:
+    ops = [pyq.Scale(pyq.X(0), "theta_4")]
+
+    theta_4_value = torch.rand(1, dtype=dtype)
+    circ = pyq.QuantumCircuit(n_qubits, ops).to(dtype)
+
+    state = pyq.random_state(n_qubits, batch_size, dtype=dtype)
+
+    theta_4_ad = torch.tensor([theta_4_value], requires_grad=True)
+    theta_4_adjoint = torch.tensor([theta_4_value], requires_grad=True)
+
+    values_ad = torch.nn.ParameterDict(
+        {
+            "theta_4": theta_4_ad,
+        }
+    ).to(COMPLEX_TO_REAL_DTYPES[dtype])
+    values_adjoint = torch.nn.ParameterDict(
+        {
+            "theta_4": theta_4_adjoint,
+        }
+    ).to(COMPLEX_TO_REAL_DTYPES[dtype])
+
+    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)]).to(dtype)
+    exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
+    exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
+
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad)
+    )
+
+    grad_adjoint = torch.autograd.grad(
+        exp_adjoint, tuple(values_adjoint.values()), torch.ones_like(exp_adjoint)
+    )
+
+    assert len(grad_ad) == len(grad_adjoint)
+    for i in range(len(grad_ad)):
+        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
