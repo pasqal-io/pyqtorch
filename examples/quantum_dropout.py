@@ -9,8 +9,8 @@ from sklearn.preprocessing import MinMaxScaler
 from torch import manual_seed, optim, tensor
 
 import pyqtorch as pyq
-from pyqtorch.parametric import Parametric
 from pyqtorch.circuit import DropoutQuantumCircuit
+from pyqtorch.parametric import Parametric
 
 manual_seed(12345)
 np.random.seed(12345)
@@ -59,7 +59,9 @@ def fm2(n_qubits):
 
 
 class DropoutModel(torch.nn.Module):
-    def __init__(self, n_qubits, n_layers, device, dropout_mode="rotational_dropout", dropout_prob=0.1):
+    def __init__(
+        self, n_qubits, n_layers, device, dropout_mode="rotational_dropout", dropout_prob=0.1
+    ):
         super().__init__()
         self.n_qubits = n_qubits
         self.n_layers = n_layers
@@ -77,7 +79,7 @@ class DropoutModel(torch.nn.Module):
                     params[f"{op.param_name}"] = torch.randn(1, requires_grad=True)
 
         params = torch.nn.ParameterDict(params)
-        
+
         circuit = DropoutQuantumCircuit(
             n_qubits=n_qubits,
             operations=operations,
@@ -94,9 +96,9 @@ class DropoutModel(torch.nn.Module):
         x = x.flatten()
         x_1 = {"x1": torch.asin(x)}
         x_2 = {"x2": torch.acos(x**2)}
-        
+
         self.circuit.training = self.training
-        
+
         state = self.circuit.init_state(batch_size=int(x.shape[0]))
         out = pyq.expectation(
             circuit=self.circuit,
@@ -151,7 +153,6 @@ class RegularModel(torch.nn.Module):
         )
 
         return out
-
 
 
 def train_step(model, opt, data):

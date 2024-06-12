@@ -63,6 +63,7 @@ class DiffMode(StrEnum):
     AD = "ad"
     ADJOINT = "adjoint"
 
+
 class DropoutMode(StrEnum):
     """
     Which Dropout mode to use.
@@ -73,6 +74,7 @@ class DropoutMode(StrEnum):
              canonical_fwd - Randomly drops rotational gates and next immediate entangling
                             gates whose target bit is located on dropped rotational gates.
     """
+
     ROTATIONAL = "rotational_dropout"
     ENTANGLING = "entangling_dropout"
     CANONICAL_FWD = "canonical_fwd_dropout"
