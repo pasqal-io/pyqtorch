@@ -56,6 +56,15 @@ from .analog import (
 )
 from .apply import apply_operator
 from .circuit import Merge, QuantumCircuit, Sequence
+from .noise import (
+    AmplitudeDamping,
+    BitFlip,
+    Depolarizing,
+    GeneralizedAmplitudeDamping,
+    PauliChannel,
+    PhaseDamping,
+    PhaseFlip,
+)
 from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
 from .primitive import (
     CNOT,
@@ -82,6 +91,7 @@ from .utils import (
     inner_prod,
     is_normalized,
     overlap,
+    product_state,
     random_state,
     uniform_state,
     zero_state,

@@ -8,14 +8,14 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator
+from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.matrices import (
     IMAT,
     OPERATIONS_DICT,
     _controlled,
     _dagger,
 )
-from pyqtorch.utils import product_state
+from pyqtorch.utils import DensityMatrix, product_state
 
 logger = getLogger(__name__)
 
@@ -70,9 +70,19 @@ class Primitive(torch.nn.Module):
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
     ) -> Tensor:
-        return apply_operator(
-            state, self.unitary(values), self.qubit_support, len(state.size()) - 1
-        )
+        if isinstance(state, DensityMatrix):
+            # error type int | tuple[int, ...] expected "int" but for now it hande only 1-qubit gate
+            return DensityMatrix(
+                operator_product(
+                    self.unitary(values),
+                    operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
+                    self.target,  # type: ignore [arg-type]
+                )
+            )
+        else:
+            return apply_operator(
+                state, self.unitary(values), self.qubit_support, len(state.size()) - 1
+            )
 
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return _dagger(self.unitary(values))

@@ -4,11 +4,16 @@ import random
 
 import pytest
 import torch
+from torch import Tensor
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
+from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
-from pyqtorch.utils import GRADCHECK_ATOL
+from pyqtorch.noise import Noise
+from pyqtorch.parametric import Parametric
+from pyqtorch.primitive import Primitive
+from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix
 
 
 def test_adjoint_diff() -> None:
@@ -256,3 +261,30 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
     assert len(grad_ad) == len(grad_adjoint)
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
+
+
+@pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
+@pytest.mark.parametrize("batch_size", [{"low": 1, "high": 5}], indirect=True)
+def test_noise_circ(
+    n_qubits: int,
+    batch_size: int,
+    random_input_state: Tensor,
+    random_gate: Primitive,
+    random_noise_gate: Noise,
+    random_rotation_gate: Parametric,
+) -> None:
+    OPERATORS = [random_gate, random_noise_gate, random_rotation_gate]
+    random.shuffle(OPERATORS)
+    circ = QuantumCircuit(n_qubits, OPERATORS)
+
+    values = {random_rotation_gate.param_name: torch.rand(1)}
+    output_state = circ(random_input_state, values)
+    assert isinstance(output_state, DensityMatrix)
+    assert output_state.shape == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+
+    diag_sums = []
+    for i in range(batch_size):
+        diag_batch = torch.diagonal(output_state[:, :, i], dim1=0, dim2=1)
+        diag_sums.append(torch.sum(diag_batch))
+    diag_sum = torch.stack(diag_sums)
+    assert torch.allclose(diag_sum, torch.ones((batch_size,), dtype=torch.cdouble))

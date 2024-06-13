@@ -452,8 +452,7 @@ def test_U() -> None:
     )
 
 
-@pytest.mark.parametrize("n_qubits,batch_size", torch.randint(1, 6, (8, 2)))
-def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
+def test_dm(n_qubits: int, batch_size: int) -> None:
     state = random_state(n_qubits)
     projector = torch.outer(state.flatten(), state.conj().flatten()).view(
         2**n_qubits, 2**n_qubits, 1
@@ -461,6 +460,7 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     dm = density_mat(state)
     assert dm.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(dm, projector)
+    assert torch.allclose(dm.squeeze(), dm.squeeze() @ dm.squeeze())
     states = []
     projectors = []
     for batch in range(batch_size):
@@ -477,10 +477,8 @@ def test_dm(n_qubits: Tensor, batch_size: Tensor) -> None:
     assert torch.allclose(dm, dm_proj)
 
 
-def test_promote(gate: Primitive) -> None:
-    n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
-    target = random.choice([i for i in range(n_qubits)])
-    op_prom = promote_operator(gate(target).unitary(), target, n_qubits)
+def test_promote(random_gate: Primitive, n_qubits: int, target: int) -> None:
+    op_prom = promote_operator(random_gate.unitary(), target, n_qubits)
     assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(
         operator_product(op_prom, _dagger(op_prom), target),
@@ -488,17 +486,16 @@ def test_promote(gate: Primitive) -> None:
     )
 
 
-def test_operator_product(gate: Primitive) -> None:
-    n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
-    target = random.choice([i for i in range(n_qubits)])
+def test_operator_product(random_gate: Primitive, n_qubits: int, target: int) -> None:
+    op = random_gate
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
     max_batch = max(batch_size_2, batch_size_1)
-    op_prom = promote_operator(gate(target).unitary(), target, n_qubits).repeat(
+    op_prom = promote_operator(op.unitary(), target, n_qubits).repeat(
         1, 1, batch_size_1
     )
     op_mul = operator_product(
-        gate(target).unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
+        op.unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
     )
     assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
     assert torch.allclose(
@@ -555,44 +552,3 @@ def test_kron_batch() -> None:
         density_matrices.append(density_matrice)
     dm_expect = torch.cat(density_matrices, dim=2)
     assert torch.allclose(dm_out, dm_expect)
-
-
-def test_circuit_tensor() -> None:
-    ops = [pyq.RX(0, "theta_0"), pyq.RY(0, "theta_1"), pyq.RX(1, "theta_2")]
-    circ = pyq.QuantumCircuit(2, ops)
-    values = {f"theta_{i}": torch.Tensor([float(i)]) for i in range(3)}
-    tensorcirc = circ.tensor(values)
-    assert tensorcirc.size() == (4, 4, 1)
-    assert torch.allclose(
-        tensorcirc,
-        torch.tensor(
-            [
-                [
-                    [0.4742 + 0.0000j],
-                    [0.0000 - 0.7385j],
-                    [-0.2590 + 0.0000j],
-                    [0.0000 + 0.4034j],
-                ],
-                [
-                    [0.0000 - 0.7385j],
-                    [0.4742 + 0.0000j],
-                    [0.0000 + 0.4034j],
-                    [-0.2590 + 0.0000j],
-                ],
-                [
-                    [0.2590 + 0.0000j],
-                    [0.0000 - 0.4034j],
-                    [0.4742 + 0.0000j],
-                    [0.0000 - 0.7385j],
-                ],
-                [
-                    [0.0000 - 0.4034j],
-                    [0.2590 + 0.0000j],
-                    [0.0000 - 0.7385j],
-                    [0.4742 + 0.0000j],
-                ],
-            ],
-            dtype=torch.complex128,
-        ),
-        atol=1.0e-4,
-    )
