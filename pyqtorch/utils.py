@@ -21,6 +21,16 @@ logger = getLogger(__name__)
 
 
 def inner_prod(bra: Tensor, ket: Tensor) -> Tensor:
+    """
+    Compute the inner product :math:`\\langle\\bra|\\ket\\rangle`
+
+    Arguments:
+        bra: left part quantum state.
+        ket: right part quantum state.
+
+    Returns:
+        The inner product.
+    """
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("Inner prod calculation")
         torch.cuda.nvtx.range_push("inner_prod")
@@ -36,6 +46,16 @@ def inner_prod(bra: Tensor, ket: Tensor) -> Tensor:
 
 
 def overlap(bra: Tensor, ket: Tensor) -> Tensor:
+    """
+    Compute the overlap :math:`|\\langle\\bra|\\ket\\rangle|^2`
+
+    Arguments:
+        bra: left part quantum state.
+        ket: right part quantum state.
+
+    Returns:
+        The overlap.
+    """
     return torch.pow(inner_prod(bra, ket).real, 2)
 
 
@@ -65,6 +85,16 @@ class DiffMode(StrEnum):
 
 
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
+    """
+    Function to test if the probabilities from the state sum up to 1.
+
+    Arguments:
+        state: State to test.
+        atol: Tolerance for check.
+
+    Returns:
+        True if normalized, False otherwise.
+    """
     n_qubits = len(state.size()) - 1
     batch_size = state.size()[-1]
     state = state.reshape((2**n_qubits, batch_size))
@@ -76,6 +106,12 @@ def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
 def is_diag(H: Tensor) -> bool:
     """
     Returns True if Hamiltonian H is diagonal.
+
+    Arguments:
+        H: The tensor representing the hamiltonian.
+
+    Returns:
+        True if diagonal, else False.
     """
     return (
         len(torch.abs(torch.triu(H, diagonal=1)).to_sparse().coalesce().values()) == 0
@@ -88,6 +124,18 @@ def product_state(
     device: str | torch.device = "cpu",
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> Tensor:
+    """
+    Create a batch of quantum states :math:`|\\b\\rangle` where b is the bitstring input.
+
+    Arguments:
+        bitstring: The bitstring b to represent.
+        batch_size: The size of the batch.
+        device: Device where tensors are stored.
+        dtype: Type of tensors.
+
+    Returns:
+        Batch of quantum states representing bitstring.
+    """
     state = torch.zeros((2 ** len(bitstring), batch_size), dtype=dtype)
     state[int(bitstring, 2)] = torch.tensor(1.0 + 0j, dtype=dtype)
     return state.reshape([2] * len(bitstring) + [batch_size]).to(device=device)
@@ -99,6 +147,18 @@ def zero_state(
     device: str | torch.device = "cpu",
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> Tensor:
+    """
+    Create a batch of :math:`|\\0\\rangle^{\otimes n}` states defined on n qubits.
+
+    Arguments:
+        n_qubits: Number of qubits n the state is defined on.
+        batch_size: The size of the batch.
+        device: Device where tensors are stored.
+        dtype: Type of tensors.
+
+    Returns:
+        Batch of uniform quantum states.
+    """
     return product_state("0" * n_qubits, batch_size, dtype=dtype, device=device)
 
 
@@ -108,6 +168,18 @@ def uniform_state(
     device: str | torch.device = "cpu",
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> Tensor:
+    """
+    Create a batch of uniform states with equal probabilities for computational basis.
+
+    Arguments:
+        n_qubits: Number of qubits the state is defined on.
+        batch_size: The size of the batch.
+        device: Device where tensors are stored.
+        dtype: Type of tensors.
+
+    Returns:
+        Batch of uniform quantum states.
+    """
     state = torch.ones((2**n_qubits, batch_size), dtype=dtype, device=device)
     state = state / torch.sqrt(torch.tensor(2**n_qubits))
     return state.reshape([2] * n_qubits + [batch_size])
@@ -119,6 +191,19 @@ def random_state(
     device: str | torch.device = "cpu",
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> Tensor:
+    """
+    Create a batch of random quantum state.
+
+    Arguments:
+        n_qubits: Number of qubits the state is defined on.
+        batch_size: The size of the batch.
+        device: Device where tensors are stored.
+        dtype: Type of tensors.
+
+    Returns:
+        Batch of random quantum states.
+    """
+
     def _normalize(wf: Tensor) -> Tensor:
         return wf / torch.sqrt((wf.abs() ** 2).sum())
 
@@ -139,6 +224,16 @@ def random_state(
 
 
 def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tensor]:
+    """
+    Create a dictionary mapping parameters with their values.
+
+    Arguments:
+        keys: Parameter names as keys.
+        values: Values of parameters.
+
+    Returns:
+        Dictionary mapping parameters and values.
+    """
     return {key: val for key, val in zip(keys, values)}
 
 
@@ -146,8 +241,8 @@ def density_mat(state: Tensor) -> Tensor:
     """
     Computes the density matrix from a pure state vector.
 
-    Args:
-        state (Tensor): The pure state vector :math:`|\\psi\\rangle`.
+    Arguments:
+        state: The pure state vector :math:`|\\psi\\rangle`.
 
     Returns:
         Tensor: The density matrix :math:`\\rho = |\psi \\rangle \\langle\\psi|`.
@@ -166,12 +261,12 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
     [2**n_qubits, 2**n_qubits, batch_size] when simply using `torch.kron()`.
     Use of `.contiguous()` to avoid errors related to the `torch.kron()` of a transposing tensor
 
-    Args:
-        op1 (Tensor): The first input tensor.
-        op2 (Tensor): The second input tensor.
+    Arguments:
+        op1: The first input tensor.
+        op2: The second input tensor.
 
     Returns:
-        Tensor: The resulting tensor after applying the Kronecker product
+        The resulting tensor after applying the Kronecker product
     """
     batch_size_1, batch_size_2 = op1.size(2), op2.size(2)
     if batch_size_1 > batch_size_2:
@@ -191,11 +286,11 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     Promotes `operator` to the size of the circuit (number of qubits and batch).
     Targeting the first qubit implies target = 0, so target > n_qubits - 1.
 
-    Args:
-        operator (Tensor): The operator tensor to be promoted.
-        target (int): The index of the target qubit to which the operator is applied.
+    Arguments:
+        operator: The operator tensor to be promoted.
+        target: The index of the target qubit to which the operator is applied.
             Targeting the first qubit implies target = 0, so target > n_qubits - 1.
-        n_qubits (int): Number of qubits in the circuit.
+        n_qubits: Number of qubits in the circuit.
 
     Returns:
         Tensor: The promoted operator tensor.
@@ -219,6 +314,14 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
 
 
 def operator_to_sparse_diagonal(operator: Tensor) -> Tensor:
+    """Convert operator to a sparse diagonal tensor.
+
+    Arguments:
+        operator: Operator to convert.
+
+    Returns:
+        A sparse tensor.
+    """
     operator = torch.diag(operator)
     indices, values, size = (
         torch.nonzero(operator),
