@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import warnings
 from abc import abstractmethod
 from typing import Any, Callable
 
 import torch
 from torch import Tensor
-from tqdm import TqdmWarning, tqdm
 
 from pyqtorch.time_dependent.options import AdaptiveSolverOptions
 from pyqtorch.utils import hairer_norm
@@ -36,9 +34,6 @@ class AdaptiveIntegrator:
 
         # initialize the step counter
         self.step_counter = 0
-
-        # initialize the progress bar
-        self.pbar = tqdm(total=float(self.tsave[-1]), disable=not self.options.verbose)
 
     def init_forward(self) -> tuple:
         # initial values of the ODE routine
@@ -88,7 +83,6 @@ class AdaptiveIntegrator:
             error = self.get_error(y_err, y, y_new)
             if error <= 1:
                 t, y, ft = t + dt, y_new, ft_new
-                self.pbar.update(float(dt))
 
             # check max steps are not reached
             self.increment_step_counter(t)
@@ -192,10 +186,5 @@ class AdaptiveIntegrator:
             y, *args = self.integrate(t, tnext, y, *args)
             result.append(y.mH if n1 == n2 else y.T)
             t = tnext
-
-        # close the progress bar
-        with warnings.catch_warnings():  # ignore tqdm precision overflow
-            warnings.simplefilter("ignore", TqdmWarning)
-            self.pbar.close()
 
         return torch.cat(result).reshape((-1, n1, n2))

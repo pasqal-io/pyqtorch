@@ -29,7 +29,7 @@ classifiers=[
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = ["torch", "numpy"]
+dependencies = ["torch", "numpy", "qutip~=4.7.5"]
 
 [project.optional-dependencies]
 dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert", "matplotlib"]

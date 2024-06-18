@@ -12,7 +12,6 @@ class Krylov(KrylovIntegrator):
     def integrate(self, t0: float, t1: float, y: Tensor) -> Tensor:
         dt = t1 - t0
         y = self.step(dt, t1, y)
-        self.pbar.update(float(dt))
         return y
 
     def step(
