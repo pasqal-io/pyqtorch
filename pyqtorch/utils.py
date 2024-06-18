@@ -105,17 +105,20 @@ def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
 
 def is_diag(H: Tensor) -> bool:
     """
-    Returns True if Hamiltonian H is diagonal.
+    Returns True if tensor H is diagonal.
+
+    Reference: https://stackoverflow.com/questions/43884189/check-if-a-large-matrix-is-diagonal-matrix-in-python
 
     Arguments:
-        H: The tensor representing the hamiltonian.
+        H: Input tensor.
 
     Returns:
         True if diagonal, else False.
     """
-    return (
-        len(torch.abs(torch.triu(H, diagonal=1)).to_sparse().coalesce().values()) == 0
-    )
+    m = H.shape[0]
+    p, q = H.stride()
+    offdiag_view = torch.as_strided(H[:, 1:], (m - 1, m), (p + q, q))
+    return torch.count_nonzero(offdiag_view) == 0
 
 
 def product_state(
