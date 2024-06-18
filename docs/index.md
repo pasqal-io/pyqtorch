@@ -468,7 +468,7 @@ feature_map = [RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
 ]
 ansatz, params = hea(N_QUBITS, DEPTH, "theta")
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-total_magnetization = DiagonalObservable(N_QUBITS, Add(Sequence([Z(i) for i in range(N_QUBITS)]))).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+sumZ_obs = DiagonalObservable(N_QUBITS, Add(Sequence([Z(i) for i in range(N_QUBITS)]))).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
@@ -478,7 +478,7 @@ def exp_fn(inputs: Tensor) -> Tensor:
         circ,
         state,
         {**params, **{VARIABLES[X_POS]: inputs[:, X_POS], VARIABLES[Y_POS]: inputs[:, Y_POS]}},
-        total_magnetization,
+        sumZ_obs,
         DIFF_MODE,
     )
 
