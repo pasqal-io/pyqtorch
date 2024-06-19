@@ -103,7 +103,7 @@ def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
     return torch.allclose(sum_probs, ones, rtol=RTOL, atol=atol)  # type: ignore[no-any-return]
 
 
-def is_diag(H: Tensor) -> bool:
+def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     """
     Returns True if tensor H is diagonal.
 
@@ -111,6 +111,7 @@ def is_diag(H: Tensor) -> bool:
 
     Arguments:
         H: Input tensor.
+        atol: If off-diagonal values are lower than atol in amplitude, H is considered diagonal.
 
     Returns:
         True if diagonal, else False.
@@ -118,7 +119,7 @@ def is_diag(H: Tensor) -> bool:
     m = H.shape[0]
     p, q = H.stride()
     offdiag_view = torch.as_strided(H[:, 1:], (m - 1, m), (p + q, q))
-    return torch.count_nonzero(offdiag_view) == 0
+    return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)) == 0
 
 
 def product_state(
