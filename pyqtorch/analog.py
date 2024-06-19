@@ -101,7 +101,12 @@ class Scale(Sequence):
         return _dagger(self.unitary(values))
 
     def jacobian(self, values: dict[str, Tensor]) -> Tensor:
-        raise NotImplementedError
+        raise NotImplementedError(
+            "The Jacobian of `Scale` is done via decomposing it into the gradient w.r.t\
+                                  the scale parameter and the gradient w.r.t to the scaled block."
+        )
+        # TODO make scale a primitive block with an additional parameter
+        # So you can do the following:
         # thetas = values[self.param] if isinstance(self.param, str) else self.param_name
         # return thetas * ones_like(self.unitary(values))
 
@@ -119,7 +124,9 @@ class Scale(Sequence):
         return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
 
     def flatten(self) -> list[Scale]:
-        return [self]  # we dont want to flatten this
+        return [self]  # This method should only be called in the AdjointExpectation,
+        # where the `Scale` is only supported for Primitive (and not Sequences)
+        # so we don't want to flatten this to preserve the scale parameter
 
 
 class Add(Sequence):
