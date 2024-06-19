@@ -71,7 +71,8 @@ class Primitive(torch.nn.Module):
         self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
     ) -> Tensor:
         if isinstance(state, DensityMatrix):
-            # error type int | tuple[int, ...] expected "int" but for now it hande only 1-qubit gate
+            # TODO: fix error type int | tuple[int, ...] expected "int"
+            # Only supports single-qubit gates
             return DensityMatrix(
                 operator_product(
                     self.unitary(values),
