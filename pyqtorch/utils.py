@@ -214,9 +214,9 @@ def random_state(
 
     def _rand(n_qubits: int) -> Tensor:
         N = 2**n_qubits
-        x = -torch.log(torch.rand(N, generator=generator))
+        x = -torch.log(torch.rand(N, generator=generator, dtype=dtype))
         sumx = torch.sum(x)
-        phases = torch.rand(N, generator=generator) * 2.0 * torch.pi
+        phases = torch.rand(N, generator=generator, dtype=dtype) * 2.0 * torch.pi
         return _normalize(
             (torch.sqrt(x / sumx) * torch.exp(1j * phases))
             .reshape(N, 1)
