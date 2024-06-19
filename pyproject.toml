@@ -53,7 +53,7 @@ dependencies = [
   "mkdocs-section-index",
   "mkdocs-jupyter",
   "mkdocs-exclude",
-  "markdown-exec",
+  "markdown-exec<1.9.0",
   "mike",
   "matplotlib",
 ]
