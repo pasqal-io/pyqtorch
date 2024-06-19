@@ -8,6 +8,7 @@ import torch
 from conftest import _calc_mat_vec_wavefunction
 
 import pyqtorch as pyq
+from pyqtorch.analog import GeneratorType
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT, XMAT, ZMAT
 from pyqtorch.utils import (
     ATOL,
@@ -142,18 +143,18 @@ def test_hamiltonianevolution_with_types(
     assert torch.allclose(result, target, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("n_qubits", [2])
+@pytest.mark.parametrize("n_qubits", [2, 4, 6])
 def test_hevo_parametric_gen(n_qubits: int) -> None:
     dim = torch.randint(1, n_qubits + 1, (1,)).item()
     vparam = "theta"
     sup = tuple(range(dim))
     parametric = True
     ops = [pyq.X, pyq.Y, pyq.Z]
-    # generator = pyq.Add([pyq.Scale(pyq.Z(0), vparam), pyq.Scale(pyq.Z(1), vparam)])
     qubit_targets = np.random.choice(dim, len(ops), replace=True)
     generator = pyq.Add([pyq.Scale(op(q), vparam) for op, q in zip(ops, qubit_targets)])
     hamevo = pyq.HamiltonianEvolution(generator, vparam, sup, parametric)
-    vals = {"theta": torch.rand(1)}
+    assert hamevo.generator_type == GeneratorType.PARAMETRIC_OPERATION
+    vals = {vparam: torch.rand(1)}
     psi = random_state(n_qubits)
     psi_star = hamevo(psi, vals)
     psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
@@ -166,6 +167,7 @@ def test_hevo_constant_gen() -> None:
         [pyq.Scale(pyq.Z(0), torch.rand(1)), pyq.Scale(pyq.Z(1), torch.rand(1))]
     )
     hamevo = pyq.HamiltonianEvolution(generator, torch.rand(1), sup)
+    assert hamevo.generator_type == GeneratorType.OPERATION
     psi = pyq.zero_state(2)
     psi_star = hamevo(psi)
     psi_expected = _calc_mat_vec_wavefunction(hamevo, len(sup), psi)
@@ -202,25 +204,42 @@ def test_symbol_hamevo(
     hamevo = pyq.HamiltonianEvolution(
         symbol, t_evo, tuple([i for i in range(n_qubits)])
     )
+    assert hamevo.generator_type == GeneratorType.SYMBOL
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(psi, {symbol: H})
     state = overlap(psi_star, psi)
     assert torch.allclose(state, expected_state, rtol=RTOL, atol=ATOL)
 
 
-def test_hamevo_tensor() -> None:
+def test_hamevo_fixed_tensor_result() -> None:
     hermitian_matrix = torch.tensor([[2.0, 1.0], [1.0, 3.0]], dtype=torch.complex128)
-    hamiltonian_evolution = pyq.HamiltonianEvolution(
+    hamevo = pyq.HamiltonianEvolution(
         generator=hermitian_matrix, time=torch.tensor([1.0j]), qubit_support=(0,)
     )
-
+    assert hamevo.generator_type == GeneratorType.TENSOR
     expected_evo_result = torch.tensor(
         [[[13.1815 + 0.0j], [14.8839 + 0.0j]], [[14.8839 + 0.0j], [28.0655 + 0.0j]]],
         dtype=torch.complex128,
     )
-    assert torch.allclose(
-        hamiltonian_evolution.tensor(), expected_evo_result, atol=1.0e-4
-    )
+    assert torch.allclose(hamevo.tensor(), expected_evo_result, atol=1.0e-4)
+
+
+@pytest.mark.parametrize("n_qubits", [2, 4, 6])
+def test_hamevo_tensor(n_qubits: int) -> None:
+    dim = torch.randint(1, n_qubits + 1, (1,)).item()
+    vparam = "theta"
+    sup = tuple(range(dim))
+    parametric = True
+
+    h = torch.rand(2**dim, 2**dim, dtype=DEFAULT_REAL_DTYPE)
+    hermitian_matrix = h + torch.conj(torch.transpose(h, 0, 1))
+    hamevo = pyq.HamiltonianEvolution(hermitian_matrix, vparam, sup, True)
+
+    psi = random_state(n_qubits)
+    vals = {vparam: torch.rand(1)}
+    psi_star = hamevo(psi, vals)
+    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize(
@@ -234,6 +253,7 @@ def test_parametric_phase_hamevo(
     phi = torch.rand(1, dtype=DEFAULT_MATRIX_DTYPE)
     H = (ZMAT - IMAT) / 2
     hamevo = pyq.HamiltonianEvolution(H, phi, (target,))
+    assert hamevo.generator_type == GeneratorType.TENSOR
     phase = pyq.PHASE(target, "phi")
     assert torch.allclose(phase(state, {"phi": phi}), hamevo(state))
 
