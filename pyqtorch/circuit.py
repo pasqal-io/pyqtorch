@@ -68,11 +68,7 @@ class Sequence(Module):
         self._qubit_support = tuple(
             set(
                 sum(
-                    [
-                        op.qubit_support
-                        for op in self.operations
-                        if hasattr(op, "qubit_support")
-                    ],
+                    [op.qubit_support for op in self.operations],
                     (),
                 )
             )
