@@ -18,7 +18,7 @@ pip install pyqtorch
 
 Let's have a look at primitive gates first.
 
-```python exec="on" source="material-block"
+```python exec="on" source="material-block" html="1"
 import torch
 from pyqtorch import X, CNOT, random_state
 
@@ -33,7 +33,7 @@ new_state= cnot(state)
 
 Parametric gates can be initialized with or without a `param_name`. In the former case, a dictionary containing the `param_name` and a `torch.Tensor` for the parameter is expected when calling the forward method of the gate.
 
-```python exec="on" source="material-block"
+```python exec="on" source="material-block" html="1"
 import torch
 from pyqtorch import X, RX, CNOT, CRX, random_state
 
@@ -52,7 +52,7 @@ new_state = crx(state, values)
 However, if you want to run a quick state vector simulation, you can initialize parametric gates without passing a `param_name`, in which case the forward method of the gate will simply expect a `torch.Tensor`.
 
 
-```python exec="on" source="material-block"
+```python exec="on" source="material-block" html="1"
 import torch
 from pyqtorch import RX, random_state
 
@@ -95,7 +95,7 @@ assert is_normalized(psi_end, atol=1e-05)
 
 Using digital and analog operations, you can can build fully differentiable quantum circuits using the `QuantumCircuit` class; note that the default differentiation mode in pyqtorch is using torch.autograd.
 
-```python exec="on" source="material-block"
+```python exec="on" source="material-block" html="1"
 import torch
 import pyqtorch as pyq
 
