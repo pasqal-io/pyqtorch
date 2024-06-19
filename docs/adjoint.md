@@ -1,6 +1,6 @@
 `pyqtorch` also offers a [adjoint differentiation mode](https://arxiv.org/abs/2009.02823) which can be used through the `expectation` method.
 
-```python exec="on" source="material-block"
+```python exec="on" source="material-block" html="1"
 import pyqtorch as pyq
 import torch
 from pyqtorch.utils import DiffMode

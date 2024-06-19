@@ -93,7 +93,7 @@ K_{2} \ =\sqrt{1\ -p} \ \begin{pmatrix}
 
  Noise gates are `Primitive` types, but they also request a `probability` argument to represent the noise affecting the system. And either a vector or a density matrix can be used as an input, but the output will always be a density matrix.
 
-```python exec="on" source="material-block"
+```python exec="on" source="material-block" html="1"
 import torch
 from pyqtorch.noise import AmplitudeDamping, PhaseFlip
 from pyqtorch.utils import random_state
