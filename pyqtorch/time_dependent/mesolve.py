@@ -7,12 +7,12 @@ from torch import Tensor
 
 from pyqtorch.time_dependent.options import AdaptiveSolverOptions
 from pyqtorch.time_dependent.solvers import MEDormandPrince5
-from pyqtorch.utils import Result, SolverType, density_mat
+from pyqtorch.utils import Result, SolverType
 
 
 def mesolve(
     H: Callable[..., Any],
-    rho0: Tensor,
+    psi0: Tensor,
     L: list[Tensor],
     tsave: list | Tensor,
     solver: SolverType,
@@ -22,7 +22,7 @@ def mesolve(
 
     Args:
         H (Callable[[float], Tensor]): time-dependent Hamiltonian of the system
-        rho0 (Tensor): initial state or density matrix of the system
+        psi0 (Tensor): initial state or density matrix of the system
         L (list[Tensor]): list of jump operators
         tsave (Tensor): tensor containing simulation time instants
         solver (SolverType): name of the solver to use
@@ -33,8 +33,17 @@ def mesolve(
     """
 
     L = torch.stack(L)
-    if rho0.shape[1] == 1:
-        rho0 = density_mat(rho0)
+    if psi0.size(-2) == 1:
+        rho0 = psi0.mH @ psi0
+    elif psi0.size(-1) == 1:
+        rho0 = psi0 @ psi0.mH
+    elif psi0.size(-1) == psi0.size(-2):
+        rho0 = psi0
+    else:
+        raise ValueError(
+            "Argument `psi0` must be a ket, bra or density matrix, but has shape"
+            f" {tuple(psi0.shape)}."
+        )
 
     # instantiate appropriate solver
     if solver == SolverType.DP5_ME:

@@ -285,6 +285,16 @@ def damping_gates_prob_0(random_damping_gate: Noise, target: int) -> Any:
 
 
 @pytest.fixture
+def duration() -> float:
+    return float(torch.rand(1))
+
+
+@pytest.fixture
+def n_steps() -> float:
+    return int(torch.randint(100, 1000, (1,)))
+
+
+@pytest.fixture
 def omega() -> float:
     return 20.0
 
@@ -316,7 +326,7 @@ def jump_op_torch() -> Tensor:
 
 @pytest.fixture
 def jump_op_qutip() -> Tensor:
-    return [qutip.tensor(qutip.qeye(2), qutip.qeye(2))]
+    return [qutip.qeye(4)]
 
 
 @pytest.fixture
@@ -336,11 +346,14 @@ def torch_hamiltonian(
 @pytest.fixture
 def qutip_hamiltonian(omega: float, param_x: float, param_y: float) -> Callable:
     def hamiltonian_t(t: float, args: Any) -> qutip.Qobj:
-        return omega * (
-            param_y
-            * torch.sin(torch.as_tensor(t)).numpy()
-            * qutip.tensor(qutip.sigmax(), qutip.qeye(2))
-            + param_x * t**2 * qutip.tensor(qutip.qeye(2), qutip.sigmay())
+        return qutip.Qobj(
+            omega
+            * (
+                param_y
+                * torch.sin(torch.as_tensor(t)).numpy()
+                * qutip.tensor(qutip.sigmax(), qutip.qeye(2))
+                + param_x * t**2 * qutip.tensor(qutip.qeye(2), qutip.sigmay())
+            ).full()
         )
 
     return hamiltonian_t
