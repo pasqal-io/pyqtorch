@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from logging import getLogger
 from typing import Any, Tuple
 
 from torch import Tensor, no_grad
@@ -11,6 +12,8 @@ from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import DiffMode, inner_prod, param_dict
+
+logger = getLogger(__name__)
 
 
 class AdjointExpectation(Function):
@@ -85,9 +88,12 @@ class AdjointExpectation(Function):
                     ctx.projected_state, op.dagger(values), op.qubit_support
                 )
             elif isinstance(op, Scale):
-                assert (
-                    len(op.operations) == 1
-                ), "Adjoint can only be used on Scale with Primitive blocks."
+                if not len(op.operations) == 1 and isinstance(
+                    op.operations[0], Primitive
+                ):
+                    logger.error(
+                        "Adjoint can only be used on Scale with Primitive blocks."
+                    )
                 ctx.out_state = apply_operator(
                     ctx.out_state, op.dagger(values), op.qubit_support
                 )
@@ -111,7 +117,7 @@ class AdjointExpectation(Function):
                     ctx.projected_state, op.dagger(values), op.qubit_support
                 )
             else:
-                raise NotImplementedError(
+                logger.error(
                     f"AdjointExpectation does not support operation: {type(op)}."
                 )
         return (None, None, None, None, *grads_dict.values())
@@ -135,17 +141,15 @@ def expectation(
         A expectation value.
     """
     if observable is None:
-        raise ValueError("Please provide an observable to compute expectation.")
+        logger.error("Please provide an observable to compute expectation.")
     if state is None:
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
         state = circuit.run(state, values)
         return inner_prod(state, observable.run(state, values)).real
     elif diff_mode == DiffMode.ADJOINT:
-        from pyqtorch.adjoint import AdjointExpectation
-
         return AdjointExpectation.apply(
             circuit, observable, state, values.keys(), *values.values()
         )
     else:
-        raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")
+        logger.error(f"Requested diff_mode '{diff_mode}' not supported.")
