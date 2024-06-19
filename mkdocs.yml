@@ -7,6 +7,15 @@ nav:
   - Pyqtorch in a Nutshell: index.md
   - How to Contribute: CONTRIBUTING.md
   - Code of Conduct: CODE_OF_CONDUCT.md
+  - Advanced Features:
+    - Adjoint Differentiation: adjoint.md
+    - Digital noisy simulation: noise.md
+    - Quantum Dropout: dropout.md
+    - CUDA Profiling and debugging: cuda_debugging.md
+  - Tutorials:
+    - Fitting a nonlinear function: fitting_a_function.md
+    - Solving a partial differential equation using DQC: pde.md
+
 
 theme:
   name: material
