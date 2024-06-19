@@ -1,6 +1,7 @@
 # Welcome to pyqtorch
 
 **pyqtorch** is a state vector simulator designed for quantum machine learning written in [PyTorch](https://pytorch.org/). It allows for building fully differentiable quantum circuits comprised of both digital and analog operations using a intuitive [torch.nn.Module](https://pytorch.org/docs/stable/generated/torch.nn.Module.html)-based API.
+It can be used standalone as shown in these docs, or through our framework for quantum programming: [Qadence](https://github.com/pasqal-io/qadence).
 
 ## Setup
 
