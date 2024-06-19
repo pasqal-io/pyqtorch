@@ -44,7 +44,9 @@ class Noise(torch.nn.Module):
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> list[Tensor]:
         return [_dagger(kraus_op) for kraus_op in self.unitary(values)]
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+    def forward(
+        self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
         """
         Applies a noisy quantum channel on the input state.
         The evolution is represented as a sum of Kraus operators:
@@ -66,9 +68,13 @@ class Noise(torch.nn.Module):
         if not isinstance(state, DensityMatrix):
             state = density_mat(state)
         rho_evols: list[Tensor] = []
-        for kraus_unitary, kraus_dagger in zip(self.unitary(values), self.dagger(values)):
+        for kraus_unitary, kraus_dagger in zip(
+            self.unitary(values), self.dagger(values)
+        ):
             rho_evol: Tensor = operator_product(
-                kraus_unitary, operator_product(state, kraus_dagger, self.target), self.target
+                kraus_unitary,
+                operator_product(state, kraus_dagger, self.target),
+                self.target,
             )
             rho_evols.append(rho_evol)
         rho_final: Tensor = torch.stack(rho_evols, dim=0)
@@ -252,7 +258,9 @@ class AmplitudeDamping(Noise):
     ):
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
-        K0: Tensor = torch.tensor([[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE)
+        K0: Tensor = torch.tensor(
+            [[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE
+        )
         K1: Tensor = torch.tensor([[0, sqrt(rate)], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE)
         kraus_amplitude_damping: list[Tensor] = [K0, K1]
         super().__init__(kraus_amplitude_damping, target, rate)
@@ -290,7 +298,9 @@ class PhaseDamping(Noise):
     ):
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
-        K0: Tensor = torch.tensor([[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE)
+        K0: Tensor = torch.tensor(
+            [[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE
+        )
         K1: Tensor = torch.tensor([[0, 0], [0, sqrt(rate)]], dtype=DEFAULT_MATRIX_DTYPE)
         kraus_phase_damping: list[Tensor] = [K0, K1]
         super().__init__(kraus_phase_damping, target, rate)

@@ -8,6 +8,7 @@ import torch
 from pytest import FixtureRequest
 from torch import Tensor
 
+from pyqtorch.apply import apply_operator
 from pyqtorch.noise import (
     AmplitudeDamping,
     BitFlip,
@@ -19,7 +20,7 @@ from pyqtorch.noise import (
     PhaseFlip,
 )
 from pyqtorch.parametric import PHASE, RX, RY, RZ
-from pyqtorch.primitive import H, I, X, Y, Z
+from pyqtorch.primitive import H, I, Primitive, S, T, X, Y, Z
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -27,6 +28,32 @@ from pyqtorch.utils import (
     random_dm_promotion,
     random_state,
 )
+
+
+def _calc_mat_vec_wavefunction(
+    block: Primitive, n_qubits: int, init_state: torch.Tensor, values: dict = {}
+) -> torch.Tensor:
+    """Get the result of applying the matrix representation of a block to an initial state.
+
+    Args:
+        block: The black operator to apply.
+        n_qubits: Number of qubits in the circuit.
+        init_state: Initial state to apply block on.
+        values: Values of parameter if block is parametric.
+
+    Returns:
+        Tensor: The new wavefunction after applying the block.
+
+    """
+    mat = block.tensor(n_qubits=len(block.qubit_support), values=values)
+    return apply_operator(
+        init_state, mat, qubits=block.qubit_support, n_qubits=n_qubits
+    )
+
+
+@pytest.fixture(params=[I, X, Y, Z, H, T, S])
+def gate(request: Primitive) -> Any:
+    return request.param
 
 
 # Parametrized fixture
@@ -92,7 +119,9 @@ def random_noise_gate(n_qubits: int) -> Any:
     noise_gate = random.choice(NOISE_GATES)
     if noise_gate == PauliChannel:
         noise_prob = torch.rand(size=(3,))
-        noise_prob = noise_prob / (noise_prob.sum(dim=0, keepdim=True) + torch.rand((1,)).item())
+        noise_prob = noise_prob / (
+            noise_prob.sum(dim=0, keepdim=True) + torch.rand((1,)).item()
+        )
         return noise_gate(torch.randint(0, n_qubits, (1,)).item(), noise_prob)
     elif noise_gate == GeneralizedAmplitudeDamping:
         noise_prob = torch.rand(size=(2,))
@@ -124,27 +153,39 @@ def flip_probability(random_flip_gate: Noise) -> Any:
 
 @pytest.fixture
 def flip_expected_state(
-    n_qubits: int, target: int, random_flip_gate: Noise, flip_probability: Tensor, batch_size: int
+    n_qubits: int,
+    target: int,
+    random_flip_gate: Noise,
+    flip_probability: Tensor,
+    batch_size: int,
 ) -> Any:
     if random_flip_gate == BitFlip:
         expected_state = DensityMatrix(
             torch.tensor(
-                [[[1 - flip_probability], [0]], [[0], [flip_probability]]], dtype=torch.cdouble
+                [[[1 - flip_probability], [0]], [[0], [flip_probability]]],
+                dtype=torch.cdouble,
             )
         )
     elif random_flip_gate == PhaseFlip:
-        expected_state = DensityMatrix(torch.tensor([[[1], [0]], [[0], [0]]], dtype=torch.cdouble))
+        expected_state = DensityMatrix(
+            torch.tensor([[[1], [0]], [[0], [0]]], dtype=torch.cdouble)
+        )
     elif random_flip_gate == Depolarizing:
         expected_state = DensityMatrix(
             torch.tensor(
-                [[[1 - (2 * flip_probability) / 3], [0]], [[0], [(2 * flip_probability) / 3]]],
+                [
+                    [[1 - (2 * flip_probability) / 3], [0]],
+                    [[0], [(2 * flip_probability) / 3]],
+                ],
                 dtype=torch.cdouble,
             )
         )
     elif random_flip_gate == PauliChannel:
         px, py = flip_probability[0], flip_probability[1]
         expected_state = DensityMatrix(
-            torch.tensor([[[1 - (px + py)], [0]], [[0], [px + py]]], dtype=torch.cdouble)
+            torch.tensor(
+                [[[1 - (px + py)], [0]], [[0], [px + py]]], dtype=torch.cdouble
+            )
         )
     expected_state = random_dm_promotion(target, expected_state, n_qubits)
     return expected_state.repeat(1, 1, batch_size)
@@ -160,7 +201,9 @@ def flip_gates_prob_0(random_flip_gate: Noise, target: int) -> Any:
 
 
 @pytest.fixture
-def flip_gates_prob_1(random_flip_gate: Noise, target: int, random_input_state: Tensor) -> Any:
+def flip_gates_prob_1(
+    random_flip_gate: Noise, target: int, random_input_state: Tensor
+) -> Any:
     if random_flip_gate == BitFlip:
         FlipGate_1 = random_flip_gate(target, probability=1)
         expected_op = density_mat(X(target)(random_input_state))
@@ -217,7 +260,9 @@ def damping_expected_state(
     if random_damping_gate == GeneralizedAmplitudeDamping:
         p, r = damping_rate[0], damping_rate[1]
         expected_state = DensityMatrix(
-            torch.tensor([[[1 - (r - p * r)], [0]], [[0], [r - p * r]]], dtype=torch.cdouble)
+            torch.tensor(
+                [[[1 - (r - p * r)], [0]], [[0], [r - p * r]]], dtype=torch.cdouble
+            )
         )
         DampingGate = random_damping_gate(target, p, r)
         expected_state = random_dm_promotion(target, expected_state, n_qubits).repeat(

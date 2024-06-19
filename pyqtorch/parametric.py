@@ -95,7 +95,9 @@ class PHASE(Parametric):
     def jacobian(self, values: dict[str, Tensor] = dict()) -> Operator:
         thetas = self.parse_values(values)
         batch_mat = (
-            torch.zeros((2, 2), dtype=self.identity.dtype).unsqueeze(2).repeat(1, 1, len(thetas))
+            torch.zeros((2, 2), dtype=self.identity.dtype)
+            .unsqueeze(2)
+            .repeat(1, 1, len(thetas))
         )
         batch_mat[1, 1, :] = 1j * torch.exp(1j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
@@ -118,7 +120,9 @@ class ControlledRotationGate(Parametric):
         # target : int | tuple[int,...]
 
     def extra_repr(self) -> str:
-        return f"target: {self.control}, target:{(self.target,)}, param:{self.param_name}"
+        return (
+            f"target: {self.control}, target:{(self.target,)}, param:{self.param_name}"
+        )
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         thetas = self.parse_values(values)
@@ -145,7 +149,7 @@ class ControlledRotationGate(Parametric):
 class CRX(ControlledRotationGate):
     def __init__(
         self,
-        control: int | Tuple[int],
+        control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
     ):
@@ -155,7 +159,7 @@ class CRX(ControlledRotationGate):
 class CRY(ControlledRotationGate):
     def __init__(
         self,
-        control: int | Tuple[int],
+        control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
     ):
@@ -165,7 +169,7 @@ class CRY(ControlledRotationGate):
 class CRZ(ControlledRotationGate):
     def __init__(
         self,
-        control: Tuple[int],
+        control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
     ):
@@ -177,7 +181,7 @@ class CPHASE(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int],
+        control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
     ):
@@ -194,7 +198,11 @@ class CPHASE(ControlledRotationGate):
         thetas = self.parse_values(values)
         batch_size = len(thetas)
         n_control = len(self.control)
-        jU = torch.zeros((2, 2), dtype=self.identity.dtype).unsqueeze(2).repeat(1, 1, len(thetas))
+        jU = (
+            torch.zeros((2, 2), dtype=self.identity.dtype)
+            .unsqueeze(2)
+            .repeat(1, 1, len(thetas))
+        )
         jU[1, 1, :] = 1j * torch.exp(1j * thetas).unsqueeze(0).unsqueeze(1)
         n_dim = 2 ** (n_control + 1)
         jC = (

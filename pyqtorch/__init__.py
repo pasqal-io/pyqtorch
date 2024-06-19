@@ -47,7 +47,13 @@ logger.info(f"PyQTorch logger successfully setup with log level {LOG_LEVEL}")
 
 
 from .adjoint import expectation
-from .analog import Add, Hamiltonian, HamiltonianEvolution, Scale
+from .analog import (
+    Add,
+    DiagonalObservable,
+    HamiltonianEvolution,
+    Observable,
+    Scale,
+)
 from .apply import apply_operator
 from .circuit import Merge, QuantumCircuit, Sequence
 from .noise import (
@@ -90,3 +96,50 @@ from .utils import (
     uniform_state,
     zero_state,
 )
+
+__all__ = [
+    "expectation",
+    "Add",
+    "HamiltonianEvolution",
+    "Scale",
+    "Merge",
+    "QuantumCircuit",
+    "Sequence",
+    "CPHASE",
+    "CRX",
+    "CRY",
+    "CRZ",
+    "PHASE",
+    "RX",
+    "RY",
+    "RZ",
+    "U",
+    "DEFAULT_MATRIX_DTYPE",
+    "DEFAULT_REAL_DTYPE",
+    "DiffMode",
+    "inner_prod",
+    "is_normalized",
+    "overlap",
+    "random_state",
+    "uniform_state",
+    "zero_state",
+    "CNOT",
+    "CSWAP",
+    "CY",
+    "CZ",
+    "SWAP",
+    "H",
+    "I",
+    "N",
+    "Projector",
+    "S",
+    "SDagger",
+    "T",
+    "Toffoli",
+    "X",
+    "Y",
+    "Z",
+    "apply_operator",
+    "Observable",
+    "DiagonalObservable",
+]

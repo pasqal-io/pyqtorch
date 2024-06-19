@@ -78,15 +78,13 @@ hermitian_matrix = matrix + matrix.T.conj()
 # To be evolved for a batch of times
 t_list = torch.tensor([0.0, 0.5, 1.0, 2.0])
 
-hamiltonian_evolution = HamiltonianEvolution(qubit_support=[i for i in range(n_qubits)])
+hamiltonian_evolution = HamiltonianEvolution(hermitian_matrix, t_list, [i for i in range(n_qubits)])
 
 # Starting from a uniform state
 psi_start = uniform_state(n_qubits)
 
 # Returns an evolved state at each time value
 psi_end = hamiltonian_evolution(
-    hamiltonian=hermitian_matrix,
-    time_evolution=t_list,
     state = psi_start)
 
 assert is_normalized(psi_end, atol=1e-05)
@@ -274,9 +272,9 @@ from pyqtorch.utils import DiffMode
 n_qubits = 3
 batch_size = 1
 
-rx = pyq.RX(0, param_name="x")
+ry = pyq.RY(0, param_name="x")
 cnot = pyq.CNOT(1, 2)
-ops = [rx, cnot]
+ops = [ry, cnot]
 n_qubits = 3
 circ = pyq.QuantumCircuit(n_qubits, ops)
 
@@ -338,7 +336,7 @@ feature_map = [pyq.RX(i, f'x') for i in range(N_QUBITS)]
 ansatz, params = hea(N_QUBITS, DEPTH, 'theta')
 # Lets move all necessary components to the DEVICE
 circ = pyq.QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-observable = pyq.Hamiltonian([pyq.Z(0)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+observable = pyq.DiagonalObservable(N_QUBITS, pyq.Z(0)).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 x, y = x.to(device=DEVICE, dtype=REAL_DTYPE), y.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
@@ -394,7 +392,7 @@ import torch
 from torch import Tensor, exp, linspace, ones_like, optim, rand, sin, tensor
 from torch.autograd import grad
 from pyqtorch.circuit import hea
-from pyqtorch import CNOT, RX, RY, QuantumCircuit, Z, expectation, Hamiltonian, Sequence, Merge
+from pyqtorch import CNOT, RX, RY, QuantumCircuit, Z, expectation, DiagonalObservable, Sequence, Merge, Add
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import DiffMode
 
@@ -470,7 +468,7 @@ feature_map = [RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
 ]
 ansatz, params = hea(N_QUBITS, DEPTH, "theta")
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-total_magnetization = Hamiltonian([Z(i) for i in range(N_QUBITS)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+sumZ_obs = DiagonalObservable(N_QUBITS, Add(Sequence([Z(i) for i in range(N_QUBITS)]))).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
@@ -480,7 +478,7 @@ def exp_fn(inputs: Tensor) -> Tensor:
         circ,
         state,
         {**params, **{VARIABLES[X_POS]: inputs[:, X_POS], VARIABLES[Y_POS]: inputs[:, Y_POS]}},
-        total_magnetization,
+        sumZ_obs,
         DIFF_MODE,
     )
 
