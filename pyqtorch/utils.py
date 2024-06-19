@@ -432,9 +432,6 @@ def cache(func: Callable, *, maxsize: int = 1) -> Callable:
 def hairer_norm(x: Tensor) -> Tensor:
     """Rescaled Frobenius norm of a batched matrix.
 
-    See Equation (4.11) of `Hairer et al., Solving Ordinary Differential Equations I
-    (1993), Springer Series in Computational Mathematics`.
-
     Args:
         x: Tensor of shape `(..., n, n)`.
 
