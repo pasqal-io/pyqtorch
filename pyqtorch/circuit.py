@@ -80,7 +80,9 @@ class Sequence(Module):
                 self._qubit_support,
             )
         )
-        assert all([isinstance(q, (int, int64)) for q in self._qubit_support])
+        assert all(
+            [isinstance(q, (int, int64)) for q in self._qubit_support]
+        )  # TODO fix numpy.int issue
 
     @property
     def qubit_support(self) -> tuple:
