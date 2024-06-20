@@ -29,7 +29,9 @@ class DormandPrince5(AdaptiveIntegrator):
     @functools.cached_property
     def tableau(self) -> tuple[Tensor, Tensor, Tensor, Tensor]:
         """Build the Butcher tableau of the integrator."""
-        alpha = torch.tensor([1 / 5, 3 / 10, 4 / 5, 8 / 9, 1.0, 1.0, 0.0], dtype=self.options.rtype)
+        alpha = torch.tensor(
+            [1 / 5, 3 / 10, 4 / 5, 8 / 9, 1.0, 1.0, 0.0], dtype=self.options.rtype
+        )
         beta = torch.tensor(
             [
                 [1 / 5, 0, 0, 0, 0, 0, 0],
@@ -42,7 +44,8 @@ class DormandPrince5(AdaptiveIntegrator):
             dtype=self.options.ctype,
         )
         csol5 = torch.tensor(
-            [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0], dtype=self.options.ctype
+            [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0],
+            dtype=self.options.ctype,
         )
         csol4 = torch.tensor(
             [
@@ -60,7 +63,12 @@ class DormandPrince5(AdaptiveIntegrator):
         return alpha, beta, csol5, csol5 - csol4
 
     def step(
-        self, t: float, y: Tensor, f: Tensor, dt: float, fun: Callable[[float, Tensor], Tensor]
+        self,
+        t: float,
+        y: Tensor,
+        f: Tensor,
+        dt: float,
+        fun: Callable[[float, Tensor], Tensor],
     ) -> tuple[Tensor, Tensor, Tensor]:
         # import butcher tableau
         alpha, beta, csol, cerr = self.tableau

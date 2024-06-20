@@ -25,14 +25,14 @@ def test_sesolve(
     qutip_hamiltonian: Callable,
     ode_solver: SolverType,
 ) -> None:
-    # duration = 1.0
-    # n_steps = 1000
     psi0_qutip = qutip.basis(4, 0)
 
     # simulate with torch-based solver
     psi0_torch = torch.tensor(psi0_qutip.full()).to(torch.complex128)
     t_points = torch.linspace(0, duration, n_steps)
-    state_torch = sesolve(torch_hamiltonian, psi0_torch, t_points, ode_solver).states[-1]
+    state_torch = sesolve(torch_hamiltonian, psi0_torch, t_points, ode_solver).states[
+        -1
+    ]
 
     # simulate with qutip solver
     t_points = np.linspace(0, duration, n_steps)
@@ -53,8 +53,6 @@ def test_mesolve(
     jump_op_qutip: list[Qobj],
     ode_solver: SolverType,
 ) -> None:
-    # duration = 1.0
-    # n_steps = 1000
     psi0_qutip = qutip.basis(4, 0)
 
     # simulate with torch-based solver

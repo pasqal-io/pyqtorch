@@ -37,8 +37,8 @@ class AdaptiveIntegrator:
 
     def init_forward(self) -> tuple:
         # initial values of the ODE routine
-        f0 = self.odefun(self.t0, self.y0)
-        dt0 = self.init_tstep(self.t0, self.y0, f0, self.odefun)
+        f0 = self.ode_fun(self.t0, self.y0)
+        dt0 = self.init_tstep(self.t0, self.y0, f0, self.ode_fun)
         error0 = 1.0
         return self.t0, self.y0, f0, dt0, error0
 
@@ -54,13 +54,18 @@ class AdaptiveIntegrator:
 
     @abstractmethod
     def step(
-        self, t0: float, y0: Tensor, f0: Tensor, dt: float, fun: Callable[[float, Tensor], Tensor]
+        self,
+        t0: float,
+        y0: Tensor,
+        f0: Tensor,
+        dt: float,
+        fun: Callable[[float, Tensor], Tensor],
     ) -> tuple[Tensor, Tensor, Tensor]:
         """Compute a single step of the ODE integration."""
         pass
 
     @abstractmethod
-    def odefun(self, t: float, y: Tensor) -> Tensor:
+    def ode_fun(self, t: float, y: Tensor) -> Tensor:
         pass
 
     def integrate(self, t0: float, t1: float, y: Tensor, *args: Any) -> tuple:
@@ -78,7 +83,7 @@ class AdaptiveIntegrator:
                 dt = t1 - t
 
             # compute the next step
-            ft_new, y_new, y_err = self.step(t, y, ft, dt, self.odefun)
+            ft_new, y_new, y_err = self.step(t, y, ft, dt, self.ode_fun)
 
             error = self.get_error(y_err, y, y_new)
             if error <= 1:

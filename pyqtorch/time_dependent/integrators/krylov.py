@@ -10,7 +10,7 @@ from pyqtorch.time_dependent.options import KrylovSolverOptions
 
 
 class KrylovIntegrator:
-    """Uses Krylov subspace method to evolve the state vector."""
+    """Krylov subspace method to evolve the state vector."""
 
     def __init__(
         self,

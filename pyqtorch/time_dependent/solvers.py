@@ -25,7 +25,7 @@ class SESolver(AdaptiveIntegrator):
     ):
         super().__init__(H, psi0, tsave, options)
 
-    def odefun(self, t: float, psi: Tensor) -> Tensor:
+    def ode_fun(self, t: float, psi: Tensor) -> Tensor:
         """Compute dpsi / dt = -1j * H(psi) at time t."""
         with warnings.catch_warnings():
             # filter-out UserWarning about "Sparse CSR tensor support is in beta state"
@@ -61,7 +61,7 @@ class MESolver(AdaptiveIntegrator):
         # define cached non-hermitian Hamiltonian
         self.Hnh = cache(lambda H: H - 0.5j * self.sum_LdagL)
 
-    def odefun(self, t: float, rho: Tensor) -> Tensor:
+    def ode_fun(self, t: float, rho: Tensor) -> Tensor:
         H = self.H(t)
         lindblad_term = sum(L @ rho @ L.mH for L in self.L_tuple)
         out: Tensor = -1j * self.Hnh(H) @ rho + 0.5 * lindblad_term

@@ -42,7 +42,9 @@ class Krylov(KrylovIntegrator):
             return exp[:, 0], converged
 
         lanczos_vectors = [state]
-        T = torch.zeros(self.options.max_krylov + 1, self.options.max_krylov + 1, dtype=state.dtype)
+        T = torch.zeros(
+            self.options.max_krylov + 1, self.options.max_krylov + 1, dtype=state.dtype
+        )
 
         # step 0 of the loop
         v = torch.matmul(self.H(t), state)
