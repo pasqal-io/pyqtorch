@@ -248,8 +248,8 @@ def test_hamevo_tensor(n_qubits: int) -> None:
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("n_qubits", [2, 4])
-@pytest.mark.parametrize("dim", [1, 2])
+@pytest.mark.parametrize("n_qubits", [2, 4, 6])
+@pytest.mark.parametrize("dim", [1, 2, 3, 4, 5, 6])
 @pytest.mark.parametrize("same_qubit_case", [True, False])
 def test_hamevo_tensor_from_circuit(
     n_qubits: int, dim: int, same_qubit_case: bool
