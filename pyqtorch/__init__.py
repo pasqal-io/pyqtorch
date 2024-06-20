@@ -84,6 +84,8 @@ from .primitive import (
     Y,
     Z,
 )
+from .time_dependent.mesolve import mesolve
+from .time_dependent.sesolve import sesolve
 from .utils import (
     DEFAULT_MATRIX_DTYPE,
     DEFAULT_REAL_DTYPE,
@@ -142,4 +144,6 @@ __all__ = [
     "apply_operator",
     "Observable",
     "DiagonalObservable",
+    "sesolve",
+    "mesolve",
 ]
