@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from enum import Enum
+from functools import lru_cache, partial, wraps
 from logging import getLogger
-from typing import Sequence
+from math import sqrt
+from typing import Any, Callable, Sequence
 
 import torch
 from torch import Tensor
@@ -387,3 +390,68 @@ def operator_to_sparse_diagonal(operator: Tensor) -> Tensor:
     )
     indices = torch.stack((indices.flatten(), indices.flatten()))
     return torch.sparse_coo_tensor(indices, values, (size, size))
+
+
+def cache(func: Callable, *, maxsize: int = 1) -> Callable:
+    """Cache a function returning a tensor by memoizing its most recent calls.
+
+    This decorator extends `methodtools.lru_cache` to also cache a function on
+    PyTorch grad mode status (enabled or disabled). This prevents cached tensors
+    detached from the graph (for example computed within a `with torch.no_grad()`
+    block) from being used by mistake by later code which requires tensors attached
+    to the graph.
+
+    By default, the cache size is `1`, which means that only the most recent call is
+    cached. Use the `maxsize` keyword argument to change the maximum cache size.
+
+    Warning:
+        This decorator should only be used for PyTorch tensors.
+
+    Args:
+        func: Function returning a tensor, can take any number of arguments.
+
+    Returns:
+        Cached function.
+    """
+    if func is None:
+        return partial(cache, maxsize=maxsize)
+
+    # define a function cached on its arguments and also on PyTorch grad mode status
+    @lru_cache(maxsize=maxsize)
+    def grad_cached_func(*args: Any, grad_enabled: bool, **kwargs: Any) -> Tensor:
+        return func(*args, **kwargs)
+
+    # wrap `func` to call its modified cached version
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Tensor:
+        return grad_cached_func(*args, grad_enabled=torch.is_grad_enabled(), **kwargs)
+
+    return wrapper
+
+
+def hairer_norm(x: Tensor) -> Tensor:
+    """Rescaled Frobenius norm of a batched matrix.
+
+    Args:
+        x: Tensor of shape `(..., n, n)`.
+
+    Returns:
+        Tensor of shape `(...)` holding the norm of each matrix in the batch.
+    """
+    return torch.linalg.matrix_norm(x) / sqrt(x.size(-1) * x.size(-2))
+
+
+@dataclass
+class Result:
+    states: Tensor
+
+
+class SolverType(StrEnum):
+    DP5_SE = "dp5_se"
+    """Uses fifth-order Dormand-Prince Schrodinger equation solver"""
+
+    DP5_ME = "dp5_me"
+    """Uses fifth-order Dormand-Prince master equation solver"""
+
+    KRYLOV_SE = "krylov_se"
+    """Uses Krylov Schrodinger equation solver"""

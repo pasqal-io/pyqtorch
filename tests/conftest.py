@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import random
-from typing import Any
+from typing import Any, Callable
 
 import pytest
+import qutip
 import torch
 from pytest import FixtureRequest
 from torch import Tensor
@@ -281,3 +282,78 @@ def damping_gates_prob_0(random_damping_gate: Noise, target: int) -> Any:
     else:
         damping_gate_0 = random_damping_gate(target, rate=0)
     return damping_gate_0
+
+
+@pytest.fixture
+def duration() -> float:
+    return float(torch.rand(1))
+
+
+@pytest.fixture
+def n_steps() -> float:
+    return int(torch.randint(100, 1000, (1,)))
+
+
+@pytest.fixture
+def omega() -> float:
+    return 20.0
+
+
+@pytest.fixture
+def param_x() -> float:
+    return float(5.0 * torch.rand(1))
+
+
+@pytest.fixture
+def param_y() -> float:
+    return float(2.0 * torch.rand(1))
+
+
+@pytest.fixture
+def sigma_x() -> Tensor:
+    return torch.tensor([[0.0, 1.0], [1.0, 0.0]])
+
+
+@pytest.fixture
+def sigma_y() -> Tensor:
+    return torch.tensor([[0.0, -1.0j], [1.0j, 0.0]])
+
+
+@pytest.fixture
+def jump_op_torch() -> Tensor:
+    return [torch.eye(4, dtype=torch.complex128)]
+
+
+@pytest.fixture
+def jump_op_qutip() -> Tensor:
+    return [qutip.qeye(4)]
+
+
+@pytest.fixture
+def torch_hamiltonian(
+    omega: float, param_x: float, param_y: float, sigma_x: Tensor, sigma_y: Tensor
+) -> Callable:
+    def hamiltonian_t(t: float) -> Tensor:
+        t = torch.as_tensor(t)
+        return omega * (
+            param_y * torch.sin(t) * torch.kron(sigma_x, torch.eye(2))
+            + param_x * t**2 * torch.kron(torch.eye(2), sigma_y)
+        ).to(torch.complex128)
+
+    return hamiltonian_t
+
+
+@pytest.fixture
+def qutip_hamiltonian(omega: float, param_x: float, param_y: float) -> Callable:
+    def hamiltonian_t(t: float, args: Any) -> qutip.Qobj:
+        return qutip.Qobj(
+            omega
+            * (
+                param_y
+                * torch.sin(torch.as_tensor(t)).numpy()
+                * qutip.tensor(qutip.sigmax(), qutip.qeye(2))
+                + param_x * t**2 * qutip.tensor(qutip.qeye(2), qutip.sigmay())
+            ).full()
+        )
+
+    return hamiltonian_t

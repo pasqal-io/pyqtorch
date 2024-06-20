@@ -13,6 +13,8 @@ authors = [
     { name = "Niklas Heim", email = "niklas.heim@pasqal.com" },
     { name = "Roland Guichard", email = "roland.guichard@pasqal.com" },
     { name = "Joao P. Moutinho", email = "joao.moutinho@pasqal.com"},
+    { name = "Vytautas Abramavicius", email = "vytautas.abramavicius@pasqal.com" },
+    { name = "Anton Quelle", email = "anton.quelle@pasqal.com" }
 ]
 requires-python = ">=3.8,<3.13"
 license = {text = "Apache 2.0"}
@@ -32,7 +34,7 @@ classifiers=[
 dependencies = ["torch", "numpy"]
 
 [project.optional-dependencies]
-dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert", "matplotlib"]
+dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert", "matplotlib", "qutip~=4.7.5"]
 
 [tool.hatch.envs.tests]
 features = [
