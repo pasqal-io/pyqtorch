@@ -12,6 +12,7 @@ nav:
     - Digital noisy simulation: noise.md
     - Quantum Dropout: dropout.md
     - CUDA Profiling and debugging: cuda_debugging.md
+    - Time-dependent simulation: time_dependent.md
   - Tutorials:
     - Fitting a nonlinear function: fitting_a_function.md
     - Solving a partial differential equation using DQC: pde.md
