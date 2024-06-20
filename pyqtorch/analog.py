@@ -256,7 +256,9 @@ class HamiltonianEvolution(Sequence):
             self.generator_symbol = generator
             generator = []
         elif isinstance(generator, (Primitive, Sequence)):
-            qubit_support = generator.qubit_support
+            qubit_support = (
+                generator.qubit_support if not qubit_support else qubit_support
+            )
             if generator_parametric:
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION

@@ -15,7 +15,6 @@ from pyqtorch.matrices import (
     IMAT,
     XMAT,
     ZMAT,
-    _dagger,
 )
 from pyqtorch.utils import (
     ATOL,
@@ -249,14 +248,21 @@ def test_hamevo_tensor(n_qubits: int) -> None:
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("n_qubits", [2, 4, 6])
-def test_hamevo_tensor_from_circuit(n_qubits: int) -> None:
-    dim = torch.randint(1, n_qubits + 1, (1,)).item()
+@pytest.mark.parametrize("n_qubits", [2, 4])
+@pytest.mark.parametrize("dim", [1, 2])
+@pytest.mark.parametrize("same_qubit_case", [True, False])
+def test_hamevo_tensor_from_circuit(
+    n_qubits: int, dim: int, same_qubit_case: bool
+) -> None:
+    dim = min(n_qubits, dim)
     vparam = "theta"
     sup = tuple(range(dim))
     parametric = True
     ops = [pyq.X, pyq.Y] * 2
-    qubit_targets = np.random.choice(dim, len(ops), replace=True)
+    if same_qubit_case:
+        qubit_targets = [dim] * len(ops)
+    else:
+        qubit_targets = np.random.choice(dim, len(ops), replace=True)
     generator = pyq.QuantumCircuit(
         n_qubits,
         [
@@ -264,9 +270,11 @@ def test_hamevo_tensor_from_circuit(n_qubits: int) -> None:
             *[op(q) for op, q in zip(ops, qubit_targets)],
         ],
     )
-    generator = generator.tensor()
-    generator = generator + _dagger(generator)
-    hamevo = pyq.HamiltonianEvolution(generator, vparam, sup, parametric)
+    generator = generator.tensor(n_qubits=n_qubits)
+    generator = generator + torch.conj(torch.transpose(generator, 0, 1))
+    hamevo = pyq.HamiltonianEvolution(
+        generator, vparam, tuple(range(n_qubits)), parametric
+    )
     assert hamevo.generator_type == GeneratorType.TENSOR
     vals = {vparam: torch.tensor([0.5])}
     psi = random_state(n_qubits)
