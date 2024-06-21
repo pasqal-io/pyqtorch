@@ -248,6 +248,7 @@ class HamiltonianEvolution(Sequence):
                 generator = generator.unsqueeze(2)
             generator = [Primitive(generator, target=-1)]
             self.generator_type = GeneratorType.TENSOR
+
         elif isinstance(generator, str):
             assert (
                 qubit_support is not None
@@ -265,10 +266,11 @@ class HamiltonianEvolution(Sequence):
             else:
                 generator = [
                     Primitive(
-                        generator.tensor({}, len(generator.qubit_support)),
+                        generator.tensor({}, len(qubit_support)),
                         target=generator.qubit_support[0],
                     )
                 ]
+
                 self.generator_type = GeneratorType.OPERATION
         else:
             raise TypeError(
@@ -320,7 +322,6 @@ class HamiltonianEvolution(Sequence):
             values[self.time] if isinstance(self.time, str) else self.time
         )  # If `self.time` is a string / hence, a Parameter,
         # we expect the user to pass it in the `values` dict
-
         return apply_operator(
             state=state,
             operator=evolve(hamiltonian, time_evolution),
@@ -335,6 +336,10 @@ class HamiltonianEvolution(Sequence):
         n_qubits: int | None = None,
         diagonal: bool = False,
     ) -> Tensor:
+        if diagonal:
+            raise NotImplementedError
+        if n_qubits is None:
+            n_qubits = max(self.qubit_support) + 1
         hamiltonian: torch.Tensor = self.create_hamiltonian(values)
         time_evolution: torch.Tensor = (
             values[self.time] if isinstance(self.time, str) else self.time
