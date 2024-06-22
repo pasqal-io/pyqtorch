@@ -256,7 +256,6 @@ def test_hamevo_tensor_from_circuit(
 ) -> None:
     dim = min(n_qubits, dim)
     vparam = "theta"
-    sup = tuple(range(dim))
     parametric = True
     ops = [pyq.X, pyq.Y] * 2
     if same_qubit_case:

@@ -258,7 +258,12 @@ class HamiltonianEvolution(Sequence):
             generator = []
         elif isinstance(generator, (Primitive, Sequence)):
             qubit_support = (
-                generator.qubit_support if not qubit_support else qubit_support
+                generator.qubit_support
+                if (
+                    not qubit_support
+                    or len(qubit_support) <= len(generator.qubit_support)
+                )
+                else qubit_support
             )
             if generator_parametric:
                 generator = [generator]
