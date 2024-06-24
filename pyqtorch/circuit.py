@@ -18,7 +18,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import IMAT, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import State, zero_state
+from pyqtorch.utils import State, product_state, zero_state
 
 logger = getLogger(__name__)
 
@@ -175,6 +175,9 @@ class QuantumCircuit(Sequence):
             self.n_qubits, batch_size, device=self.device, dtype=self.dtype
         )
 
+    def from_bitstring(self, bitstring: str, batch_size: int = 1) -> Tensor:
+        return product_state(bitstring, batch_size, self.device, self.dtype)
+
     def sample(
         self,
         state: Tensor = None,
@@ -286,3 +289,20 @@ def hea(n_qubits: int, depth: int, param_name: str) -> tuple[ModuleList, Paramet
         {f"{param_name}_{n}": rand(1, requires_grad=True) for n in range(next(idx))}
     )
     return ops, params
+
+
+def run(
+    circuit: QuantumCircuit,
+    state: Tensor = None,
+    values: dict[str, Tensor] = dict(),
+) -> Tensor:
+    return circuit.run(state, values)
+
+
+def sample(
+    circuit: QuantumCircuit,
+    state: Tensor = None,
+    values: dict[str, Tensor] = dict(),
+    n_shots: int = 1000,
+) -> list[Counter]:
+    return circuit.sample(state, values, n_shots)
