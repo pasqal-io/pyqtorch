@@ -270,6 +270,17 @@ class Add(Sequence):
 
 
 class Observable(Sequence):
+    """
+    The Observable :math:`O` represents a measurable quantity to obtain from quantum states.
+
+    We can obtain expectation values when applying to an input state:math :`\\ket\\rangle`
+    :math:`\\langle\\bra|O\\ket\\rangle`
+
+    Attributes:
+        operations: List of operations.
+        n_qubits: Number of qubits it is defined on.
+    """
+
     def __init__(
         self,
         n_qubits: int | None,
@@ -280,7 +291,17 @@ class Observable(Sequence):
             n_qubits = max(self.qubit_support) + 1
         self.n_qubits = n_qubits
 
-    def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+    def run(self, state: Tensor, values: dict[str, Tensor]) -> State:
+        """
+        Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
+
+        Arguments:
+            state: Input state.
+            values: Values of parameters.
+
+        Returns:
+            The transformed state.
+        """
         for op in self.operations:
             state = op(state, values)
         return state
@@ -288,6 +309,15 @@ class Observable(Sequence):
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> Tensor:
+        """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
+        
+        Arguments:
+            state: Input state.
+            values: Values of parameters.
+
+        Returns:
+            The expectation value.
+        """
         return inner_prod(state, self.run(state, values)).real
 
 
