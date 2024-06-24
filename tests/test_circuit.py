@@ -296,5 +296,5 @@ def test_sample_run() -> None:
     wf = run(circ)
     samples = sample(circ)
     assert torch.allclose(wf, product_state("1100"))
-    assert torch.allclose(pyq.QuantumCircuit(4, [pyq.I(0)]).from_bitstring("1100"), wf)
+    assert torch.allclose(pyq.QuantumCircuit(4, [pyq.I(0)]).run("1100"), wf)
     assert "1100" in samples[0]

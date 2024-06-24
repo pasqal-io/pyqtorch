@@ -163,6 +163,8 @@ class QuantumCircuit(Sequence):
     ) -> State:
         if state is None:
             state = self.init_state()
+        elif isinstance(state, str):
+            state = self.state_from_bitstring(state)
         return self.forward(state, values)
 
     def __hash__(self) -> int:
@@ -175,7 +177,7 @@ class QuantumCircuit(Sequence):
             self.n_qubits, batch_size, device=self.device, dtype=self.dtype
         )
 
-    def from_bitstring(self, bitstring: str, batch_size: int = 1) -> Tensor:
+    def state_from_bitstring(self, bitstring: str, batch_size: int = 1) -> Tensor:
         return product_state(bitstring, batch_size, self.device, self.dtype)
 
     def sample(
