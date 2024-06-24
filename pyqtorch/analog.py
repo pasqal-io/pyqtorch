@@ -15,6 +15,8 @@ from pyqtorch.circuit import Sequence
 from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
+    ATOL,
+    Operator,
     State,
     StrEnum,
     inner_prod,
@@ -66,9 +68,22 @@ class GeneratorType(StrEnum):
 
 
 class Scale(Sequence):
-    """Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter."""
+    """
+    Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter.
 
-    def __init__(self, operations: list[Module], param_name: str | Tensor):
+    Attributes:
+        operations: Operations making the Sequence.
+        param_name: Name of the parameter to multiply operations with.
+    """
+
+    def __init__(self, operations: Union[Sequence, Module], param_name: str | Tensor):
+        """
+        Initializes a Scale object.
+
+        Arguments:
+            operations: Operations making the Sequence.
+            param_name: Name of the parameter to multiply operations with.
+        """
         super().__init__(
             operations.operations if isinstance(operations, Sequence) else [operations]
         )
@@ -77,19 +92,48 @@ class Scale(Sequence):
 
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
-    ) -> Tensor:
+    ) -> State:
+        """
+        Apply the operation(s) multiplying by the parameter value.
+
+        Arguments:
+            state: Input state.
+            values: Parameter value.
+
+        Returns:
+            The transformed state.
+        """
         return (
             values[self.param_name] * super().forward(state, values)
             if isinstance(self.operations, Sequence)
             else self._forward(state, values)
         )
 
-    def _forward(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+    def _forward(self, state: Tensor, values: dict[str, Tensor]) -> State:
+        """
+        Apply the single operation of Scale multiplied by the parameter value.
+
+        Arguments:
+            state: Input state.
+            values: Parameter value.
+
+        Returns:
+            The transformed state.
+        """
         return apply_operator(
             state, self.unitary(values), self.operations[0].qubit_support
         )
 
-    def unitary(self, values: dict[str, Tensor]) -> Tensor:
+    def unitary(self, values: dict[str, Tensor]) -> Operator:
+        """
+        Get the corresponding unitary.
+
+        Arguments:
+            values: Parameter value.
+
+        Returns:
+            The unitary representation.
+        """
         thetas = (
             values[self.param_name]
             if isinstance(self.param_name, str)
@@ -97,10 +141,31 @@ class Scale(Sequence):
         )
         return thetas * self.operations[0].unitary(values)
 
-    def dagger(self, values: dict[str, Tensor]) -> Tensor:
+    def dagger(self, values: dict[str, Tensor]) -> Operator:
+        """
+        Get the corresponding unitary of the dagger.
+
+        Arguments:
+            values: Parameter value.
+
+        Returns:
+            The unitary representation of the dagger.
+        """
         return _dagger(self.unitary(values))
 
-    def jacobian(self, values: dict[str, Tensor]) -> Tensor:
+    def jacobian(self, values: dict[str, Tensor]) -> Operator:
+        """
+        Get the corresponding unitary of the jacobian.
+
+        Arguments:
+            values: Parameter value.
+
+        Returns:
+            The unitary representation of the jacobian.
+
+        Raises:
+            NotImplementedError
+        """
         raise NotImplementedError(
             "The Jacobian of `Scale` is done via decomposing it into the gradient w.r.t\
                                   the scale parameter and the gradient w.r.t to the scaled block."
@@ -115,7 +180,22 @@ class Scale(Sequence):
         values: dict[str, Tensor] = dict(),
         n_qubits: int | None = None,
         diagonal: bool = False,
-    ) -> Tensor:
+    ) -> Operator:
+        """
+        Get the corresponding unitary over n_qubits.
+
+        Arguments:
+            values: Parameter value.
+            n_qubits: The number of qubits the unitary is represented over.
+            Can be higher than the number of qubit support.
+            diagonal: Whether the operation is diagonal.
+
+
+        Returns:
+            The unitary representation.
+        Raises:
+            NotImplementedError for the diagonal case.
+        """
         thetas = (
             values[self.param_name]
             if isinstance(self.param_name, str)
@@ -124,25 +204,61 @@ class Scale(Sequence):
         return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
 
     def flatten(self) -> list[Scale]:
-        return [self]  # This method should only be called in the AdjointExpectation,
-        # where the `Scale` is only supported for Primitive (and not Sequences)
-        # so we don't want to flatten this to preserve the scale parameter
+        """This method should only be called in the AdjointExpectation,
+        where the `Scale` is only supported for Primitive (and not Sequences)
+        so we don't want to flatten this to preserve the scale parameter.
+
+        Returns:
+            The Scale within a list.
+        """
+        return [self]
 
 
 class Add(Sequence):
-    """The 'add' operation applies all 'operations' to 'state' and returns the sum of states."""
+    """
+    The 'add' operation applies all 'operations' to 'state' and returns the sum of states.
+
+    Attributes:
+        operations: List of operations to add up.
+    """
 
     def __init__(self, operations: list[Module]):
+
         super().__init__(operations=operations)
 
     def forward(
         self, state: State, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> State:
+        """
+        Apply the operations multiplying by the parameter values.
+
+        Arguments:
+            state: Input state.
+            values: Parameter value.
+
+        Returns:
+            The transformed state.
+        """
         return reduce(add, (op(state, values) for op in self.operations))
 
     def tensor(
         self, values: dict = {}, n_qubits: int | None = None, diagonal: bool = False
     ) -> Tensor:
+        """
+        Get the corresponding sum of unitaries over n_qubits.
+
+        Arguments:
+            values: Parameter value.
+            n_qubits: The number of qubits the unitary is represented over.
+            Can be higher than the number of qubit support.
+            diagonal: Whether the operation is diagonal.
+
+
+        Returns:
+            The unitary representation.
+        Raises:
+            NotImplementedError for the diagonal case.
+        """
         if n_qubits is None:
             n_qubits = max(self.qubit_support) + 1
         mat = torch.zeros((2, 2, 1), device=self.device)
@@ -210,15 +326,39 @@ class DiagonalObservable(Primitive):
         return inner_prod(state, self.run(state, values)).real
 
 
-def is_diag_hamiltonian(hamiltonian: Tensor) -> bool:
+def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:
+    """
+    Returns True if the batched tensors H are diagonal.
+
+    Arguments:
+        H: Input tensors.
+        atol: Tolerance for near-zero values.
+
+    Returns:
+        True if diagonal, else False.
+    """
     diag_check = torch.tensor(
-        [is_diag(hamiltonian[..., i]) for i in range(hamiltonian.shape[BATCH_DIM])],
+        [
+            is_diag(hamiltonian[..., i], atol)
+            for i in range(hamiltonian.shape[BATCH_DIM])
+        ],
         device=hamiltonian.device,
     )
     return bool(torch.prod(diag_check))
 
 
-def evolve(hamiltonian: Tensor, time_evolution: Tensor) -> Tensor:
+def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
+    """Get the evolved operator.
+
+    For a hamiltonian :math:`H` and a time evolution :math:`t`, returns :math:`exp(-i H, t)`
+
+    Arguments:
+        hamiltonian: The operator :math:`H` for evolution.
+        time_evolution: The evolution time :math:`t`.
+
+    Returns:
+        The evolution operator.
+    """
     if is_diag_hamiltonian(hamiltonian):
         evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
             (-1, 1)
@@ -233,6 +373,22 @@ def evolve(hamiltonian: Tensor, time_evolution: Tensor) -> Tensor:
 
 
 class HamiltonianEvolution(Sequence):
+    """
+    The HamiltonianEvolution corresponds to :math:`t`, returns :math:`exp(-i H, t)` where
+    a hamiltonian/generator :math:`H` and a time evolution :math:`t` are given.
+
+    We can create such operation by passing different generator types:
+        - A tensor representation of the generator,
+        - A string when we consider the generator as a symbol.
+        - Operations as a single primitive or a sequence, parameterized or not.
+
+    Attributes:
+        generator_type: This attribute informs on how the generator is inputed
+        and sets the logic for applying hamiltonian evolution.
+        time: The evolution time :math:`t`.
+        operations: List of operations.
+    """
+
     def __init__(
         self,
         generator: TGenerator,
@@ -240,6 +396,15 @@ class HamiltonianEvolution(Sequence):
         qubit_support: Tuple[int, ...] | None = None,
         generator_parametric: bool = False,
     ):
+        """Initializes the HamiltonianEvolution.
+        Depending on the generator argument, set the type and set the right generator getter.
+
+        Arguments:
+            generator: The generator :math:`H`.
+            time: The evolution time :math:`t`.
+            qubit_support: The qubits the operator acts on.
+            generator_parametric: Whether the generator is parametric or not.
+        """
         if isinstance(generator, Tensor):
             assert (
                 qubit_support is not None
@@ -303,25 +468,66 @@ class HamiltonianEvolution(Sequence):
 
     @property
     def generator(self) -> ModuleList:
+        """Returns the operations making the generator.
+
+        Returns:
+            The generator as a ModuleList.
+        """
         return self.operations
 
-    def _symbolic_generator(self, values: dict) -> Tensor:
+    def _symbolic_generator(self, values: dict) -> Operator:
+        """Returns the generator for the SYMBOL case.
+
+        Returns:
+            The generator as a tensor.
+        """
         hamiltonian = values[self.generator_symbol]
         return hamiltonian.unsqueeze(2) if len(hamiltonian.shape) == 2 else hamiltonian
 
-    def _tensor_generator(self, values: dict = {}) -> Tensor:
+    def _tensor_generator(self, values: dict = {}) -> Operator:
+        """Returns the generator for the TENSOR and OPERATION cases.
+
+        Arguments:
+            values: Non-used argument for consistency with other generator getters.
+
+        Returns:
+            The generator as a tensor.
+        """
         return self.generator[0].pauli
 
-    def _parametric_generator(self, values: dict) -> Tensor:
+    def _parametric_generator(self, values: dict) -> Operator:
+        """Returns the generator for the PARAMETRIC_OPERATION case.
+
+        Arguments:
+            values: Values of parameters.
+
+        Returns:
+            The generator as a tensor.
+        """
         return self.generator[0].tensor(values, len(self.qubit_support))
 
     @property
-    def create_hamiltonian(self) -> Callable[[dict], Tensor]:
+    def create_hamiltonian(self) -> Callable[[dict], Operator]:
+        """A utility method for setting the right generator getter depending on the init case.
+
+        Returns:
+            The right generator getter.
+        """
         return self._generator_map[self.generator_type]
 
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
-    ) -> Tensor:
+    ) -> State:
+        """
+        Apply the hamiltonian evolution with input parameter values.
+
+        Arguments:
+            state: Input state.
+            values: Values of parameters.
+
+        Returns:
+            The transformed state.
+        """
         hamiltonian: torch.Tensor = self.create_hamiltonian(values)
         time_evolution: torch.Tensor = (
             values[self.time] if isinstance(self.time, str) else self.time
@@ -340,7 +546,21 @@ class HamiltonianEvolution(Sequence):
         values: dict = {},
         n_qubits: int | None = None,
         diagonal: bool = False,
-    ) -> Tensor:
+    ) -> Operator:
+        """Get the corresponding unitary over n_qubits.
+
+        Arguments:
+            values: Parameter value.
+            n_qubits: The number of qubits the unitary is represented over.
+            Can be higher than the number of qubit support.
+            diagonal: Whether the operation is diagonal.
+
+
+        Returns:
+            The unitary representation.
+        Raises:
+            NotImplementedError for the diagonal case.
+        """
         if diagonal:
             raise NotImplementedError
         if n_qubits is None:
