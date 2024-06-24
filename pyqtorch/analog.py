@@ -271,9 +271,10 @@ class Add(Sequence):
 
 class Observable(Sequence):
     """
-    The Observable :math:`O` represents a measurable quantity to obtain from quantum states.
+    The Observable :math:`O` represents an operator from which
+    we can extract expectation values from quantum states.
 
-    We can obtain expectation values when applying to an input state:math :`\\ket\\rangle`
+    Given an input state :math:`\\ket\\rangle`, the expectation value with :math:`O` is defined as
     :math:`\\langle\\bra|O\\ket\\rangle`
 
     Attributes:
@@ -310,7 +311,7 @@ class Observable(Sequence):
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> Tensor:
         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
-        
+
         Arguments:
             state: Input state.
             values: Values of parameters.
@@ -322,14 +323,29 @@ class Observable(Sequence):
 
 
 class DiagonalObservable(Primitive):
+    """
+    Special case of diagonal observables where computation is simpler.
+    We simply do a element-wise vector-product instead of a tensordot.
+
+    Attributes:
+        pauli: The tensor representation from Primitive.
+        qubit_support: Qubits the operator acts on.
+        n_qubits: Number of qubits the operator is defined on.
+    """
+
     def __init__(
         self,
         n_qubits: int | None,
         operations: list[Module] | Primitive | Sequence,
         to_sparse: bool = False,
     ):
-        """In case the 'operations' / hamiltonian is diagonal,
-        we simply do a element-wise vector-product instead of a tensordot."""
+        """Initializes the DiagonalObservable.
+
+        Arguments:
+            n_qubits: Number of qubits the operator is defined on.
+            operations: Operations defining the observable.
+            to_sparse: Whether to convert the operator to its sparse representation or not.
+        """
         if isinstance(operations, list):
             operations = Sequence(operations)
         if n_qubits is None:
@@ -344,8 +360,20 @@ class DiagonalObservable(Primitive):
         self.n_qubits = n_qubits
 
     def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
-        # We flatten the state, do a element-wise multiplication with the diagonal hamiltonian
-        # and reshape it back to pyq-shape.
+        """
+        Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
+
+        We flatten the state, do a element-wise multiplication with the diagonal hamiltonian
+        and reshape it back to pyq-shape.
+
+
+        Arguments:
+            state: Input state.
+            values: Values of parameters. Unused here.
+
+        Returns:
+            The transformed state.
+        """
         return torch.einsum(
             "ij,ib->ib", self.pauli, state.flatten(start_dim=0, end_dim=-2)
         ).reshape([2] * self.n_qubits + [state.shape[-1]])
@@ -353,6 +381,15 @@ class DiagonalObservable(Primitive):
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> Tensor:
+        """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
+
+        Arguments:
+            state: Input state.
+            values: Values of parameters.
+
+        Returns:
+            The expectation value.
+        """
         return inner_prod(state, self.run(state, values)).real
 
 
