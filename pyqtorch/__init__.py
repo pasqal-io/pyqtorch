@@ -55,7 +55,7 @@ from .analog import (
     Scale,
 )
 from .apply import apply_operator
-from .circuit import Merge, QuantumCircuit, Sequence
+from .circuit import Merge, QuantumCircuit, Sequence, run, sample
 from .noise import (
     AmplitudeDamping,
     BitFlip,
@@ -100,6 +100,8 @@ from .utils import (
 )
 
 __all__ = [
+    "run",
+    "sample",
     "expectation",
     "Add",
     "HamiltonianEvolution",
