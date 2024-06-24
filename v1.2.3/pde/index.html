@@ -1,0 +1,1747 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../fitting_a_function/">
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>Solving a partial differential equation using DQC - pyqtorch</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_markdown_exec_pyodide.css">
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../extras/css/mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../extras/css/colors.css">
+    
+      <link rel="stylesheet" href="../extras/css/home.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="light-green" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pyqtorch" class="md-header__button md-logo" aria-label="pyqtorch" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pyqtorch
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Solving a partial differential equation using DQC
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="light-green" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5c-.84 0-1.65.15-2.39.42L12 2M3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29L3.34 7m.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14L3.36 17M20.65 7l-1.77 3.79a7.023 7.023 0 0 0-2.38-4.15l4.15.36m-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29L20.64 17M12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44L12 22Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="light-green"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3 3.19.09m3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95 2.06.05m-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/pasqal-io/pyqtorch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    pyqtorch
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pyqtorch" class="md-nav__button md-logo" aria-label="pyqtorch" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    pyqtorch
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/pasqal-io/pyqtorch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    pyqtorch
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pyqtorch in a Nutshell
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    How to Contribute
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CODE_OF_CONDUCT/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Code of Conduct
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Advanced Features
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adjoint/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Adjoint Differentiation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../noise/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Digital noisy simulation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dropout/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quantum Dropout
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cuda_debugging/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CUDA Profiling and debugging
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../time_dependent/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-dependent simulation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fitting_a_function/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fitting a nonlinear function
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Solving a partial differential equation using DQC
+  </span>
+  
+
+      </a>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+  <h1>Solving a partial differential equation using DQC</h1>
+
+<p><code>pyqtorch</code> can also be used to implement <a href="https://arxiv.org/abs/2011.10395">DQC</a> to solve a partial differential equation.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">reduce</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">product</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">add</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="kn">import</span> <span class="nn">torch</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">exp</span><span class="p">,</span> <span class="n">linspace</span><span class="p">,</span> <span class="n">ones_like</span><span class="p">,</span> <span class="n">optim</span><span class="p">,</span> <span class="n">rand</span><span class="p">,</span> <span class="n">sin</span><span class="p">,</span> <span class="n">tensor</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="kn">from</span> <span class="nn">torch.autograd</span> <span class="kn">import</span> <span class="n">grad</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="kn">from</span> <span class="nn">pyqtorch.circuit</span> <span class="kn">import</span> <span class="n">hea</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="kn">from</span> <span class="nn">pyqtorch</span> <span class="kn">import</span> <span class="n">CNOT</span><span class="p">,</span> <span class="n">RX</span><span class="p">,</span> <span class="n">RY</span><span class="p">,</span> <span class="n">QuantumCircuit</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">expectation</span><span class="p">,</span> <span class="n">DiagonalObservable</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Merge</span><span class="p">,</span> <span class="n">Add</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="kn">from</span> <span class="nn">pyqtorch.parametric</span> <span class="kn">import</span> <span class="n">Parametric</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="kn">from</span> <span class="nn">pyqtorch.utils</span> <span class="kn">import</span> <span class="n">DiffMode</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="n">DIFF_MODE</span> <span class="o">=</span> <span class="n">DiffMode</span><span class="o">.</span><span class="n">AD</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="n">DEVICE</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="c1"># We can also choose the precision we want to train on</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="n">COMPLEX_DTYPE</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">complex64</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="n">REAL_DTYPE</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="n">LR</span> <span class="o">=</span> <span class="mf">.15</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="n">N_QUBITS</span> <span class="o">=</span> <span class="mi">4</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="n">DEPTH</span> <span class="o">=</span> <span class="mi">3</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="n">VARIABLES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="n">N_VARIABLES</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VARIABLES</span><span class="p">)</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="n">X_POS</span><span class="p">,</span> <span class="n">Y_POS</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N_VARIABLES</span><span class="p">)]</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">250</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="n">N_EPOCHS</span> <span class="o">=</span> <span class="mi">750</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="k">class</span> <span class="nc">DomainSampling</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">exp_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">],</span> <span class="n">n_inputs</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">exp_fn</span> <span class="o">=</span> <span class="n">exp_fn</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">n_inputs</span> <span class="o">=</span> <span class="n">n_inputs</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requires_grad</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>        <span class="k">return</span> <span class="n">rand</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_inputs</span><span class="p">),</span> <span class="n">requires_grad</span><span class="o">=</span><span class="n">requires_grad</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>    <span class="k">def</span> <span class="nf">left_boundary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>  <span class="c1"># u(0,y)=0</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>        <span class="n">sample</span><span class="p">[:,</span> <span class="n">X_POS</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">exp_fn</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>    <span class="k">def</span> <span class="nf">right_boundary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>  <span class="c1"># u(L,y)=0</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>        <span class="n">sample</span><span class="p">[:,</span> <span class="n">X_POS</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">exp_fn</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>    <span class="k">def</span> <span class="nf">top_boundary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>  <span class="c1"># u(x,H)=0</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>        <span class="n">sample</span><span class="p">[:,</span> <span class="n">Y_POS</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">exp_fn</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>    <span class="k">def</span> <span class="nf">bottom_boundary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>  <span class="c1"># u(x,0)=f(x)</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>        <span class="n">sample</span><span class="p">[:,</span> <span class="n">Y_POS</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exp_fn</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="o">-</span> <span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">sample</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]))</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>    <span class="k">def</span> <span class="nf">interior</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>  <span class="c1"># uxx+uyy=0</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">exp_fn</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a>        <span class="n">dfdxy</span> <span class="o">=</span> <span class="n">grad</span><span class="p">(</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a>            <span class="n">f</span><span class="p">,</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a>            <span class="n">sample</span><span class="p">,</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a>            <span class="n">ones_like</span><span class="p">(</span><span class="n">f</span><span class="p">),</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a>            <span class="n">create_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a>        <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a>        <span class="n">dfdxxdyy</span> <span class="o">=</span> <span class="n">grad</span><span class="p">(</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a>            <span class="n">dfdxy</span><span class="p">,</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a>            <span class="n">sample</span><span class="p">,</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a>            <span class="n">ones_like</span><span class="p">(</span><span class="n">dfdxy</span><span class="p">),</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a>        <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a>
+<a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a>        <span class="k">return</span> <span class="p">(</span><span class="n">dfdxxdyy</span><span class="p">[:,</span> <span class="n">X_POS</span><span class="p">]</span> <span class="o">+</span> <span class="n">dfdxxdyy</span><span class="p">[:,</span> <span class="n">Y_POS</span><span class="p">])</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a>
+<a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a>
+<a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a><span class="n">feature_map</span> <span class="o">=</span> <span class="p">[</span><span class="n">RX</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">VARIABLES</span><span class="p">[</span><span class="n">X_POS</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N_QUBITS</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)]</span> <span class="o">+</span> <span class="p">[</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a>    <span class="n">RX</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">VARIABLES</span><span class="p">[</span><span class="n">Y_POS</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N_QUBITS</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">N_QUBITS</span><span class="p">)</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a><span class="p">]</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a><span class="n">ansatz</span><span class="p">,</span> <span class="n">params</span> <span class="o">=</span> <span class="n">hea</span><span class="p">(</span><span class="n">N_QUBITS</span><span class="p">,</span> <span class="n">DEPTH</span><span class="p">,</span> <span class="s2">&quot;theta&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89" href="#__codelineno-0-89"></a><span class="n">circ</span> <span class="o">=</span> <span class="n">QuantumCircuit</span><span class="p">(</span><span class="n">N_QUBITS</span><span class="p">,</span> <span class="n">feature_map</span> <span class="o">+</span> <span class="n">ansatz</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">DEVICE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">COMPLEX_DTYPE</span><span class="p">)</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90" href="#__codelineno-0-90"></a><span class="n">sumZ_obs</span> <span class="o">=</span> <span class="n">DiagonalObservable</span><span class="p">(</span><span class="n">N_QUBITS</span><span class="p">,</span> <span class="n">Add</span><span class="p">(</span><span class="n">Sequence</span><span class="p">([</span><span class="n">Z</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N_QUBITS</span><span class="p">)])))</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">DEVICE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">COMPLEX_DTYPE</span><span class="p">)</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a><span class="n">params</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">DEVICE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">REAL_DTYPE</span><span class="p">)</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92" href="#__codelineno-0-92"></a><span class="n">state</span> <span class="o">=</span> <span class="n">circ</span><span class="o">.</span><span class="n">init_state</span><span class="p">()</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a>
+<a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a>
+<a id="__codelineno-0-95" name="__codelineno-0-95" href="#__codelineno-0-95"></a><span class="k">def</span> <span class="nf">exp_fn</span><span class="p">(</span><span class="n">inputs</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a>    <span class="k">return</span> <span class="n">expectation</span><span class="p">(</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97" href="#__codelineno-0-97"></a>        <span class="n">circ</span><span class="p">,</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98" href="#__codelineno-0-98"></a>        <span class="n">state</span><span class="p">,</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99" href="#__codelineno-0-99"></a>        <span class="p">{</span><span class="o">**</span><span class="n">params</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="n">VARIABLES</span><span class="p">[</span><span class="n">X_POS</span><span class="p">]:</span> <span class="n">inputs</span><span class="p">[:,</span> <span class="n">X_POS</span><span class="p">],</span> <span class="n">VARIABLES</span><span class="p">[</span><span class="n">Y_POS</span><span class="p">]:</span> <span class="n">inputs</span><span class="p">[:,</span> <span class="n">Y_POS</span><span class="p">]}},</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100" href="#__codelineno-0-100"></a>        <span class="n">sumZ_obs</span><span class="p">,</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101" href="#__codelineno-0-101"></a>        <span class="n">DIFF_MODE</span><span class="p">,</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102" href="#__codelineno-0-102"></a>    <span class="p">)</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103" href="#__codelineno-0-103"></a>
+<a id="__codelineno-0-104" name="__codelineno-0-104" href="#__codelineno-0-104"></a>
+<a id="__codelineno-0-105" name="__codelineno-0-105" href="#__codelineno-0-105"></a><span class="n">single_domain_torch</span> <span class="o">=</span> <span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">)</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106" href="#__codelineno-0-106"></a><span class="n">domain_torch</span> <span class="o">=</span> <span class="n">tensor</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">product</span><span class="p">(</span><span class="n">single_domain_torch</span><span class="p">,</span> <span class="n">single_domain_torch</span><span class="p">)))</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107" href="#__codelineno-0-107"></a>
+<a id="__codelineno-0-108" name="__codelineno-0-108" href="#__codelineno-0-108"></a><span class="n">opt</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">LR</span><span class="p">)</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109" href="#__codelineno-0-109"></a><span class="n">sol</span> <span class="o">=</span> <span class="n">DomainSampling</span><span class="p">(</span><span class="n">exp_fn</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">VARIABLES</span><span class="p">),</span> <span class="n">BATCH_SIZE</span><span class="p">,</span> <span class="n">DEVICE</span><span class="p">,</span> <span class="n">REAL_DTYPE</span><span class="p">)</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110" href="#__codelineno-0-110"></a>
+<a id="__codelineno-0-111" name="__codelineno-0-111" href="#__codelineno-0-111"></a><span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N_EPOCHS</span><span class="p">):</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112" href="#__codelineno-0-112"></a>    <span class="n">opt</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113" href="#__codelineno-0-113"></a>    <span class="n">loss</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114" href="#__codelineno-0-114"></a>        <span class="n">sol</span><span class="o">.</span><span class="n">left_boundary</span><span class="p">()</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115" href="#__codelineno-0-115"></a>        <span class="o">+</span> <span class="n">sol</span><span class="o">.</span><span class="n">right_boundary</span><span class="p">()</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116" href="#__codelineno-0-116"></a>        <span class="o">+</span> <span class="n">sol</span><span class="o">.</span><span class="n">top_boundary</span><span class="p">()</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117" href="#__codelineno-0-117"></a>        <span class="o">+</span> <span class="n">sol</span><span class="o">.</span><span class="n">bottom_boundary</span><span class="p">()</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118" href="#__codelineno-0-118"></a>        <span class="o">+</span> <span class="n">sol</span><span class="o">.</span><span class="n">interior</span><span class="p">()</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119" href="#__codelineno-0-119"></a>    <span class="p">)</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120" href="#__codelineno-0-120"></a>    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121" href="#__codelineno-0-121"></a>    <span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122" href="#__codelineno-0-122"></a>
+<a id="__codelineno-0-123" name="__codelineno-0-123" href="#__codelineno-0-123"></a><span class="n">dqc_sol</span> <span class="o">=</span> <span class="n">exp_fn</span><span class="p">(</span><span class="n">domain_torch</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">DEVICE</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">BATCH_SIZE</span><span class="p">,</span> <span class="n">BATCH_SIZE</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124" href="#__codelineno-0-124"></a><span class="n">analytic_sol</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-125" name="__codelineno-0-125" href="#__codelineno-0-125"></a>    <span class="p">(</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">domain_torch</span><span class="p">[:,</span> <span class="n">X_POS</span><span class="p">])</span> <span class="o">*</span> <span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">domain_torch</span><span class="p">[:,</span> <span class="n">Y_POS</span><span class="p">]))</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126" href="#__codelineno-0-126"></a>    <span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">BATCH_SIZE</span><span class="p">,</span> <span class="n">BATCH_SIZE</span><span class="p">)</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127" href="#__codelineno-0-127"></a>    <span class="o">.</span><span class="n">T</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128" href="#__codelineno-0-128"></a><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<a id="__codelineno-0-129" name="__codelineno-0-129" href="#__codelineno-0-129"></a>
+<a id="__codelineno-0-130" name="__codelineno-0-130" href="#__codelineno-0-130"></a>
+<a id="__codelineno-0-131" name="__codelineno-0-131" href="#__codelineno-0-131"></a><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132" href="#__codelineno-0-132"></a><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">analytic_sol</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;turbo&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133" href="#__codelineno-0-133"></a><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-134" name="__codelineno-0-134" href="#__codelineno-0-134"></a><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135" href="#__codelineno-0-135"></a><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Analytical solution u(x,y)&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136" href="#__codelineno-0-136"></a><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">dqc_sol</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;turbo&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137" href="#__codelineno-0-137"></a><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138" href="#__codelineno-0-138"></a><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139" href="#__codelineno-0-139"></a><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;DQC solution&quot;</span><span class="p">)</span>
+</code></pre></div>
+<div class="result" markdown="1" >
+
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="504pt" height="504pt" viewBox="0 0 504 504" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2024-06-24T12:21:51.531907</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.9.0, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 504 
+L 504 504 
+L 504 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 63 343.292727 
+L 240.545455 343.292727 
+L 240.545455 165.747273 
+L 63 165.747273 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g clip-path="url(#pd7a946f022)">
+    <image xlink:href="data:image/png;base64,
+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" id="imagebfde6a026e" transform="scale(1 -1) translate(0 -177.84)" x="63" y="-165.452727" width="177.84" height="177.84"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <defs>
+       <path id="mbb8eda9316" d="M 0 0 
+L 0 3.5 
+" style="stroke: #000000; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#mbb8eda9316" x="63.355091" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <!-- 0 -->
+      <g transform="translate(60.173841 357.891165) scale(0.1 -0.1)">
+       <defs>
+        <path id="DejaVuSans-30" d="M 2034 4250 
+Q 1547 4250 1301 3770 
+Q 1056 3291 1056 2328 
+Q 1056 1369 1301 889 
+Q 1547 409 2034 409 
+Q 2525 409 2770 889 
+Q 3016 1369 3016 2328 
+Q 3016 3291 2770 3770 
+Q 2525 4250 2034 4250 
+z
+M 2034 4750 
+Q 2819 4750 3233 4129 
+Q 3647 3509 3647 2328 
+Q 3647 1150 3233 529 
+Q 2819 -91 2034 -91 
+Q 1250 -91 836 529 
+Q 422 1150 422 2328 
+Q 422 3509 836 4129 
+Q 1250 4750 2034 4750 
+z
+" transform="scale(0.015625)"/>
+       </defs>
+       <use xlink:href="#DejaVuSans-30"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <g>
+       <use xlink:href="#mbb8eda9316" x="98.864182" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <!-- 50 -->
+      <g transform="translate(92.501682 357.891165) scale(0.1 -0.1)">
+       <defs>
+        <path id="DejaVuSans-35" d="M 691 4666 
+L 3169 4666 
+L 3169 4134 
+L 1269 4134 
+L 1269 2991 
+Q 1406 3038 1543 3061 
+Q 1681 3084 1819 3084 
+Q 2600 3084 3056 2656 
+Q 3513 2228 3513 1497 
+Q 3513 744 3044 326 
+Q 2575 -91 1722 -91 
+Q 1428 -91 1123 -41 
+Q 819 9 494 109 
+L 494 744 
+Q 775 591 1075 516 
+Q 1375 441 1709 441 
+Q 2250 441 2565 725 
+Q 2881 1009 2881 1497 
+Q 2881 1984 2565 2268 
+Q 2250 2553 1709 2553 
+Q 1456 2553 1204 2497 
+Q 953 2441 691 2322 
+L 691 4666 
+z
+" transform="scale(0.015625)"/>
+       </defs>
+       <use xlink:href="#DejaVuSans-35"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3">
+      <g>
+       <use xlink:href="#mbb8eda9316" x="134.373273" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_3">
+      <!-- 100 -->
+      <g transform="translate(124.829523 357.891165) scale(0.1 -0.1)">
+       <defs>
+        <path id="DejaVuSans-31" d="M 794 531 
+L 1825 531 
+L 1825 4091 
+L 703 3866 
+L 703 4441 
+L 1819 4666 
+L 2450 4666 
+L 2450 531 
+L 3481 531 
+L 3481 0 
+L 794 0 
+L 794 531 
+z
+" transform="scale(0.015625)"/>
+       </defs>
+       <use xlink:href="#DejaVuSans-31"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4">
+      <g>
+       <use xlink:href="#mbb8eda9316" x="169.882364" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_4">
+      <!-- 150 -->
+      <g transform="translate(160.338614 357.891165) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-31"/>
+       <use xlink:href="#DejaVuSans-35" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5">
+      <g>
+       <use xlink:href="#mbb8eda9316" x="205.391455" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_5">
+      <!-- 200 -->
+      <g transform="translate(195.847705 357.891165) scale(0.1 -0.1)">
+       <defs>
+        <path id="DejaVuSans-32" d="M 1228 531 
+L 3431 531 
+L 3431 0 
+L 469 0 
+L 469 531 
+Q 828 903 1448 1529 
+Q 2069 2156 2228 2338 
+Q 2531 2678 2651 2914 
+Q 2772 3150 2772 3378 
+Q 2772 3750 2511 3984 
+Q 2250 4219 1831 4219 
+Q 1534 4219 1204 4116 
+Q 875 4013 500 3803 
+L 500 4441 
+Q 881 4594 1212 4672 
+Q 1544 4750 1819 4750 
+Q 2544 4750 2975 4387 
+Q 3406 4025 3406 3419 
+Q 3406 3131 3298 2873 
+Q 3191 2616 2906 2266 
+Q 2828 2175 2409 1742 
+Q 1991 1309 1228 531 
+z
+" transform="scale(0.015625)"/>
+       </defs>
+       <use xlink:href="#DejaVuSans-32"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="text_6">
+     <!-- x -->
+     <g transform="translate(148.813352 371.56929) scale(0.1 -0.1)">
+      <defs>
+       <path id="DejaVuSans-78" d="M 3513 3500 
+L 2247 1797 
+L 3578 0 
+L 2900 0 
+L 1881 1375 
+L 863 0 
+L 184 0 
+L 1544 1831 
+L 300 3500 
+L 978 3500 
+L 1906 2253 
+L 2834 3500 
+L 3513 3500 
+z
+" transform="scale(0.015625)"/>
+      </defs>
+      <use xlink:href="#DejaVuSans-78"/>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_6">
+      <defs>
+       <path id="m2114e1b371" d="M 0 0 
+L -3.5 0 
+" style="stroke: #000000; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#m2114e1b371" x="63" y="166.102364" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_7">
+      <!-- 0 -->
+      <g transform="translate(49.6375 169.901582) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-30"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_7">
+      <g>
+       <use xlink:href="#m2114e1b371" x="63" y="201.611455" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_8">
+      <!-- 50 -->
+      <g transform="translate(43.275 205.410673) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-35"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_8">
+      <g>
+       <use xlink:href="#m2114e1b371" x="63" y="237.120545" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_9">
+      <!-- 100 -->
+      <g transform="translate(36.9125 240.919764) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-31"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_9">
+      <g>
+       <use xlink:href="#m2114e1b371" x="63" y="272.629636" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_10">
+      <!-- 150 -->
+      <g transform="translate(36.9125 276.428855) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-31"/>
+       <use xlink:href="#DejaVuSans-35" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_10">
+      <g>
+       <use xlink:href="#m2114e1b371" x="63" y="308.138727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_11">
+      <!-- 200 -->
+      <g transform="translate(36.9125 311.937946) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-32"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="text_12">
+     <!-- y -->
+     <g transform="translate(30.832812 257.479375) rotate(-90) scale(0.1 -0.1)">
+      <defs>
+       <path id="DejaVuSans-79" d="M 2059 -325 
+Q 1816 -950 1584 -1140 
+Q 1353 -1331 966 -1331 
+L 506 -1331 
+L 506 -850 
+L 844 -850 
+Q 1081 -850 1212 -737 
+Q 1344 -625 1503 -206 
+L 1606 56 
+L 191 3500 
+L 800 3500 
+L 1894 763 
+L 2988 3500 
+L 3597 3500 
+L 2059 -325 
+z
+" transform="scale(0.015625)"/>
+      </defs>
+      <use xlink:href="#DejaVuSans-79"/>
+     </g>
+    </g>
+   </g>
+   <g id="patch_3">
+    <path d="M 63 343.292727 
+L 63 165.747273 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 240.545455 343.292727 
+L 240.545455 165.747273 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 63 343.292727 
+L 240.545455 343.292727 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 63 165.747273 
+L 240.545455 165.747273 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_13">
+    <!-- Analytical solution u(x,y) -->
+    <g transform="translate(77.242415 159.747273) scale(0.12 -0.12)">
+     <defs>
+      <path id="DejaVuSans-41" d="M 2188 4044 
+L 1331 1722 
+L 3047 1722 
+L 2188 4044 
+z
+M 1831 4666 
+L 2547 4666 
+L 4325 0 
+L 3669 0 
+L 3244 1197 
+L 1141 1197 
+L 716 0 
+L 50 0 
+L 1831 4666 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-6e" d="M 3513 2113 
+L 3513 0 
+L 2938 0 
+L 2938 2094 
+Q 2938 2591 2744 2837 
+Q 2550 3084 2163 3084 
+Q 1697 3084 1428 2787 
+Q 1159 2491 1159 1978 
+L 1159 0 
+L 581 0 
+L 581 3500 
+L 1159 3500 
+L 1159 2956 
+Q 1366 3272 1645 3428 
+Q 1925 3584 2291 3584 
+Q 2894 3584 3203 3211 
+Q 3513 2838 3513 2113 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-61" d="M 2194 1759 
+Q 1497 1759 1228 1600 
+Q 959 1441 959 1056 
+Q 959 750 1161 570 
+Q 1363 391 1709 391 
+Q 2188 391 2477 730 
+Q 2766 1069 2766 1631 
+L 2766 1759 
+L 2194 1759 
+z
+M 3341 1997 
+L 3341 0 
+L 2766 0 
+L 2766 531 
+Q 2569 213 2275 61 
+Q 1981 -91 1556 -91 
+Q 1019 -91 701 211 
+Q 384 513 384 1019 
+Q 384 1609 779 1909 
+Q 1175 2209 1959 2209 
+L 2766 2209 
+L 2766 2266 
+Q 2766 2663 2505 2880 
+Q 2244 3097 1772 3097 
+Q 1472 3097 1187 3025 
+Q 903 2953 641 2809 
+L 641 3341 
+Q 956 3463 1253 3523 
+Q 1550 3584 1831 3584 
+Q 2591 3584 2966 3190 
+Q 3341 2797 3341 1997 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-6c" d="M 603 4863 
+L 1178 4863 
+L 1178 0 
+L 603 0 
+L 603 4863 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-74" d="M 1172 4494 
+L 1172 3500 
+L 2356 3500 
+L 2356 3053 
+L 1172 3053 
+L 1172 1153 
+Q 1172 725 1289 603 
+Q 1406 481 1766 481 
+L 2356 481 
+L 2356 0 
+L 1766 0 
+Q 1100 0 847 248 
+Q 594 497 594 1153 
+L 594 3053 
+L 172 3053 
+L 172 3500 
+L 594 3500 
+L 594 4494 
+L 1172 4494 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-69" d="M 603 3500 
+L 1178 3500 
+L 1178 0 
+L 603 0 
+L 603 3500 
+z
+M 603 4863 
+L 1178 4863 
+L 1178 4134 
+L 603 4134 
+L 603 4863 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-63" d="M 3122 3366 
+L 3122 2828 
+Q 2878 2963 2633 3030 
+Q 2388 3097 2138 3097 
+Q 1578 3097 1268 2742 
+Q 959 2388 959 1747 
+Q 959 1106 1268 751 
+Q 1578 397 2138 397 
+Q 2388 397 2633 464 
+Q 2878 531 3122 666 
+L 3122 134 
+Q 2881 22 2623 -34 
+Q 2366 -91 2075 -91 
+Q 1284 -91 818 406 
+Q 353 903 353 1747 
+Q 353 2603 823 3093 
+Q 1294 3584 2113 3584 
+Q 2378 3584 2631 3529 
+Q 2884 3475 3122 3366 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-20" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-73" d="M 2834 3397 
+L 2834 2853 
+Q 2591 2978 2328 3040 
+Q 2066 3103 1784 3103 
+Q 1356 3103 1142 2972 
+Q 928 2841 928 2578 
+Q 928 2378 1081 2264 
+Q 1234 2150 1697 2047 
+L 1894 2003 
+Q 2506 1872 2764 1633 
+Q 3022 1394 3022 966 
+Q 3022 478 2636 193 
+Q 2250 -91 1575 -91 
+Q 1294 -91 989 -36 
+Q 684 19 347 128 
+L 347 722 
+Q 666 556 975 473 
+Q 1284 391 1588 391 
+Q 1994 391 2212 530 
+Q 2431 669 2431 922 
+Q 2431 1156 2273 1281 
+Q 2116 1406 1581 1522 
+L 1381 1569 
+Q 847 1681 609 1914 
+Q 372 2147 372 2553 
+Q 372 3047 722 3315 
+Q 1072 3584 1716 3584 
+Q 2034 3584 2315 3537 
+Q 2597 3491 2834 3397 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-6f" d="M 1959 3097 
+Q 1497 3097 1228 2736 
+Q 959 2375 959 1747 
+Q 959 1119 1226 758 
+Q 1494 397 1959 397 
+Q 2419 397 2687 759 
+Q 2956 1122 2956 1747 
+Q 2956 2369 2687 2733 
+Q 2419 3097 1959 3097 
+z
+M 1959 3584 
+Q 2709 3584 3137 3096 
+Q 3566 2609 3566 1747 
+Q 3566 888 3137 398 
+Q 2709 -91 1959 -91 
+Q 1206 -91 779 398 
+Q 353 888 353 1747 
+Q 353 2609 779 3096 
+Q 1206 3584 1959 3584 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-75" d="M 544 1381 
+L 544 3500 
+L 1119 3500 
+L 1119 1403 
+Q 1119 906 1312 657 
+Q 1506 409 1894 409 
+Q 2359 409 2629 706 
+Q 2900 1003 2900 1516 
+L 2900 3500 
+L 3475 3500 
+L 3475 0 
+L 2900 0 
+L 2900 538 
+Q 2691 219 2414 64 
+Q 2138 -91 1772 -91 
+Q 1169 -91 856 284 
+Q 544 659 544 1381 
+z
+M 1991 3584 
+L 1991 3584 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-28" d="M 1984 4856 
+Q 1566 4138 1362 3434 
+Q 1159 2731 1159 2009 
+Q 1159 1288 1364 580 
+Q 1569 -128 1984 -844 
+L 1484 -844 
+Q 1016 -109 783 600 
+Q 550 1309 550 2009 
+Q 550 2706 781 3412 
+Q 1013 4119 1484 4856 
+L 1984 4856 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-2c" d="M 750 794 
+L 1409 794 
+L 1409 256 
+L 897 -744 
+L 494 -744 
+L 750 256 
+L 750 794 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-29" d="M 513 4856 
+L 1013 4856 
+Q 1481 4119 1714 3412 
+Q 1947 2706 1947 2009 
+Q 1947 1309 1714 600 
+Q 1481 -109 1013 -844 
+L 513 -844 
+Q 928 -128 1133 580 
+Q 1338 1288 1338 2009 
+Q 1338 2731 1133 3434 
+Q 928 4138 513 4856 
+z
+" transform="scale(0.015625)"/>
+     </defs>
+     <use xlink:href="#DejaVuSans-41"/>
+     <use xlink:href="#DejaVuSans-6e" x="68.408203"/>
+     <use xlink:href="#DejaVuSans-61" x="131.787109"/>
+     <use xlink:href="#DejaVuSans-6c" x="193.066406"/>
+     <use xlink:href="#DejaVuSans-79" x="220.849609"/>
+     <use xlink:href="#DejaVuSans-74" x="280.029297"/>
+     <use xlink:href="#DejaVuSans-69" x="319.238281"/>
+     <use xlink:href="#DejaVuSans-63" x="347.021484"/>
+     <use xlink:href="#DejaVuSans-61" x="402.001953"/>
+     <use xlink:href="#DejaVuSans-6c" x="463.28125"/>
+     <use xlink:href="#DejaVuSans-20" x="491.064453"/>
+     <use xlink:href="#DejaVuSans-73" x="522.851562"/>
+     <use xlink:href="#DejaVuSans-6f" x="574.951172"/>
+     <use xlink:href="#DejaVuSans-6c" x="636.132812"/>
+     <use xlink:href="#DejaVuSans-75" x="663.916016"/>
+     <use xlink:href="#DejaVuSans-74" x="727.294922"/>
+     <use xlink:href="#DejaVuSans-69" x="766.503906"/>
+     <use xlink:href="#DejaVuSans-6f" x="794.287109"/>
+     <use xlink:href="#DejaVuSans-6e" x="855.46875"/>
+     <use xlink:href="#DejaVuSans-20" x="918.847656"/>
+     <use xlink:href="#DejaVuSans-75" x="950.634766"/>
+     <use xlink:href="#DejaVuSans-28" x="1014.013672"/>
+     <use xlink:href="#DejaVuSans-78" x="1053.027344"/>
+     <use xlink:href="#DejaVuSans-2c" x="1112.207031"/>
+     <use xlink:href="#DejaVuSans-79" x="1143.994141"/>
+     <use xlink:href="#DejaVuSans-29" x="1203.173828"/>
+    </g>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_7">
+    <path d="M 276.054545 343.292727 
+L 453.6 343.292727 
+L 453.6 165.747273 
+L 276.054545 165.747273 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g clip-path="url(#pe846fe55ec)">
+    <image xlink:href="data:image/png;base64,
+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" id="image8c466cd1c1" transform="scale(1 -1) translate(0 -177.84)" x="276.054545" y="-165.452727" width="177.84" height="177.84"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_6">
+     <g id="line2d_11">
+      <g>
+       <use xlink:href="#mbb8eda9316" x="276.409636" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_14">
+      <!-- 0 -->
+      <g transform="translate(273.228386 357.891165) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-30"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_12">
+      <g>
+       <use xlink:href="#mbb8eda9316" x="311.918727" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_15">
+      <!-- 50 -->
+      <g transform="translate(305.556227 357.891165) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-35"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_8">
+     <g id="line2d_13">
+      <g>
+       <use xlink:href="#mbb8eda9316" x="347.427818" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_16">
+      <!-- 100 -->
+      <g transform="translate(337.884068 357.891165) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-31"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_9">
+     <g id="line2d_14">
+      <g>
+       <use xlink:href="#mbb8eda9316" x="382.936909" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_17">
+      <!-- 150 -->
+      <g transform="translate(373.393159 357.891165) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-31"/>
+       <use xlink:href="#DejaVuSans-35" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_10">
+     <g id="line2d_15">
+      <g>
+       <use xlink:href="#mbb8eda9316" x="418.446" y="343.292727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_18">
+      <!-- 200 -->
+      <g transform="translate(408.90225 357.891165) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-32"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="text_19">
+     <!-- x -->
+     <g transform="translate(361.867898 371.56929) scale(0.1 -0.1)">
+      <use xlink:href="#DejaVuSans-78"/>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_6">
+     <g id="line2d_16">
+      <g>
+       <use xlink:href="#m2114e1b371" x="276.054545" y="166.102364" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_20">
+      <!-- 0 -->
+      <g transform="translate(262.692045 169.901582) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-30"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_17">
+      <g>
+       <use xlink:href="#m2114e1b371" x="276.054545" y="201.611455" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_21">
+      <!-- 50 -->
+      <g transform="translate(256.329545 205.410673) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-35"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_18">
+      <g>
+       <use xlink:href="#m2114e1b371" x="276.054545" y="237.120545" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_22">
+      <!-- 100 -->
+      <g transform="translate(249.967045 240.919764) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-31"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_9">
+     <g id="line2d_19">
+      <g>
+       <use xlink:href="#m2114e1b371" x="276.054545" y="272.629636" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_23">
+      <!-- 150 -->
+      <g transform="translate(249.967045 276.428855) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-31"/>
+       <use xlink:href="#DejaVuSans-35" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_10">
+     <g id="line2d_20">
+      <g>
+       <use xlink:href="#m2114e1b371" x="276.054545" y="308.138727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_24">
+      <!-- 200 -->
+      <g transform="translate(249.967045 311.937946) scale(0.1 -0.1)">
+       <use xlink:href="#DejaVuSans-32"/>
+       <use xlink:href="#DejaVuSans-30" x="63.623047"/>
+       <use xlink:href="#DejaVuSans-30" x="127.246094"/>
+      </g>
+     </g>
+    </g>
+    <g id="text_25">
+     <!-- y -->
+     <g transform="translate(243.887358 257.479375) rotate(-90) scale(0.1 -0.1)">
+      <use xlink:href="#DejaVuSans-79"/>
+     </g>
+    </g>
+   </g>
+   <g id="patch_8">
+    <path d="M 276.054545 343.292727 
+L 276.054545 165.747273 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 453.6 343.292727 
+L 453.6 165.747273 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 276.054545 343.292727 
+L 453.6 343.292727 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 276.054545 165.747273 
+L 453.6 165.747273 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_26">
+    <!-- DQC solution -->
+    <g transform="translate(325.628523 159.747273) scale(0.12 -0.12)">
+     <defs>
+      <path id="DejaVuSans-44" d="M 1259 4147 
+L 1259 519 
+L 2022 519 
+Q 2988 519 3436 956 
+Q 3884 1394 3884 2338 
+Q 3884 3275 3436 3711 
+Q 2988 4147 2022 4147 
+L 1259 4147 
+z
+M 628 4666 
+L 1925 4666 
+Q 3281 4666 3915 4102 
+Q 4550 3538 4550 2338 
+Q 4550 1131 3912 565 
+Q 3275 0 1925 0 
+L 628 0 
+L 628 4666 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-51" d="M 2522 4238 
+Q 1834 4238 1429 3725 
+Q 1025 3213 1025 2328 
+Q 1025 1447 1429 934 
+Q 1834 422 2522 422 
+Q 3209 422 3611 934 
+Q 4013 1447 4013 2328 
+Q 4013 3213 3611 3725 
+Q 3209 4238 2522 4238 
+z
+M 3406 84 
+L 4238 -825 
+L 3475 -825 
+L 2784 -78 
+Q 2681 -84 2626 -87 
+Q 2572 -91 2522 -91 
+Q 1538 -91 948 567 
+Q 359 1225 359 2328 
+Q 359 3434 948 4092 
+Q 1538 4750 2522 4750 
+Q 3503 4750 4090 4092 
+Q 4678 3434 4678 2328 
+Q 4678 1516 4351 937 
+Q 4025 359 3406 84 
+z
+" transform="scale(0.015625)"/>
+      <path id="DejaVuSans-43" d="M 4122 4306 
+L 4122 3641 
+Q 3803 3938 3442 4084 
+Q 3081 4231 2675 4231 
+Q 1875 4231 1450 3742 
+Q 1025 3253 1025 2328 
+Q 1025 1406 1450 917 
+Q 1875 428 2675 428 
+Q 3081 428 3442 575 
+Q 3803 722 4122 1019 
+L 4122 359 
+Q 3791 134 3420 21 
+Q 3050 -91 2638 -91 
+Q 1578 -91 968 557 
+Q 359 1206 359 2328 
+Q 359 3453 968 4101 
+Q 1578 4750 2638 4750 
+Q 3056 4750 3426 4639 
+Q 3797 4528 4122 4306 
+z
+" transform="scale(0.015625)"/>
+     </defs>
+     <use xlink:href="#DejaVuSans-44"/>
+     <use xlink:href="#DejaVuSans-51" x="77.001953"/>
+     <use xlink:href="#DejaVuSans-43" x="155.712891"/>
+     <use xlink:href="#DejaVuSans-20" x="225.537109"/>
+     <use xlink:href="#DejaVuSans-73" x="257.324219"/>
+     <use xlink:href="#DejaVuSans-6f" x="309.423828"/>
+     <use xlink:href="#DejaVuSans-6c" x="370.605469"/>
+     <use xlink:href="#DejaVuSans-75" x="398.388672"/>
+     <use xlink:href="#DejaVuSans-74" x="461.767578"/>
+     <use xlink:href="#DejaVuSans-69" x="500.976562"/>
+     <use xlink:href="#DejaVuSans-6f" x="528.759766"/>
+     <use xlink:href="#DejaVuSans-6e" x="589.941406"/>
+    </g>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pd7a946f022">
+   <rect x="63" y="165.747273" width="177.545455" height="177.545455"/>
+  </clipPath>
+  <clipPath id="pe846fe55ec">
+   <rect x="276.054545" y="165.747273" width="177.545455" height="177.545455"/>
+  </clipPath>
+ </defs>
+</svg>
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["content.code.annotate", "navigation.indexes", "navigation.sections"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../assets/_markdown_exec_pyodide.js"></script>
+      
+        <script src="../extras/javascripts/mathjax.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
