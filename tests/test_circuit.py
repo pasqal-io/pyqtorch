@@ -7,13 +7,13 @@ import torch
 from torch import Tensor
 
 import pyqtorch as pyq
-from pyqtorch import DiffMode, expectation
+from pyqtorch import DiffMode, expectation, run, sample
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.noise import Noise
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix
+from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix, product_state
 
 
 def test_adjoint_diff() -> None:
@@ -288,3 +288,13 @@ def test_noise_circ(
         diag_sums.append(torch.sum(diag_batch))
     diag_sum = torch.stack(diag_sums)
     assert torch.allclose(diag_sum, torch.ones((batch_size,), dtype=torch.cdouble))
+
+
+def test_sample_run() -> None:
+    ops = [pyq.X(0), pyq.X(1)]
+    circ = pyq.QuantumCircuit(4, ops)
+    wf = run(circ)
+    samples = sample(circ)
+    assert torch.allclose(wf, product_state("1100"))
+    assert torch.allclose(pyq.QuantumCircuit(4, [pyq.I(0)]).run("1100"), wf)
+    assert "1100" in samples[0]
