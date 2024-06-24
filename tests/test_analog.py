@@ -198,6 +198,11 @@ def test_hevo_constant_gen() -> None:
             torch.tensor([torch.pi / 4, torch.pi]),
             torch.tensor([0.5, 1.0], dtype=torch.float64),
         ),
+        (
+            Hamiltonian(2),
+            torch.tensor([torch.pi / 4], dtype=DEFAULT_MATRIX_DTYPE),
+            torch.tensor([0.5, 0.5], dtype=torch.float64),
+        ),
     ],
 )
 def test_symbol_hamevo(

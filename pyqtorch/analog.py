@@ -549,7 +549,15 @@ class HamiltonianEvolution(Sequence):
             The generator as a tensor.
         """
         hamiltonian = values[self.generator_symbol]
-        return hamiltonian.unsqueeze(2) if len(hamiltonian.shape) == 2 else hamiltonian
+        # add batch dim
+        if len(hamiltonian.shape) == 2:
+            return hamiltonian.unsqueeze(2)
+        # case when the batchdim is at index 0 instead of 2
+        if len(hamiltonian.shape) == 3 and (
+            hamiltonian.shape[0] != hamiltonian.shape[1]
+        ):
+            return torch.transpose(hamiltonian, 0, 2)
+        return hamiltonian
 
     def _tensor_generator(self, values: dict = {}) -> Operator:
         """Returns the generator for the TENSOR and OPERATION cases.
