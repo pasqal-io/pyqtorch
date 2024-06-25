@@ -198,8 +198,15 @@ def test_hevo_constant_gen() -> None:
             torch.tensor([torch.pi / 4, torch.pi]),
             torch.tensor([0.5, 1.0], dtype=torch.float64),
         ),
+        # with batchdim
         (
             Hamiltonian(2),
+            torch.tensor([torch.pi / 4], dtype=DEFAULT_MATRIX_DTYPE),
+            torch.tensor([0.5, 0.5], dtype=torch.float64),
+        ),
+        # with batchdim in position 0
+        (
+            Hamiltonian(2).transpose(0, 2),
             torch.tensor([torch.pi / 4], dtype=DEFAULT_MATRIX_DTYPE),
             torch.tensor([0.5, 0.5], dtype=torch.float64),
         ),
@@ -272,6 +279,42 @@ def test_hamevo_tensor_from_circuit(
         [
             pyq.Add([op(q) for op, q in zip(ops, qubit_targets)]),
             *[op(q) for op, q in zip(ops, qubit_targets)],
+        ],
+    )
+    generator = generator.tensor(n_qubits=n_qubits)
+    generator = generator + torch.conj(torch.transpose(generator, 0, 1))
+    hamevo = pyq.HamiltonianEvolution(
+        generator, vparam, tuple(range(n_qubits)), parametric
+    )
+    assert hamevo.generator_type == GeneratorType.TENSOR
+    vals = {vparam: torch.tensor([0.5])}
+    psi = random_state(n_qubits)
+    psi_star = hamevo(psi, vals)
+    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("n_qubits", [2, 4, 6])
+@pytest.mark.parametrize("dim", [1, 2, 3, 4, 5, 6])
+def test_hamevo_tensor_from_paramcircuit(n_qubits: int, dim: int) -> None:
+    dim = min(n_qubits, dim)
+    vparam = "theta"
+    parametric = True
+    ops = [pyq.RX, pyq.RY] * 2
+    qubit_targets = np.random.choice(dim, len(ops), replace=True)
+    generator = pyq.QuantumCircuit(
+        n_qubits,
+        [
+            pyq.Add(
+                [
+                    op(q, "rtheta", torch.tensor([0.5]))
+                    for op, q in zip(ops, qubit_targets)
+                ]
+            ),
+            *[
+                op(q, "rtheta", torch.tensor([0.5]))
+                for op, q in zip(ops, qubit_targets)
+            ],
         ],
     )
     generator = generator.tensor(n_qubits=n_qubits)

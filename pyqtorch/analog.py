@@ -552,11 +552,15 @@ class HamiltonianEvolution(Sequence):
         # add batch dim
         if len(hamiltonian.shape) == 2:
             return hamiltonian.unsqueeze(2)
-        # case when the batchdim is at index 0 instead of 2
+        # cases when the batchdim is at index 0 instead of 2
         if len(hamiltonian.shape) == 3 and (
             hamiltonian.shape[0] != hamiltonian.shape[1]
         ):
             return torch.transpose(hamiltonian, 0, 2)
+        if len(hamiltonian.shape) == 4 and (
+            hamiltonian.shape[0] != hamiltonian.shape[1]
+        ):
+            return torch.permute(hamiltonian.squeeze(3), (1, 2, 0))
         return hamiltonian
 
     def _tensor_generator(self, values: dict = {}) -> Operator:
