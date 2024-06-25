@@ -22,7 +22,6 @@ class Parametric(Primitive):
 
     Attributes:
         param_name: Name of parameters.
-        param_values: Values of parameters provided at initialization.
         parse_values: Method defining how to handle the values dictionary input.
     """
 
@@ -33,7 +32,6 @@ class Parametric(Primitive):
         generator_name: str,
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes Parametric.
 
@@ -41,12 +39,10 @@ class Parametric(Primitive):
             generator_name: Name of the operation.
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
         super().__init__(OPERATIONS_DICT[generator_name], target)
         self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
-        self.param_value = param_values
 
         def parse_values(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
             """Get from values input dictionary the values for param_name.
@@ -68,20 +64,7 @@ class Parametric(Primitive):
             """
             return Parametric._expand_values(values)
 
-        def parse_default_values(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-            """Return default parameter values.
-
-            Arguments:
-                values: Values of parameters
-            Returns:
-                Values of parameters.
-            """
-            return Parametric._expand_values(self.param_value)
-
-        if param_values is not None:
-            self.parse_values = parse_default_values
-        else:
-            self.parse_values = parse_tensor if param_name == "" else parse_values
+        self.parse_values = parse_tensor if param_name == "" else parse_values
 
     def extra_repr(self) -> str:
         """String representation of the operation.
@@ -150,7 +133,6 @@ class RX(Parametric):
 
     Attributes:
         param_name: Name of parameters.
-        param_values: Values of parameters provided at initialization.
         parse_values: Method defining how to handle the values dictionary input.
     """
 
@@ -158,16 +140,14 @@ class RX(Parametric):
         self,
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes RX.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
-        super().__init__("X", target, param_name, param_values)
+        super().__init__("X", target, param_name)
 
 
 class RY(Parametric):
@@ -180,7 +160,6 @@ class RY(Parametric):
 
     Attributes:
         param_name: Name of parameters.
-        param_values: Values of parameters provided at initialization.
         parse_values: Method defining how to handle the values dictionary input.
     """
 
@@ -188,16 +167,14 @@ class RY(Parametric):
         self,
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes RY.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
-        super().__init__("Y", target, param_name, param_values)
+        super().__init__("Y", target, param_name)
 
 
 class RZ(Parametric):
@@ -210,7 +187,6 @@ class RZ(Parametric):
 
     Attributes:
         param_name: Name of parameters.
-        param_values: Values of parameters provided at initialization.
         parse_values: Method defining how to handle the values dictionary input.
     """
 
@@ -218,16 +194,14 @@ class RZ(Parametric):
         self,
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes RZ.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
-        super().__init__("Z", target, param_name, param_values)
+        super().__init__("Z", target, param_name)
 
 
 class PHASE(Parametric):
@@ -240,7 +214,6 @@ class PHASE(Parametric):
 
     Attributes:
         param_name: Name of parameters.
-        param_values: Values of parameters provided at initialization.
         parse_values: Method defining how to handle the values dictionary input.
     """
 
@@ -248,16 +221,14 @@ class PHASE(Parametric):
         self,
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes PHASE.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
-        super().__init__("I", target, param_name, param_values)
+        super().__init__("I", target, param_name)
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
@@ -312,7 +283,6 @@ class ControlledRotationGate(Parametric):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes a ControlledRotationGate.
 
@@ -321,10 +291,9 @@ class ControlledRotationGate(Parametric):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
         self.control = control if isinstance(control, tuple) else (control,)
-        super().__init__(gate, target, param_name, param_values)
+        super().__init__(gate, target, param_name)
         self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
         # In this class, target is always an int but herit from Parametric and Primitive that:
         # target : int | tuple[int,...]
@@ -389,7 +358,6 @@ class CRX(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes controlled RX.
 
@@ -397,9 +365,8 @@ class CRX(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
-        super().__init__("X", control, target, param_name, param_values)
+        super().__init__("X", control, target, param_name)
 
 
 class CRY(ControlledRotationGate):
@@ -412,7 +379,6 @@ class CRY(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes controlled RY.
 
@@ -420,9 +386,8 @@ class CRY(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
-        super().__init__("Y", control, target, param_name, param_values)
+        super().__init__("Y", control, target, param_name)
 
 
 class CRZ(ControlledRotationGate):
@@ -435,7 +400,6 @@ class CRZ(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes controlled RZ.
 
@@ -443,9 +407,8 @@ class CRZ(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
-        super().__init__("Z", control, target, param_name, param_values)
+        super().__init__("Z", control, target, param_name)
 
 
 class CPHASE(ControlledRotationGate):
@@ -460,7 +423,6 @@ class CPHASE(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
-        param_values: Tensor = None,
     ):
         """Initializes controlled PHASE.
 
@@ -468,9 +430,8 @@ class CPHASE(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
-            param_values: Values of parameters provided at initialization.
         """
-        super().__init__("I", control, target, param_name, param_values)
+        super().__init__("I", control, target, param_name)
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """

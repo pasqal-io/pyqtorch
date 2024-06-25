@@ -296,34 +296,35 @@ def test_hamevo_tensor_from_circuit(
 
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
 @pytest.mark.parametrize("dim", [1, 2, 3, 4, 5, 6])
-def test_hamevo_tensor_from_paramcircuit(n_qubits: int, dim: int) -> None:
+@pytest.mark.parametrize("same_qubit_case", [True, False])
+def test_hamevo_tensor_from_paramcircuit(
+    n_qubits: int, dim: int, same_qubit_case: bool
+) -> None:
     dim = min(n_qubits, dim)
-    vparam = "theta"
+    tparam = "theta"
+    vparam = "rtheta"
     parametric = True
     ops = [pyq.RX, pyq.RY] * 2
-    qubit_targets = np.random.choice(dim, len(ops), replace=True)
+    if same_qubit_case:
+        qubit_targets = [dim] * len(ops)
+    else:
+        qubit_targets = np.random.choice(dim, len(ops), replace=True)
     generator = pyq.QuantumCircuit(
         n_qubits,
         [
-            pyq.Add(
-                [
-                    op(q, "rtheta", torch.tensor([0.5]))
-                    for op, q in zip(ops, qubit_targets)
-                ]
-            ),
-            *[
-                op(q, "rtheta", torch.tensor([0.5]))
-                for op, q in zip(ops, qubit_targets)
-            ],
+            pyq.Add([op(q, vparam) for op, q in zip(ops, qubit_targets)]),
+            *[op(q, vparam) for op, q in zip(ops, qubit_targets)],
         ],
     )
-    generator = generator.tensor(n_qubits=n_qubits)
+    generator = generator.tensor(
+        n_qubits=n_qubits, values={vparam: torch.tensor([0.5])}
+    )
     generator = generator + torch.conj(torch.transpose(generator, 0, 1))
     hamevo = pyq.HamiltonianEvolution(
-        generator, vparam, tuple(range(n_qubits)), parametric
+        generator, tparam, tuple(range(n_qubits)), parametric
     )
     assert hamevo.generator_type == GeneratorType.TENSOR
-    vals = {vparam: torch.tensor([0.5])}
+    vals = {tparam: torch.tensor([0.5])}
     psi = random_state(n_qubits)
     psi_star = hamevo(psi, vals)
     psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
