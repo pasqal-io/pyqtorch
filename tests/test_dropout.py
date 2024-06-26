@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import torch
+
 import pyqtorch as pyq
-import pytest
 
 
 def test_rotational_dropout() -> None:
@@ -30,7 +31,7 @@ def test_rotational_dropout() -> None:
     dropout_circ = pyq.DropoutQuantumCircuit(
         n_qubits=n_qubits,
         operations=drop_circ_ops,
-        dropout_mode="rotational_dropout",
+        dropout_mode="rotational_dropout",  # type: ignore
         dropout_prob=1.0,
     )
     obs = pyq.QuantumCircuit(n_qubits=n_qubits, operations=[pyq.Z(1)])
@@ -74,7 +75,7 @@ def test_entangling_dropout() -> None:
     dropout_circ = pyq.DropoutQuantumCircuit(
         n_qubits=n_qubits,
         operations=drop_circ_ops,
-        dropout_mode="entangling_dropout",
+        dropout_mode="entangling_dropout",  # type: ignore
         dropout_prob=1.0,
     )
     obs = pyq.QuantumCircuit(n_qubits=n_qubits, operations=[pyq.Z(1)])
@@ -89,7 +90,7 @@ def test_entangling_dropout() -> None:
 
 def test_canonical_fwd_dropout() -> None:
     n_qubits = 4
-    circ_ops = []
+    circ_ops = []  # type: ignore
     drop_circ_ops = [
         pyq.RY(0, "theta_0"),
         pyq.RY(1, "theta_1"),
@@ -113,7 +114,7 @@ def test_canonical_fwd_dropout() -> None:
     dropout_circ = pyq.DropoutQuantumCircuit(
         n_qubits=n_qubits,
         operations=drop_circ_ops,
-        dropout_mode="canonical_fwd_dropout",
+        dropout_mode="canonical_fwd_dropout",  # type: ignore
         dropout_prob=1.0,
     )
     obs = pyq.QuantumCircuit(n_qubits=n_qubits, operations=[pyq.Z(1)])

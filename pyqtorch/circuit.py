@@ -220,7 +220,7 @@ class DropoutQuantumCircuit(QuantumCircuit):
         self,
         n_qubits: int,
         operations: list[Module],
-        dropout_mode: DropoutMode = DropoutMode.ROTATIONAL,
+        dropout_mode: DropoutMode = DropoutMode.ROTATIONAL,  # type: ignore
         dropout_prob: float = 1.0,
     ):
         super().__init__(n_qubits, operations)
