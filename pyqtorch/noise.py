@@ -31,7 +31,7 @@ class Noise(torch.nn.Module):
         return False
 
     def extra_repr(self) -> str:
-        return f"'qubit_support'={self.qubit_support}, 'probabilities'={self.probabilities}"
+        return f"'qubit_support'= {self.qubit_support}, 'probabilities'= {self.probabilities}"
 
     @property
     def kraus_operators(self) -> list[Tensor]:

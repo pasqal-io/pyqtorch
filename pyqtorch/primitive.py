@@ -15,6 +15,7 @@ from pyqtorch.matrices import (
     _controlled,
     _dagger,
 )
+from pyqtorch.noise import Noise
 from pyqtorch.utils import DensityMatrix, product_state
 
 logger = getLogger(__name__)
@@ -37,10 +38,15 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 
 
 class Primitive(torch.nn.Module):
-    def __init__(self, pauli: Tensor, target: int | tuple[int, ...]) -> None:
+    def __init__(
+        self,
+        pauli: Tensor,
+        target: int | tuple[int, ...],
+        noise: Noise | dict[str, Noise] | None = None,
+    ) -> None:
         super().__init__()
         self.target: int | tuple[int, ...] = target
-
+        self.noise: Noise | dict[str, Noise] | None = noise
         self.qubit_support: tuple[int, ...] = (
             (target,) if isinstance(target, int) else target
         )
@@ -71,16 +77,21 @@ class Primitive(torch.nn.Module):
         self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
     ) -> Tensor:
         if isinstance(state, DensityMatrix):
-            # TODO: fix error type int | tuple[int, ...] expected "int"
-            # Only supports single-qubit gates
-            return DensityMatrix(
-                operator_product(
-                    self.unitary(values),
-                    operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
-                    self.target,  # type: ignore [arg-type]
+            if self.noise:
+                # TODO: Use the fwd of noise to modify the primitive tensor
+                pass
+            else:
+                # FIXME: fix error type int | tuple[int, ...] expected "int"
+                # Only supports single-qubit gates
+                return DensityMatrix(
+                    operator_product(
+                        self.unitary(values),
+                        operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
+                        self.target,  # type: ignore [arg-type]
+                    )
                 )
-            )
         else:
+            # TODO: Add a condition on self.noise
             return apply_operator(
                 state, self.unitary(values), self.qubit_support, len(state.size()) - 1
             )
@@ -128,8 +139,8 @@ class Primitive(torch.nn.Module):
 
 
 class X(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["X"], target)
+    def __init__(self, target: int, noise: Noise | dict[str, Noise] | None = None):
+        super().__init__(OPERATIONS_DICT["X"], target, noise)
 
 
 class Y(Primitive):
