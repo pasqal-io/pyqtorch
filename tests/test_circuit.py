@@ -24,7 +24,7 @@ def test_adjoint_diff() -> None:
     ops = [rx, cry, rz, cnot]
     n_qubits = 3
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)])
 
     theta_0_value = torch.pi / 2
     theta_1_value = torch.pi
@@ -115,7 +115,7 @@ def test_differentiate_circuit(
         }
     ).to(COMPLEX_TO_REAL_DTYPES[dtype])
 
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)]).to(dtype)
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)]).to(dtype)
     exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 
@@ -144,7 +144,7 @@ def test_adjoint_duplicate_params() -> None:
     ops = [pyq.RX(0, param_name="theta_0"), pyq.RX(0, param_name="theta_0")]
     theta_vals = torch.arange(0, torch.pi, 0.05, requires_grad=True)
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)])
     init_state = pyq.zero_state(n_qubits)
     values = {"theta_0": theta_vals}
     exp_ad = expectation(circ, init_state, values, obs, DiffMode.AD)
@@ -246,7 +246,7 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
         }
     ).to(COMPLEX_TO_REAL_DTYPES[dtype])
 
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)]).to(dtype)
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)]).to(dtype)
     exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 

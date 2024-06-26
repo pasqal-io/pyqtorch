@@ -269,7 +269,7 @@ class Add(Sequence):
         )
 
 
-class Observable(Sequence):
+class Observable(Add):
     """
     The Observable :math:`O` represents an operator from which
     we can extract expectation values from quantum states.
@@ -292,7 +292,9 @@ class Observable(Sequence):
             n_qubits = max(self.qubit_support) + 1
         self.n_qubits = n_qubits
 
-    def run(self, state: Tensor, values: dict[str, Tensor]) -> State:
+    def forward(
+        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+    ) -> State:
         """
         Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
 
@@ -307,7 +309,7 @@ class Observable(Sequence):
             state = op(state, values)
         return state
 
-    def forward(
+    def expectation(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> Tensor:
         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
@@ -359,7 +361,9 @@ class DiagonalObservable(Primitive):
         self.qubit_support = operations.qubit_support
         self.n_qubits = n_qubits
 
-    def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+    def forward(
+        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+    ) -> Tensor:
         """
         Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
 
@@ -378,7 +382,7 @@ class DiagonalObservable(Primitive):
             "ij,ib->ib", self.pauli, state.flatten(start_dim=0, end_dim=-2)
         ).reshape([2] * self.n_qubits + [state.shape[-1]])
 
-    def forward(
+    def expectation(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> Tensor:
         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
