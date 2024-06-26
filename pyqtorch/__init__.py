@@ -55,7 +55,16 @@ from .analog import (
     Scale,
 )
 from .apply import apply_operator
-from .circuit import Merge, QuantumCircuit, Sequence, DropoutQuantumCircuit
+from .circuit import DropoutQuantumCircuit, Merge, QuantumCircuit, Sequence, run, sample
+from .noise import (
+    AmplitudeDamping,
+    BitFlip,
+    Depolarizing,
+    GeneralizedAmplitudeDamping,
+    PauliChannel,
+    PhaseDamping,
+    PhaseFlip,
+)
 from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
 from .primitive import (
     CNOT,
