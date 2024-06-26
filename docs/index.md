@@ -63,7 +63,9 @@ new_state = rx(state, torch.rand(1))
 
 ## Analog Operations
 
-`pyqtorch` also contains a `analog` module which allows for global state evolution through the `HamiltonianEvolution` class. Note that it only accepts a `torch.Tensor` as a generator which is expected to be an Hermitian matrix. To build arbitrary Pauli hamiltonians, we recommend using [Qadence](https://pasqal-io.github.io/qadence/v1.0.3/tutorials/hamiltonians/).
+An analog operation is one whose unitary is best described by the evolution of some hermitian generator, or Hamiltonian, acting on an arbitrary number of qubits. For a time-independent generator $\mathcal{H}$ and some time variable $t$, the evolution operator is $\exp(-i\mathcal{H}t)$.
+
+`pyqtorch` also contains a `analog` module which allows for global state evolution through the `HamiltonianEvolution` class. There exists several ways to pass a generator, and we present them in [Analog Operations](./analog.md). Below, we show an example where the generator $\mathcal{H}$ is an arbitrary tensor. To build arbitrary Pauli hamiltonians, we recommend using [Qadence](https://pasqal-io.github.io/qadence/v1.0.3/tutorials/hamiltonians/).
 
 ```python exec="on" source="material-block" html="1"
 import torch
