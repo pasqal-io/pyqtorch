@@ -147,6 +147,15 @@ class DropoutQuantumCircuit(QuantumCircuit):
     def rotational_dropout(
         self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
     ) -> State:
+        """Randomly drops entangling rotational gates.
+
+        Args:
+            state (State, optional): pure state vector . Defaults to None.
+            values (dict[str, Tensor] | ParameterDict, optional): gate parameters. Defaults to {}.
+
+        Returns:
+            State: pure state vector
+        """
         for op in self.operations:
             if hasattr(op, "param_name"):
                 if values[op.param_name].requires_grad:
@@ -164,14 +173,21 @@ class DropoutQuantumCircuit(QuantumCircuit):
     def entangling_dropout(
         self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
     ) -> State:
+        """Randomly drops entangling gates.
+
+        Args:
+            state (State, optional): pure state vector. Defaults to None.
+            values (dict[str, Tensor] | ParameterDict, optional): gate parameters. Defaults to {}.
+
+        Returns:
+            State: pure state vector
+        """
         for op in self.operations:
             if not (hasattr(op, "param_name")):
                 keep = bool(1 - bernoulli(tensor(self.dropout_prob)))  # type: ignore
                 if keep:
                     state = op(state, values)
 
-                else:
-                    state = op(state, values)
             else:
                 state = op(state, values)
 
@@ -180,6 +196,16 @@ class DropoutQuantumCircuit(QuantumCircuit):
     def canonical_fwd_dropout(
         self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
     ) -> State:
+        """Randomly drops rotational gates and next immediate entangling
+        gates whose target bit is located on dropped rotational gates.
+
+        Args:
+            state (State, optional): pure state vector. Defaults to None.
+            values (dict[str, Tensor] | ParameterDict, optional): gate parameters. Defaults to {}.
+
+        Returns:
+            State: pure state vector
+        """
         entanglers_to_drop = dict.fromkeys(range(state.ndim - 1), 0)  # type: ignore
         for op in self.operations:
             if hasattr(op, "param_name"):

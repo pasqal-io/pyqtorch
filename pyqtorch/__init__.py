@@ -49,7 +49,7 @@ logger.info(f"PyQTorch logger successfully setup with log level {LOG_LEVEL}")
 from .adjoint import expectation
 from .analog import Add, Hamiltonian, HamiltonianEvolution, Scale
 from .apply import apply_operator
-from .circuit import Merge, QuantumCircuit, Sequence
+from .circuit import DropoutQuantumCircuit, Merge, QuantumCircuit, Sequence
 from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
 from .primitive import (
     CNOT,

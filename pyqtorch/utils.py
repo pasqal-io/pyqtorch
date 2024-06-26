@@ -68,8 +68,7 @@ class DropoutMode(StrEnum):
     """
     Which Dropout mode to use.
 
-    Options: none          - No dropout is used.
-             rotational    - Randomly drops entangling rotational gates.
+    Options: rotational    - Randomly drops entangling rotational gates.
              entangling    - Randomly drops entangling gates.
              canonical_fwd - Randomly drops rotational gates and next immediate entangling
                             gates whose target bit is located on dropped rotational gates.
