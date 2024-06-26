@@ -35,7 +35,7 @@ print(psi_end)
 
 ### Symbol generator
 
-We can also have a symbol generator to be replaced later by any hermitian matrix. and in this case we use a string symbol to instantiate `HamiltonianEvolution`.  
+We can also have a symbol generator to be replaced later by any hermitian matrix. and in this case we use a string symbol to instantiate `HamiltonianEvolution`.
 
 ```python exec="on" source="material-block" html="1"
 import torch
@@ -101,7 +101,7 @@ print(psi_end)
 
 ### Batched execution
 
-We also allow for different ways to run analog operations on batched inputs. We can have batched evolution times, or batched generators. 
+We also allow for different ways to run analog operations on batched inputs. We can have batched evolution times, or batched generators.
 Below we show a few examples.
 
 #### Batched evolution times
@@ -163,4 +163,3 @@ psi_end = hamiltonian_evolution(state = psi_start, values={time_symbol: time})
 
 print(psi_end.size())
 ```
-
