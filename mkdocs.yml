@@ -8,6 +8,7 @@ nav:
   - How to Contribute: CONTRIBUTING.md
   - Code of Conduct: CODE_OF_CONDUCT.md
   - Advanced Features:
+    - Analog Operations: analog.md
     - Adjoint Differentiation: adjoint.md
     - Digital noisy simulation: noise.md
     - Quantum Dropout: dropout.md
