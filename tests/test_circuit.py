@@ -223,7 +223,11 @@ def test_merge_different_batchsize(batch_size: int) -> None:
 def test_merge_nested_dict() -> None:
     ops = [pyq.X(0), pyq.RX(0, "theta_0")]
     mergecirc = pyq.Merge(ops)
-    vals = {"theta_0": torch.rand(2), "theta_2": torch.rand(2)}
+    vals = {
+        "theta_0": torch.rand(1),
+        "theta_2": torch.rand(2),
+        "theta_3": torch.rand(2),
+    }
     vals["nested"] = vals
     mergecirc(pyq.random_state(2), vals)
 
