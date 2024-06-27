@@ -152,6 +152,8 @@ def test_hamiltonianevolution_with_types(
     assert len(hamevo._cache_hamiltonian_evo) == 1
     psi_star = hamevo(psi)
     assert len(hamevo._cache_hamiltonian_evo) == 1
+    # check value has not changed
+    assert torch.allclose(result, target, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
@@ -175,12 +177,20 @@ def test_hamevo_parametric_gen(n_qubits: int) -> None:
     assert len(hamevo._cache_hamiltonian_evo) == 1
     psi_star = hamevo(psi, vals)
     assert len(hamevo._cache_hamiltonian_evo) == 1
+    # check for same result
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
     vals[vparam] += 0.1
     psi_star = hamevo(psi, vals)
+    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
     assert len(hamevo._cache_hamiltonian_evo) == 2
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
     psi = random_state(n_qubits)
     psi_star = hamevo(psi, vals)
+    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
     assert len(hamevo._cache_hamiltonian_evo) == 2
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 def test_hevo_constant_gen() -> None:

@@ -536,7 +536,7 @@ class HamiltonianEvolution(Sequence):
         }
 
         # to avoid recomputing hamiltonians and evolution
-        self._cache_hamiltonian_evo: dict[str, Tensor] = {}
+        self._cache_hamiltonian_evo: dict[str, Tensor] = dict()
 
     @property
     def generator(self) -> ModuleList:
