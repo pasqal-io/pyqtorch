@@ -630,6 +630,8 @@ class HamiltonianEvolution(Sequence):
     ) -> Operator:
         """Get the corresponding unitary over n_qubits.
 
+        To avoid computing the evolution operator, we store it in cache wrt values.
+
         Arguments:
             values: Parameter value.
             n_qubits: The number of qubits the unitary is represented over.
