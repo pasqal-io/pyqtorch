@@ -178,6 +178,9 @@ def test_hamevo_parametric_gen(n_qubits: int) -> None:
     vals[vparam] += 0.1
     psi_star = hamevo(psi, vals)
     assert len(hamevo._cache_hamiltonian_evo) == 2
+    psi = random_state(n_qubits)
+    psi_star = hamevo(psi, vals)
+    assert len(hamevo._cache_hamiltonian_evo) == 2
 
 
 def test_hevo_constant_gen() -> None:
