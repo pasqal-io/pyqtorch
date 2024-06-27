@@ -292,23 +292,6 @@ class Observable(Add):
             n_qubits = max(self.qubit_support) + 1
         self.n_qubits = n_qubits
 
-    def forward(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
-    ) -> State:
-        """
-        Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
-
-        Arguments:
-            state: Input state.
-            values: Values of parameters.
-
-        Returns:
-            The transformed state.
-        """
-        for op in self.operations:
-            state = op(state, values)
-        return state
-
     def expectation(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> Tensor:
@@ -321,7 +304,7 @@ class Observable(Add):
         Returns:
             The expectation value.
         """
-        return inner_prod(state, self.run(state, values)).real
+        return inner_prod(state, self.forward(state, values)).real
 
 
 class DiagonalObservable(Primitive):
