@@ -223,7 +223,6 @@ class Add(Sequence):
     """
 
     def __init__(self, operations: list[Module]):
-
         super().__init__(operations=operations)
 
     def forward(
@@ -287,7 +286,7 @@ class Observable(Add):
         n_qubits: int | None,
         operations: list[Module] | Primitive | Sequence,
     ):
-        super().__init__(operations)
+        super().__init__(operations if isinstance(operations, list) else [operations])
         if n_qubits is None:
             n_qubits = max(self.qubit_support) + 1
         self.n_qubits = n_qubits
@@ -307,15 +306,10 @@ class Observable(Add):
         return inner_prod(state, self.forward(state, values)).real
 
 
-class DiagonalObservable(Primitive):
+class DiagonalObservable(Observable):
     """
     Special case of diagonal observables where computation is simpler.
     We simply do a element-wise vector-product instead of a tensordot.
-
-    Attributes:
-        pauli: The tensor representation from Primitive.
-        qubit_support: Qubits the operator acts on.
-        n_qubits: Number of qubits the operator is defined on.
     """
 
     def __init__(
@@ -331,6 +325,7 @@ class DiagonalObservable(Primitive):
             operations: Operations defining the observable.
             to_sparse: Whether to convert the operator to its sparse representation or not.
         """
+
         if isinstance(operations, list):
             operations = Sequence(operations)
         if n_qubits is None:
@@ -340,9 +335,13 @@ class DiagonalObservable(Primitive):
             operator = operator_to_sparse_diagonal(hamiltonian)
         else:
             operator = torch.diag(hamiltonian).reshape(-1, 1)
-        super().__init__(operator, operations.qubit_support[0])
-        self.qubit_support = operations.qubit_support
-        self.n_qubits = n_qubits
+
+        # to make an observable with only one operation
+        # we represent this by a single Primitive
+        # with operator as the input tensor
+        # to be accessed later via self.operations[0].pauli
+        # and this is compatible with the to method for conversions
+        super().__init__(n_qubits, Primitive(operator, operations.qubit_support))
 
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
@@ -362,22 +361,10 @@ class DiagonalObservable(Primitive):
             The transformed state.
         """
         return torch.einsum(
-            "ij,ib->ib", self.pauli, state.flatten(start_dim=0, end_dim=-2)
+            "ij,ib->ib",
+            self.operations[0].pauli,
+            state.flatten(start_dim=0, end_dim=-2),
         ).reshape([2] * self.n_qubits + [state.shape[-1]])
-
-    def expectation(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
-    ) -> Tensor:
-        """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
-
-        Arguments:
-            state: Input state.
-            values: Values of parameters.
-
-        Returns:
-            The expectation value.
-        """
-        return inner_prod(state, self.run(state, values)).real
 
 
 def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:
