@@ -220,6 +220,14 @@ def test_merge_different_batchsize(batch_size: int) -> None:
         mergecirc(pyq.random_state(2, batch_size), {"theta_0": torch.rand(bs)})
 
 
+def test_merge_nested_dict() -> None:
+    ops = [pyq.X(0), pyq.RX(0, "theta_0")]
+    mergecirc = pyq.Merge(ops)
+    vals = {"theta_0": torch.rand(2), "theta_2": torch.rand(2)}
+    vals["nested"] = vals
+    mergecirc(pyq.random_state(2), vals)
+
+
 @pytest.mark.xfail  # investigate
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 @pytest.mark.parametrize("batch_size", [1, 5])
