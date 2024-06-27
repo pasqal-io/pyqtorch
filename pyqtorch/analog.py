@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import OrderedDict
 from functools import reduce
 from logging import getLogger
 from operator import add
@@ -472,6 +473,7 @@ class HamiltonianEvolution(Sequence):
             qubit_support: The qubits the operator acts on.
             generator_parametric: Whether the generator is parametric or not.
         """
+
         if isinstance(generator, Tensor):
             assert (
                 qubit_support is not None
@@ -532,6 +534,9 @@ class HamiltonianEvolution(Sequence):
             GeneratorType.OPERATION: self._tensor_generator,
             GeneratorType.PARAMETRIC_OPERATION: self._parametric_generator,
         }
+
+        # to avoid recomputing hamiltonians and evolution
+        self._cache_hamiltonian_evo: dict[str, Tensor] = {}
 
     @property
     def generator(self) -> ModuleList:
@@ -607,17 +612,14 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The transformed state.
         """
-        hamiltonian: torch.Tensor = self.create_hamiltonian(values)
-        time_evolution: torch.Tensor = (
-            values[self.time] if isinstance(self.time, str) else self.time
-        )  # If `self.time` is a string / hence, a Parameter,
-        # we expect the user to pass it in the `values` dict
+
+        evolved_op = self.tensor(values, None)
         return apply_operator(
             state=state,
-            operator=evolve(hamiltonian, time_evolution),
+            operator=evolved_op,
             qubits=self.qubit_support,
             n_qubits=len(state.size()) - 1,
-            batch_size=max(hamiltonian.shape[BATCH_DIM], len(time_evolution)),
+            batch_size=evolved_op.shape[BATCH_DIM],
         )
 
     def tensor(
@@ -640,6 +642,11 @@ class HamiltonianEvolution(Sequence):
         Raises:
             NotImplementedError for the diagonal case.
         """
+
+        values_cache_key = str(OrderedDict(values))
+        if values_cache_key in self._cache_hamiltonian_evo:
+            return self._cache_hamiltonian_evo[values_cache_key]
+
         if diagonal:
             raise NotImplementedError
         if n_qubits is None:
@@ -647,5 +654,8 @@ class HamiltonianEvolution(Sequence):
         hamiltonian: torch.Tensor = self.create_hamiltonian(values)
         time_evolution: torch.Tensor = (
             values[self.time] if isinstance(self.time, str) else self.time
-        )
-        return evolve(hamiltonian, time_evolution)
+        )  # If `self.time` is a string / hence, a Parameter,
+        # we expect the user to pass it in the `values` dict
+        evolved_op = evolve(hamiltonian, time_evolution)
+        self._cache_hamiltonian_evo[values_cache_key] = evolved_op
+        return evolved_op
