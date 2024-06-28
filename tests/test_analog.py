@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from typing import Callable
 
 import numpy as np
@@ -142,6 +143,7 @@ def test_hamiltonianevolution_with_types(
 ) -> None:
     n_qubits = 4
     hamevo = pyq.HamiltonianEvolution(H, t_evo, tuple([i for i in range(n_qubits)]))
+    assert len(hamevo._cache_hamiltonian_evo) == 0
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(psi)
     result = overlap(psi_star, psi)
@@ -165,32 +167,45 @@ def test_hamevo_parametric_gen(n_qubits: int) -> None:
     ops = [pyq.X, pyq.Y, pyq.Z]
     qubit_targets = np.random.choice(dim, len(ops), replace=True)
     generator = pyq.Add([pyq.Scale(op(q), vparam) for op, q in zip(ops, qubit_targets)])
-    hamevo = pyq.HamiltonianEvolution(generator, vparam, sup, parametric)
+    hamevo = pyq.HamiltonianEvolution(
+        generator, vparam, sup, parametric, cache_length=2
+    )
     assert hamevo.generator_type == GeneratorType.PARAMETRIC_OPERATION
+    assert len(hamevo._cache_hamiltonian_evo) == 0
+
+    def apply_hamevo_and_compare_expected(psi, vals):
+        psi_star = hamevo(psi, vals)
+        psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
+        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
     vals = {vparam: torch.rand(1)}
     psi = random_state(n_qubits)
-    psi_star = hamevo(psi, vals)
-    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+    apply_hamevo_and_compare_expected(psi, vals)
 
     # test cached
     assert len(hamevo._cache_hamiltonian_evo) == 1
-    psi_star = hamevo(psi, vals)
+    apply_hamevo_and_compare_expected(psi, vals)
     assert len(hamevo._cache_hamiltonian_evo) == 1
-    # check for same result
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
+    # test caching new value
     vals[vparam] += 0.1
-    psi_star = hamevo(psi, vals)
-    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
+    apply_hamevo_and_compare_expected(psi, vals)
     assert len(hamevo._cache_hamiltonian_evo) == 2
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
+    # changing input state should not change the cache
     psi = random_state(n_qubits)
-    psi_star = hamevo(psi, vals)
-    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
+    apply_hamevo_and_compare_expected(psi, vals)
     assert len(hamevo._cache_hamiltonian_evo) == 2
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+    # test limit cache
+    previous_cache_keys = hamevo._cache_hamiltonian_evo.keys()
+    vals[vparam] += 0.1
+    values_cache_key = str(OrderedDict(vals))
+    assert values_cache_key not in previous_cache_keys
+
+    apply_hamevo_and_compare_expected(psi, vals)
+    assert len(hamevo._cache_hamiltonian_evo) == 2
+    assert values_cache_key in previous_cache_keys
 
 
 def test_hevo_constant_gen() -> None:

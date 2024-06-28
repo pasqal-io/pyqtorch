@@ -455,6 +455,8 @@ class HamiltonianEvolution(Sequence):
         and sets the logic for applying hamiltonian evolution.
         time: The evolution time :math:`t`.
         operations: List of operations.
+        cache_length: LRU cache cache_length evolution operators for given set
+                    of parameter values.
     """
 
     def __init__(
@@ -463,6 +465,7 @@ class HamiltonianEvolution(Sequence):
         time: Tensor | str,
         qubit_support: Tuple[int, ...] | None = None,
         generator_parametric: bool = False,
+        cache_length: int = 1,
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -537,6 +540,7 @@ class HamiltonianEvolution(Sequence):
 
         # to avoid recomputing hamiltonians and evolution
         self._cache_hamiltonian_evo: dict[str, Tensor] = dict()
+        self.cache_length = cache_length
 
     @property
     def generator(self) -> ModuleList:
@@ -646,7 +650,7 @@ class HamiltonianEvolution(Sequence):
         """
 
         values_cache_key = str(OrderedDict(values))
-        if values_cache_key in self._cache_hamiltonian_evo:
+        if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
             return self._cache_hamiltonian_evo[values_cache_key]
 
         if diagonal:
@@ -659,5 +663,11 @@ class HamiltonianEvolution(Sequence):
         )  # If `self.time` is a string / hence, a Parameter,
         # we expect the user to pass it in the `values` dict
         evolved_op = evolve(hamiltonian, time_evolution)
-        self._cache_hamiltonian_evo[values_cache_key] = evolved_op
+        nb_cached = len(self._cache_hamiltonian_evo)
+
+        # LRU caching
+        if (nb_cached > 0) and (nb_cached == self.cache_length):
+            self._cache_hamiltonian_evo.pop(next(iter(self._cache_hamiltonian_evo)))
+        if nb_cached < self.cache_length:
+            self._cache_hamiltonian_evo[values_cache_key] = evolved_op
         return evolved_op
