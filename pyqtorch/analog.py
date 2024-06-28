@@ -12,7 +12,6 @@ from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
-from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
     ATOL,
@@ -69,26 +68,29 @@ class GeneratorType(StrEnum):
 
 class Scale(Sequence):
     """
-    Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter.
+    Generic container for multiplying a 'Primitive', 'Sequence' or an 'Add' instance by a parameter.
 
     Attributes:
-        operations: Operations making the Sequence.
+        operations: Operations as a Sequence, Add, or a single Primitive operation.
         param_name: Name of the parameter to multiply operations with.
     """
 
-    def __init__(self, operations: Union[Sequence, Module], param_name: str | Tensor):
+    def __init__(
+        self, operations: Union[Primitive, Sequence, Add], param_name: str | Tensor
+    ):
         """
         Initializes a Scale object.
 
         Arguments:
-            operations: Operations making the Sequence.
+            operations: Operations as a Sequence, Add, or a single Primitive operation.
             param_name: Name of the parameter to multiply operations with.
         """
-        super().__init__(
-            operations.operations if isinstance(operations, Sequence) else [operations]
-        )
+        if isinstance(operations, list):
+            raise TypeError(
+                "Scale only supports instantiation with a single operation, a Sequence, or an Add."
+            )
+        super().__init__([operations])
         self.param_name = param_name
-        assert len(self.operations) == 1
 
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
@@ -103,77 +105,83 @@ class Scale(Sequence):
         Returns:
             The transformed state.
         """
-        return (
-            values[self.param_name] * super().forward(state, values)
-            if isinstance(self.operations, Sequence)
-            else self._forward(state, values)
-        )
-
-    def _forward(self, state: Tensor, values: dict[str, Tensor]) -> State:
-        """
-        Apply the single operation of Scale multiplied by the parameter value.
-
-        Arguments:
-            state: Input state.
-            values: Parameter value.
-
-        Returns:
-            The transformed state.
-        """
-        return apply_operator(
-            state, self.unitary(values), self.operations[0].qubit_support
-        )
-
-    def unitary(self, values: dict[str, Tensor]) -> Operator:
-        """
-        Get the corresponding unitary.
-
-        Arguments:
-            values: Parameter value.
-
-        Returns:
-            The unitary representation.
-        """
-        thetas = (
+        scale = (
             values[self.param_name]
             if isinstance(self.param_name, str)
             else self.param_name
         )
-        return thetas * self.operations[0].unitary(values)
+        return scale * self.operations[0].forward(state, values)
+        # return (
+        #     values[self.param_name] * super().forward(state, values)
+        #     if isinstance(self.operations, Sequence)
+        #     else self._forward(state, values)
+        # )
 
-    def dagger(self, values: dict[str, Tensor]) -> Operator:
-        """
-        Get the corresponding unitary of the dagger.
+    # def _forward(self, state: Tensor, values: dict[str, Tensor]) -> State:
+    #     """
+    #     Apply the single operation of Scale multiplied by the parameter value.
 
-        Arguments:
-            values: Parameter value.
+    #     Arguments:
+    #         state: Input state.
+    #         values: Parameter value.
 
-        Returns:
-            The unitary representation of the dagger.
-        """
-        return _dagger(self.unitary(values))
+    #     Returns:
+    #         The transformed state.
+    #     """
+    #     return apply_operator(
+    #         state, self.unitary(values), self.operations[0].qubit_support
+    #     )
 
-    def jacobian(self, values: dict[str, Tensor]) -> Operator:
-        """
-        Get the corresponding unitary of the jacobian.
+    # def unitary(self, values: dict[str, Tensor]) -> Operator:
+    #     """
+    #     Get the corresponding unitary.
 
-        Arguments:
-            values: Parameter value.
+    #     Arguments:
+    #         values: Parameter value.
 
-        Returns:
-            The unitary representation of the jacobian.
+    #     Returns:
+    #         The unitary representation.
+    #     """
+    #     thetas = (
+    #         values[self.param_name]
+    #         if isinstance(self.param_name, str)
+    #         else self.param_name
+    #     )
+    #     return thetas * self.operations[0].unitary(values)
 
-        Raises:
-            NotImplementedError
-        """
-        raise NotImplementedError(
-            "The Jacobian of `Scale` is done via decomposing it into the gradient w.r.t\
-                                  the scale parameter and the gradient w.r.t to the scaled block."
-        )
-        # TODO make scale a primitive block with an additional parameter
-        # So you can do the following:
-        # thetas = values[self.param] if isinstance(self.param, str) else self.param_name
-        # return thetas * ones_like(self.unitary(values))
+    # def dagger(self, values: dict[str, Tensor]) -> Operator:
+    #     """
+    #     Get the corresponding unitary of the dagger.
+
+    #     Arguments:
+    #         values: Parameter value.
+
+    #     Returns:
+    #         The unitary representation of the dagger.
+    #     """
+    #     return _dagger(self.unitary(values))
+
+    # def jacobian(self, values: dict[str, Tensor]) -> Operator:
+    #     """
+    #     Get the corresponding unitary of the jacobian.
+
+    #     Arguments:
+    #         values: Parameter value.
+
+    #     Returns:
+    #         The unitary representation of the jacobian.
+
+    #     Raises:
+    #         NotImplementedError
+    #     """
+    #     raise NotImplementedError(
+    #         "The Jacobian of `Scale` is done via decomposing it into the gradient w.r.t\
+    #                               the scale parameter and the gradient w.r.t to the scaled block."
+    #     )
+    #     # TODO make scale a primitive block with an additional parameter
+    #     # So you can do the following:
+    #     # thetas = values[self.param] if isinstance(self.param, str) else self.param_name
+    #     # return thetas * ones_like(self.unitary(values))
 
     def tensor(
         self,
@@ -190,28 +198,33 @@ class Scale(Sequence):
             Can be higher than the number of qubit support.
             diagonal: Whether the operation is diagonal.
 
-
         Returns:
             The unitary representation.
         Raises:
             NotImplementedError for the diagonal case.
         """
-        thetas = (
+        scale = (
             values[self.param_name]
             if isinstance(self.param_name, str)
             else self.param_name
         )
-        return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
+        return scale * self.operations[0].tensor(values, n_qubits, diagonal)
+        # thetas = (
+        #     values[self.param_name]
+        #     if isinstance(self.param_name, str)
+        #     else self.param_name
+        # )
+        # return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
 
-    def flatten(self) -> list[Scale]:
-        """This method should only be called in the AdjointExpectation,
-        where the `Scale` is only supported for Primitive (and not Sequences)
-        so we don't want to flatten this to preserve the scale parameter.
+    # def flatten(self) -> list[Scale]:
+    #     """This method should only be called in the AdjointExpectation,
+    #     where the `Scale` is only supported for Primitive (and not Sequences)
+    #     so we don't want to flatten this to preserve the scale parameter.
 
-        Returns:
-            The Scale within a list.
-        """
-        return [self]
+    #     Returns:
+    #         The Scale within a list.
+    #     """
+    #     return [self]
 
 
 class Add(Sequence):
