@@ -12,6 +12,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
@@ -91,7 +92,10 @@ class Scale(Sequence):
         assert len(self.operations) == 1
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> State:
         """
         Apply the operation(s) multiplying by the parameter value.
@@ -109,7 +113,12 @@ class Scale(Sequence):
             else self._forward(state, values)
         )
 
-    def _forward(self, state: Tensor, values: dict[str, Tensor]) -> State:
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor],
+        embedding: Embedding | None = None,
+    ) -> State:
         """
         Apply the single operation of Scale multiplied by the parameter value.
 
@@ -227,7 +236,10 @@ class Add(Sequence):
         super().__init__(operations=operations)
 
     def forward(
-        self, state: State, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: State,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> State:
         """
         Apply the operations multiplying by the parameter values.
@@ -292,7 +304,12 @@ class Observable(Sequence):
             n_qubits = max(self.qubit_support) + 1
         self.n_qubits = n_qubits
 
-    def run(self, state: Tensor, values: dict[str, Tensor]) -> State:
+    def run(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor],
+        embedding: Embedding | None = None,
+    ) -> State:
         """
         Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
 
@@ -308,7 +325,10 @@ class Observable(Sequence):
         return state
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
 
@@ -359,7 +379,12 @@ class DiagonalObservable(Primitive):
         self.qubit_support = operations.qubit_support
         self.n_qubits = n_qubits
 
-    def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+    def run(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor],
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         """
         Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
 
@@ -382,7 +407,7 @@ class DiagonalObservable(Primitive):
         self,
         state: Tensor,
         values: dict[str, Tensor] | ParameterDict = dict(),
-        embedding=None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
 
@@ -598,7 +623,10 @@ class HamiltonianEvolution(Sequence):
         return self._generator_map[self.generator_type]
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> State:
         """
         Apply the hamiltonian evolution with input parameter values.

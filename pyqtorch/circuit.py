@@ -190,6 +190,7 @@ class QuantumCircuit(Sequence):
         state: Tensor = None,
         values: dict[str, Tensor] = dict(),
         n_shots: int = 1000,
+        embedding: Embedding | None = None,
     ) -> list[Counter]:
         if n_shots < 1:
             raise ValueError("You can only call sample with n_shots>0.")
@@ -211,7 +212,7 @@ class QuantumCircuit(Sequence):
 
         with torch.no_grad():
             state = torch.flatten(
-                self.run(values=values, state=state),
+                self.run(state=state, values=values, embedding=embedding),
                 start_dim=0,
                 end_dim=-2,
             ).t()

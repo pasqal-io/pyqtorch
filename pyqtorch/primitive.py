@@ -65,7 +65,11 @@ class Primitive(torch.nn.Module):
     def extra_repr(self) -> str:
         return f"{self.qubit_support}"
 
-    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+    def unitary(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
 
     def forward(
@@ -74,21 +78,26 @@ class Primitive(torch.nn.Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
-        if embedding is not None:
-            values = embedding.assign_single_leaf(self.param_name, values)
+        if embedding is not None and hasattr(self, "param_name"):
+            values.update(
+                {self.param_name: embedding.assign_single_leaf(self.param_name, values)}
+            )
         if isinstance(state, DensityMatrix):
             # TODO: fix error type int | tuple[int, ...] expected "int"
             # Only supports single-qubit gates
             return DensityMatrix(
                 operator_product(
-                    self.unitary(values),
+                    self.unitary(values, embedding),
                     operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
                     self.target,  # type: ignore [arg-type]
                 )
             )
         else:
             return apply_operator(
-                state, self.unitary(values), self.qubit_support, len(state.size()) - 1
+                state,
+                self.unitary(values, embedding),
+                self.qubit_support,
+                len(state.size()) - 1,
             )
 
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:

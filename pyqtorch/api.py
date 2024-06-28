@@ -37,10 +37,11 @@ def run(
     circuit: QuantumCircuit,
     state: Tensor = None,
     values: dict[str, Tensor] = dict(),
+    embedding: Embedding | None = None,
 ) -> Tensor:
     """Run a circuit given a state and values dict."""
     logger.debug(f"Running circuit {circuit} on state {state} and values {values}.")
-    return circuit.run(state, values)
+    return circuit.run(state, values, embedding)
 
 
 def sample(
@@ -48,12 +49,13 @@ def sample(
     state: Tensor = None,
     values: dict[str, Tensor] = dict(),
     n_shots: int = 1000,
+    embedding: Embedding | None = None,
 ) -> list[Counter]:
     """Sample a circuit given a state and values dict with n_shots."""
     logger.debug(
         f"Sampling circuit {circuit} on state {state} and values {values} with n_shots {n_shots}."
     )
-    return circuit.sample(state, values, n_shots)
+    return circuit.sample(state, values, n_shots, embedding)
 
 
 def expectation(
@@ -62,6 +64,7 @@ def expectation(
     values: dict[str, Tensor],
     observable: Observable,
     diff_mode: DiffMode = DiffMode.AD,
+    embedding: Embedding | None = None,
 ) -> Tensor:
     """Compute the expectation value of the circuit given a state, values dict, observable
        and optionally compute gradients using diff_mode.
@@ -83,9 +86,11 @@ def expectation(
     if state is None:
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
-        state = circuit.run(state, values)
-        return inner_prod(state, observable.run(state, values)).real
+        state = circuit.run(state, values, embedding)
+        return inner_prod(state, observable.run(state, values, embedding)).real
     elif diff_mode == DiffMode.ADJOINT:
+        if embedding is not None:
+            logger.error("Adjoint is not supported with Embedding-Mode.")
         return AdjointExpectation.apply(
             circuit, observable, state, values.keys(), *values.values()
         )

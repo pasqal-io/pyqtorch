@@ -5,6 +5,7 @@ from typing import Any, Tuple
 import torch
 from torch import Tensor
 
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
@@ -44,7 +45,10 @@ class Parametric(Primitive):
         self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
 
-        def parse_values(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        def parse_values(
+            values: dict[str, Tensor] | Tensor = dict(),
+            embedding: Embedding | None = None,
+        ) -> Tensor:
             """The legacy way of using parametric gates:
                The Parametric gate received a string as a 'param_name' and performs a
                a lookup in the passed `values` dict for to retrieve the torch.Tensor passed
@@ -56,9 +60,17 @@ class Parametric(Primitive):
                 A Torch Tensor denoting values for the `param_name`.
             """
             # self.param_name will be a str
+            if embedding is not None:
+                values = {
+                    **values,
+                    **embedding.assign_single_leaf(self.param_name, values),  # type: ignore[arg-type]
+                }
             return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 
-        def parse_tensor(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        def parse_tensor(
+            values: dict[str, Tensor] | Tensor = dict(),
+            embedding: Embedding | None = None,
+        ) -> Tensor:
             """Functional version of the Parametric gate:
                In case the user did not pass a `param_name`,
                pyqtorch assumes `values` will be a torch.Tensor instead of a dict.
@@ -71,7 +83,10 @@ class Parametric(Primitive):
             # self.param_name will be ""
             return Parametric._expand_values(values)
 
-        def parse_constant(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        def parse_constant(
+            values: dict[str, Tensor] | Tensor = dict(),
+            embedding: Embedding | None = None,
+        ) -> Tensor:
             """Fix a the parameter of a Parametric Gate to a numeric constant
                if the user passed a numeric input for the `param_name`.
 
@@ -121,7 +136,11 @@ class Parametric(Primitive):
         """
         return values.unsqueeze(0) if len(values.size()) == 0 else values
 
-    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Operator:
+    def unitary(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -131,7 +150,7 @@ class Parametric(Primitive):
         Returns:
             The unitary representation.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         return _unitary(thetas, self.pauli, self.identity, batch_size)
 
@@ -257,7 +276,9 @@ class PHASE(Parametric):
         """
         super().__init__("I", target, param_name)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -335,7 +356,9 @@ class ControlledRotationGate(Parametric):
             f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
         )
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -345,7 +368,7 @@ class ControlledRotationGate(Parametric):
         Returns:
             The unitary representation.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         mat = _unitary(thetas, self.pauli, self.identity, batch_size)
         return _controlled(mat, batch_size, len(self.control))
@@ -460,7 +483,9 @@ class CPHASE(ControlledRotationGate):
         """
         super().__init__("I", control, target, param_name)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -563,7 +588,9 @@ class U(Parametric):
             "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
         )
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -573,6 +600,8 @@ class U(Parametric):
         Returns:
             The unitary representation.
         """
+        if embedding is not None:
+            raise NotImplementedError()
         phi, theta, omega = list(
             map(
                 lambda t: t.unsqueeze(0) if len(t.size()) == 0 else t,

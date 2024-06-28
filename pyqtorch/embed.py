@@ -8,6 +8,26 @@ import torch
 logger = getLogger(__name__)
 
 
+def torch_call(
+    abstract_fn: str, args: list[str | float]
+) -> Callable[[dict], torch.Tensor]:
+    """Convert a `Call` object into a torchified function which can be evaluated using
+    a vparams and inputs dict.
+    """
+    fn = getattr(torch, abstract_fn)
+
+    def evaluate(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+        tensor_args = []
+        for symbol in args:
+            if isinstance(symbol, float):
+                tensor_args.append(torch.tensor(symbol))
+            elif isinstance(symbol, str):
+                tensor_args.append(inputs[symbol])
+        return fn(*tensor_args)
+
+    return evaluate
+
+
 class Embedding(torch.nn.Module):
     """
     vparam_names: A list of abstract variational parameter names.

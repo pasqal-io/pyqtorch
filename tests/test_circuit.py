@@ -24,7 +24,7 @@ def test_adjoint_diff() -> None:
     ops = [rx, cry, rz, cnot]
     n_qubits = 3
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)])
 
     theta_0_value = torch.pi / 2
     theta_1_value = torch.pi
