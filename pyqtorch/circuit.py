@@ -15,7 +15,7 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import IMAT, add_batch_dim
+from pyqtorch.matrices import IMAT, _dagger, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, product_state, zero_state
@@ -147,6 +147,9 @@ class Sequence(Module):
             (add_batch_dim(op.tensor(values, n_qubits)) for op in self.operations),
             mat,
         )
+
+    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        return _dagger(self.tensor(values))
 
 
 class QuantumCircuit(Sequence):
