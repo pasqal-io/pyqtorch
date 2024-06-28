@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from logging import getLogger
-from typing import Any, Tuple
+from typing import Any, Callable, Tuple
 
 from torch import Tensor, no_grad
 from torch.autograd import Function
@@ -173,11 +174,6 @@ class GPSR(Function):
         state: A state in the form of [2 * n_qubits + [batch_size]]
         param_names: A list of parameter names.
         *param_values: A unpacked tensor of values for each parameter.
-
-    The forward method expects each of the above arguments, computes the expectation value
-    and stores all of the above arguments in the 'ctx' (context) object along with the
-    the state after applying 'circuit', 'out_state', and the 'projected_state', i.e. after applying
-    'observable' to 'out_state'.
     """
 
     @staticmethod
@@ -193,33 +189,46 @@ class GPSR(Function):
         ctx.circuit = circuit
         ctx.observable = observable
         ctx.param_names = param_names
+        ctx.in_state = state
         values = param_dict(param_names, param_values)
-        ctx.out_state = circuit.run(state, values)
-        ctx.projected_state = observable.run(ctx.out_state, values)
+        out_state = circuit.run(state, values)
+        projected_state = observable.run(out_state, values)
         ctx.save_for_backward(*param_values)
-        return inner_prod(ctx.out_state, ctx.projected_state).real
+        return inner_prod(out_state, projected_state).real
 
     @staticmethod
     @no_grad()
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
-        # param_values = ctx.saved_tensors
-        # params_map = param_dict(ctx.param_names, param_values)
-        # grads_dict = {k: None for k in values.keys()}
+        param_values = ctx.saved_tensors
+        params_map = param_dict(ctx.param_names, param_values)
+        grads_dict = {k: None for k in params_map.keys()}
 
-        # def expectation_fn(params: dict[str, Tensor]) -> Tensor:
-        #     return GPSR.apply(
-        #         ctx.expectation_fn,
-        #         ctx.param_psrs,
-        #         params_map.keys(),
-        #         *params_map.values(),
-        #     )
+        def expectation_fn(params: dict[str, Tensor]) -> Tensor:
+            return GPSR.forward(
+                ctx,
+                ctx.circuit,
+                ctx.observable,
+                ctx.in_state,
+                params.keys(),
+                *params.values(),
+            )
 
         # def vjp(psr: Callable, name: str) -> Tensor:
         #     """Sums over gradients corresponding to different observables.
         #     """
         #     return (grad_out * psr(expectation_fn, params_map, name)).sum(dim=1)
 
-        raise NotImplementedError
+        return (None, None, None, None, *grads_dict.values())
+
+    @staticmethod
+    def construct_rules(
+        self,
+        circuit: QuantumCircuit,
+        observable: Observable,
+        psr_fn: Callable,
+    ) -> dict[str, Callable]:
+        param_to_psr: OrderedDict = OrderedDict()
+        return param_to_psr
 
 
 def expectation(
