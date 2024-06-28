@@ -31,7 +31,7 @@ class Parametric(Primitive):
         self,
         generator_name: str,
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes Parametric.
 
@@ -55,7 +55,8 @@ class Parametric(Primitive):
             Returns:
                 A Torch Tensor denoting values for the `param_name`.
             """
-            return Parametric._expand_values(values[self.param_name])
+            # self.param_name will be a str
+            return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 
         def parse_tensor(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
             """Functional version of the Parametric gate:
@@ -67,6 +68,7 @@ class Parametric(Primitive):
             Returns:
                 A Torch Tensor with which to evaluate the Parametric Gate.
             """
+            # self.param_name will be ""
             return Parametric._expand_values(values)
 
         def parse_constant(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
@@ -78,6 +80,7 @@ class Parametric(Primitive):
             Returns:
                 A Torch Tensor with which to evaluate the Parametric Gate.
             """
+            # self.param_name will be a torch.Tensor
             return Parametric._expand_values(
                 torch.tensor(param_name, device=self.device, dtype=self.dtype)
             )
