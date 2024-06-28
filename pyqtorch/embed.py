@@ -8,23 +8,36 @@ import torch
 logger = getLogger(__name__)
 
 
-class ParameterBuffer(torch.nn.Module):
-    """A class holding all root parameters either passed by the user
-    or trainable variational parameters."""
+class Embedding(torch.nn.Module):
+    """
+    vparam_names: A list of abstract variational parameter names.
+    fparam_names: A list of abstract feature parameter names.
+    leaf_to_call: Map from intermediate and leaf variables (which will be used as angles in gates)
+                to torch callables which expect a dictionary of root and intermediate variables.
+    dtype: The precision of the parameters.
+    device: The device on which the parameters are stored.
+    """
 
     def __init__(
         self,
-        trainable_vars: list[str],
-        non_trainable_vars: list[str],
+        vparam_names: list[str],
+        fparam_names: list[str],
+        leaf_to_call: dict[str, Callable],
+        dtype: torch.dtype = torch.float64,
+        device: torch.device = torch.device("cpu"),
     ) -> None:
         super().__init__()
-        self.vparams = {p: torch.rand(1, requires_grad=True) for p in trainable_vars}
-        self.fparams = {p: None for p in non_trainable_vars}
-        self._dtype = torch.float64
-        self._device = torch.device("cpu")
+        self.vparams = torch.nn.ParameterDict(
+            {p: torch.rand(1, requires_grad=True) for p in vparam_names}
+        )
+        self.fparams: dict[str, torch.Tensor | None] = {p: None for p in fparam_names}
+        self.leaf_to_call: dict[str, Callable] = leaf_to_call
+        self._dtype = dtype
+        self._device = device
         logger.debug(
-            f"ParameterBuffer initialized with trainable parameters: {self.vparams.keys()},\
-                     and non-trainable parameters {self.fparams.keys()}."
+            f"Embedding initialized with vparams: {list(self.vparams.keys())},\
+                     ,fparams {list(self.fparams.keys())}\
+                    and leaf parameters {list(self.leaf_to_call.keys())}."
         )
 
     @property
@@ -49,37 +62,50 @@ class ParameterBuffer(torch.nn.Module):
         for key, _ in self.fparams.items():
             self.fparams[key] = inputs[key]
 
+    def flush_fparams(self) -> None:
+        for key, _ in self.fparams.items():
+            self.fparams[key] = None
 
-class Embedding(torch.nn.Module):
-    """A class holding:
-    - A parameterbuffer (containing concretized vparams + list of featureparams,
-    - A dictionary of intermediate and leaf variable names mapped to a TorchCall object
-        which can be results of function/expression evaluations.
-    """
+    def assign_single_leaf(
+        self, leaf_name: str, root_and_intermediates: dict[str, torch.Tensor]
+    ) -> dict[str, torch.Tensor]:
+        return {leaf_name: self.leaf_to_call[leaf_name](root_and_intermediates)}
 
-    def __init__(self, param_buffer, var_to_call: dict[str, Callable]) -> None:
-        super().__init__()
-        self.param_buffer = param_buffer
-        self.var_to_call: dict[str, Callable] = var_to_call
-
-    def __call__(self, inputs: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    def assign_leaves(
+        self, root_params: dict[str, torch.Tensor]
+    ) -> dict[str, torch.Tensor]:
         """Expects a dict of user-passed name:value pairs for featureparameters
         and assigns all intermediate and leaf variables using the current vparam values
         and the passed values for featureparameters."""
-        assigned_params: dict[str, torch.Tensor] = {}
+        intermediates_and_leaves: dict[str, torch.Tensor] = {}
         try:
-            assert inputs.keys() == self.param_buffer.fparams.keys()
+            assert root_params.keys() == self.fparams.keys()
         except Exception as e:
             logger.error(
                 f"Please pass a dict containing name:value for each fparam. Got {e}"
             )
-        for var, torchcall in self.var_to_call.items():
-            assigned_params[var] = torchcall(
-                self.param_buffer.vparams,
+        for var, torchcall in self.leaf_to_call.items():
+            intermediates_and_leaves[var] = torchcall(
                 {
-                    **inputs,
-                    **assigned_params,
+                    **self.vparams,
+                    **root_params,
+                    **intermediates_and_leaves,
                 },  # we add the "intermediate" variables too
             )
 
-        return assigned_params
+        return intermediates_and_leaves
+
+    def __call__(self, root_params: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        return self.assign_leaves(root_params)
+
+    @property
+    def root_param_names(self) -> list[str]:
+        return list(self.fparams.keys()) + list(self.vparams.keys())
+
+    @property
+    def leaf_param_names(self) -> list[str]:
+        return list(self.leaf_to_call.keys())
+
+    def set_rootparam(self, param_name: str) -> None:
+        # TODO make it possible to make trainable params non-trainable and vice versa
+        pass

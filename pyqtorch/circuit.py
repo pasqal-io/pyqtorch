@@ -15,6 +15,7 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import IMAT, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
@@ -98,10 +99,13 @@ class Sequence(Module):
         return hash(reduce(add, (hash(op) for op in self.operations)))
 
     def forward(
-        self, state: State, values: dict[str, Tensor] | ParameterDict = {}
+        self,
+        state: State,
+        values: dict[str, Tensor] | ParameterDict = {},
+        embedding: Embedding | None = None,
     ) -> State:
         for op in self.operations:
-            state = op(state, values)
+            state = op(state, values, embedding)
         return state
 
     @property
@@ -160,12 +164,13 @@ class QuantumCircuit(Sequence):
         self,
         state: State = None,
         values: dict[str, Tensor] | ParameterDict = {},
+        embedding: Embedding | None = None,
     ) -> State:
         if state is None:
             state = self.init_state()
         elif isinstance(state, str):
             state = self.state_from_bitstring(state)
-        return self.forward(state, values)
+        return self.forward(state, values, embedding)
 
     def __hash__(self) -> int:
         return hash(reduce(add, (hash(op) for op in self.operations))) + hash(
@@ -244,7 +249,12 @@ class Merge(Sequence):
                 f"Require all operations to act on a single qubit. Got: {operations}."
             )
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
+    def forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         batch_size = state.shape[-1]
         if values:
             batch_size = max(

@@ -9,6 +9,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     IMAT,
     OPERATIONS_DICT,
@@ -68,8 +69,13 @@ class Primitive(torch.nn.Module):
         return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
     ) -> Tensor:
+        if embedding is not None:
+            values = embedding.assign_single_leaf(self.param_name, values)
         if isinstance(state, DensityMatrix):
             # TODO: fix error type int | tuple[int, ...] expected "int"
             # Only supports single-qubit gates
@@ -146,7 +152,12 @@ class I(Primitive):  # noqa: E742
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["I"], target)
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] = dict()) -> Tensor:
+    def forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         return state
 
 

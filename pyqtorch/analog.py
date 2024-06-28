@@ -379,7 +379,10 @@ class DiagonalObservable(Primitive):
         ).reshape([2] * self.n_qubits + [state.shape[-1]])
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding=None,
     ) -> Tensor:
         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
 

@@ -2,20 +2,35 @@ from __future__ import annotations
 
 from collections import Counter
 from logging import getLogger
+from typing import Any
 
 from torch import Tensor, nn
 
 from pyqtorch.adjoint import AdjointExpectation
 from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.embed import Embedding
 from pyqtorch.utils import DiffMode, inner_prod
 
 logger = getLogger(__name__)
 
 
 class Api(nn.Module):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        circuit: QuantumCircuit,
+        observable: Observable,
+        embedding: Embedding,
+        args: Any,
+        kwargs: Any,
+    ) -> None:
+        super().__init__()
+        self.circuit = circuit
+        self.observable = observable
+        self.embedding = embedding
+
+    def run(self) -> Tensor:
+        pass
 
 
 def run(
