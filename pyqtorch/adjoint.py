@@ -123,6 +123,105 @@ class AdjointExpectation(Function):
         return (None, None, None, None, *grads_dict.values())
 
 
+class GPSR(Function):
+    r"""
+    Implementation of the generalized parameter shift rule (Kyriienko et al.),
+    which only works for quantum operations whose generator has a single gap
+    in its eigenvalue spectrum, was generalized to work with arbitrary
+    generators of quantum operations.
+
+    For this, we define the differentiable function as quantum expectation value
+
+    $$
+    f(x) = \left\langle 0\right|\hat{U}^{\dagger}(x)\hat{C}\hat{U}(x)\left|0\right\rangle
+    $$
+
+    where $\hat{U}(x)={\rm exp}{\left( -i\frac{x}{2}\hat{G}\right)}$
+    is the quantum evolution operator with generator $\hat{G}$ representing the structure
+    of the underlying quantum circuit and $\hat{C}$ is the cost operator.
+    Then using the eigenvalue spectrum $\left\{ \lambda_n\right\}$ of the generator $\hat{G}$
+    we calculate the full set of corresponding unique non-zero spectral gaps
+    $\left\{ \Delta_s\right\}$ (differences between eigenvalues).
+    It can be shown that the final expression of derivative of $f(x)$
+    is then given by the following expression:
+
+    $\begin{equation}
+    \frac{{\rm d}f\left(x\right)}{{\rm d}x}=\overset{S}{\underset{s=1}{\sum}}\Delta_{s}R_{s},
+    \end{equation}$
+
+    where $S$ is the number of unique non-zero spectral gaps and $R_s$ are real quantities that
+    are solutions of a system of linear equations
+
+    $\begin{equation}
+    \begin{cases}
+    F_{1} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}
+    \left(\frac{\delta_{1}\Delta_{s}}{2}\right)R_{s},\\
+    F_{2} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}
+    \left(\frac{\delta_{2}\Delta_{s}}{2}\right)R_{s},\\
+    & ...\\
+    F_{S} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}
+    \left(\frac{\delta_{M}\Delta_{s}}{2}\right)R_{s}.
+    \end{cases}
+    \end{equation}$
+
+    Here $F_s=f(x+\delta_s)-f(x-\delta_s)$ denotes the difference between values
+    of functions evaluated at shifted arguments $x\pm\delta_s$.
+
+    Arguments:
+        circuit: A QuantumCircuit instance
+        observable: A hamiltonian.
+        state: A state in the form of [2 * n_qubits + [batch_size]]
+        param_names: A list of parameter names.
+        *param_values: A unpacked tensor of values for each parameter.
+
+    The forward method expects each of the above arguments, computes the expectation value
+    and stores all of the above arguments in the 'ctx' (context) object along with the
+    the state after applying 'circuit', 'out_state', and the 'projected_state', i.e. after applying
+    'observable' to 'out_state'.
+    """
+
+    @staticmethod
+    @no_grad()
+    def forward(
+        ctx: Any,
+        circuit: QuantumCircuit,
+        observable: Observable,
+        state: Tensor,
+        param_names: list[str],
+        *param_values: Tensor,
+    ) -> Tensor:
+        ctx.circuit = circuit
+        ctx.observable = observable
+        ctx.param_names = param_names
+        values = param_dict(param_names, param_values)
+        ctx.out_state = circuit.run(state, values)
+        ctx.projected_state = observable.run(ctx.out_state, values)
+        ctx.save_for_backward(*param_values)
+        return inner_prod(ctx.out_state, ctx.projected_state).real
+
+    @staticmethod
+    @no_grad()
+    def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
+        # param_values = ctx.saved_tensors
+        # params_map = param_dict(ctx.param_names, param_values)
+        # grads_dict = {k: None for k in values.keys()}
+
+        # def expectation_fn(params: dict[str, Tensor]) -> Tensor:
+        #     return GPSR.apply(
+        #         ctx.expectation_fn,
+        #         ctx.param_psrs,
+        #         params_map.keys(),
+        #         *params_map.values(),
+        #     )
+
+        # def vjp(psr: Callable, name: str) -> Tensor:
+        #     """Sums over gradients corresponding to different observables.
+        #     """
+        #     return (grad_out * psr(expectation_fn, params_map, name)).sum(dim=1)
+
+        raise NotImplementedError
+
+
 def expectation(
     circuit: QuantumCircuit,
     state: Tensor,
@@ -151,5 +250,7 @@ def expectation(
         return AdjointExpectation.apply(
             circuit, observable, state, values.keys(), *values.values()
         )
+    elif diff_mode == DiffMode.GPSR:
+        return GPSR.apply(circuit, observable, state, values.keys(), *values.values())
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")

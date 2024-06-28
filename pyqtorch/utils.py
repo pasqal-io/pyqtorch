@@ -81,10 +81,16 @@ class DiffMode(StrEnum):
              Adjoint Differentiation   - An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
                                        Jones & Gacon, 2020
+             Generalized parameter shift rule - Using the well known parameter shift rule algorithm
+                        (see Schuld et al., Evaluating analytic gradients on quantum hardware, 2018)
+                        which works for arbitrary quantum operations
+                        (Kyriienko et al., General quantum circuit differentiation rules)
+                        and can be applied on real quantum hardware.
     """
 
     AD = "ad"
     ADJOINT = "adjoint"
+    GPSR = "generalized parameter shift-rule"
 
 
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
