@@ -73,7 +73,7 @@ class AdjointExpectation(Function):
                 ctx.out_state = apply_operator(
                     ctx.out_state, op.dagger(values), op.qubit_support
                 )
-                if isinstance(op, Parametric):
+                if isinstance(op, Parametric) and isinstance(op.param_name, str):
                     if values[op.param_name].requires_grad:
                         mu = apply_operator(
                             ctx.out_state, op.jacobian(values), op.qubit_support
@@ -100,6 +100,7 @@ class AdjointExpectation(Function):
                 scaled_pyq_op = op.operations[0]
                 if (
                     isinstance(scaled_pyq_op, Parametric)
+                    and isinstance(scaled_pyq_op.param_name, str)
                     and values[scaled_pyq_op.param_name].requires_grad
                 ):
                     mu = apply_operator(

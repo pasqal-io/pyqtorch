@@ -595,3 +595,16 @@ def test_damping_gates(
         assert torch.allclose(DampingGate(target, rate=1)(rho_1), I(target)(rho_1))
     elif DampingGate == GeneralizedAmplitudeDamping:
         assert torch.allclose(DampingGate(target, probability=1, rate=1)(rho_1), rho_0)
+
+
+@pytest.mark.parametrize("gate", [pyq.RX, pyq.RY, pyq.RZ])
+def test_parametric_constantparam(gate: pyq.parametric.Parametric) -> None:
+    n_qubits = 4
+    max_batch_size = 10
+    target = torch.randint(0, n_qubits, (1,)).item()
+    param_val = torch.rand(torch.randint(1, max_batch_size, (1,)).item())
+    state = pyq.random_state(n_qubits)
+    assert torch.allclose(
+        gate(target, "theta")(state, {"theta": param_val}),
+        gate(target, param_val)(state),
+    )
