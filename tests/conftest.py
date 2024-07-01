@@ -195,9 +195,9 @@ def flip_expected_state(
 @pytest.fixture
 def flip_gates_prob_0(random_flip_gate: Noise, target: int) -> Any:
     if random_flip_gate == PauliChannel:
-        FlipGate_0 = random_flip_gate(target, probabilities=(0, 0, 0))
+        FlipGate_0 = random_flip_gate(target, error_probabilities=(0, 0, 0))
     else:
-        FlipGate_0 = random_flip_gate(target, probability=0)
+        FlipGate_0 = random_flip_gate(target, error_probability=0)
     return FlipGate_0
 
 
@@ -206,13 +206,13 @@ def flip_gates_prob_1(
     random_flip_gate: Noise, target: int, random_input_state: Tensor
 ) -> Any:
     if random_flip_gate == BitFlip:
-        FlipGate_1 = random_flip_gate(target, probability=1)
+        FlipGate_1 = random_flip_gate(target, error_probability=1)
         expected_op = density_mat(X(target)(random_input_state))
     elif random_flip_gate == PhaseFlip:
-        FlipGate_1 = random_flip_gate(target, probability=1)
+        FlipGate_1 = random_flip_gate(target, error_probability=1)
         expected_op = density_mat(Z(target)(random_input_state))
     elif random_flip_gate == Depolarizing:
-        FlipGate_1 = random_flip_gate(target, probability=1)
+        FlipGate_1 = random_flip_gate(target, error_probability=1)
         expected_op = (
             1
             / 3
@@ -224,7 +224,7 @@ def flip_gates_prob_1(
         )
     elif random_flip_gate == PauliChannel:
         px, py, pz = 1 / 3, 1 / 3, 1 / 3
-        FlipGate_1 = random_flip_gate(target, probabilities=(px, py, pz))
+        FlipGate_1 = random_flip_gate(target, error_probabilities=(px, py, pz))
         expected_op = (
             px * density_mat(X(target)(random_input_state))  # type: ignore
             + py * density_mat(Y(target)(random_input_state))

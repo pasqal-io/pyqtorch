@@ -18,7 +18,6 @@ from pyqtorch.matrices import (
     XMAT,
     YMAT,
     ZMAT,
-    _dagger,
 )
 from pyqtorch.noise import (
     AmplitudeDamping,
@@ -488,11 +487,14 @@ def test_promote(random_gate: Primitive, n_qubits: int, target: int) -> None:
     op_prom = promote_operator(random_gate.unitary(), target, n_qubits)
     assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(
-        operator_product(op_prom, _dagger(op_prom), target),
+        operator_product(
+            op_prom, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2), target
+        ),
         torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2),
     )
 
 
+# FIXME: Modify this test
 def test_operator_product(random_gate: Primitive, n_qubits: int, target: int) -> None:
     op = random_gate
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
@@ -502,7 +504,9 @@ def test_operator_product(random_gate: Primitive, n_qubits: int, target: int) ->
         1, 1, batch_size_1
     )
     op_mul = operator_product(
-        op.unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
+        op.unitary().repeat(1, 1, batch_size_2),
+        torch.eye(2**n_qubits, dtype=torch.cdouble),
+        target,
     )
     assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
     assert torch.allclose(
@@ -657,4 +661,6 @@ def test_damping_gates(
     elif DampingGate == PhaseDamping:
         assert torch.allclose(DampingGate(target, rate=1)(rho_1), I(target)(rho_1))
     elif DampingGate == GeneralizedAmplitudeDamping:
-        assert torch.allclose(DampingGate(target, probability=1, rate=1)(rho_1), rho_0)
+        assert torch.allclose(
+            DampingGate(target, error_probability=1, rate=1)(rho_1), rho_0
+        )

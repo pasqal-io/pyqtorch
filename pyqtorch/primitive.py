@@ -15,7 +15,7 @@ from pyqtorch.matrices import (
     _controlled,
     _dagger,
 )
-from pyqtorch.noise import Noise
+from pyqtorch.noise import Noisy_protocols
 from pyqtorch.utils import DensityMatrix, product_state
 
 logger = getLogger(__name__)
@@ -42,11 +42,11 @@ class Primitive(torch.nn.Module):
         self,
         pauli: Tensor,
         target: int | tuple[int, ...],
-        noise: Noise | dict[str, Noise] | None = None,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ) -> None:
         super().__init__()
         self.target: int | tuple[int, ...] = target
-        self.noise: Noise | dict[str, Noise] | None = noise
+        self.noise: Noisy_protocols | dict[str, Noisy_protocols] | None = noise
         self.qubit_support: tuple[int, ...] = (
             (target,) if isinstance(target, int) else target
         )
@@ -68,6 +68,18 @@ class Primitive(torch.nn.Module):
         return hash(self.qubit_support)
 
     def extra_repr(self) -> str:
+        if self.noise:
+            noise_details = []
+            if isinstance(self.noise, Noisy_protocols):
+                noise_details.append(
+                    f"{self.noise.protocol}({self.noise.options['error_probability']})"
+                )
+            elif isinstance(self.noise, dict):
+                for noise_instance in self.noise.values():
+                    noise_details.append(
+                        f"{noise_instance.protocol}({noise_instance.options['error_probability']})"
+                    )
+            return f"{self.qubit_support}, Noise: " + ", ".join(noise_details)
         return f"{self.qubit_support}"
 
     def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
@@ -76,25 +88,36 @@ class Primitive(torch.nn.Module):
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
     ) -> Tensor:
-        if isinstance(state, DensityMatrix):
-            if self.noise:
-                # TODO: Use the fwd of noise to modify the primitive tensor
-                pass
+        if self.noise:
+            state = operator_product(self.unitary(values), state, self.target)  # type: ignore [arg-type]
+            if isinstance(self.noise, dict):
+                for noise_instance in self.noise.values():
+                    protocol = noise_instance.protocol_to_gate()
+                    noise_gate = protocol(
+                        target=self.target,
+                        error_probability=noise_instance.error_probability,
+                    )
+                    state = noise_gate(state, values)
+                return state
             else:
+                protocol = self.noise.protocol_to_gate()
+                noise_gate = protocol(
+                    target=self.target,
+                    error_probability=self.noise.error_probability,
+                )
+                return noise_gate(state, values)  # ? Is values mandatory here ?
+        else:
+            if isinstance(state, DensityMatrix):
                 # FIXME: fix error type int | tuple[int, ...] expected "int"
                 # Only supports single-qubit gates
-                return DensityMatrix(
-                    operator_product(
-                        self.unitary(values),
-                        operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
-                        self.target,  # type: ignore [arg-type]
-                    )
+                return operator_product(self.unitary(values), state, self.target)  # type: ignore [arg-type]
+            else:
+                return apply_operator(
+                    state,
+                    self.unitary(values),
+                    self.qubit_support,
+                    len(state.size()) - 1,
                 )
-        else:
-            # TODO: Add a condition on self.noise
-            return apply_operator(
-                state, self.unitary(values), self.qubit_support, len(state.size()) - 1
-            )
 
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return _dagger(self.unitary(values))
@@ -139,7 +162,11 @@ class Primitive(torch.nn.Module):
 
 
 class X(Primitive):
-    def __init__(self, target: int, noise: Noise | dict[str, Noise] | None = None):
+    def __init__(
+        self,
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
         super().__init__(OPERATIONS_DICT["X"], target, noise)
 
 
