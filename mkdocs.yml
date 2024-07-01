@@ -7,9 +7,10 @@ nav:
   - Pyqtorch in a Nutshell: index.md
   - How to Contribute: CONTRIBUTING.md
   - Code of Conduct: CODE_OF_CONDUCT.md
+  - API: api.md
   - Advanced Features:
+    - Differentiation Modes: differentiation.md
     - Analog Operations: analog.md
-    - Adjoint Differentiation: adjoint.md
     - Digital noisy simulation: noise.md
     - Quantum Dropout: dropout.md
     - CUDA Profiling and debugging: cuda_debugging.md
