@@ -56,6 +56,7 @@ class Parametric(Primitive):
 
             Arguments:
                 values: A dict containing param_name:torch.Tensor pairs
+                embedding: An optional embedding.
             Returns:
                 A Torch Tensor denoting values for the `param_name`.
             """
@@ -145,7 +146,8 @@ class Parametric(Primitive):
         Get the corresponding unitary.
 
         Arguments:
-            values: Parameter value.
+            values: A dict containing a Parameter name and value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
@@ -283,7 +285,8 @@ class PHASE(Parametric):
         Get the corresponding unitary.
 
         Arguments:
-            values: Parameter value.
+            values: A dict containing a Parameter name and value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
@@ -363,7 +366,8 @@ class ControlledRotationGate(Parametric):
         Get the corresponding unitary.
 
         Arguments:
-            values: Parameter value.
+            values: A dict containing a Parameter name and value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
@@ -490,7 +494,8 @@ class CPHASE(ControlledRotationGate):
         Get the corresponding unitary.
 
         Arguments:
-            values: Parameter value.
+            values: A dict containing a Parameter name and value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
@@ -596,6 +601,7 @@ class U(Parametric):
 
         Arguments:
             values: Parameter value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
