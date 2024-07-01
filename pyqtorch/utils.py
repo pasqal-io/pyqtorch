@@ -219,7 +219,7 @@ def add_batch_dim(operator: Tensor, batch_size: int = 1) -> Tensor:
     return operator.repeat(1, 1, batch_size) if operator.shape != (2, 2, batch_size) else operator
 
 
-def dm_partial_trace(rho: Tensor, keep_indices: list[int]) -> Tensor:
+def dm_partial_trace(rho: DensityMatrix, keep_indices: list[int]) -> DensityMatrix:
     """
     Computes the partial trace of a density matrix for a system of several qubits with batch size.
     This function also permutes the qubits according to the order specified in keep_indices.
