@@ -1,6 +1,6 @@
 `pyqtorch` exposes `run`, `sample` and `expectation` routines with the following interface:
 
-
+## run
 ```python
 def run(
     circuit: QuantumCircuit,
@@ -24,8 +24,10 @@ def run(
          A torch.Tensor of shape [2, 2, ..., batch_size]
     """
     ...
+```
 
-
+## sample
+```python
 def sample(
     circuit: QuantumCircuit,
     state: Tensor = None,
@@ -49,8 +51,11 @@ def sample(
          A list of Counter objects containing bitstring:num_samples pairs.
     """
     ...
+```
 
+## expectation
 
+```python
 def expectation(
     circuit: QuantumCircuit,
     state: Tensor,
