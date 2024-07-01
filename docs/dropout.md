@@ -1,29 +1,112 @@
 ## Fitting a noisy sinusoid with quantum dropout
 
-Here we will demonstrate an implemention [quantum dropout](https://arxiv.org/abs/2310.04120), for the case of fitting a noisy sine function.
+Here we will demonstrate an implemention [quantum dropout](https://arxiv.org/abs/2310.04120), for the case of fitting a noisy sine function. To show the usefulness of dropout for quantum neural networks (QNNs), we shall compare the performance of a QNN with dropout and one without.
+
+Firstly, we define the dataset that we will perform regression on, this function is $sin(\pi x)+\epsilon$, where $x\in\reals$ and $\epsilon$ is noise sampled from a normal distribution which is then added to each point.
 
 ```python exec="on" source="material-block" html="1"
-
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 import numpy as np
 import torch
-from matplotlib import ticker
-
-# from sklearn.preprocessing import MinMaxScaler
 from torch import manual_seed, optim, tensor
 
 import pyqtorch as pyq
 from pyqtorch.circuit import DropoutQuantumCircuit
 from pyqtorch.parametric import Parametric
+from pyqtorch.utils import DropoutMode
 
-manual_seed(12345)
-np.random.seed(12345)
+seed = 70
+manual_seed(seed)
+np.random.seed(seed)
+
+# choose device and hyperparameters
+
+device = torch.device("cpu")
+n_qubits = 5
+depth = 10
+lr = 0.01
+n_points = 20
+epochs = 700
+dropout_prob = 0.06
+noise = 0.4
+
+def sin_dataset(dataset_size: int = 100, test_size: float = 0.4, noise: float = 0.4):
+    """Generates points (x,y) which follow sin(πx)+ϵ,
+        where epsilon is noise randomly sampled from the normal
+        distribution for each datapoint.
+    Args:
+        dataset_size (int): total number of points. Defaults to 100.
+        test_size (float): fraction of points for testing. Defaults to 0.4.
+        noise (float): standard deviation of added noise. Defaults to 0.4.
+    Returns:
+        data (tuple): data divided into training and testing
+    """
+    x_ax = np.linspace(-1, 1, dataset_size)
+    y = np.sin(x_ax * np.pi)
+    noise = np.random.normal(0, 0.5, y.shape) * noise
+    y += noise
+
+    # permuting the points around before dividing into train and test sets.
+    rng = np.random.default_rng(seed)
+    indices = rng.permutation(dataset_size)
+    n_test = int(dataset_size * test_size)
+    n_train = int(dataset_size * (1 - test_size))
+    test_indices = indices[:n_test]
+    train_indices = indices[n_test : (n_test + n_train)]
+    x_train, x_test, y_train, y_test = (
+        x_ax[train_indices],
+        x_ax[test_indices],
+        y[train_indices],
+        y[test_indices],
+    )
+
+    x_train = x_train.reshape(-1, 1)
+    x_test = x_test.reshape(-1, 1)
+    y_train = y_train.reshape(-1, 1)
+    y_test = y_test.reshape(-1, 1)
+    return x_train, x_test, y_train, y_test
 
 
+# generates points following sin(πx)+ϵ, split into training and testing sets.
+x_train, x_test, y_train, y_test = sin_dataset(dataset_size=n_points, test_size=0.25, noise=0.4)
+```
+
+We can now visualise the function we will train QNNs to learn.
+
+```python exec="on" source="material-block" html="1"
+fig, ax = plt.subplots()
+plt.plot(x_train, y_train, "o", label="training")
+plt.plot(x_test, y_test, "o", label="testing")
+plt.plot(
+    np.linspace(-1, 1, 100),
+    [np.sin(x * np.pi) for x in np.linspace(-1, 1, 100)],
+    linestyle="dotted",
+    label=r"$\sin(x)$",
+)
+plt.ylabel(r"$y = \sin(\pi\cdot x) + \epsilon$")
+plt.xlabel(r"$x$")
+ax.xaxis.set_major_locator(ticker.MultipleLocator(0.5))
+ax.yaxis.set_major_locator(ticker.MultipleLocator(0.5))
+plt.legend()
+from io import StringIO  # markdown-exec: hide
+from matplotlib.figure import Figure  # markdown-exec: hide
+def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
+    buffer = StringIO()  # markdown-exec: hide
+    fig.savefig(buffer, format="svg")  # markdown-exec: hide
+    return buffer.getvalue()  # markdown-exec: hide
+print(fig_to_html(plt.gcf())) # markdown-exec: hide
+```
+
+Since our QNN can only output values between -1 and 1 we need to scale the data to be between these values.
+
+```python exec="on" source="material-block" html="1"
 class MinMaxScaler:
-    def __init__(self, feature_range=(0, 1)):
+    """A class which scales data to be within a chosen range"""
+
+    def __init__(self, feature_range: tuple =(0, 1)):
         self.feature_range = feature_range
         self.min = None
         self.scale = None
@@ -49,34 +132,18 @@ class MinMaxScaler:
         X = X * self.scale + self.min
         return X
 
+scaler = MinMaxScaler(feature_range=(-1, 1))
+y_train = scaler.fit_transform(y_train)
+y_test = scaler.transform(y_test)
+```
 
-def sin_dataset(dataset_size=100, test_size=0.4, noise=0.4):
-    x_ax = np.linspace(-1, 1, dataset_size)
-    y = np.sin(x_ax * np.pi)
-    noise = np.random.normal(0, 0.5, y.shape) * noise
-    y += noise
+Now we need to construct our QNNs, they are comprised of feature maps and an ansatz. The ansatz contains CNOT gates with nearest neighbour entanglement after every rotation gate. The feature map contains two rotation gates RY and RZ, taking as rotation angles $\arcsin(x)$ and $\arccos(x^2)$ respectively.
 
-    rng = np.random.default_rng(40)
-    indices = rng.permutation(dataset_size)
-    n_test = int(dataset_size * test_size)
-    n_train = int(dataset_size * (1 - test_size))
-    test_indices = indices[:n_test]
-    train_indices = indices[n_test : (n_test + n_train)]
-    x_train, x_test, y_train, y_test = (
-        x_ax[train_indices],
-        x_ax[test_indices],
-        y[train_indices],
-        y[test_indices],
-    )
-
-    x_train = x_train.reshape(-1, 1)
-    x_test = x_test.reshape(-1, 1)
-    y_train = y_train.reshape(-1, 1)
-    y_test = y_test.reshape(-1, 1)
-    return x_train, x_test, y_train, y_test
-
+```python exec="on" source="material-block" html="1"
 
 def hea_ansatz(n_qubits, layer):
+    """creates an ansatz which performs RX, RZ, RX rotations on each qubit,
+    which nearest neighbour CNOT gates interpersed between each rotational gate."""
     ops = []
     for i in range(n_qubits):
         ops.append(pyq.RX(i, param_name=f"theta_{i}{layer}{0}"))
@@ -97,7 +164,7 @@ def hea_ansatz(n_qubits, layer):
         ops.append(pyq.CNOT(control=j, target=j + 1))
     return ops
 
-
+# the two feature maps we will be using
 def fm1(n_qubits):
     return [pyq.RY(i, "x1") for i in range(n_qubits)]
 
@@ -105,7 +172,7 @@ def fm1(n_qubits):
 def fm2(n_qubits):
     return [pyq.RZ(i, "x2") for i in range(n_qubits)]
 
-
+# The class which constructs QNNs
 class QuantumModelBase(torch.nn.Module):
     def __init__(self, n_qubits, n_layers, device):
         super().__init__()
@@ -126,6 +193,7 @@ class QuantumModelBase(torch.nn.Module):
         self.params = self.params.to(device=device, dtype=torch.float32)
 
     def build_operations(self):
+        """defines operations for the quantum circuit and trainable parameters."""
         operations = []
         for i in range(self.n_layers):
             operations += self.embedding1 + self.embedding2
@@ -138,12 +206,14 @@ class QuantumModelBase(torch.nn.Module):
         return operations
 
     def build_circuit(self, operations):
+        """constructs a QuantumCircuit object and puts it on device."""
         return pyq.QuantumCircuit(
             n_qubits=self.n_qubits,
             operations=operations,
         ).to(device=self.device, dtype=torch.complex64)
 
     def forward(self, x):
+        """the forward pass for the QNN"""
         x = x.flatten()
         x_1 = {"x1": torch.asin(x)}
         x_2 = {"x2": torch.acos(x**2)}
@@ -158,8 +228,85 @@ class QuantumModelBase(torch.nn.Module):
 
         return out
 
+# first we will define a QNN which is overparameterised with no dropout.
+model = QuantumModelBase(n_qubits=n_qubits, n_layers=depth, device=device)
+# define the corresponding optimizer for the problem
+opt = optim.Adam(model.parameters(), lr=lr)
+```
+We now wish to train the QNN to learn the noisy sinusoidal function we have defined. This function will return the loss curves for the train and test sets.
+```python exec="on" source="material-block" html="1"
+def train(model, opt, x_train, y_train, x_test, y_test, epochs, device):
+    # lists which will store losses for train and tests sets as we train.
+    train_loss_history = []
+    validation_loss_history = []
+
+    x_test = tensor(x_test).to(device, dtype=torch.float32)
+    y_test = (
+        tensor(y_test)
+        .to(device, dtype=torch.float32)
+        .reshape(
+            -1,
+        )
+    )
+
+    x_train = tensor(x_train).to(device, dtype=torch.float32)
+    y_train = (
+        tensor(y_train)
+        .to(device, dtype=torch.float32)
+        .reshape(
+            -1,
+        )
+    )
+
+    # we will be using the mean squared error as our loss function.
+    cost_fn = torch.nn.MSELoss()
+
+    for epoch in range(epochs):
+        model.train()
+
+        opt.zero_grad()
+        y_preds = model(x_train)
+        train_loss = cost_fn(y_preds, y_train.flatten())
+        train_loss.backward()
+        opt.step()
+
+        # no dropout is performed during evaluation of the model.
+        model.eval()
+        train_preds = model(x_train)
+        train_loss = cost_fn(train_preds, y_train.flatten()).detach().numpy()
+
+        test_preds = model(x_test)
+        test_loss = cost_fn(test_preds, y_test.flatten()).detach().numpy()
+
+        train_loss_history.append(train_loss)
+        validation_loss_history.append(test_loss)
+
+        # log performance every 100 epochs.
+        if epoch % 100 == 0:
+            print(f"epoch: {epoch}, train loss {train_loss}, val loss: {test_loss}")
+
+    return train_loss_history, validation_loss_history
+
+# train the vanilla QNN, extracting the training and testing loss curves
+no_dropout_train_loss_hist, no_dropout_test_loss_hist = train(
+    model=model,
+    opt=opt,
+    x_train=x_train,
+    y_train=y_train,
+    x_test=x_test,
+    y_test=y_test,
+    epochs=epochs,
+    device=device,
+)
+```
+
+Next we define a QNN with the same archecture as before but now includes rotational dropout. Rotional dropout will randomly drop single qubit trainable parameterised gates with some probability dropout_prob.
+
+
+```python exec="on" source="material-block" html="1"
 
 class DropoutModel(QuantumModelBase):
+    """Inherits from QuantumModelBase but the build_circuit function now creates a circuit which drops certain gates with some probability during training."""
     def __init__(
         self, n_qubits, n_layers, device, dropout_mode="rotational_dropout", dropout_prob=0.03
     ):
@@ -175,75 +322,49 @@ class DropoutModel(QuantumModelBase):
             dropout_prob=self.dropout_prob,
         ).to(device=self.device, dtype=torch.complex64)
 
+# Define the QNN with rotational quantum dropout.
+model = DropoutModel(
+    n_qubits=n_qubits,
+    n_layers=depth,
+    device=device,
+    dropout_mode=DropoutMode.ROTATIONAL,
+    dropout_prob=dropout_prob,
+)
 
-def train_step(model, opt, data):
-    opt.zero_grad()
-    y_true = data[1].flatten()
-    y_preds = model(data[0])
-    loss = torch.nn.MSELoss()(y_preds, y_true)
-    loss.backward()
-    opt.step()
+# Define the corresponding optimiser
+opt = optim.Adam(model.parameters(), lr=lr)
 
-    return loss
-
-
-def train(model, opt, x_train, y_train, x_test, y_test, epochs):
-    train_loss_history = []
-    validation_loss_history = []
-
-    x_test = tensor(x_test).to(device, dtype=torch.float32)
-    y_test = tensor(y_test).to(device, dtype=torch.float32).flatten()
-
-    x_train = tensor(x_train).to(device, dtype=torch.float32)
-    y_train = tensor(y_train).to(device, dtype=torch.float32).flatten()
-
-    for epoch in range(epochs):
-        model.train()
-
-        train_loss = train_step(model, opt, (x_train, y_train))
-
-        model.eval()
-        test_preds = model(x_test)
-        test_loss = torch.nn.MSELoss()(test_preds, y_test).detach().numpy()
-
-        train_loss_history.append(train_loss.detach().numpy())
-        validation_loss_history.append(test_loss)
-
-        if epoch % 100 == 0:
-            print(f"epoch: {epoch}, train loss {train_loss}, val loss: {test_loss}")
-
-    return model, train_loss_history, validation_loss_history
-
-
-def plot_results(train_history, test_history, epochs):
-    fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+# train the QNN which contains rotational dropout.
+dropout_train_loss_hist, dropout_test_loss_hist = train(
+    model=model,
+    opt=opt,
+    x_train=x_train,
+    y_train=y_train,
+    x_test=x_test,
+    y_test=y_test,
+    epochs=epochs,
+    device=device,
+)
+```
+Now that we have trained both a regular QNN and one with rotational quantum dropout, we can visualise the training and testing loss curves. What we observe is the regular QNN performing better on the train set but poorer on the test set. We can attribute this discrepency to the regular QNN overfitting to the noise rather than the true underlying function. The QNN with rotational dropout does no exhibit overfitting and adheres to the true function better, thus performs better on the test set.
+```python exec="on" source="material-block" html="1"
+def plot_results(
+    no_dropout_train_history,
+    no_dropout_test_history,
+    dropout_train_history,
+    dropout_test_history,
+    epochs,
+):
+    fig, ax = plt.subplots(1, 2)
     plt.subplots_adjust(wspace=0.05)
     ax[0].set_title("MSE train")
-    for k, v in train_history.items():
-        mean_train_history = np.mean(v, axis=0)
-        std_train_history = np.std(v, axis=0)
-        print(mean_train_history.shape)
-        ax[0].fill_between(
-            range(epochs),
-            mean_train_history - std_train_history,
-            mean_train_history + std_train_history,
-            alpha=0.2,
-        )
-        # average trend
-        ax[0].plot(range(epochs), mean_train_history, label=f"{k}")
+
+    ax[0].plot(range(epochs), no_dropout_train_history, label="no dropout")
+    ax[0].plot(range(epochs), dropout_train_history, label="no dropout")
 
     ax[1].set_title("MSE test")
-    for k, v in test_history.items():
-        mean_test_history = np.mean(v, axis=0)
-        std_test_history = np.std(v, axis=0)
-        ax[1].fill_between(
-            range(epochs),
-            mean_test_history - std_test_history,
-            mean_test_history + std_test_history,
-            alpha=0.2,
-        )
-        # average trend
-        ax[1].plot(range(epochs), mean_test_history, label=f"{k}")
+    ax[1].plot(range(epochs), no_dropout_test_history, label="no dropout")
+    ax[1].plot(range(epochs), dropout_test_history, label="dropout")
 
     ax[0].legend(
         loc="upper center", bbox_to_anchor=(1.01, 1.25), ncol=4, fancybox=True, shadow=True
@@ -253,109 +374,25 @@ def plot_results(train_history, test_history, epochs):
         ax.set_xlabel("Epochs")
         ax.set_ylabel("MSE")
         ax.set_yscale("log")
+        ax.set_ylim([1e-3, 0.6])
         ax.label_outer()
 
     plt.subplots_adjust(bottom=0.3)
-    plt.savefig("results.pdf")
-    plt.close()
+    from io import StringIO  # markdown-exec: hide
+    from matplotlib.figure import Figure  # markdown-exec: hide
+    def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
+        buffer = StringIO()  # markdown-exec: hide
+        fig.savefig(buffer, format="svg")  # markdown-exec: hide
+        return buffer.getvalue()  # markdown-exec: hide
+    print(fig_to_html(plt.gcf())) # markdown-exec: hide
 
 
-device = torch.device("cpu")
-n_qubits = 4
-depth = 20
-lr = 0.01
-n_points = 20
-epochs = 1000
-dropout_prob = 0.01
-
-x_train, x_test, y_train, y_test = sin_dataset(dataset_size=n_points, test_size=0.25)
-
-# visualising the function we will train a model to learn
-fig, ax = plt.subplots()
-plt.plot(x_train, y_train, "o", label="training")
-plt.plot(x_test, y_test, "o", label="testing")
-plt.plot(
-    np.linspace(-1, 1, 100),
-    [np.sin(x * np.pi) for x in np.linspace(-1, 1, 100)],
-    linestyle="dotted",
-    label=r"$\sin(x)$",
+# finally we compare the
+plot_results(
+    no_dropout_train_history=no_dropout_train_loss_hist,
+    dropout_train_history=dropout_train_loss_hist,
+    no_dropout_test_history=no_dropout_test_loss_hist,
+    dropout_test_history=dropout_test_loss_hist,
+    epochs=epochs,
 )
-plt.ylabel(r"$y = \sin(\pi\cdot x) + \epsilon$")
-plt.xlabel(r"$x$")
-ax.xaxis.set_major_locator(ticker.MultipleLocator(0.5))
-ax.yaxis.set_major_locator(ticker.MultipleLocator(0.5))
-plt.legend()
-plt.savefig("problem_function.pdf")
-plt.close()
-
-# scale the data to ensure it lies in the range (-1,1)
-scaler = MinMaxScaler(feature_range=(-1, 1))
-y_train = scaler.fit_transform(y_train)
-y_test = scaler.transform(y_test)
-
-
-num_runs = 3
-train_history = {}
-test_history = {}
-
-# training with no dropout
-train_losses = []
-test_losses = []
-for _ in range(num_runs):
-    # defining an overparameterised quantum circuit
-    model = QuantumModelBase(n_qubits=n_qubits, n_layers=depth, device=device)
-    opt = optim.Adam(model.parameters(), lr=lr)
-    _, train_loss_hist, test_loss_hist = train(
-        model=model,
-        opt=opt,
-        x_train=x_train,
-        y_train=y_train,
-        x_test=x_test,
-        y_test=y_test,
-        epochs=epochs,
-    )
-    train_losses.append(train_loss_hist)
-    test_losses.append(test_loss_hist)
-
-train_losses = np.array(train_losses)
-val_losses = np.array(test_losses)
-train_history["no dropout"] = train_losses
-test_history["no dropout"] = test_losses
-
-
-# training with dropout
-train_losses = []
-test_losses = []
-for _ in range(num_runs):
-    # defining a quantum model with dropout
-    model = DropoutModel(
-        n_qubits=n_qubits,
-        n_layers=depth,
-        device=device,
-        dropout_mode="rotational_dropout",
-        dropout_prob=dropout_prob,
-    )
-
-    opt = optim.Adam(model.parameters(), lr=lr)
-    _, train_loss_hist, val_loss_hist = train(
-        model=model,
-        opt=opt,
-        x_train=x_train,
-        y_train=y_train,
-        x_test=x_test,
-        y_test=y_test,
-        epochs=epochs,
-    )
-    train_losses.append(train_loss_hist)
-    test_losses.append(test_loss_hist)
-
-train_losses = np.array(train_losses)
-val_losses = np.array(test_losses)
-train_history["dropout"] = train_losses
-test_history["dropout"] = test_losses
-
-
-plot_results(train_history=train_history, test_history=test_history, epochs=epochs)
-
-
 ```

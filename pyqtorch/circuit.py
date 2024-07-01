@@ -216,6 +216,8 @@ class QuantumCircuit(Sequence):
 
 
 class DropoutQuantumCircuit(QuantumCircuit):
+    """Creates a quantum circuit able to perform quantum dropout, based on the work of https://arxiv.org/abs/2310.04120."""
+
     def __init__(
         self,
         n_qubits: int,
@@ -252,17 +254,12 @@ class DropoutQuantumCircuit(QuantumCircuit):
             State: pure state vector
         """
         for op in self.operations:
-            if hasattr(op, "param_name"):
-                if values[op.param_name].requires_grad:
-                    keep = 1 - bernoulli(tensor(self.dropout_prob))  # type: ignore
-                    if keep:
-                        state = op(state, values)
-
-                else:
+            if (hasattr(op, "param_name")) and (values[op.param_name].requires_grad):
+                keep = int(1 - bernoulli(tensor(self.dropout_prob)))  # type: ignore
+                if keep:
                     state = op(state, values)
             else:
                 state = op(state, values)
-
         return state
 
     def entangling_dropout(
