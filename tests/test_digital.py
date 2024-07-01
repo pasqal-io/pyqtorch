@@ -618,9 +618,10 @@ def test_dm_partial_trace() -> None:
     rho = density_mat(product_state(state_str, batch_size=batch_size))
     keep_indices = random.sample(range(n_qubits), k=random.randint(1, n_qubits))
     n_keep = len(keep_indices)
-    state_reduice_str = "".join([state_str[i] for i in keep_indices])
-    rho_reduice = dm_partial_trace(rho, keep_indices)
-    assert rho_reduice.shape == torch.Size([2**n_keep, 2**n_keep, batch_size])
+    state_reduce_str = "".join([state_str[i] for i in keep_indices])
+    rho_reduce = dm_partial_trace(rho, keep_indices)
+    assert rho_reduce.shape == torch.Size([2**n_keep, 2**n_keep, batch_size])
     assert torch.allclose(
-        rho_reduice, density_mat(product_state(state_reduice_str, batch_size=batch_size))
+        rho_reduce,
+        density_mat(product_state(state_reduce_str, batch_size=batch_size)),
     )
