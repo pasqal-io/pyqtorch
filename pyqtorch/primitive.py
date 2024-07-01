@@ -101,12 +101,27 @@ class Primitive(torch.nn.Module):
         return self._dtype
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> None:
+        """Get eigenvalues of the underlying generator.
+
+        Returns:
+            None.
+        """
         pass
 
     @property
-    def eigenvalues(self) -> Tensor:
-        return torch.linalg.eigvalsh(self.pauli)
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.linalg.eigvalsh(self.unitary(values))
 
     def to(self, *args: Any, **kwargs: Any) -> Primitive:
         super().to(*args, **kwargs)
@@ -144,11 +159,29 @@ class X(Primitive):
         super().__init__(OPERATIONS_DICT["X"], target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_singleq_eigenvalues
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_singleq_eigenvalues
 
 
@@ -157,11 +190,29 @@ class Y(Primitive):
         super().__init__(OPERATIONS_DICT["Y"], target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_singleq_eigenvalues
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_singleq_eigenvalues
 
 
@@ -170,11 +221,29 @@ class Z(Primitive):
         super().__init__(OPERATIONS_DICT["Z"], target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_singleq_eigenvalues
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_singleq_eigenvalues
 
 
@@ -186,11 +255,29 @@ class I(Primitive):  # noqa: E742
         return state
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.ones(2, dtype=torch.cdouble)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.ones(2, dtype=torch.cdouble)
 
 
@@ -199,11 +286,29 @@ class H(Primitive):
         super().__init__(OPERATIONS_DICT["H"], target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([-2.0, 0.0], dtype=torch.cdouble)
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_singleq_eigenvalues
 
 
@@ -212,11 +317,29 @@ class T(Primitive):
         super().__init__(OPERATIONS_DICT["T"], target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([0, 1], dtype=torch.cdouble)
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([1.0, torch.sqrt(torch.tensor([1j]))], dtype=torch.cdouble)
 
 
@@ -225,11 +348,29 @@ class S(Primitive):
         super().__init__(OPERATIONS_DICT["S"], target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([0.0, 1.0], dtype=torch.cdouble)
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([1.0, 1.0j], dtype=torch.cdouble)
 
 
@@ -238,11 +379,29 @@ class SDagger(Primitive):
         super().__init__(OPERATIONS_DICT["SDAGGER"], target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([0.0, 1.0], dtype=torch.cdouble)
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([1.0, 1.0j], dtype=torch.cdouble)
 
 
@@ -258,13 +417,28 @@ class Projector(Primitive):
         self.qubit_support = support
 
     @property
-    def eigenvalues_generator(self) -> None:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> None:
+        """Get eigenvalues of the underlying generator.
+
+        Raises:
+            ValueError as not available.
+        """
         raise ValueError(
             "Property `eigenvalues_generator` not available for non-unitary operator."
         )
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([0.0, 1.0], dtype=torch.cdouble)
 
 
@@ -273,13 +447,28 @@ class N(Primitive):
         super().__init__(OPERATIONS_DICT["N"], target)
 
     @property
-    def eigenvalues_generator(self) -> None:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> None:
+        """Get eigenvalues of the underlying generator.
+
+        Raises:
+            ValueError as not available.
+        """
         raise ValueError(
             "Property `eigenvalues_generator` not available for non-unitary operator."
         )
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([0.0, 1.0], dtype=torch.cdouble)
 
 
@@ -290,11 +479,29 @@ class SWAP(Primitive):
         self.qubit_support = self.control + (target,)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([-2, 0, 0, 0], dtype=torch.cdouble)
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([-1, 1, 1, 1], dtype=torch.cdouble)
 
 
@@ -311,13 +518,31 @@ class CSWAP(Primitive):
         return f"control:{self.control}, target:{self.target}"
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor(
             (1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=torch.cdouble
         )
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor(
             (1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=torch.cdouble
         )
@@ -344,11 +569,29 @@ class CNOT(ControlledOperationGate):
         super().__init__("X", control, target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([-2.0, 0.0, 0.0, 0.0], dtype=torch.cdouble)
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_twoq_eigenvalues
 
 
@@ -360,11 +603,29 @@ class CY(ControlledOperationGate):
         super().__init__("Y", control, target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([-2.0, 0.0, 0.0, 0.0], dtype=torch.cdouble)
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_twoq_eigenvalues
 
 
@@ -373,11 +634,29 @@ class CZ(ControlledOperationGate):
         super().__init__("Z", control, target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor([-2.0, 0.0, 0.0, 0.0], dtype=torch.cdouble)
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return pauli_twoq_eigenvalues
 
 
@@ -386,14 +665,32 @@ class Toffoli(ControlledOperationGate):
         super().__init__("X", control, target)
 
     @property
-    def eigenvalues_generator(self) -> Tensor:
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
         return torch.tensor(
             [-2, *[0 for _ in range(2 ** len(self.qubit_support) - 1)]],
             dtype=torch.cdouble,
         )
 
     @property
-    def eigenvalues(self) -> Tensor:
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the operator
+        """
         return torch.tensor(
             [-1, *[1 for _ in range(2 ** len(self.qubit_support) - 1)]],
             dtype=torch.cdouble,

@@ -12,7 +12,10 @@ from pyqtorch.matrices import (
     _jacobian,
     _unitary,
 )
-from pyqtorch.primitive import Primitive
+from pyqtorch.primitive import (
+    Primitive,
+    pauli_singleq_eigenvalues,
+)
 from pyqtorch.utils import Operator
 
 
@@ -149,6 +152,35 @@ class RX(Parametric):
         """
         super().__init__("X", target, param_name)
 
+    @property
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return pauli_singleq_eigenvalues
+
+    @property
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        val = self.parse_values(values)
+        lmbd = torch.cos(val / 2.0) - 1j * torch.sin(val / 2.0)
+        lmbd = torch.cos(val / 2.0) - 1j * torch.sin(val / 2.0)
+        return torch.cat((lmbd, lmbd.conj()))
+
 
 class RY(Parametric):
     """
@@ -175,6 +207,35 @@ class RY(Parametric):
             param_name: Name of parameters.
         """
         super().__init__("Y", target, param_name)
+
+    @property
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return pauli_singleq_eigenvalues
+
+    @property
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        val = self.parse_values(values)
+        lmbd = torch.cos(val / 2.0) - 1j * torch.sin(val / 2.0)
+        lmbd = torch.cos(val / 2.0) - 1j * torch.sin(val / 2.0)
+        return torch.cat((lmbd, lmbd.conj()))
 
 
 class RZ(Parametric):
@@ -203,6 +264,35 @@ class RZ(Parametric):
         """
         super().__init__("Z", target, param_name)
 
+    @property
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return pauli_singleq_eigenvalues
+
+    @property
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        val = self.parse_values(values)
+        lmbd = torch.cos(val / 2.0) - 1j * torch.sin(val / 2.0)
+        lmbd = torch.cos(val / 2.0) - 1j * torch.sin(val / 2.0)
+        return torch.cat((lmbd, lmbd.conj()))
+
 
 class PHASE(Parametric):
     """
@@ -229,6 +319,34 @@ class PHASE(Parametric):
             param_name: Name of parameters.
         """
         super().__init__("I", target, param_name)
+
+    @property
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.tensor([0.0, 2.0], dtype=torch.cdouble)
+
+    @property
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        thetas = self.parse_values(values)
+        lmbda = torch.exp(1j * thetas)
+        return torch.cat((torch.ones(1), lmbda))
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
@@ -368,6 +486,41 @@ class CRX(ControlledRotationGate):
         """
         super().__init__("X", control, target, param_name)
 
+    @property
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.zeros(2 ** len(self.qubit_support) - 2),
+                torch.tensor([1.0, -1.0], dtype=torch.cdouble),
+            )
+        )
+
+    @property
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        val = self.parse_values(values)
+        lmbd = torch.cos(val / 2.0) - 1j * torch.sin(val / 2.0)
+        return torch.cat(
+            (torch.ones(2 ** len(self.qubit_support) - 2), lmbd, lmbd.conj())
+        )
+
 
 class CRY(ControlledRotationGate):
     """
@@ -389,6 +542,41 @@ class CRY(ControlledRotationGate):
         """
         super().__init__("Y", control, target, param_name)
 
+    @property
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.zeros(2 ** len(self.qubit_support) - 2),
+                torch.tensor([1.0, -1.0], dtype=torch.cdouble),
+            )
+        )
+
+    @property
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        val = self.parse_values(values)
+        lmbd = torch.cos(val / 2.0) - 1j * torch.sin(val / 2.0)
+        return torch.cat(
+            (torch.ones(2 ** len(self.qubit_support) - 2), lmbd, lmbd.conj())
+        )
+
 
 class CRZ(ControlledRotationGate):
     """
@@ -409,6 +597,41 @@ class CRZ(ControlledRotationGate):
             param_name: Name of parameters.
         """
         super().__init__("Z", control, target, param_name)
+
+    @property
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.zeros(2 ** len(self.qubit_support) - 2),
+                torch.tensor([1.0, -1.0], dtype=torch.cdouble),
+            )
+        )
+
+    @property
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        val = self.parse_values(values)
+        lmbd = torch.cos(val / 2.0) - 1j * torch.sin(val / 2.0)
+        return torch.cat(
+            (torch.ones(2 ** len(self.qubit_support) - 2), lmbd, lmbd.conj())
+        )
 
 
 class CPHASE(ControlledRotationGate):
@@ -432,6 +655,40 @@ class CPHASE(ControlledRotationGate):
             param_name: Name of parameters.
         """
         super().__init__("I", control, target, param_name)
+
+    @property
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.tensor([-2.0, 0.0], dtype=torch.cdouble),
+                torch.zeros(2 ** len(self.qubit_support) - 2),
+            )
+        )
+
+    @property
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        val = self.parse_values(values)
+        return torch.cat(
+            (torch.ones(2 ** len(self.qubit_support) - 1), torch.exp(1j * val))
+        )
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
@@ -535,6 +792,39 @@ class U(Parametric):
         self.register_buffer(
             "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
         )
+
+    @property
+    def eigenvalues_generator(
+        self, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return pauli_singleq_eigenvalues
+
+    @property
+    def eigenvalues(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        """Get eigenvalues of the underlying unitary.
+
+        Arguments:
+            values: Parameter values. Unused for Primitive.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        phi, theta, omega = list(
+            map(
+                lambda t: t.unsqueeze(0) if len(t.size()) == 0 else t,
+                [values[self.phi], values[self.theta], values[self.omega]],
+            )
+        )
+        lmbd = torch.exp(-1j * (phi + omega) / 2) * torch.cos(theta / 2)
+        return torch.cat((lmbd, lmbd.conj()))
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
