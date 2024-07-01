@@ -203,21 +203,6 @@ class GPSR(Function):
         params_map = param_dict(ctx.param_names, param_values)
         grads_dict = {k: None for k in params_map.keys()}
 
-        def expectation_fn(params: dict[str, Tensor]) -> Tensor:
-            return GPSR.forward(
-                ctx,
-                ctx.circuit,
-                ctx.observable,
-                ctx.in_state,
-                params.keys(),
-                *params.values(),
-            )
-
-        # def vjp(psr: Callable, name: str) -> Tensor:
-        #     """Sums over gradients corresponding to different observables.
-        #     """
-        #     return (grad_out * psr(expectation_fn, params_map, name)).sum(dim=1)
-
         return (None, None, None, None, *grads_dict.values())
 
     @staticmethod
@@ -225,7 +210,6 @@ class GPSR(Function):
         self,
         circuit: QuantumCircuit,
         observable: Observable,
-        psr_fn: Callable,
     ) -> dict[str, Callable]:
         param_to_psr: OrderedDict = OrderedDict()
         return param_to_psr

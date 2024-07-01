@@ -36,6 +36,10 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
     torch.cuda.nvtx.range_push("Primitive.backward")
 
 
+pauli_singleq_eigenvalues = torch.tensor([-1.0, 1.0], dtype=torch.cdouble)
+pauli_twoq_eigenvalues = torch.tensor([-1.0, 1.0, 1.0, 1.0], dtype=torch.cdouble)
+
+
 class Primitive(torch.nn.Module):
     def __init__(self, pauli: Tensor, target: int | tuple[int, ...]) -> None:
         super().__init__()
@@ -96,6 +100,14 @@ class Primitive(torch.nn.Module):
     def dtype(self) -> torch.dtype:
         return self._dtype
 
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        pass
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.linalg.eigvalsh(self.pauli)
+
     def to(self, *args: Any, **kwargs: Any) -> Primitive:
         super().to(*args, **kwargs)
         self._device = self.pauli.device
@@ -131,15 +143,39 @@ class X(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["X"], target)
 
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return pauli_singleq_eigenvalues
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return pauli_singleq_eigenvalues
+
 
 class Y(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["Y"], target)
 
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return pauli_singleq_eigenvalues
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return pauli_singleq_eigenvalues
+
 
 class Z(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["Z"], target)
+
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return pauli_singleq_eigenvalues
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return pauli_singleq_eigenvalues
 
 
 class I(Primitive):  # noqa: E742
@@ -149,25 +185,65 @@ class I(Primitive):  # noqa: E742
     def forward(self, state: Tensor, values: dict[str, Tensor] = dict()) -> Tensor:
         return state
 
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.ones(2, dtype=torch.cdouble)
+
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.ones(2, dtype=torch.cdouble)
+
 
 class H(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["H"], target)
+
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor([-2.0, 0.0], dtype=torch.cdouble)
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return pauli_singleq_eigenvalues
 
 
 class T(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["T"], target)
 
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor([0, 1], dtype=torch.cdouble)
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.tensor([1.0, torch.sqrt(torch.tensor([1j]))], dtype=torch.cdouble)
+
 
 class S(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["S"], target)
 
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor([0.0, 1.0], dtype=torch.cdouble)
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.tensor([1.0, 1.0j], dtype=torch.cdouble)
+
 
 class SDagger(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["SDAGGER"], target)
+
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor([0.0, 1.0], dtype=torch.cdouble)
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.tensor([1.0, 1.0j], dtype=torch.cdouble)
 
 
 class Projector(Primitive):
@@ -181,10 +257,30 @@ class Projector(Primitive):
         # Override the attribute in AbstractOperator.
         self.qubit_support = support
 
+    @property
+    def eigenvalues_generator(self) -> None:
+        raise ValueError(
+            "Property `eigenvalues_generator` not available for non-unitary operator."
+        )
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.tensor([0.0, 1.0], dtype=torch.cdouble)
+
 
 class N(Primitive):
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["N"], target)
+
+    @property
+    def eigenvalues_generator(self) -> None:
+        raise ValueError(
+            "Property `eigenvalues_generator` not available for non-unitary operator."
+        )
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.tensor([0.0, 1.0], dtype=torch.cdouble)
 
 
 class SWAP(Primitive):
@@ -192,6 +288,14 @@ class SWAP(Primitive):
         super().__init__(OPERATIONS_DICT["SWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.qubit_support = self.control + (target,)
+
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor([-2, 0, 0, 0], dtype=torch.cdouble)
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.tensor([-1, 1, 1, 1], dtype=torch.cdouble)
 
 
 class CSWAP(Primitive):
@@ -205,6 +309,18 @@ class CSWAP(Primitive):
 
     def extra_repr(self) -> str:
         return f"control:{self.control}, target:{self.target}"
+
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor(
+            (1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=torch.cdouble
+        )
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.tensor(
+            (1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=torch.cdouble
+        )
 
 
 class ControlledOperationGate(Primitive):
@@ -227,6 +343,14 @@ class CNOT(ControlledOperationGate):
     def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("X", control, target)
 
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor([-2.0, 0.0, 0.0, 0.0], dtype=torch.cdouble)
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return pauli_twoq_eigenvalues
+
 
 CX = CNOT
 
@@ -235,12 +359,42 @@ class CY(ControlledOperationGate):
     def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("Y", control, target)
 
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor([-2.0, 0.0, 0.0, 0.0], dtype=torch.cdouble)
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return pauli_twoq_eigenvalues
+
 
 class CZ(ControlledOperationGate):
     def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("Z", control, target)
 
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor([-2.0, 0.0, 0.0, 0.0], dtype=torch.cdouble)
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return pauli_twoq_eigenvalues
+
 
 class Toffoli(ControlledOperationGate):
     def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("X", control, target)
+
+    @property
+    def eigenvalues_generator(self) -> Tensor:
+        return torch.tensor(
+            [-2, *[0 for _ in range(2 ** len(self.qubit_support) - 1)]],
+            dtype=torch.cdouble,
+        )
+
+    @property
+    def eigenvalues(self) -> Tensor:
+        return torch.tensor(
+            [-1, *[1 for _ in range(2 ** len(self.qubit_support) - 1)]],
+            dtype=torch.cdouble,
+        )

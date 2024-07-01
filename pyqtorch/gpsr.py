@@ -1,19 +1,24 @@
 from __future__ import annotations
 
-from typing import Callable
 from functools import partial
+from typing import Callable
 
 import torch
 from torch import Tensor
 
 PI = torch.pi
 
-def general_psr(spectrum: Tensor, n_eqs: int | None = None, shift_prefac: float = 0.5) -> Callable:
+
+def general_psr(
+    spectrum: Tensor, n_eqs: int | None = None, shift_prefac: float = 0.5
+) -> Callable:
     diffs = spectrum - spectrum.reshape(-1, 1)
     sorted_unique_spectral_gaps = torch.unique(torch.abs(torch.tril(diffs)))
 
     # We have to filter out zeros
-    sorted_unique_spectral_gaps = sorted_unique_spectral_gaps[sorted_unique_spectral_gaps > 0]
+    sorted_unique_spectral_gaps = sorted_unique_spectral_gaps[
+        sorted_unique_spectral_gaps > 0
+    ]
     n_eqs = len(sorted_unique_spectral_gaps)
     sorted_unique_spectral_gaps = torch.tensor(list(sorted_unique_spectral_gaps))
 
@@ -25,7 +30,8 @@ def general_psr(spectrum: Tensor, n_eqs: int | None = None, shift_prefac: float 
             spectral_gaps=sorted_unique_spectral_gaps,
             shift_prefac=shift_prefac,
         )
-    
+
+
 def single_gap_psr(
     expectation_fn: Callable[[dict[str, Tensor]], Tensor],
     param_dict: dict[str, Tensor],
@@ -63,6 +69,7 @@ def single_gap_psr(
     f_min = expectation_fn(shifted_params)
 
     return spectral_gap * (f_plus - f_min) / (4 * torch.sin(spectral_gap * shift / 2))
+
 
 def multi_gap_psr(
     expectation_fn: Callable[[dict[str, Tensor]], Tensor],
