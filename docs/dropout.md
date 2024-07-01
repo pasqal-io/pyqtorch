@@ -29,7 +29,7 @@ n_qubits = 5
 depth = 10
 lr = 0.01
 n_points = 20
-epochs = 700
+epochs = 200
 dropout_prob = 0.06
 noise = 0.4
 
@@ -97,7 +97,7 @@ def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
     buffer = StringIO()  # markdown-exec: hide
     fig.savefig(buffer, format="svg")  # markdown-exec: hide
     return buffer.getvalue()  # markdown-exec: hide
-print(fig_to_html(plt.gcf())) # markdown-exec: hide
+#print(fig_to_html(plt.gcf())) # markdown-exec: hide
 ```
 
 Since our QNN can only output values between -1 and 1 we need to scale the data to be between these values.
@@ -360,7 +360,7 @@ def plot_results(
     ax[0].set_title("MSE train")
 
     ax[0].plot(range(epochs), no_dropout_train_history, label="no dropout")
-    ax[0].plot(range(epochs), dropout_train_history, label="no dropout")
+    ax[0].plot(range(epochs), dropout_train_history, label="dropout")
 
     ax[1].set_title("MSE test")
     ax[1].plot(range(epochs), no_dropout_test_history, label="no dropout")
@@ -378,6 +378,7 @@ def plot_results(
         ax.label_outer()
 
     plt.subplots_adjust(bottom=0.3)
+    """
     from io import StringIO  # markdown-exec: hide
     from matplotlib.figure import Figure  # markdown-exec: hide
     def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
@@ -385,7 +386,7 @@ def plot_results(
         fig.savefig(buffer, format="svg")  # markdown-exec: hide
         return buffer.getvalue()  # markdown-exec: hide
     print(fig_to_html(plt.gcf())) # markdown-exec: hide
-
+    """
 
 # finally we compare the
 plot_results(
