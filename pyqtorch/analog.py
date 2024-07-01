@@ -133,7 +133,9 @@ class Scale(Sequence):
             state, self.unitary(values), self.operations[0].qubit_support
         )
 
-    def unitary(self, values: dict[str, Tensor]) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor], embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -148,9 +150,11 @@ class Scale(Sequence):
             if isinstance(self.param_name, str)
             else self.param_name
         )
-        return thetas * self.operations[0].unitary(values)
+        return thetas * self.operations[0].unitary(values, embedding)
 
-    def dagger(self, values: dict[str, Tensor]) -> Operator:
+    def dagger(
+        self, values: dict[str, Tensor], embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary of the dagger.
 
@@ -160,9 +164,11 @@ class Scale(Sequence):
         Returns:
             The unitary representation of the dagger.
         """
-        return _dagger(self.unitary(values))
+        return _dagger(self.unitary(values, embedding))
 
-    def jacobian(self, values: dict[str, Tensor]) -> Operator:
+    def jacobian(
+        self, values: dict[str, Tensor], embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary of the jacobian.
 

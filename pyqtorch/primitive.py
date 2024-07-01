@@ -79,9 +79,7 @@ class Primitive(torch.nn.Module):
         embedding: Embedding | None = None,
     ) -> Tensor:
         if embedding is not None and hasattr(self, "param_name"):
-            values.update(
-                {self.param_name: embedding.assign_single_leaf(self.param_name, values)}
-            )
+            values[self.param_name] = embedding.eval_leaf(self.param_name, values)
         if isinstance(state, DensityMatrix):
             # TODO: fix error type int | tuple[int, ...] expected "int"
             # Only supports single-qubit gates
@@ -100,8 +98,12 @@ class Primitive(torch.nn.Module):
                 len(state.size()) - 1,
             )
 
-    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return _dagger(self.unitary(values))
+    def dagger(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        return _dagger(self.unitary(values, embedding))
 
     @property
     def device(self) -> torch.device:

@@ -30,6 +30,9 @@ def torch_call(
 
 class Embedding(torch.nn.Module):
     """
+    The Embedding class interfaces `root` parameters, a.k.a trainable and non-trainable symbols
+    passed by the user, with names given to torch_calls using those parameters.
+
     vparam_names: A list of abstract variational parameter names.
     fparam_names: A list of abstract feature parameter names.
     leaf_to_call: Map from intermediate and leaf variables (which will be used as angles in gates)
@@ -86,10 +89,10 @@ class Embedding(torch.nn.Module):
         for key, _ in self.fparams.items():
             self.fparams[key] = None
 
-    def assign_single_leaf(
+    def eval_leaf(
         self, leaf_name: str, root_and_intermediates: dict[str, torch.Tensor]
-    ) -> dict[str, torch.Tensor]:
-        return {leaf_name: self.leaf_to_call[leaf_name](root_and_intermediates)}
+    ) -> torch.Tensor:
+        return self.leaf_to_call[leaf_name](root_and_intermediates)
 
     def assign_leaves(
         self, root_params: dict[str, torch.Tensor]

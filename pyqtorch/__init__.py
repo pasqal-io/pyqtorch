@@ -56,7 +56,7 @@ from .analog import (
 from .api import expectation, run, sample
 from .apply import apply_operator
 from .circuit import Merge, QuantumCircuit, Sequence
-from .embed import Embedding
+from .embed import Embedding, torch_call
 from .noise import (
     AmplitudeDamping,
     BitFlip,
@@ -101,6 +101,7 @@ from .utils import (
 )
 
 __all__ = [
+    "torch_call",
     "Embedding",
     "run",
     "sample",

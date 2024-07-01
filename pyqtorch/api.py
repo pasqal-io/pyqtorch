@@ -104,7 +104,7 @@ def expectation(
         if embedding is not None:
             logger.error("Adjoint is not supported with Embedding-Mode.")
         return AdjointExpectation.apply(
-            circuit, observable, state, values.keys(), *values.values()
+            circuit, observable, state, embedding, values.keys(), *values.values()
         )
     elif diff_mode == DiffMode.GPSR:
         # TODO for charles
