@@ -351,7 +351,17 @@ class Merge(Sequence):
     def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
         batch_size = state.shape[-1]
         if values:
-            batch_size = max(batch_size, max(list(map(len, values.values()))))
+            batch_size = max(
+                batch_size,
+                max(
+                    list(
+                        map(
+                            lambda t: len(t) if isinstance(t, Tensor) else 1,
+                            values.values(),
+                        )
+                    )
+                ),
+            )
         return apply_operator(
             state,
             self.unitary(values, batch_size),
