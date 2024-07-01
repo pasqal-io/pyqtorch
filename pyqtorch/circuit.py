@@ -271,16 +271,21 @@ class Merge(Sequence):
             )
         return apply_operator(
             state,
-            self.unitary(values, batch_size),
+            self.unitary(values, embedding, batch_size),
             self.qubits,
         )
 
-    def unitary(self, values: dict[str, Tensor] | None, batch_size: int) -> Tensor:
+    def unitary(
+        self,
+        values: dict[str, Tensor] | None,
+        embedding: Embedding | None,
+        batch_size: int,
+    ) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
             (
-                add_batch_dim(op.unitary(values), batch_size)
+                add_batch_dim(op.unitary(values, embedding), batch_size)
                 for op in reversed(self.operations)
             ),
         )

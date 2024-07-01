@@ -28,6 +28,10 @@ class Api(nn.Module):
         self.circuit = circuit
         self.observable = observable
         self.embedding = embedding
+        logger.debug(
+            f"PyQTorch Api initialized with circuit {self.circuit}, observable {self.observable},\
+                     embedding {self.embedding}."
+        )
 
     def run(self) -> Tensor:
         pass
