@@ -94,5 +94,8 @@ def expectation(
         return AdjointExpectation.apply(
             circuit, observable, state, values.keys(), *values.values()
         )
+    elif diff_mode == DiffMode.GPSR:
+        # TODO for charles
+        raise NotImplementedError("Will be implemented soon.")
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")

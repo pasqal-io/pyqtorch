@@ -80,11 +80,16 @@ class DiffMode(StrEnum):
     Options: Automatic Differentiation -  Using torch.autograd.
              Adjoint Differentiation   - An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
-                                       Jones & Gacon, 2020
+                                       Jones & Gacon, 2020.
+            GPSR - The generalized parameter-shift rule.
     """
 
     AD = "ad"
+    """Use torch.autograd to perform differentiation."""
     ADJOINT = "adjoint"
+    """Use the adjoint differentiation method to compute first-order gradients."""
+    GPSR = "gpsr"
+    """TODO for charles"""
 
 
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
