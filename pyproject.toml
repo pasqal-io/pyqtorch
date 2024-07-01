@@ -13,10 +13,13 @@ authors = [
     { name = "Niklas Heim", email = "niklas.heim@pasqal.com" },
     { name = "Roland Guichard", email = "roland.guichard@pasqal.com" },
     { name = "Joao P. Moutinho", email = "joao.moutinho@pasqal.com"},
+    { name = "Vytautas Abramavicius", email = "vytautas.abramavicius@pasqal.com" },
+    { name = "Anton Quelle", email = "anton.quelle@pasqal.com" },
+    { name = "Charles Moussa", email = "charles.moussa@pasqal.com" }
 ]
 requires-python = ">=3.8,<3.13"
 license = {text = "Apache 2.0"}
-version = "1.1.2"
+version = "1.2.5"
 classifiers=[
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
@@ -32,7 +35,7 @@ classifiers=[
 dependencies = ["torch", "numpy"]
 
 [project.optional-dependencies]
-dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert", "matplotlib"]
+dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert", "matplotlib", "qutip~=4.7.5"]
 
 [tool.hatch.envs.tests]
 features = [
@@ -79,7 +82,7 @@ max-complexity = 15
 [tool.ruff.lint.flake8-quotes]
 docstring-quotes = "double"
 
-[tool.black]
+[lint.black]
 line-length = 100
 include = '\.pyi?$'
 exclude = '''
@@ -96,7 +99,7 @@ exclude = '''
 )/
 '''
 
-[tool.isort]
+[lint.isort]
 line_length = 100
 combine_as_imports = true
 balanced_wrapping = true
@@ -104,7 +107,7 @@ lines_after_imports = 2
 include_trailing_comma = true
 multi_line_output = 5
 
-[tool.mypy]
+[lint.mypy]
 python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true

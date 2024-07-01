@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+from logging import getLogger
 from typing import Any, Tuple
 
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-from pyqtorch.analog import Hamiltonian
+from pyqtorch.analog import Observable, Scale
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import DiffMode, inner_prod, param_dict
+
+logger = getLogger(__name__)
 
 
 class AdjointExpectation(Function):
@@ -45,7 +48,7 @@ class AdjointExpectation(Function):
     def forward(
         ctx: Any,
         circuit: QuantumCircuit,
-        observable: Hamiltonian,
+        observable: Observable,
         state: Tensor,
         param_names: list[str],
         *param_values: Tensor,
@@ -54,8 +57,8 @@ class AdjointExpectation(Function):
         ctx.observable = observable
         ctx.param_names = param_names
         values = param_dict(param_names, param_values)
-        ctx.out_state = circuit(state, values)
-        ctx.projected_state = observable(ctx.out_state, values)
+        ctx.out_state = circuit.run(state, values)
+        ctx.projected_state = observable.run(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
         return inner_prod(ctx.out_state, ctx.projected_state).real
 
@@ -67,10 +70,14 @@ class AdjointExpectation(Function):
         grads_dict = {k: None for k in values.keys()}
         for op in ctx.circuit.flatten()[::-1]:
             if isinstance(op, Primitive):
-                ctx.out_state = apply_operator(ctx.out_state, op.dagger(values), op.qubit_support)
-                if isinstance(op, Parametric):
+                ctx.out_state = apply_operator(
+                    ctx.out_state, op.dagger(values), op.qubit_support
+                )
+                if isinstance(op, Parametric) and isinstance(op.param_name, str):
                     if values[op.param_name].requires_grad:
-                        mu = apply_operator(ctx.out_state, op.jacobian(values), op.qubit_support)
+                        mu = apply_operator(
+                            ctx.out_state, op.jacobian(values), op.qubit_support
+                        )
                         grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
                     if grads_dict[op.param_name] is not None:
                         grads_dict[op.param_name] += grad
@@ -80,8 +87,38 @@ class AdjointExpectation(Function):
                 ctx.projected_state = apply_operator(
                     ctx.projected_state, op.dagger(values), op.qubit_support
                 )
+            elif isinstance(op, Scale):
+                if not len(op.operations) == 1 and isinstance(
+                    op.operations[0], Primitive
+                ):
+                    logger.error(
+                        "Adjoint can only be used on Scale with Primitive blocks."
+                    )
+                ctx.out_state = apply_operator(
+                    ctx.out_state, op.dagger(values), op.qubit_support
+                )
+                scaled_pyq_op = op.operations[0]
+                if (
+                    isinstance(scaled_pyq_op, Parametric)
+                    and isinstance(scaled_pyq_op.param_name, str)
+                    and values[scaled_pyq_op.param_name].requires_grad
+                ):
+                    mu = apply_operator(
+                        ctx.out_state,
+                        scaled_pyq_op.jacobian(values),
+                        scaled_pyq_op.qubit_support,
+                    )
+                    grads_dict[scaled_pyq_op.param_name] = (
+                        grad_out * 2 * inner_prod(ctx.projected_state, mu).real
+                    )
+
+                if values[op.param_name].requires_grad:
+                    grads_dict[op.param_name] = grad_out * 2 * -values[op.param_name]
+                ctx.projected_state = apply_operator(
+                    ctx.projected_state, op.dagger(values), op.qubit_support
+                )
             else:
-                raise NotImplementedError(
+                logger.error(
                     f"AdjointExpectation does not support operation: {type(op)}."
                 )
         return (None, None, None, None, *grads_dict.values())
@@ -91,7 +128,7 @@ def expectation(
     circuit: QuantumCircuit,
     state: Tensor,
     values: dict[str, Tensor],
-    observable: Hamiltonian,
+    observable: Observable,
     diff_mode: DiffMode = DiffMode.AD,
 ) -> Tensor:
     """Compute the expectation value of the circuit given a state and observable.
@@ -105,15 +142,15 @@ def expectation(
         A expectation value.
     """
     if observable is None:
-        raise ValueError("Please provide an observable to compute expectation.")
+        logger.error("Please provide an observable to compute expectation.")
     if state is None:
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
         state = circuit.run(state, values)
-        return inner_prod(state, observable.forward(state, values)).real
+        return inner_prod(state, observable.run(state, values)).real
     elif diff_mode == DiffMode.ADJOINT:
-        from pyqtorch.adjoint import AdjointExpectation
-
-        return AdjointExpectation.apply(circuit, observable, state, values.keys(), *values.values())
+        return AdjointExpectation.apply(
+            circuit, observable, state, values.keys(), *values.values()
+        )
     else:
-        raise ValueError(f"Requested diff_mode '{diff_mode}' not supported.")
+        logger.error(f"Requested diff_mode '{diff_mode}' not supported.")

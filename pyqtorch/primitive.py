@@ -4,12 +4,18 @@ import logging
 from logging import getLogger
 from typing import Any
 
+import numpy as np
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import product_state
+from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.matrices import (
+    IMAT,
+    OPERATIONS_DICT,
+    _controlled,
+    _dagger,
+)
+from pyqtorch.utils import DensityMatrix, product_state
 
 logger = getLogger(__name__)
 
@@ -34,7 +40,12 @@ class Primitive(torch.nn.Module):
     def __init__(self, pauli: Tensor, target: int | tuple[int, ...]) -> None:
         super().__init__()
         self.target: int | tuple[int, ...] = target
-        self.qubit_support: tuple[int, ...] = (target,) if isinstance(target, int) else target
+
+        self.qubit_support: tuple[int, ...] = (
+            (target,) if isinstance(target, int) else target
+        )
+        if isinstance(target, np.integer):
+            self.qubit_support = (target.item(),)
         self.register_buffer("pauli", pauli)
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
@@ -54,12 +65,25 @@ class Primitive(torch.nn.Module):
         return f"{self.qubit_support}"
 
     def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return self.pauli.unsqueeze(2)
+        return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return apply_operator(
-            state, self.unitary(values), self.qubit_support, len(state.size()) - 1
-        )
+    def forward(
+        self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
+    ) -> Tensor:
+        if isinstance(state, DensityMatrix):
+            # TODO: fix error type int | tuple[int, ...] expected "int"
+            # Only supports single-qubit gates
+            return DensityMatrix(
+                operator_product(
+                    self.unitary(values),
+                    operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
+                    self.target,  # type: ignore [arg-type]
+                )
+            )
+        else:
+            return apply_operator(
+                state, self.unitary(values), self.qubit_support, len(state.size()) - 1
+            )
 
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return _dagger(self.unitary(values))
@@ -77,6 +101,30 @@ class Primitive(torch.nn.Module):
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
         return self
+
+    def tensor(
+        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
+        if diagonal:
+            raise NotImplementedError
+        blockmat = self.unitary(values)
+        if n_qubits == 1:
+            return blockmat
+        full_sup = tuple(i for i in range(n_qubits))
+        support = tuple(sorted(self.qubit_support))
+        mat = (
+            IMAT.clone().to(self.device).unsqueeze(2)
+            if support[0] != full_sup[0]
+            else blockmat
+        )
+        for i in full_sup[1:]:
+            if i == support[0]:
+                other = blockmat
+                mat = torch.kron(mat.contiguous(), other.contiguous())
+            elif i not in support:
+                other = IMAT.clone().to(self.device).unsqueeze(2)
+                mat = torch.kron(mat.contiguous(), other.contiguous())
+        return mat
 
 
 class X(Primitive):
@@ -98,7 +146,7 @@ class I(Primitive):  # noqa: E742
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["I"], target)
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] = None) -> Tensor:
+    def forward(self, state: Tensor, values: dict[str, Tensor] = dict()) -> Tensor:
         return state
 
 

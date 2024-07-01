@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from string import ascii_letters as ABC
 
-import torch
 from numpy import array, log2
 from numpy.typing import NDArray
 from torch import Tensor, einsum
@@ -16,8 +15,8 @@ def apply_operator(
     state: Tensor,
     operator: Tensor,
     qubits: tuple[int, ...] | list[int],
-    n_qubits: int = None,
-    batch_size: int = None,
+    n_qubits: int | None = None,
+    batch_size: int | None = None,
 ) -> Tensor:
     """Applies an operator, i.e. a single tensor of shape [2, 2, ...], on a given state
        of shape [2 for _ in range(n_qubits)] for a given set of (target and control) qubits.
@@ -85,4 +84,4 @@ def operator_product(op1: Tensor, op2: Tensor, target: int) -> Tensor:
     elif batch_size_2 > batch_size_1:
         op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
 
-    return torch.einsum("ijb,jkb->ikb", op1, op2)
+    return einsum("ijb,jkb->ikb", op1, op2)

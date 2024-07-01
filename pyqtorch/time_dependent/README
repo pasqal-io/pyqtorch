@@ -1,0 +1,3 @@
+Differentiable solvers for Schrodinger and Lindblad equation based on PyTorch.
+
+Adaptive Dormand-Prince solvers are adapted from the `dynamiqs` library version `0.1.0` developed by P. Guilmin, R. Gautier, A. Bocquet, E. Genois. Latest version can be found here: https://github.com/dynamiqs/dynamiqs.
