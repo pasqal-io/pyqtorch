@@ -254,10 +254,11 @@ class DropoutQuantumCircuit(QuantumCircuit):
             State: pure state vector
         """
         for op in self.operations:
-            if (hasattr(op, "param_name")) and (values[op.param_name].requires_grad):
-                keep = int(1 - bernoulli(tensor(self.dropout_prob)))  # type: ignore
-                if keep:
-                    state = op(state, values)
+            if (hasattr(op, "param_name")) and (values[op.param_name].requires_grad) and not (int(1 - bernoulli(tensor(self.dropout_prob)))):
+                continue
+                #keep = int(1 - bernoulli(tensor(self.dropout_prob)))  # type: ignore
+                #if keep:
+                #    state = op(state, values)
             else:
                 state = op(state, values)
         return state

@@ -91,7 +91,6 @@ def test_entangling_dropout() -> None:
 
 def test_canonical_fwd_dropout() -> None:
     n_qubits = 4
-    circ_ops = []  # type: ignore
     drop_circ_ops = [
         pyq.RY(0, "theta_0"),
         pyq.RY(1, "theta_1"),
@@ -111,7 +110,7 @@ def test_canonical_fwd_dropout() -> None:
     }
 
     state = pyq.random_state(n_qubits=n_qubits)
-    circ = pyq.QuantumCircuit(n_qubits=n_qubits, operations=circ_ops)
+    circ = pyq.QuantumCircuit(n_qubits=n_qubits, operations=[])
     dropout_circ = pyq.DropoutQuantumCircuit(
         n_qubits=n_qubits,
         operations=drop_circ_ops,
