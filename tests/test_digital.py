@@ -33,6 +33,7 @@ from pyqtorch.utils import (
     RTOL,
     DensityMatrix,
     density_mat,
+    dm_partial_trace,
     operator_kron,
     product_state,
     promote_operator,
@@ -607,4 +608,20 @@ def test_parametric_constantparam(gate: pyq.parametric.Parametric) -> None:
     assert torch.allclose(
         gate(target, "theta")(state, {"theta": param_val}),
         gate(target, param_val)(state),
+    )
+
+
+def test_dm_partial_trace() -> None:
+    n_qubits = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size = torch.randint(low=1, high=5, size=(1,)).item()
+    state_str = "".join(random.choice("01") for _ in range(n_qubits))
+    rho = density_mat(product_state(state_str, batch_size=batch_size))
+    keep_indices = random.sample(range(n_qubits), k=random.randint(1, n_qubits))
+    n_keep = len(keep_indices)
+    state_reduce_str = "".join([state_str[i] for i in keep_indices])
+    rho_reduce = dm_partial_trace(rho, keep_indices)
+    assert rho_reduce.shape == torch.Size([2**n_keep, 2**n_keep, batch_size])
+    assert torch.allclose(
+        rho_reduce,
+        density_mat(product_state(state_reduce_str, batch_size=batch_size)),
     )
