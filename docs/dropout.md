@@ -4,7 +4,7 @@ Here we will demonstrate an implemention [quantum dropout](https://arxiv.org/abs
 
 Firstly, we define the dataset that we will perform regression on, this function is $sin(\pi x)+\epsilon$, where $x\in\reals$ and $\epsilon$ is noise sampled from a normal distribution which is then added to each point.
 
-```python exec="on" source="material-block" html="1"
+```python exec="on" source="material-block" session="dropout"
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
@@ -76,7 +76,7 @@ x_train, x_test, y_train, y_test = sin_dataset(dataset_size=n_points, test_size=
 
 We can now visualise the function we will train QNNs to learn.
 
-```python exec="on" source="material-block" html="1"
+```python exec="on" source="material-block" html="1" session="dropout"
 fig, ax = plt.subplots()
 plt.plot(x_train, y_train, "o", label="training")
 plt.plot(x_test, y_test, "o", label="testing")
@@ -97,12 +97,12 @@ def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
     buffer = StringIO()  # markdown-exec: hide
     fig.savefig(buffer, format="svg")  # markdown-exec: hide
     return buffer.getvalue()  # markdown-exec: hide
-#print(fig_to_html(plt.gcf())) # markdown-exec: hide
+print(fig_to_html(plt.gcf())) # markdown-exec: hide
 ```
 
 Since our QNN can only output values between -1 and 1 we need to scale the data to be between these values.
 
-```python exec="on" source="material-block" html="1"
+```python exec="on" source="material-block" session="dropout"
 class MinMaxScaler:
     """A class which scales data to be within a chosen range"""
 
@@ -139,7 +139,7 @@ y_test = scaler.transform(y_test)
 
 Now we need to construct our QNNs, they are comprised of feature maps and an ansatz. The ansatz contains CNOT gates with nearest neighbour entanglement after every rotation gate. The feature map contains two rotation gates RY and RZ, taking as rotation angles $\arcsin(x)$ and $\arccos(x^2)$ respectively.
 
-```python exec="on" source="material-block" html="1"
+```python exec="on" source="material-block" session="dropout"
 
 def hea_ansatz(n_qubits, layer):
     """creates an ansatz which performs RX, RZ, RX rotations on each qubit,
@@ -233,8 +233,10 @@ model = QuantumModelBase(n_qubits=n_qubits, n_layers=depth, device=device)
 # define the corresponding optimizer for the problem
 opt = optim.Adam(model.parameters(), lr=lr)
 ```
+
 We now wish to train the QNN to learn the noisy sinusoidal function we have defined. This function will return the loss curves for the train and test sets.
-```python exec="on" source="material-block" html="1"
+
+```python exec="on" source="material-block" session="dropout"
 def train(model, opt, x_train, y_train, x_test, y_test, epochs, device):
     # lists which will store losses for train and tests sets as we train.
     train_loss_history = []
@@ -302,8 +304,7 @@ no_dropout_train_loss_hist, no_dropout_test_loss_hist = train(
 
 Next we define a QNN with the same archecture as before but now includes rotational dropout. Rotional dropout will randomly drop single qubit trainable parameterised gates with some probability dropout_prob.
 
-
-```python exec="on" source="material-block" html="1"
+```python exec="on" source="material-block" session="dropout"
 
 class DropoutModel(QuantumModelBase):
     """Inherits from QuantumModelBase but the build_circuit function now creates a circuit which drops certain gates with some probability during training."""
@@ -346,8 +347,10 @@ dropout_train_loss_hist, dropout_test_loss_hist = train(
     device=device,
 )
 ```
+
 Now that we have trained both a regular QNN and one with rotational quantum dropout, we can visualise the training and testing loss curves. What we observe is the regular QNN performing better on the train set but poorer on the test set. We can attribute this discrepency to the regular QNN overfitting to the noise rather than the true underlying function. The QNN with rotational dropout does no exhibit overfitting and adheres to the true function better, thus performs better on the test set.
-```python exec="on" source="material-block" html="1"
+
+```python exec="on" source="material-block" html="1" session="dropout"
 def plot_results(
     no_dropout_train_history,
     no_dropout_test_history,
@@ -378,7 +381,7 @@ def plot_results(
         ax.label_outer()
 
     plt.subplots_adjust(bottom=0.3)
-    """
+
     from io import StringIO  # markdown-exec: hide
     from matplotlib.figure import Figure  # markdown-exec: hide
     def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
@@ -386,7 +389,7 @@ def plot_results(
         fig.savefig(buffer, format="svg")  # markdown-exec: hide
         return buffer.getvalue()  # markdown-exec: hide
     print(fig_to_html(plt.gcf())) # markdown-exec: hide
-    """
+
 
 # finally we compare the
 plot_results(
