@@ -87,6 +87,21 @@ class DiffMode(StrEnum):
     ADJOINT = "adjoint"
 
 
+class DropoutMode(StrEnum):
+    """
+    Which Dropout mode to use.
+
+    Options: rotational    - Randomly drops entangling rotational gates.
+             entangling    - Randomly drops entangling gates.
+             canonical_fwd - Randomly drops rotational gates and next immediate entangling
+                            gates whose target bit is located on dropped rotational gates.
+    """
+
+    ROTATIONAL = "rotational_dropout"
+    ENTANGLING = "entangling_dropout"
+    CANONICAL_FWD = "canonical_fwd_dropout"
+
+
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
     """
     Function to test if the probabilities from the state sum up to 1.
