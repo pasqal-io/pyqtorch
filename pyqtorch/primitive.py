@@ -103,12 +103,15 @@ class Primitive(torch.nn.Module):
         return self
 
     def tensor(
-        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+        self,
+        values: dict[str, Tensor] = {},
+        n_qubits: int | None = 1,
+        diagonal: bool = False,
     ) -> Tensor:
         if diagonal:
             raise NotImplementedError
         blockmat = self.unitary(values)
-        if n_qubits == 1:
+        if n_qubits == 1 or n_qubits is None:
             return blockmat
         full_sup = tuple(i for i in range(n_qubits))
         support = tuple(sorted(self.qubit_support))
