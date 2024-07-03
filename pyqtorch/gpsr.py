@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from functools import partial
-from typing import Callable
+from typing import Any, Callable, Tuple
 
 import torch
-from torch import Tensor
+from torch import Tensor, no_grad
+from torch.autograd import Function
+
+from pyqtorch.analog import Observable
+from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.utils import inner_prod, param_dict
 
 PI = torch.pi
 
@@ -36,8 +42,8 @@ def single_gap_psr(
     expectation_fn: Callable[[dict[str, Tensor]], Tensor],
     param_dict: dict[str, Tensor],
     param_name: str,
-    spectral_gap: Tensor = torch.tensor([2], dtype=torch.get_default_dtype()),
-    shift: Tensor = torch.tensor([PI / 2], dtype=torch.get_default_dtype()),
+    spectral_gap: Tensor = torch.tensor([2.0], dtype=torch.get_default_dtype()),
+    shift: Tensor = torch.tensor([PI / 2.0], dtype=torch.get_default_dtype()),
 ) -> Tensor:
     """Implements single qubit Parameter Shift rule.
 
@@ -141,3 +147,94 @@ def multi_gap_psr(
     dfdx = torch.sum(spectral_gaps[:, None] * R, dim=0).reshape(batch_size, n_obs)
 
     return dfdx
+
+
+class GPSR(Function):
+    r"""
+    Implementation of the generalized parameter shift rule (Kyriienko et al.),
+    which only works for quantum operations whose generator has a single gap
+    in its eigenvalue spectrum, was generalized to work with arbitrary
+    generators of quantum operations.
+
+    For this, we define the differentiable function as quantum expectation value
+
+    $$
+    f(x) = \left\langle 0\right|\hat{U}^{\dagger}(x)\hat{C}\hat{U}(x)\left|0\right\rangle
+    $$
+
+    where $\hat{U}(x)={\rm exp}{\left( -i\frac{x}{2}\hat{G}\right)}$
+    is the quantum evolution operator with generator $\hat{G}$ representing the structure
+    of the underlying quantum circuit and $\hat{C}$ is the cost operator.
+    Then using the eigenvalue spectrum $\left\{ \lambda_n\right\}$ of the generator $\hat{G}$
+    we calculate the full set of corresponding unique non-zero spectral gaps
+    $\left\{ \Delta_s\right\}$ (differences between eigenvalues).
+    It can be shown that the final expression of derivative of $f(x)$
+    is then given by the following expression:
+
+    $\begin{equation}
+    \frac{{\rm d}f\left(x\right)}{{\rm d}x}=\overset{S}{\underset{s=1}{\sum}}\Delta_{s}R_{s},
+    \end{equation}$
+
+    where $S$ is the number of unique non-zero spectral gaps and $R_s$ are real quantities that
+    are solutions of a system of linear equations
+
+    $\begin{equation}
+    \begin{cases}
+    F_{1} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}
+    \left(\frac{\delta_{1}\Delta_{s}}{2}\right)R_{s},\\
+    F_{2} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}
+    \left(\frac{\delta_{2}\Delta_{s}}{2}\right)R_{s},\\
+    & ...\\
+    F_{S} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}
+    \left(\frac{\delta_{M}\Delta_{s}}{2}\right)R_{s}.
+    \end{cases}
+    \end{equation}$
+
+    Here $F_s=f(x+\delta_s)-f(x-\delta_s)$ denotes the difference between values
+    of functions evaluated at shifted arguments $x\pm\delta_s$.
+
+    Arguments:
+        circuit: A QuantumCircuit instance
+        observable: A hamiltonian.
+        state: A state in the form of [2 * n_qubits + [batch_size]]
+        param_names: A list of parameter names.
+        *param_values: A unpacked tensor of values for each parameter.
+    """
+
+    @staticmethod
+    @no_grad()
+    def forward(
+        ctx: Any,
+        circuit: QuantumCircuit,
+        observable: Observable,
+        state: Tensor,
+        param_names: list[str],
+        *param_values: Tensor,
+    ) -> Tensor:
+        ctx.circuit = circuit
+        ctx.observable = observable
+        ctx.param_names = param_names
+        ctx.in_state = state
+        values = param_dict(param_names, param_values)
+        out_state = circuit.run(state, values)
+        projected_state = observable.run(out_state, values)
+        ctx.save_for_backward(*param_values)
+        return inner_prod(out_state, projected_state).real
+
+    @staticmethod
+    @no_grad()
+    def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
+        param_values = ctx.saved_tensors
+        params_map = param_dict(ctx.param_names, param_values)
+        grads_dict = {k: None for k in params_map.keys()}
+
+        return (None, None, None, None, *grads_dict.values())
+
+    @staticmethod
+    def construct_rules(
+        self,
+        circuit: QuantumCircuit,
+        observable: Observable,
+    ) -> dict[str, Callable]:
+        param_to_psr: OrderedDict = OrderedDict()
+        return param_to_psr
