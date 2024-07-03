@@ -48,7 +48,7 @@ batch_size = 1
 
 ry = pyq.RY(0, param_name="x")
 cnot = pyq.CNOT(1, 2)
-ops = [ry, cnot]
+ops = [ry]
 n_qubits = 3
 circ = pyq.QuantumCircuit(n_qubits, ops)
 
