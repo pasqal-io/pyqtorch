@@ -80,8 +80,9 @@ class DiffMode(StrEnum):
     Options: Automatic Differentiation -  Using torch.autograd.
              Adjoint Differentiation   - An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
-                                       Jones & Gacon, 2020
-             Generalized parameter shift rule - Using the well known parameter shift rule algorithm
+                                       Jones & Gacon, 2020.
+            GPSR - The generalized parameter-shift rule.
+                        Using the well known parameter shift rule algorithm
                         (see Schuld et al., Evaluating analytic gradients on quantum hardware, 2018)
                         which works for arbitrary quantum operations
                         (Kyriienko et al., General quantum circuit differentiation rules)
@@ -89,6 +90,7 @@ class DiffMode(StrEnum):
     """
 
     AD = "ad"
+    """Use torch.autograd to perform differentiation."""
     ADJOINT = "adjoint"
     GPSR = "generalized parameter shift-rule"
 
