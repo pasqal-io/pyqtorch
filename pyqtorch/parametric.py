@@ -96,7 +96,7 @@ class Parametric(Primitive):
             """
             # self.param_name will be a torch.Tensor
             return Parametric._expand_values(
-                torch.tensor(param_name, device=self.device, dtype=self.dtype)
+                torch.tensor(self.param_name, device=self.device, dtype=self.dtype)
             )
 
         if param_name == "":
@@ -171,6 +171,17 @@ class Parametric(Primitive):
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         return _jacobian(thetas, self.pauli, self.identity, batch_size)
+
+    def to(self, *args: Any, **kwargs: Any) -> Primitive:
+        super().to(*args, **kwargs)
+        self._device = self.pauli.device
+        self.param_name = (
+            self.param_name.to(*args, **kwargs)
+            if isinstance(self.param_name, torch.Tensor)
+            else self.param_name
+        )
+        self._dtype = self.pauli.dtype
+        return self
 
 
 class RX(Parametric):
