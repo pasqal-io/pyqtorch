@@ -8,6 +8,7 @@ from torch import Tensor
 from pyqtorch.adjoint import AdjointExpectation
 from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.gpsr import PSRExpectation
 from pyqtorch.utils import DiffMode, inner_prod
 
 logger = getLogger(__name__)
@@ -94,6 +95,8 @@ def expectation(
             circuit, observable, state, values.keys(), *values.values()
         )
     elif diff_mode == DiffMode.GPSR:
-        raise NotImplementedError("To be added.")
+        return PSRExpectation.apply(
+            circuit, observable, state, values.keys(), *values.values()
+        )
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")
