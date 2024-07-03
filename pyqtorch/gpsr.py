@@ -17,8 +17,57 @@ logger = getLogger(__name__)
 
 
 class PSRExpectation(Function):
-    """
-    Describe PSR
+    r"""
+    Implementation of the generalized parameter shift rule.
+
+    Compared to the original parameter shift rule
+    which only works for quantum operations whose generator has a single gap
+    in its eigenvalue spectrum, GPSR works with arbitrary
+    generators of quantum operations.
+
+    For this, we define the differentiable function as quantum expectation value
+
+    $$
+    f(x) = \left\langle 0\right|\hat{U}^{\dagger}(x)\hat{C}\hat{U}(x)\left|0\right\rangle
+    $$
+
+    where $\hat{U}(x)={\rm exp}{\left( -i\frac{x}{2}\hat{G}\right)}$
+    is the quantum evolution operator with generator $\hat{G}$ representing the structure
+    of the underlying quantum circuit and $\hat{C}$ is the cost operator.
+    Then using the eigenvalue spectrum $\left\{ \lambda_n\right\}$ of the generator $\hat{G}$
+    we calculate the full set of corresponding unique non-zero spectral gaps
+    $\left\{ \Delta_s\right\}$ (differences between eigenvalues).
+    It can be shown that the final expression of derivative of $f(x)$
+    is then given by the following expression:
+
+    $\begin{equation}
+    \frac{{\rm d}f\left(x\right)}{{\rm d}x}=\overset{S}{\underset{s=1}{\sum}}\Delta_{s}R_{s},
+    \end{equation}$
+
+    where $S$ is the number of unique non-zero spectral gaps and $R_s$ are real quantities that
+    are solutions of a system of linear equations
+
+    $\begin{equation}
+    \begin{cases}
+    F_{1} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}
+    \left(\frac{\delta_{1}\Delta_{s}}{2}\right)R_{s},\\
+    F_{2} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}
+    \left(\frac{\delta_{2}\Delta_{s}}{2}\right)R_{s},\\
+    & ...\\
+    F_{S} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}
+    \left(\frac{\delta_{M}\Delta_{s}}{2}\right)R_{s}.
+    \end{cases}
+    \end{equation}$
+
+    Here $F_s=f(x+\delta_s)-f(x-\delta_s)$ denotes the difference between values
+    of functions evaluated at shifted arguments $x\pm\delta_s$.
+
+    Arguments:
+        circuit: A QuantumCircuit instance
+        observable: A hamiltonian.
+        state: A state in the form of [2 * n_qubits + [batch_size]]
+        param_names: A list of parameter names.
+        *param_values: A unpacked tensor of values for each parameter.
     """
 
     @staticmethod
