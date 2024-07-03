@@ -282,10 +282,6 @@ class DropoutQuantumCircuit(QuantumCircuit):
                 int(1 - bernoulli(tensor(self.dropout_prob)))
             ):
                 continue
-                # keep = bool(1 - bernoulli(tensor(self.dropout_prob)))  # type: ignore
-                # if keep:
-                #    state = op(state, values)
-
             else:
                 state = op(state, values)
 
@@ -306,22 +302,6 @@ class DropoutQuantumCircuit(QuantumCircuit):
         """
         entanglers_to_drop = dict.fromkeys(range(state.ndim - 1), 0)  # type: ignore
         for op in self.operations:
-            """
-            if hasattr(op, "param_name"):
-                if values[op.param_name].requires_grad:
-                    keep = bool(1 - bernoulli(tensor(self.dropout_prob)))  # type: ignore
-                    if keep:
-                        state = op(state, values)
-                    else:
-                        entanglers_to_drop[op.target] = 1
-                else:
-                    state = op(state, values)
-            else:
-                if entanglers_to_drop[op.control[0]] == 1:
-                    entanglers_to_drop[op.control[0]] = 0
-                else:
-                    state = op(state, values)
-            """
             if (
                 hasattr(op, "param_name")
                 and (values[op.param_name].requires_grad)
