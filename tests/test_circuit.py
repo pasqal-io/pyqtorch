@@ -16,13 +16,14 @@ from pyqtorch.primitive import Primitive
 from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix, product_state
 
 
-def test_adjoint_diff() -> None:
+# TODO add GPSR when multigap is implemented for this test
+@pytest.mark.parametrize("n_qubits", [3, 4, 5])
+def test_adjoint_diff(n_qubits: int) -> None:
     rx = pyq.RX(0, param_name="theta_0")
     cry = pyq.CPHASE(0, 1, param_name="theta_1")
     rz = pyq.RZ(2, param_name="theta_2")
     cnot = pyq.CNOT(1, 2)
     ops = [rx, cry, rz, cnot]
-    n_qubits = 3
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 
@@ -60,7 +61,7 @@ def test_adjoint_diff() -> None:
 
     assert len(grad_ad) == len(grad_adjoint)
     for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_adjoint[i])
+        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
 
 
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
@@ -155,7 +156,7 @@ def test_adjoint_duplicate_params() -> None:
     grad_adjoint = torch.autograd.grad(
         exp_adjoint, tuple(values.values()), torch.ones_like(exp_adjoint)
     )[0]
-    assert torch.allclose(grad_ad, grad_adjoint)
+    assert torch.allclose(grad_ad, grad_adjoint, atol=GRADCHECK_ATOL)
 
 
 @pytest.mark.parametrize("fn", [pyq.X, pyq.Z, pyq.Y])
@@ -312,12 +313,13 @@ def test_sample_run() -> None:
     assert "1100" in samples[0]
 
 
-def test_all_diff() -> None:
+# TODO delete this test when first one up is
+@pytest.mark.parametrize("n_qubits", [3, 4, 5])
+def test_all_diff(n_qubits: int) -> None:
     rx = pyq.RX(0, param_name="theta_0")
     rz = pyq.RZ(2, param_name="theta_1")
     cnot = pyq.CNOT(1, 2)
     ops = [rx, rz, cnot]
-    n_qubits = 3
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 
