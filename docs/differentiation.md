@@ -10,7 +10,7 @@ It uses the `torch` native automatic differentiation engine which tracks operati
 The [adjoint differentiation mode](https://arxiv.org/abs/2009.02823) computes first-order gradients by only requiring at most three states in memory in `O(P)` time where `P` is the number of parameters in a circuit.
 
 ### Generalized Parameter-Shift rules (DiffMode.GPSR)
-The Generalized parameter shift rule (GPSR) mode. It is an extension of the well known [parameter shift rule (PSR)]((https://arxiv.org/abs/1811.11184)) algorithm which has been generalized [to arbitrary quantum operations](https://arxiv.org/abs/2108.01218). Indeed, PSR only works for quantum operations whose generator has a single gap in its eigenvalue spectrum, GPSR extending to multi-gap.
+The Generalized parameter shift rule (GPSR mode) is an extension of the well known [parameter shift rule (PSR)]((https://arxiv.org/abs/1811.11184)) algorithm [to arbitrary quantum operations](https://arxiv.org/abs/2108.01218). Indeed, PSR only works for quantum operations whose generator has a single gap in its eigenvalue spectrum, GPSR extending to multi-gap.
 
 For this, we define the differentiable function as quantum expectation value
 
