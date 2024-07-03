@@ -310,3 +310,47 @@ def test_sample_run() -> None:
     assert torch.allclose(wf, product_state("1100"))
     assert torch.allclose(pyq.QuantumCircuit(4, [pyq.I(0)]).run("1100"), wf)
     assert "1100" in samples[0]
+
+
+def test_all_diff() -> None:
+    rx = pyq.RX(0, param_name="theta_0")
+    rz = pyq.RZ(2, param_name="theta_1")
+    cnot = pyq.CNOT(1, 2)
+    ops = [rx, rz, cnot]
+    n_qubits = 3
+    circ = pyq.QuantumCircuit(n_qubits, ops)
+    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+
+    theta_0_value = torch.pi / 2
+    theta_1_value = torch.pi
+
+    state = pyq.zero_state(n_qubits)
+
+    theta_0 = torch.tensor([theta_0_value], requires_grad=True)
+
+    theta_1 = torch.tensor([theta_1_value], requires_grad=True)
+
+    values = {"theta_0": theta_0, "theta_1": theta_1}
+
+    exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
+    exp_adjoint = expectation(circ, state, values, obs, DiffMode.ADJOINT)
+    exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values.values()), torch.ones_like(exp_ad)
+    )
+
+    grad_adjoint = torch.autograd.grad(
+        exp_adjoint, tuple(values.values()), torch.ones_like(exp_adjoint)
+    )
+
+    grad_gpsr = torch.autograd.grad(
+        exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
+    )
+
+    assert len(grad_ad) == len(grad_adjoint) == len(grad_gpsr)
+
+    for i in range(len(grad_ad)):
+        assert torch.allclose(grad_ad[i], grad_adjoint[i]) and torch.allclose(
+            grad_ad[i], grad_gpsr[i]
+        )
