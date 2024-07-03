@@ -50,7 +50,7 @@ class PSRExpectation(Function):
 
         for op in ctx.circuit.flatten():
             if isinstance(op, Parametric) and isinstance(op.param_name, str):
-                spectrum = torch.linalg.eigvals(op.pauli).reshape(-1, 1)
+                spectrum = torch.linalg.eigvalsh(op.pauli).reshape(-1, 1)
                 spectral_gap = torch.unique(
                     torch.abs(torch.tril(spectrum - spectrum.T))
                 )
@@ -66,11 +66,11 @@ class PSRExpectation(Function):
                         f_plus = pyq.expectation(
                             ctx.circuit, ctx.state, copied_values, ctx.observable
                         )
-                        copied_values = values.copy()
-                        copied_values[op.param_name] -= shift
+                        copied_values[op.param_name] -= 2.0 * shift
                         f_min = pyq.expectation(
                             ctx.circuit, ctx.state, copied_values, ctx.observable
                         )
+
                     grad = (
                         spectral_gap
                         * (f_plus - f_min)

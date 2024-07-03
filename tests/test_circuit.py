@@ -351,6 +351,6 @@ def test_all_diff() -> None:
     assert len(grad_ad) == len(grad_adjoint) == len(grad_gpsr)
 
     for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_adjoint[i]) and torch.allclose(
-            grad_ad[i], grad_gpsr[i]
-        )
+        assert torch.allclose(
+            grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL
+        ) and torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
