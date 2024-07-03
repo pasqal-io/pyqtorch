@@ -46,7 +46,6 @@ logger.setLevel(LOG_LEVEL)
 logger.info(f"PyQTorch logger successfully setup with log level {LOG_LEVEL}")
 
 
-from .adjoint import expectation
 from .analog import (
     Add,
     DiagonalObservable,
@@ -54,6 +53,7 @@ from .analog import (
     Observable,
     Scale,
 )
+from .api import expectation, run, sample
 from .apply import apply_operator
 from .circuit import DropoutQuantumCircuit, Merge, QuantumCircuit, Sequence, run, sample
 from .noise import (

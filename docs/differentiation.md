@@ -1,5 +1,18 @@
-`pyqtorch` also offers a [adjoint differentiation mode](https://arxiv.org/abs/2009.02823) which can be used through the `expectation` method.
+`pyqtorch` also offers several differentiation modes to compute gradients which can be accessed through the
+`expectation` API. Simply pass one of three `DiffMode` options to the `diff_mode` argument.
+The default is `ad`.
 
+### Automatic Differentiation (DiffMode.AD)
+The default differentation mode of `pyqtorch`, [torch.autograd](https://pytorch.org/docs/stable/autograd.html).
+It uses the `torch` native automatic differentiation engine which tracks operations on `torch.Tensor` objects by constructing a computational graph to perform chain rules for derivatives calculations.
+
+### Adjoint Differentiation (DiffMode.ADJOINT)
+The [adjoint differentiation mode](https://arxiv.org/abs/2009.02823) computes first-order gradients by only requiring at most three states in memory in `O(P)` time where `P` is the number of parameters in a circuit.
+
+### Generalized Parameter-Shift rules (DiffMode.GPSR)
+To be added.
+
+### Example
 ```python exec="on" source="material-block" html="1"
 import pyqtorch as pyq
 import torch

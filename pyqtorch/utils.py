@@ -77,14 +77,18 @@ class DiffMode(StrEnum):
     """
     Which Differentiation method to use.
 
-    Options: Automatic Differentiation -  Using torch.autograd.
-             Adjoint Differentiation   - An implementation of "Efficient calculation of gradients
-                                       in classical simulations of variational quantum algorithms",
-                                       Jones & Gacon, 2020
+    Options: Automatic Differentiation -  .
+             Adjoint Differentiation   -
     """
 
     AD = "ad"
+    """torch.autograd"""
     ADJOINT = "adjoint"
+    """An implementation of "Efficient calculation of gradients
+                                       in classical simulations of variational quantum algorithms",
+                                       Jones & Gacon, 2020"""
+    GPSR = "gpsr"
+    """To be added."""
 
 
 class DropoutMode(StrEnum):
