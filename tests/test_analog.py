@@ -152,8 +152,10 @@ def test_hamiltonianevolution_with_types(
 
     # test cached
     assert len(hamevo._cache_hamiltonian_evo) == 1
+
     psi_star = hamevo(psi)
     assert len(hamevo._cache_hamiltonian_evo) == 1
+    result = overlap(psi_star, psi)
     # check value has not changed
     assert torch.allclose(result, target, rtol=RTOL, atol=ATOL)
 
