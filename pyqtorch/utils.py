@@ -77,18 +77,19 @@ class DiffMode(StrEnum):
     """
     Which Differentiation method to use.
 
-    Options:
+    Options: Automatic Differentiation -  .
              Adjoint Differentiation   -
     """
 
     AD = "ad"
-    """Automatic Differentiation -  Use torch.autograd."""
+    """torch.autograd"""
     ADJOINT = "adjoint"
     """An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
                                        Jones & Gacon, 2020"""
+    
     GPSR = "gpsr"
-    """TODO describe GPSR"""
+    """To be added."""
 
 
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
