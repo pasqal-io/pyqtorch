@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from collections import OrderedDict
 from logging import getLogger
-from typing import Any, Callable, Tuple
+from typing import Any, Tuple
 
 from torch import Tensor, no_grad
 from torch.autograd import Function
