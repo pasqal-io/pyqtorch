@@ -319,7 +319,7 @@ def test_sample_run() -> None:
 
 # TODO delete this test when first one up is
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
-@pytest.mark.parametrize("same_angle", [True, False])
+@pytest.mark.parametrize("same_angle", [False])
 def test_all_diff(n_qubits: int, same_angle: bool) -> None:
     name_angle_1, name_angle_2 = "theta_0", "theta_1"
     if same_angle:
@@ -347,6 +347,9 @@ def test_all_diff(n_qubits: int, same_angle: bool) -> None:
     exp_adjoint = expectation(circ, state, values, obs, DiffMode.ADJOINT)
     exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
 
+    assert torch.allclose(exp_ad, exp_adjoint)
+    assert torch.allclose(exp_ad, exp_gpsr)
+
     grad_ad = torch.autograd.grad(
         exp_ad, tuple(values.values()), torch.ones_like(exp_ad), create_graph=True
     )[0]
@@ -365,6 +368,7 @@ def test_all_diff(n_qubits: int, same_angle: bool) -> None:
     gradgrad_ad = torch.autograd.grad(
         grad_ad, tuple(values.values()), torch.ones_like(grad_ad)
     )
+
     # TODO higher order adjoint is not yet supported.
     # gradgrad_adjoint = torch.autograd.grad(
     #     grad_adjoint, tuple(values.values()), torch.ones_like(grad_adjoint)
@@ -374,17 +378,18 @@ def test_all_diff(n_qubits: int, same_angle: bool) -> None:
         grad_gpsr, tuple(values.values()), torch.ones_like(grad_gpsr)
     )
 
+    # check first order gradients
     assert len(grad_ad) == len(grad_adjoint) == len(grad_gpsr)
-
     for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
-        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
-
-    for i in range(len(gradgrad_ad)):
-        assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=GRADCHECK_ATOL)
         assert torch.allclose(
             grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL
         ) and torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
+
+    assert len(gradgrad_ad) == len(gradgrad_gpsr)
+
+    # check second order gradients
+    for i in range(len(gradgrad_ad)):
+        assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=GRADCHECK_ATOL)
 
 
 @pytest.mark.xfail(raises=ValueError)

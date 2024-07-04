@@ -74,8 +74,8 @@ class PSRExpectation(Function):
     def forward(
         ctx: Any,
         circuit: QuantumCircuit,
-        observable: Observable,
         state: Tensor,
+        observable: Observable,
         param_names: list[str],
         *param_values: Tensor,
     ) -> Tensor:
