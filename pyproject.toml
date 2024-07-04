@@ -14,11 +14,12 @@ authors = [
     { name = "Roland Guichard", email = "roland.guichard@pasqal.com" },
     { name = "Joao P. Moutinho", email = "joao.moutinho@pasqal.com"},
     { name = "Vytautas Abramavicius", email = "vytautas.abramavicius@pasqal.com" },
-    { name = "Anton Quelle", email = "anton.quelle@pasqal.com" }
+    { name = "Anton Quelle", email = "anton.quelle@pasqal.com" },
+    { name = "Charles Moussa", email = "charles.moussa@pasqal.com" }
 ]
 requires-python = ">=3.8,<3.13"
 license = {text = "Apache 2.0"}
-version = "1.2.3"
+version = "1.2.5"
 classifiers=[
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
