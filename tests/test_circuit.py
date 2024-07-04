@@ -317,31 +317,33 @@ def test_sample_run() -> None:
     assert "1100" in samples[0]
 
 
-# TODO delete this test when first one up is
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
-@pytest.mark.parametrize("same_angle", [False, True])
-def test_all_diff(n_qubits: int, same_angle: bool) -> None:
+@pytest.mark.parametrize("same_angle", [True, False])
+def test_all_diff_singlegap(n_qubits: int, same_angle: bool) -> None:
     name_angle_1, name_angle_2 = "theta_0", "theta_1"
     if same_angle:
         name_angle_2 = name_angle_1
 
-    rx = pyq.RX(0, param_name=name_angle_1)
-    rz = pyq.RZ(2, param_name=name_angle_2)
+    ops_rx = pyq.Sequence([pyq.RX(i, param_name=name_angle_1) for i in range(n_qubits)])
+    ops_rz = pyq.Sequence([pyq.RZ(i, param_name=name_angle_2) for i in range(n_qubits)])
     cnot = pyq.CNOT(1, 2)
-    ops = [rx, rz, cnot]
+    ops = [ops_rx, ops_rz, cnot]
+
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 
     theta_0_value = torch.pi / 2
-    theta_1_value = torch.pi
 
     state = pyq.zero_state(n_qubits)
 
     theta_0 = torch.tensor([theta_0_value], requires_grad=True)
 
-    theta_1 = torch.tensor([theta_1_value], requires_grad=True)
-
-    values = {name_angle_1: theta_0, name_angle_2: theta_1}
+    if same_angle:
+        values = {name_angle_1: theta_0}
+    else:
+        theta_1_value = torch.pi
+        theta_1 = torch.tensor([theta_1_value], requires_grad=True)
+        values = {name_angle_1: theta_0, name_angle_2: theta_1}
 
     exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values, obs, DiffMode.ADJOINT)
