@@ -8,7 +8,7 @@ from torch import Tensor, no_grad
 from torch.autograd import Function
 
 import pyqtorch as pyq
-from pyqtorch.analog import Observable
+from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import inner_prod, param_dict
@@ -92,6 +92,7 @@ class PSRExpectation(Function):
 
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
+        check_support_psr(ctx.circuit)
         param_values = ctx.saved_tensors
         values = param_dict(ctx.param_names, param_values)
         grads_dict = {k: None for k in values.keys()}
@@ -133,3 +134,19 @@ class PSRExpectation(Function):
             else:
                 logger.error(f"PSRExpectation does not support operation: {type(op)}.")
         return (None, None, None, None, *grads_dict.values())
+
+
+def check_support_psr(circuit: QuantumCircuit):
+    """Checking that circuit has only compatible operations for PSR.
+
+    Args:
+        circuit (QuantumCircuit): Circuit to check.
+
+    Raises:
+        ValueError: When circuit contains Scale or HamiltonianEvolution.
+    """
+    for op in circuit.operations:
+        if isinstance(op, Scale) or isinstance(op, HamiltonianEvolution):
+            raise ValueError(
+                f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
+            )

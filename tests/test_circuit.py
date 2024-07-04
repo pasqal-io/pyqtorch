@@ -13,7 +13,11 @@ from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.noise import Noise
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix, product_state
+from pyqtorch.utils import (
+    GRADCHECK_ATOL,
+    DensityMatrix,
+    product_state,
+)
 
 
 # TODO add GPSR when multigap is implemented for this test
@@ -356,3 +360,29 @@ def test_all_diff(n_qubits: int) -> None:
         assert torch.allclose(
             grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL
         ) and torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
+
+
+@pytest.mark.xfail(raises=ValueError)
+@pytest.mark.parametrize("gate_type", ["scale", "hamevo"])
+def test_compatibility_gpsr(gate_type: str) -> None:
+
+    if gate_type == "scale":
+        seq_gate = pyq.Sequence([pyq.X(0)])
+        scale = pyq.Scale(seq_gate, "theta_0")
+        ops = [scale]
+    else:
+        hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), "theta_0", (0,))
+
+        ops = [hamevo]
+
+    circ = pyq.QuantumCircuit(1, ops)
+    obs = pyq.QuantumCircuit(1, [pyq.Z(0)])
+    state = pyq.zero_state(1)
+
+    param_value = torch.pi / 2
+    values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
+    exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+
+    grad_gpsr = torch.autograd.grad(
+        exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
+    )
