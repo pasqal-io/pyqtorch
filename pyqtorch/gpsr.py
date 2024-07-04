@@ -120,6 +120,8 @@ class PSRExpectation(Function):
                         f_min = pyq.expectation(
                             ctx.circuit, ctx.state, copied_values, ctx.observable
                         )
+                        # reset values
+                        copied_values[op.param_name] += shift
 
                     grad = (
                         spectral_gap
