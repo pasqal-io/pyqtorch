@@ -634,3 +634,8 @@ class U(Parametric):
             NotImplementedError
         """
         return [op.jacobian(values) for op in self.digital_decomposition()]
+
+
+OPS_PARAM_1Q = {PHASE, RX, RY, RZ, U}
+OPS_PARAM_2Q = {CPHASE, CRX, CRY, CRZ}
+OPS_PARAM = OPS_PARAM_1Q.union(OPS_PARAM_2Q)
