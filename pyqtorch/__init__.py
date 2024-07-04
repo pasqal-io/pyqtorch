@@ -55,7 +55,7 @@ from .analog import (
 )
 from .api import expectation, run, sample
 from .apply import apply_operator
-from .circuit import DropoutQuantumCircuit, Merge, QuantumCircuit, Sequence, run, sample
+from .circuit import DropoutQuantumCircuit, Merge, QuantumCircuit, Sequence
 from .noise import (
     AmplitudeDamping,
     BitFlip,
