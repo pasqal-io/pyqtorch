@@ -1,38 +1,42 @@
 from __future__ import annotations
 
+import pytest
 import torch
 
 import pyqtorch as pyq
-from pyqtorch.utils import DropoutMode
+from pyqtorch.utils import ATOL, DropoutMode
 
 
-def test_rotational_dropout() -> None:
-    n_qubits = 4
-    circ_ops = [pyq.CNOT(0, 1), pyq.CNOT(1, 2), pyq.CNOT(2, 3)]
-    drop_circ_ops = [
-        pyq.RY(0, "theta_0"),
-        pyq.RY(1, "theta_1"),
-        pyq.RY(2, "theta_2"),
-        pyq.RY(3, "theta_3"),
-        pyq.CNOT(0, 1),
-        pyq.CNOT(1, 2),
-        pyq.CNOT(2, 3),
-    ]
+@pytest.mark.parametrize(
+    "dropout_mode",
+    [DropoutMode.ROTATIONAL, DropoutMode.ENTANGLING, DropoutMode.CANONICAL_FWD],
+)
+def test_dropout(
+    dropout_mode: DropoutMode, n_qubits: int = 4, theta: float = 0.6
+) -> None:
 
-    theta_0_value = 0.6
+    circ_ops_1 = [pyq.RY(i, f"theta_{str(i)}") for i in range(n_qubits)]
+    circ_ops_2 = [pyq.CNOT(i, i + 1) for i in range(n_qubits - 1)]
+
+    drop_circ_ops = circ_ops_1 + circ_ops_2
+
+    operations = {
+        DropoutMode.ROTATIONAL: circ_ops_2,
+        DropoutMode.ENTANGLING: circ_ops_1,
+        DropoutMode.CANONICAL_FWD: [],
+    }
+
     values = {
-        "theta_0": torch.tensor([theta_0_value], requires_grad=True),
-        "theta_1": torch.tensor([theta_0_value], requires_grad=True),
-        "theta_2": torch.tensor([theta_0_value], requires_grad=True),
-        "theta_3": torch.tensor([theta_0_value], requires_grad=True),
+        f"theta_{str(i)}": torch.tensor([theta], requires_grad=True)
+        for i in range(n_qubits)
     }
 
     state = pyq.zero_state(n_qubits=n_qubits)
-    circ = pyq.QuantumCircuit(n_qubits=n_qubits, operations=circ_ops)
+    circ = pyq.QuantumCircuit(n_qubits=n_qubits, operations=operations[dropout_mode])
     dropout_circ = pyq.DropoutQuantumCircuit(
         n_qubits=n_qubits,
         operations=drop_circ_ops,
-        dropout_mode=DropoutMode.ROTATIONAL,
+        dropout_mode=dropout_mode,
         dropout_prob=1.0,
     )
     obs = pyq.QuantumCircuit(n_qubits=n_qubits, operations=[pyq.Z(1)])
@@ -42,86 +46,4 @@ def test_rotational_dropout() -> None:
         circuit=dropout_circ, state=state, values=values, observable=obs
     )
 
-    assert exp_circ == exp_dropout_circ
-
-
-def test_entangling_dropout() -> None:
-    n_qubits = 4
-    circ_ops = [
-        pyq.RY(0, "theta_0"),
-        pyq.RY(1, "theta_1"),
-        pyq.RY(2, "theta_2"),
-        pyq.RY(3, "theta_3"),
-    ]
-    drop_circ_ops = [
-        pyq.RY(0, "theta_0"),
-        pyq.RY(1, "theta_1"),
-        pyq.RY(2, "theta_2"),
-        pyq.RY(3, "theta_3"),
-        pyq.CNOT(0, 1),
-        pyq.CNOT(1, 2),
-        pyq.CNOT(2, 3),
-    ]
-
-    theta_value = 0.6
-    values = {
-        "theta_0": torch.tensor([theta_value], requires_grad=True),
-        "theta_1": torch.tensor([theta_value], requires_grad=True),
-        "theta_2": torch.tensor([theta_value], requires_grad=True),
-        "theta_3": torch.tensor([theta_value], requires_grad=True),
-    }
-
-    state = pyq.zero_state(n_qubits=n_qubits)
-    circ = pyq.QuantumCircuit(n_qubits=n_qubits, operations=circ_ops)
-    dropout_circ = pyq.DropoutQuantumCircuit(
-        n_qubits=n_qubits,
-        operations=drop_circ_ops,
-        dropout_mode=DropoutMode.ENTANGLING,
-        dropout_prob=1.0,
-    )
-    obs = pyq.QuantumCircuit(n_qubits=n_qubits, operations=[pyq.Z(1)])
-
-    exp_circ = pyq.expectation(circuit=circ, state=state, values=values, observable=obs)
-    exp_dropout_circ = pyq.expectation(
-        circuit=dropout_circ, state=state, values=values, observable=obs
-    )
-
-    assert exp_circ == exp_dropout_circ
-
-
-def test_canonical_fwd_dropout() -> None:
-    n_qubits = 4
-    drop_circ_ops = [
-        pyq.RY(0, "theta_0"),
-        pyq.RY(1, "theta_1"),
-        pyq.RY(2, "theta_2"),
-        pyq.RY(3, "theta_3"),
-        pyq.CNOT(0, 1),
-        pyq.CNOT(1, 2),
-        pyq.CNOT(2, 3),
-    ]
-
-    theta_0_value = 0.6
-    values = {
-        "theta_0": torch.tensor([theta_0_value], requires_grad=True),
-        "theta_1": torch.tensor([theta_0_value], requires_grad=True),
-        "theta_2": torch.tensor([theta_0_value], requires_grad=True),
-        "theta_3": torch.tensor([theta_0_value], requires_grad=True),
-    }
-
-    state = pyq.random_state(n_qubits=n_qubits)
-    circ = pyq.QuantumCircuit(n_qubits=n_qubits, operations=[])
-    dropout_circ = pyq.DropoutQuantumCircuit(
-        n_qubits=n_qubits,
-        operations=drop_circ_ops,
-        dropout_mode=DropoutMode.CANONICAL_FWD,
-        dropout_prob=1.0,
-    )
-    obs = pyq.QuantumCircuit(n_qubits=n_qubits, operations=[pyq.Z(1)])
-
-    exp_circ = pyq.expectation(circuit=circ, state=state, values=values, observable=obs)
-    exp_dropout_circ = pyq.expectation(
-        circuit=dropout_circ, state=state, values=values, observable=obs
-    )
-
-    assert exp_circ == exp_dropout_circ
+    assert torch.allclose(exp_circ, exp_dropout_circ, atol=ATOL)
