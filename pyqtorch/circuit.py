@@ -304,20 +304,3 @@ def hea(n_qubits: int, depth: int, param_name: str) -> tuple[ModuleList, Paramet
         {f"{param_name}_{n}": rand(1, requires_grad=True) for n in range(next(idx))}
     )
     return ops, params
-
-
-def run(
-    circuit: QuantumCircuit,
-    state: Tensor = None,
-    values: dict[str, Tensor] = dict(),
-) -> Tensor:
-    return circuit.run(state, values)
-
-
-def sample(
-    circuit: QuantumCircuit,
-    state: Tensor = None,
-    values: dict[str, Tensor] = dict(),
-    n_shots: int = 1000,
-) -> list[Counter]:
-    return circuit.sample(state, values, n_shots)

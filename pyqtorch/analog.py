@@ -4,7 +4,7 @@ import logging
 from functools import reduce
 from logging import getLogger
 from operator import add
-from typing import Callable, Tuple, Union
+from typing import Any, Callable, Tuple, Union
 
 import torch
 from torch import Tensor
@@ -148,6 +148,18 @@ class Scale(Sequence):
             The Scale within a list.
         """
         return [self]
+
+    def to(self, *args: Any, **kwargs: Any) -> Scale:
+        """Perform conversions for dtype or device.
+
+        Returns:
+            Converted Scale.
+        """
+        super().to(*args, **kwargs)
+        if not isinstance(self.param_name, str):
+            self.param_name = self.param_name.to(*args, **kwargs)
+
+        return self
 
 
 class Add(Sequence):
