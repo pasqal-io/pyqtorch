@@ -111,17 +111,23 @@ class PSRExpectation(Function):
 
                 if values[op.param_name].requires_grad:
                     with no_grad():
+                        # to handle repeated parameter cases in circuit
+                        original_name = op.param_name
+                        temp_name = op.param_name + "_temp"
                         copied_values = values.copy()
-                        copied_values[op.param_name] += shift
+                        copied_values[temp_name] = copied_values[original_name] + shift
+                        op.param_name = temp_name
+
                         f_plus = pyq.expectation(
                             ctx.circuit, ctx.state, copied_values, ctx.observable
                         )
-                        copied_values[op.param_name] -= 2.0 * shift
+                        copied_values[temp_name] -= 2.0 * shift
                         f_min = pyq.expectation(
                             ctx.circuit, ctx.state, copied_values, ctx.observable
                         )
                         # reset values
-                        copied_values[op.param_name] += shift
+                        copied_values[temp_name] += shift
+                        op.param_name = original_name
 
                     grad = (
                         spectral_gap
