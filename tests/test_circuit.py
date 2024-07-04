@@ -371,8 +371,7 @@ def test_all_diff(n_qubits: int, same_angle: bool) -> None:
     # )
 
     gradgrad_gpsr = torch.autograd.grad(
-        exp_gpsr, tuple(values.values()), torch.ones_like(grad_gpsr)
-        exp_ad, tuple(values.values()), torch.ones_like(exp_ad)
+        grad_gpsr, tuple(values.values()), torch.ones_like(grad_gpsr)
     )
 
     assert len(grad_ad) == len(grad_adjoint) == len(grad_gpsr)
