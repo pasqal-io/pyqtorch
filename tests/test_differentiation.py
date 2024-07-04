@@ -13,12 +13,13 @@ from pyqtorch.utils import (
 
 # TODO add GPSR when multigap is implemented for this test
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
-def test_adjoint_diff(n_qubits: int) -> None:
+@pytest.mark.parametrize("n_layers", [1, 2, 3])
+def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     rx = pyq.RX(0, param_name="theta_0")
     cry = pyq.CPHASE(0, 1, param_name="theta_1")
     rz = pyq.RZ(2, param_name="theta_2")
     cnot = pyq.CNOT(1, 2)
-    ops = [rx, cry, rz, cnot]
+    ops = [rx, cry, rz, cnot] * n_layers
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 
@@ -126,25 +127,6 @@ def test_differentiate_circuit(
     assert len(grad_ad) == len(grad_adjoint)
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
-
-
-def test_adjoint_duplicate_params() -> None:
-    n_qubits = 2
-    ops = [pyq.RX(0, param_name="theta_0"), pyq.RX(0, param_name="theta_0")]
-    theta_vals = torch.arange(0, torch.pi, 0.05, requires_grad=True)
-    circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
-    init_state = pyq.zero_state(n_qubits)
-    values = {"theta_0": theta_vals}
-    exp_ad = expectation(circ, init_state, values, obs, DiffMode.AD)
-    exp_adjoint = expectation(circ, init_state, values, obs, DiffMode.ADJOINT)
-    grad_ad = torch.autograd.grad(
-        exp_ad, tuple(values.values()), torch.ones_like(exp_ad)
-    )[0]
-    grad_adjoint = torch.autograd.grad(
-        exp_adjoint, tuple(values.values()), torch.ones_like(exp_adjoint)
-    )[0]
-    assert torch.allclose(grad_ad, grad_adjoint, atol=GRADCHECK_ATOL)
 
 
 @pytest.mark.xfail  # investigate
