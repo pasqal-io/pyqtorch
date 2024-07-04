@@ -324,10 +324,11 @@ def test_all_diff_singlegap(n_qubits: int, same_angle: bool) -> None:
     if same_angle:
         name_angle_2 = name_angle_1
 
-    rx = pyq.RX(0, param_name=name_angle_1)
-    rz = pyq.RZ(2, param_name=name_angle_2)
+    ops_rx = pyq.Sequence([pyq.RX(i, param_name=name_angle_1) for i in range(n_qubits)])
+    ops_rz = pyq.Sequence([pyq.RZ(i, param_name=name_angle_2) for i in range(n_qubits)])
     cnot = pyq.CNOT(1, 2)
-    ops = [rx, rz, cnot]
+    ops = [ops_rx, ops_rz, cnot]
+
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 
