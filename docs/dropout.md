@@ -26,10 +26,10 @@ np.random.seed(seed)
 
 device = torch.device("cpu")
 n_qubits = 5
-depth = 10
+depth = 5 # a greater performance difference is observed at depth 10
 lr = 0.01
 n_points = 20
-epochs = 200
+epochs = 100 # a greater performance difference is observed at 200-250 epochs of training
 dropout_prob = 0.06
 noise = 0.4
 

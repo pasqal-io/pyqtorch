@@ -15,7 +15,8 @@ authors = [
     { name = "Joao P. Moutinho", email = "joao.moutinho@pasqal.com"},
     { name = "Vytautas Abramavicius", email = "vytautas.abramavicius@pasqal.com" },
     { name = "Anton Quelle", email = "anton.quelle@pasqal.com" },
-    { name = "Charles Moussa", email = "charles.moussa@pasqal.com" }
+    { name = "Charles Moussa", email = "charles.moussa@pasqal.com" },
+    { name = "Callum Duffy", email = "callum.duffy@pasqal.com" },
 ]
 requires-python = ">=3.8,<3.13"
 license = {text = "Apache 2.0"}
