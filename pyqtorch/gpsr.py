@@ -7,7 +7,6 @@ import torch
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-import pyqtorch as pyq
 from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.parametric import Parametric
@@ -89,7 +88,7 @@ class PSRExpectation(Function):
         ctx.projected_state = observable.run(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
         return inner_prod(ctx.out_state, ctx.projected_state).real
-    
+
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
         """The PSRExpectation Backward call."""
@@ -152,7 +151,7 @@ def check_support_psr(circuit: QuantumCircuit):
 
     Raises:
         ValueError: When circuit contains Scale, HamiltonianEvolution
-                    or one operation has more than two eigenvalues (multi-gap). 
+                    or one operation has more than two eigenvalues (multi-gap).
     """
     for op in circuit.operations:
         if isinstance(op, Scale) or isinstance(op, HamiltonianEvolution):
