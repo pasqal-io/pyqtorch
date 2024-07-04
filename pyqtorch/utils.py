@@ -87,6 +87,7 @@ class DiffMode(StrEnum):
     """An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
                                        Jones & Gacon, 2020"""
+
     GPSR = "gpsr"
     """To be added."""
 
