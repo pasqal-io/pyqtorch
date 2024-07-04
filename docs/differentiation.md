@@ -27,7 +27,7 @@ ops = [ry, cnot]
 n_qubits = 3
 circ = pyq.QuantumCircuit(n_qubits, ops)
 
-obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+obs = pyq.Observable(n_qubits, [pyq.Z(0)])
 state = pyq.zero_state(n_qubits)
 
 values_ad = {"x": torch.tensor([torch.pi / 2], requires_grad=True)}

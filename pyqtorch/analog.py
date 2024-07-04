@@ -273,9 +273,13 @@ class DiagonalObservable(Observable):
             operations: Operations defining the observable.
             to_sparse: Whether to convert the operator to its sparse representation or not.
         """
+        logger.warning(
+            "The DiagonalObservable class will be deprecated (it is very innefficient)."
+            "Use the normal Observable class."
+        )
 
         if isinstance(operations, list):
-            operations = Sequence(operations)
+            operations = Add(operations)
         if n_qubits is None:
             n_qubits = max(operations.qubit_support) + 1
         hamiltonian = operations.tensor({}, n_qubits).squeeze(2)
@@ -313,6 +317,11 @@ class DiagonalObservable(Observable):
             self.operations[0].pauli,
             state.flatten(start_dim=0, end_dim=-2),
         ).reshape([2] * self.n_qubits + [state.shape[-1]])
+
+    def tensor(
+        self, values: dict = {}, n_qubits: int | None = None, diagonal: bool = False
+    ) -> Tensor:
+        raise NotImplementedError
 
 
 def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:
