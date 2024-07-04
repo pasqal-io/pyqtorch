@@ -327,14 +327,6 @@ def test_all_diff(n_qubits: int, same_angle: bool) -> None:
 
     rx = pyq.RX(0, param_name=name_angle_1)
     rz = pyq.RZ(2, param_name=name_angle_2)
-@pytest.mark.parametrize("same_angle", [True, False])
-def test_all_diff(n_qubits: int, same_angle: bool) -> None:
-    name_angle_1, name_angle_2 = "theta_0", "theta_1"
-    if same_angle:
-        name_angle_2 = name_angle_1
-
-    rx = pyq.RX(0, param_name=name_angle_1)
-    rz = pyq.RZ(2, param_name=name_angle_2)
     cnot = pyq.CNOT(1, 2)
     ops = [rx, rz, cnot]
     circ = pyq.QuantumCircuit(n_qubits, ops)
