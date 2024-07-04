@@ -8,7 +8,7 @@ from torch import Tensor, no_grad
 from torch.autograd import Function
 
 from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
-from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.circuit import QuantumCircuit, Sequence
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import inner_prod, param_dict
 
@@ -161,5 +161,7 @@ def check_support_psr(circuit: QuantumCircuit):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
             )
-        if len(op.spectral_gap) > 1:
-            raise NotImplementedError("Multi-gap is not yet supported.")
+        if isinstance(op, Sequence):
+            for subop in op.flatten():
+                if len(subop.spectral_gap) > 1:
+                    raise NotImplementedError("Multi-gap is not yet supported.")
