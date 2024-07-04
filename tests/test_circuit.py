@@ -333,15 +333,17 @@ def test_all_diff(n_qubits: int, same_angle: bool) -> None:
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 
     theta_0_value = torch.pi / 2
-    theta_1_value = torch.pi
 
     state = pyq.zero_state(n_qubits)
 
     theta_0 = torch.tensor([theta_0_value], requires_grad=True)
 
-    theta_1 = torch.tensor([theta_1_value], requires_grad=True)
-
-    values = {name_angle_1: theta_0, name_angle_2: theta_1}
+    if same_angle:
+        values = {name_angle_1: theta_0}
+    else:
+        theta_1_value = torch.pi
+        theta_1 = torch.tensor([theta_1_value], requires_grad=True)
+        values = {name_angle_1: theta_0, name_angle_2: theta_1}
 
     exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values, obs, DiffMode.ADJOINT)
