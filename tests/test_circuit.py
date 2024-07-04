@@ -330,7 +330,7 @@ def test_all_diff(n_qubits: int, same_angle: bool) -> None:
     cnot = pyq.CNOT(1, 2)
     ops = [rx, rz, cnot]
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    obs = pyq.Observable(pyq.Z(0))
 
     theta_0_value = torch.pi / 2
     theta_1_value = torch.pi
