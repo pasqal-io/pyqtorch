@@ -247,3 +247,10 @@ class CZ(ControlledOperationGate):
 class Toffoli(ControlledOperationGate):
     def __init__(self, control: int | tuple[int, ...], target: int):
         super().__init__("X", control, target)
+
+
+OPS_PAULI = {X, Y, Z, I, N}
+OPS_1Q = OPS_PAULI.union({H, S, T})
+OPS_2Q = {CNOT, CY, CZ, SWAP}
+OPS_3Q = {Toffoli, CSWAP}
+OPS_DIGITAL = OPS_1Q.union(OPS_2Q, OPS_3Q)
