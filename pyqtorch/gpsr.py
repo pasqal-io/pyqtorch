@@ -113,9 +113,9 @@ class PSRExpectation(Function):
             shifted_values = values.copy()
             shifted_values[param_name] = shifted_values[param_name] + shift
             f_plus = expectation_fn(shifted_values)
-            shifted_values = values.copy()
-            shifted_values[param_name] = shifted_values[param_name] - shift
+            shifted_values[param_name] = shifted_values[param_name] - 2 * shift
             f_min = expectation_fn(shifted_values)
+            shifted_values[param_name] = shifted_values[param_name] + shift
             return (
                 spectral_gap
                 * (f_plus - f_min)
@@ -135,12 +135,12 @@ class PSRExpectation(Function):
                 operation.param_name, values, operation.spectral_gap, shift
             )
 
-        grads = []
+        grads = {p: torch.zeros((1, 1)) for p in ctx.param_names}
         for op in ctx.circuit.flatten():
             if isinstance(op, Parametric) and values[op.param_name].requires_grad:  # type: ignore[index]
-                grads.append(vjp(op, values))
+                grads[op.param_name] += vjp(op, values)
 
-        return (None, None, None, None, *grads)
+        return (None, None, None, None, *[grads[p] for p in ctx.param_names])
 
 
 def check_support_psr(circuit: QuantumCircuit):

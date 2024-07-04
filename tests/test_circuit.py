@@ -319,7 +319,7 @@ def test_sample_run() -> None:
 
 # TODO delete this test when first one up is
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
-@pytest.mark.parametrize("same_angle", [False])
+@pytest.mark.parametrize("same_angle", [False, True])
 def test_all_diff(n_qubits: int, same_angle: bool) -> None:
     name_angle_1, name_angle_2 = "theta_0", "theta_1"
     if same_angle:
