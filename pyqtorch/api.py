@@ -8,7 +8,7 @@ from torch import Tensor
 from pyqtorch.adjoint import AdjointExpectation
 from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.utils import DiffMode, inner_prod
+from pyqtorch.utils import DiffMode
 
 logger = getLogger(__name__)
 
@@ -88,7 +88,7 @@ def expectation(
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
         state = circuit.run(state, values)
-        return inner_prod(state, observable.run(state, values)).real
+        return observable.expectation(state)
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit, observable, state, values.keys(), *values.values()

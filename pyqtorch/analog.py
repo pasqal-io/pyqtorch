@@ -68,7 +68,7 @@ class GeneratorType(StrEnum):
 
 class Scale(Sequence):
     """
-    Generic container for multiplying an 'Primitive', 'Sequence' or 'Add' instance by a parameter.
+    Generic container for multiplying a 'Primitive', 'Sequence' or 'Add' instance by a parameter.
 
     Attributes:
         operations: Operations as a Sequence, Add, or a single Primitive operation.
