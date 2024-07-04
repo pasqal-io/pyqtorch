@@ -319,9 +319,14 @@ def test_sample_run() -> None:
 
 # TODO delete this test when first one up is
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
-def test_all_diff(n_qubits: int) -> None:
-    rx = pyq.RX(0, param_name="theta_0")
-    rz = pyq.RZ(2, param_name="theta_1")
+@pytest.mark.parametrize("same_angle", [True, False])
+def test_all_diff(n_qubits: int, same_angle: bool) -> None:
+    name_angle_1, name_angle_2 = "theta_0", "theta_1"
+    if same_angle:
+        name_angle_2 = name_angle_1
+
+    rx = pyq.RX(0, param_name=name_angle_1)
+    rz = pyq.RZ(2, param_name=name_angle_2)
     cnot = pyq.CNOT(1, 2)
     ops = [rx, rz, cnot]
     circ = pyq.QuantumCircuit(n_qubits, ops)
@@ -336,7 +341,7 @@ def test_all_diff(n_qubits: int) -> None:
 
     theta_1 = torch.tensor([theta_1_value], requires_grad=True)
 
-    values = {"theta_0": theta_0, "theta_1": theta_1}
+    values = {name_angle_1: theta_0, name_angle_2: theta_1}
 
     exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values, obs, DiffMode.ADJOINT)
