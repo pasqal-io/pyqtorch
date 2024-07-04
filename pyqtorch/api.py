@@ -92,11 +92,11 @@ def expectation(
         return inner_prod(state, observable.run(state, values)).real
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
-            circuit, observable, state, values.keys(), *values.values()
+            circuit, state, observable, values.keys(), *values.values()
         )
     elif diff_mode == DiffMode.GPSR:
         return PSRExpectation.apply(
-            circuit, observable, state, values.keys(), *values.values()
+            circuit, state, observable, values.keys(), *values.values()
         )
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")
