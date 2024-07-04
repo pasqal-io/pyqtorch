@@ -13,16 +13,21 @@ from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.noise import Noise
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import GRADCHECK_ATOL, DensityMatrix, product_state
+from pyqtorch.utils import (
+    GRADCHECK_ATOL,
+    DensityMatrix,
+    product_state,
+)
 
 
-def test_adjoint_diff() -> None:
+# TODO add GPSR when multigap is implemented for this test
+@pytest.mark.parametrize("n_qubits", [3, 4, 5])
+def test_adjoint_diff(n_qubits: int) -> None:
     rx = pyq.RX(0, param_name="theta_0")
     cry = pyq.CPHASE(0, 1, param_name="theta_1")
     rz = pyq.RZ(2, param_name="theta_2")
     cnot = pyq.CNOT(1, 2)
     ops = [rx, cry, rz, cnot]
-    n_qubits = 3
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 
@@ -60,7 +65,7 @@ def test_adjoint_diff() -> None:
 
     assert len(grad_ad) == len(grad_adjoint)
     for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_adjoint[i])
+        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
 
 
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
@@ -155,7 +160,7 @@ def test_adjoint_duplicate_params() -> None:
     grad_adjoint = torch.autograd.grad(
         exp_adjoint, tuple(values.values()), torch.ones_like(exp_adjoint)
     )[0]
-    assert torch.allclose(grad_ad, grad_adjoint)
+    assert torch.allclose(grad_ad, grad_adjoint, atol=GRADCHECK_ATOL)
 
 
 @pytest.mark.parametrize("fn", [pyq.X, pyq.Z, pyq.Y])
@@ -312,12 +317,13 @@ def test_sample_run() -> None:
     assert "1100" in samples[0]
 
 
-def test_all_diff() -> None:
+# TODO delete this test when first one up is
+@pytest.mark.parametrize("n_qubits", [3, 4, 5])
+def test_all_diff(n_qubits: int) -> None:
     rx = pyq.RX(0, param_name="theta_0")
     rz = pyq.RZ(2, param_name="theta_1")
     cnot = pyq.CNOT(1, 2)
     ops = [rx, rz, cnot]
-    n_qubits = 3
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
 
@@ -361,6 +367,7 @@ def test_all_diff() -> None:
 
     gradgrad_gpsr = torch.autograd.grad(
         exp_gpsr, tuple(values.values()), torch.ones_like(grad_gpsr)
+        exp_ad, tuple(values.values()), torch.ones_like(exp_ad)
     )
 
     assert len(grad_ad) == len(grad_adjoint) == len(grad_gpsr)
@@ -371,3 +378,32 @@ def test_all_diff() -> None:
 
     for i in range(len(gradgrad_ad)):
         assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=GRADCHECK_ATOL)
+        assert torch.allclose(
+            grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL
+        ) and torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
+
+
+@pytest.mark.xfail(raises=ValueError)
+@pytest.mark.parametrize("gate_type", ["scale", "hamevo"])
+def test_compatibility_gpsr(gate_type: str) -> None:
+
+    if gate_type == "scale":
+        seq_gate = pyq.Sequence([pyq.X(0)])
+        scale = pyq.Scale(seq_gate, "theta_0")
+        ops = [scale]
+    else:
+        hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), "theta_0", (0,))
+
+        ops = [hamevo]
+
+    circ = pyq.QuantumCircuit(1, ops)
+    obs = pyq.QuantumCircuit(1, [pyq.Z(0)])
+    state = pyq.zero_state(1)
+
+    param_value = torch.pi / 2
+    values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
+    exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+
+    grad_gpsr = torch.autograd.grad(
+        exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
+    )
