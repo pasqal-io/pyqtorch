@@ -180,7 +180,7 @@ class PSRExpectation(Function):
 
             # use temporary values for cases with repeated parameters in circuit
             original_name = op.param_name
-            temp_name = op.param_name + f"_{str(uuid.uuid4())}"
+            temp_name = str(uuid.uuid4())
             values[temp_name] = values[op.param_name]
             operation.param_name = temp_name
 
