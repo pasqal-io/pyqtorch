@@ -135,10 +135,13 @@ class PSRExpectation(Function):
                 operation.param_name, values, operation.spectral_gap, shift
             )
 
-        grads = {p: torch.zeros((1, 1)) for p in ctx.param_names}
+        grads = {p: None for p in ctx.param_names}
         for op in ctx.circuit.flatten():
             if isinstance(op, Parametric) and values[op.param_name].requires_grad:  # type: ignore[index]
-                grads[op.param_name] += vjp(op, values)
+                if grads[op.param_name]:
+                    grads[op.param_name] += vjp(op, values)
+                else:
+                    grads[op.param_name] = vjp(op, values)
 
         return (None, None, None, None, *[grads[p] for p in ctx.param_names])
 
