@@ -131,9 +131,19 @@ class PSRExpectation(Function):
             psr_fn = (
                 multi_gap_shift if len(operation.spectral_gap) > 1 else single_gap_shift
             )
-            return grad_out * psr_fn(  # type: ignore[operator]
-                operation.param_name, values, operation.spectral_gap, shift
+
+            # use temporary values for cases with repeated parameters in circuit
+            original_name = op.param_name
+            temp_name = op.param_name + "_temp"
+            values[temp_name] = values[op.param_name]
+            operation.param_name = temp_name
+
+            out_grad = grad_out * psr_fn(  # type: ignore[operator]
+                temp_name, values, operation.spectral_gap, shift
             )
+            del values[temp_name]
+            operation.param_name = original_name
+            return out_grad
 
         grads = {p: None for p in ctx.param_names}
         for op in ctx.circuit.flatten():

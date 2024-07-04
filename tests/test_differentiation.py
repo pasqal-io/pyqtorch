@@ -1,6 +1,4 @@
-
 from __future__ import annotations
-
 
 import pytest
 import torch
@@ -11,6 +9,7 @@ from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.utils import (
     GRADCHECK_ATOL,
 )
+
 
 # TODO add GPSR when multigap is implemented for this test
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
@@ -58,6 +57,7 @@ def test_adjoint_diff(n_qubits: int) -> None:
     assert len(grad_ad) == len(grad_adjoint)
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
+
 
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 @pytest.mark.parametrize("batch_size", [1, 5])
@@ -188,7 +188,6 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
     assert len(grad_ad) == len(grad_adjoint)
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
-
 
 
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
