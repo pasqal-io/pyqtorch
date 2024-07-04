@@ -231,13 +231,9 @@ class Observable(Add):
 
     def __init__(
         self,
-        n_qubits: int | None,
         operations: list[Module] | Primitive | Sequence,
     ):
         super().__init__(operations if isinstance(operations, list) else [operations])
-        if n_qubits is None:
-            n_qubits = max(self.qubit_support) + 1
-        self.n_qubits = n_qubits
 
     def expectation(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
@@ -293,7 +289,7 @@ class DiagonalObservable(Observable):
         # with operator as the input tensor
         # to be accessed later via self.operations[0].pauli
         # and this is compatible with the to method for conversions
-        super().__init__(n_qubits, Primitive(operator, operations.qubit_support))
+        super().__init__(Primitive(operator, operations.qubit_support))
 
     def forward(
         self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()

@@ -90,7 +90,7 @@ feature_map = [RX(i, VARIABLES[X_POS]) for i in range(N_QUBITS // 2)] + [
 ]
 ansatz, params = hea(N_QUBITS, DEPTH, "theta")
 circ = QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-sumZ_obs = Observable(N_QUBITS, [Z(i) for i in range(N_QUBITS)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+sumZ_obs = Observable([Z(i) for i in range(N_QUBITS)]).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
 
