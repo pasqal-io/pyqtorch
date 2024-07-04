@@ -317,10 +317,9 @@ def test_sample_run() -> None:
     assert "1100" in samples[0]
 
 
-# TODO delete this test when first one up is
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
 @pytest.mark.parametrize("same_angle", [True, False])
-def test_all_diff(n_qubits: int, same_angle: bool) -> None:
+def test_all_diff_singlegap(n_qubits: int, same_angle: bool) -> None:
     name_angle_1, name_angle_2 = "theta_0", "theta_1"
     if same_angle:
         name_angle_2 = name_angle_1
