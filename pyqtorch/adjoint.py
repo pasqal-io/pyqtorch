@@ -87,6 +87,8 @@ class AdjointExpectation(Function):
                 ctx.projected_state = apply_operator(
                     ctx.projected_state, op.dagger(values), op.qubit_support
                 )
+            # TODO: Properly fix adjoint with Scale / HamEvo
+            #
             # elif isinstance(op, Scale):
             #     if not len(op.operations) == 1 and isinstance(
             #         op.operations[0], Primitive
