@@ -65,12 +65,30 @@ from .noise import (
     PhaseDamping,
     PhaseFlip,
 )
-from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
+from .parametric import (
+    CPHASE,
+    CRX,
+    CRY,
+    CRZ,
+    OPS_PARAM,
+    OPS_PARAM_1Q,
+    OPS_PARAM_2Q,
+    PHASE,
+    RX,
+    RY,
+    RZ,
+    U,
+)
 from .primitive import (
     CNOT,
     CSWAP,
     CY,
     CZ,
+    OPS_1Q,
+    OPS_2Q,
+    OPS_3Q,
+    OPS_DIGITAL,
+    OPS_PAULI,
     SWAP,
     H,
     I,

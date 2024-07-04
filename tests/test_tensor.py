@@ -15,27 +15,24 @@ from pyqtorch.utils import (
 
 pi = torch.tensor(torch.pi)
 
-
+# TODO: Fails for certain qubit support combinations
+# Will fix in this MR.
 @pytest.mark.xfail
 @pytest.mark.parametrize("n_qubits", [4, 5])
-@pytest.mark.parametrize("batch_size", [1])
+@pytest.mark.parametrize("batch_size", [1, 2])
 def test_digital_tensor(n_qubits: int, batch_size: int) -> None:
     for op in OPS_DIGITAL:
         if op in OPS_1Q:
-            i = random.randint(0, n_qubits - 1)
-            op_concrete = op(i)
+            supp: tuple = (random.randint(0, n_qubits - 1),)
         elif op in OPS_2Q:
-            i, j = 0, random.randint(1, n_qubits - 1)
-            op_concrete = op(i, j)
+            supp = (0, random.randint(1, n_qubits - 1))
         elif op in OPS_3Q:
             i, j, k = 0, 1, random.randint(2, n_qubits - 1)
-            op_concrete = op((i, j), k) if op == Toffoli else op(i, (j, k))
-
+            supp = ((i, j), k) if op == Toffoli else (i, (j, k))
+        op_concrete = op(*supp)
         psi_init = random_state(n_qubits, batch_size)
         psi_star = op_concrete(psi_init)
-        psi_expected = _calc_mat_vec_wavefunction(
-            op_concrete, n_qubits, psi_init, batch_size
-        )
+        psi_expected = _calc_mat_vec_wavefunction(op_concrete, n_qubits, psi_init)
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
