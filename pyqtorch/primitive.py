@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from functools import cached_property
 from logging import getLogger
 from typing import Any
 
@@ -101,6 +102,16 @@ class Primitive(torch.nn.Module):
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
         return self
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        return torch.linalg.eigvalsh(self.pauli).reshape(-1, 1)
+
+    @cached_property
+    def spectral_gap(self) -> Tensor:
+        spectrum = self.eigenvals_generator
+        spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
+        return spectral_gap[spectral_gap.nonzero()]
 
     def tensor(
         self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
