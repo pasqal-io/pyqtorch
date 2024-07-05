@@ -157,7 +157,7 @@ class PSRExpectation(Function):
             f_minus = expectation_fn(shifted_values)
             return (
                 spectral_gap
-                * (f_plus - f_min)
+                * (f_plus - f_minus)
                 / (4 * torch.sin(spectral_gap * shift / 2))
             )
 
