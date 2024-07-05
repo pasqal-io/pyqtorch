@@ -111,7 +111,7 @@ class PSRExpectation(Function):
             grad_out (Tensor): Current jacobian tensor.
 
         Returns:
-            Updated jacobian tensor.
+            A tuple of updated jacobian tensor.
 
         Raises:
             ValueError: When operation is not supported.
