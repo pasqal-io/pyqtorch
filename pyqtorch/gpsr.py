@@ -118,7 +118,8 @@ class PSRExpectation(Function):
         """
 
         values = param_dict(ctx.param_names, ctx.saved_tensors)
-        shift = torch.tensor(torch.pi) / 2.0
+        shift_pi2 = torch.tensor(torch.pi) / 2.0
+        shift_multi = torch.tensor(0.5)
 
         def expectation_fn(values: dict[str, Tensor]) -> torch.Tensor:
             """Use the PSRExpectation for nested grad calls.
@@ -161,9 +162,50 @@ class PSRExpectation(Function):
                 / (4 * torch.sin(spectral_gap * shift / 2))
             )
 
-        def multi_gap_shift(*args, **kwargs) -> torch.Tensor:
+        def multi_gap_shift(
+            param_name: str,
+            values: dict[str, torch.Tensor],
+            spectral_gaps: torch.Tensor,
+            shift_prefac: torch.Tensor = torch.tensor(0.5),
+        ) -> torch.Tensor:
             """Implements multi gap PSR rule."""
-            raise NotImplementedError("Multi-gap is not yet supported.")
+            n_eqs = len(spectral_gaps)
+            PI = torch.tensor(torch.pi)
+            shifts = shift_prefac * torch.linspace(
+                PI / 2 - PI / 5, PI / 2 + PI / 5, n_eqs
+            )
+
+            # calculate F vector and M matrix
+            # (see: https://arxiv.org/pdf/2108.01218.pdf on p. 4 for definitions)
+            F = []
+            M = torch.empty((n_eqs, n_eqs))
+            n_obs = 1
+            for i in range(n_eqs):
+                shifted_values = values.copy()
+                shifted_values[param_name] = shifted_values[param_name] + shifts[i]
+                f_plus = expectation_fn(shifted_values)
+                shifted_values[param_name] = shifted_values[param_name] - 2 * shifts[i]
+                f_min = expectation_fn(shifted_values)
+                shifted_values[param_name] = shifted_values[param_name] + shifts[i]
+                F.append((f_plus - f_min))
+
+                # calculate M matrix
+                for j in range(n_eqs):
+                    M[i, j] = 4.0 * torch.sin(shifts[i] * spectral_gaps[j] / 2)
+
+            # get number of observables from expectation value tensor
+            if f_plus.numel() > 1:
+                batch_size = F[0].shape[0]
+                n_obs = F[0].shape[1]
+
+            F = torch.stack(F).reshape(n_eqs, -1)
+            R = torch.linalg.solve(M, F)
+
+            dfdx = torch.sum(spectral_gaps[:, None] * R, dim=0).reshape(
+                batch_size, n_obs
+            )
+
+            return dfdx
 
         def vjp(operation: Parametric, values: dict[str, torch.Tensor]) -> torch.Tensor:
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
@@ -175,12 +217,17 @@ class PSRExpectation(Function):
             Returns:
                 Updated jacobian by PSR.
             """
-            psr_fn = (
-                multi_gap_shift if len(operation.spectral_gap) > 1 else single_gap_shift
+            psr_fn, shift = (
+                (multi_gap_shift, shift_multi)
+                if len(operation.spectral_gap) > 1
+                else (single_gap_shift, shift_pi2)
             )
 
             return grad_out * psr_fn(  # type: ignore[operator]
-                operation.param_name, values, operation.spectral_gap, shift
+                operation.param_name,  # type: ignore
+                values,
+                operation.spectral_gap,
+                shift,
             )
 
         grads = {p: None for p in ctx.param_names}
