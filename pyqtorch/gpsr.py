@@ -107,8 +107,8 @@ class PSRExpectation(Function):
         are supported at the moment.
 
         Arguments:
-            ctx: Context object for accessing stored information.
-            grad_out: Current jacobian tensor.
+            ctx (Any): Context object for accessing stored information.
+            grad_out (Tensor): Current jacobian tensor.
 
         Returns:
             Updated jacobian tensor.
