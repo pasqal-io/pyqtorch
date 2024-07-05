@@ -14,7 +14,10 @@ The Generalized parameter shift rule (GPSR mode) is an extension of the well kno
 
 !!! warning "Usage restrictions"
     At the moment, circuits with one or more Scale or HamiltonianEvolution operations are not supported.
-    Also, circuits with operations sharing a same parameter name are also not supported.
+    They should be handled differently as GPSR requires operations to be of the form presented below.
+    Also, circuits with operations sharing a same parameter name are also not supported
+    as such cases are handled by our other Python package for differentiable digital-analog quantum programs Qadence
+    which uses pyqtorch as a backend. Qadence convert circuits to use different parameter names when applying GPSR.
 
 For this, we define the differentiable function as quantum expectation value
 
