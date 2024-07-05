@@ -216,14 +216,18 @@ class QuantumCircuit(Sequence):
 
 
 class DropoutQuantumCircuit(QuantumCircuit):
-    """Creates a quantum circuit able to perform quantum dropout, based on the work of https://arxiv.org/abs/2310.04120."""
+    """Creates a quantum circuit able to perform quantum dropout, based on the work of https://arxiv.org/abs/2310.04120.
+    Args:
+        dropout_mode (DropoutMode): type of dropout to perform. Defaults to DropoutMode.ROTATIONAL
+        dropout_prob (float): dropout probability. Defaults to 0.06.
+    """
 
     def __init__(
         self,
         n_qubits: int,
         operations: list[Module],
-        dropout_mode: DropoutMode = DropoutMode.ROTATIONAL,  # type: ignore
-        dropout_prob: float = 1.0,
+        dropout_mode: DropoutMode = DropoutMode.ROTATIONAL,
+        dropout_prob: float = 0.06,
     ):
         super().__init__(n_qubits, operations)
         self.dropout_mode = dropout_mode

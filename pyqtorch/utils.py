@@ -94,7 +94,7 @@ class DiffMode(StrEnum):
 
 class DropoutMode(StrEnum):
     """
-    Which Dropout mode to use.
+    Which Dropout mode to use, using the methods stated in https://arxiv.org/abs/2310.04120.
 
     Options: rotational    - Randomly drops entangling rotational gates.
              entangling    - Randomly drops entangling gates.
