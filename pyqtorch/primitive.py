@@ -104,7 +104,7 @@ class Primitive(torch.nn.Module):
         return self
 
     @cached_property
-    def eigenvals_generator(self) -> torch.Tensor:
+    def eigenvals_generator(self) -> Tensor:
         return torch.linalg.eigvalsh(self.pauli).reshape(-1, 1)
 
     @cached_property
