@@ -208,7 +208,8 @@ class PSRExpectation(Function):
             F = torch.stack(F).reshape(n_eqs, -1)
             R = torch.linalg.solve(M, F)
 
-            dfdx = torch.sum(spectral_gaps[:, None] * R, dim=0).reshape(
+            dfdx = torch.sum(
+                spectral_gaps[:, None] * R, dim=0).reshape(
                 batch_size, n_obs
             )
 
