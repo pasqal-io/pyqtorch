@@ -165,7 +165,7 @@ class PSRExpectation(Function):
             """Implements multi gap PSR rule."""
             raise NotImplementedError("Multi-gap is not yet supported.")
 
-        def vjp(operation: Parametric, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        def vjp(operation: Parametric, values: dict[str, Tensor]) -> Tensor:
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
 
             Args:
