@@ -19,6 +19,10 @@ class PSRExpectation(Function):
     r"""
     Implementation of the generalized parameter shift rule.
 
+    Note that only operations with two distinct eigenvalues
+    from their generator (i.e., compatible with single_gap_shift)
+    are supported at the moment.
+
     Compared to the original parameter shift rule
     which only works for quantum operations whose generator has a single gap
     in its eigenvalue spectrum, GPSR works with arbitrary
