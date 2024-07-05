@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from logging import getLogger
 from typing import Any, Tuple
 
@@ -19,6 +18,10 @@ logger = getLogger(__name__)
 class PSRExpectation(Function):
     r"""
     Implementation of the generalized parameter shift rule.
+
+    Note that only operations with two distinct eigenvalues
+    from their generator (i.e., compatible with single_gap_shift)
+    are supported at the moment.
 
     Compared to the original parameter shift rule
     which only works for quantum operations whose generator has a single gap
@@ -113,7 +116,6 @@ class PSRExpectation(Function):
         Raises:
             ValueError: When operation is not supported.
         """
-        check_support_psr(ctx.circuit)
 
         values = param_dict(ctx.param_names, ctx.saved_tensors)
         shift = torch.tensor(torch.pi) / 2.0
@@ -153,7 +155,6 @@ class PSRExpectation(Function):
             f_plus = expectation_fn(shifted_values)
             shifted_values[param_name] = shifted_values[param_name] - 2 * shift
             f_min = expectation_fn(shifted_values)
-            shifted_values[param_name] = shifted_values[param_name] + shift
             return (
                 spectral_gap
                 * (f_plus - f_min)
@@ -178,23 +179,14 @@ class PSRExpectation(Function):
                 multi_gap_shift if len(operation.spectral_gap) > 1 else single_gap_shift
             )
 
-            # use temporary values for cases with repeated parameters in circuit
-            original_name = op.param_name
-            temp_name = str(uuid.uuid4())
-            values[temp_name] = values[op.param_name]
-            operation.param_name = temp_name
-
-            out_grad = grad_out * psr_fn(  # type: ignore[operator]
-                temp_name, values, operation.spectral_gap, shift
+            return grad_out * psr_fn(  # type: ignore[operator]
+                operation.param_name, values, operation.spectral_gap, shift
             )
-            del values[temp_name]
-            operation.param_name = original_name
-            return out_grad
 
         grads = {p: None for p in ctx.param_names}
         for op in ctx.circuit.flatten():
             if isinstance(op, Parametric) and values[op.param_name].requires_grad:  # type: ignore[index]
-                if grads[op.param_name]:
+                if grads[op.param_name] is not None:
                     grads[op.param_name] += vjp(op, values)
                 else:
                     grads[op.param_name] = vjp(op, values)
@@ -209,9 +201,12 @@ def check_support_psr(circuit: QuantumCircuit):
         circuit (QuantumCircuit): Circuit to check.
 
     Raises:
-        ValueError: When circuit contains Scale, HamiltonianEvolution
-                    or one operation has more than two eigenvalues (multi-gap).
+        ValueError: When circuit contains Scale, HamiltonianEvolution,
+                    or one operation has more than two eigenvalues (multi-gap),
+                    or a param_name is used multiple times in the circuit.
     """
+
+    param_names = list()
     for op in circuit.operations:
         if isinstance(op, Scale) or isinstance(op, HamiltonianEvolution):
             raise ValueError(
@@ -219,5 +214,18 @@ def check_support_psr(circuit: QuantumCircuit):
             )
         if isinstance(op, Sequence):
             for subop in op.flatten():
+                if isinstance(subop, Parametric):
+                    param_names.append(subop.param_name)
                 if len(subop.spectral_gap) > 1:
                     raise NotImplementedError("Multi-gap is not yet supported.")
+        elif isinstance(op, Parametric):
+            if len(op.spectral_gap) > 1:
+                raise NotImplementedError("Multi-gap is not yet supported.")
+            param_names.append(op.param_name)
+        else:
+            continue
+
+    if len(param_names) > len(set(param_names)):
+        raise ValueError(
+            "PSR is not supported when using a same param_name in different operations."
+        )

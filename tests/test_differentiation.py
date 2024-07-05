@@ -172,33 +172,34 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
 
 
+# Note pyq does not support using multiple times the same angle
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
-@pytest.mark.parametrize("same_angle", [True, False])
-def test_all_diff_singlegap(n_qubits: int, same_angle: bool) -> None:
-    name_angle_1, name_angle_2 = "theta_0", "theta_1"
-    if same_angle:
-        name_angle_2 = name_angle_1
+def test_all_diff_singlegap(n_qubits: int) -> None:
+    name_angles = "theta"
 
-    ops_rx = pyq.Sequence([pyq.RX(i, param_name=name_angle_1) for i in range(n_qubits)])
-    ops_rz = pyq.Sequence([pyq.RZ(i, param_name=name_angle_2) for i in range(n_qubits)])
+    ops_rx = pyq.Sequence(
+        [pyq.RX(i, param_name=name_angles + "_x_" + str(i)) for i in range(n_qubits)]
+    )
+    ops_rz = pyq.Sequence(
+        [pyq.RZ(i, param_name=name_angles + "_z_" + str(i)) for i in range(n_qubits)]
+    )
     cnot = pyq.CNOT(1, 2)
-    ops = [ops_rx, ops_rz, cnot] * 2
+    ops = [ops_rx, ops_rz, cnot]
 
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
-
-    theta_0_value = torch.pi / 2
-
     state = pyq.zero_state(n_qubits)
 
-    theta_0 = torch.tensor([theta_0_value], requires_grad=True)
-
-    if same_angle:
-        values = {name_angle_1: theta_0}
-    else:
-        theta_1_value = torch.pi
-        theta_1 = torch.tensor([theta_1_value], requires_grad=True)
-        values = {name_angle_1: theta_0, name_angle_2: theta_1}
+    values = {
+        name_angles + "_x_" + str(i): torch.rand(1, requires_grad=True)
+        for i in range(n_qubits)
+    }
+    values.update(
+        {
+            name_angles + "_z_" + str(i): torch.rand(1, requires_grad=True)
+            for i in range(n_qubits)
+        }
+    )
 
     exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values, obs, DiffMode.ADJOINT)
@@ -250,17 +251,19 @@ def test_all_diff_singlegap(n_qubits: int, same_angle: bool) -> None:
 
 
 @pytest.mark.xfail(raises=ValueError)
-@pytest.mark.parametrize("gate_type", ["scale", "hamevo"])
+@pytest.mark.parametrize("gate_type", ["scale", "hamevo", ""])
 def test_compatibility_gpsr(gate_type: str) -> None:
 
+    pname = "theta_0"
     if gate_type == "scale":
         seq_gate = pyq.Sequence([pyq.X(0)])
-        scale = pyq.Scale(seq_gate, "theta_0")
+        scale = pyq.Scale(seq_gate, pname)
         ops = [scale]
-    else:
-        hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), "theta_0", (0,))
-
+    elif gate_type == "hamevo":
+        hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), pname, (0,))
         ops = [hamevo]
+    else:
+        ops = [pyq.RY(0, pname), pyq.RZ(0, pname)]
 
     circ = pyq.QuantumCircuit(1, ops)
     obs = pyq.QuantumCircuit(1, [pyq.Z(0)])
