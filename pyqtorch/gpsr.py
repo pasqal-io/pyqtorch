@@ -161,7 +161,7 @@ class PSRExpectation(Function):
                 / (4 * torch.sin(spectral_gap * shift / 2))
             )
 
-        def multi_gap_shift(*args, **kwargs) -> torch.Tensor:
+        def multi_gap_shift(*args, **kwargs) -> Tensor:
             """Implements multi gap PSR rule."""
             raise NotImplementedError("Multi-gap is not yet supported.")
 
