@@ -19,10 +19,6 @@ class PSRExpectation(Function):
     r"""
     Implementation of the generalized parameter shift rule.
 
-    Note that only operations with two distinct eigenvalues
-    from their generator (i.e., compatible with single_gap_shift)
-    are supported at the moment.
-
     Compared to the original parameter shift rule
     which only works for quantum operations whose generator has a single gap
     in its eigenvalue spectrum, GPSR works with arbitrary
@@ -102,10 +98,6 @@ class PSRExpectation(Function):
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
         """The PSRExpectation backward call.
 
-        Note that only operations with two distinct eigenvalues
-        from their generator (i.e., compatible with single_gap_shift)
-        are supported at the moment.
-
         Arguments:
             ctx (Any): Context object for accessing stored information.
             grad_out (Tensor): Current jacobian tensor.
@@ -168,7 +160,18 @@ class PSRExpectation(Function):
             spectral_gaps: Tensor,
             shift_prefac: Tensor = torch.tensor(0.5),
         ) -> Tensor:
-            """Implements multi gap PSR rule."""
+            """Implements multi gap PSR rule.
+
+            Args:
+                param_name: Name of the parameter to apply PSR.
+                values: Dictionary with parameter values.
+                spectral_gaps: Spectral gaps value for PSR.
+                shift_prefac: Shift prefactor value for PSR shifts.
+                Defaults to torch.tensor(0.5).
+
+            Returns:
+                Gradient evaluation for param_name.
+            """
             n_eqs = len(spectral_gaps)
             PI = torch.tensor(torch.pi)
             shifts = shift_prefac * torch.linspace(
@@ -249,7 +252,6 @@ def check_support_psr(circuit: QuantumCircuit):
 
     Raises:
         ValueError: When circuit contains Scale, HamiltonianEvolution,
-                    or one operation has more than two eigenvalues (multi-gap),
                     or a param_name is used multiple times in the circuit.
     """
 
@@ -264,11 +266,7 @@ def check_support_psr(circuit: QuantumCircuit):
                 if isinstance(subop, Parametric):
                     if isinstance(subop.param_name, str):
                         param_names.append(subop.param_name)
-                if len(subop.spectral_gap) > 1:
-                    raise NotImplementedError("Multi-gap is not yet supported.")
         elif isinstance(op, Parametric):
-            if len(op.spectral_gap) > 1:
-                raise NotImplementedError("Multi-gap is not yet supported.")
             if isinstance(op.param_name, str):
                 param_names.append(op.param_name)
         else:
