@@ -164,7 +164,7 @@ class PSRExpectation(Function):
             spectral_gaps: Tensor,
             shift_prefac: Tensor = torch.tensor(0.5),
         ) -> Tensor:
-            """Implements multi gap PSR rule.
+            """Implement multi gap PSR rule.
 
             Args:
                 param_name: Name of the parameter to apply PSR.
