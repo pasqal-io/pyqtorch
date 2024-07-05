@@ -107,11 +107,11 @@ class PSRExpectation(Function):
         are supported at the moment.
 
         Arguments:
-            ctx: Context object for accessing stored information.
-            grad_out: Current jacobian tensor.
+            ctx (Any): Context object for accessing stored information.
+            grad_out (Tensor): Current jacobian tensor.
 
         Returns:
-            Updated jacobian tensor.
+            A tuple of updated jacobian tensor.
 
         Raises:
             ValueError: When operation is not supported.
@@ -121,7 +121,7 @@ class PSRExpectation(Function):
         shift_pi2 = torch.tensor(torch.pi) / 2.0
         shift_multi = torch.tensor(0.5)
 
-        def expectation_fn(values: dict[str, Tensor]) -> torch.Tensor:
+        def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
 
             Arguments:
@@ -136,10 +136,10 @@ class PSRExpectation(Function):
 
         def single_gap_shift(
             param_name: str,
-            values: dict[str, torch.Tensor],
-            spectral_gap: torch.Tensor,
-            shift: torch.Tensor = torch.tensor(torch.pi) / 2.0,
-        ) -> torch.Tensor:
+            values: dict[str, Tensor],
+            spectral_gap: Tensor,
+            shift: Tensor = torch.tensor(torch.pi) / 2.0,
+        ) -> Tensor:
             """Implements single gap PSR rule.
 
             Args:
@@ -155,19 +155,19 @@ class PSRExpectation(Function):
             shifted_values[param_name] = shifted_values[param_name] + shift
             f_plus = expectation_fn(shifted_values)
             shifted_values[param_name] = shifted_values[param_name] - 2 * shift
-            f_min = expectation_fn(shifted_values)
+            f_minus = expectation_fn(shifted_values)
             return (
                 spectral_gap
-                * (f_plus - f_min)
+                * (f_plus - f_minus)
                 / (4 * torch.sin(spectral_gap * shift / 2))
             )
 
         def multi_gap_shift(
             param_name: str,
-            values: dict[str, torch.Tensor],
-            spectral_gaps: torch.Tensor,
-            shift_prefac: torch.Tensor = torch.tensor(0.5),
-        ) -> torch.Tensor:
+            values: dict[str, Tensor],
+            spectral_gaps: Tensor,
+            shift_prefac: Tensor = torch.tensor(0.5),
+        ) -> Tensor:
             """Implements multi gap PSR rule."""
             n_eqs = len(spectral_gaps)
             PI = torch.tensor(torch.pi)
@@ -207,7 +207,7 @@ class PSRExpectation(Function):
 
             return dfdx
 
-        def vjp(operation: Parametric, values: dict[str, torch.Tensor]) -> torch.Tensor:
+        def vjp(operation: Parametric, values: dict[str, Tensor]) -> Tensor:
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
 
             Args:

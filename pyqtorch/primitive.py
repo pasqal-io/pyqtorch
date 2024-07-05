@@ -104,11 +104,11 @@ class Primitive(torch.nn.Module):
         return self
 
     @cached_property
-    def eigenvals_generator(self) -> torch.Tensor:
+    def eigenvals_generator(self) -> Tensor:
         return torch.linalg.eigvalsh(self.pauli).reshape(-1, 1)
 
     @cached_property
-    def spectral_gap(self) -> torch.Tensor:
+    def spectral_gap(self) -> Tensor:
         spectrum = self.eigenvals_generator
         spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
         return spectral_gap[spectral_gap.nonzero()]
