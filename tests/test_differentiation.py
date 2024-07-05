@@ -188,7 +188,7 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
 
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
-    state = pyq.zero_state(n_qubits)
+    state = pyq.random_state(n_qubits)
 
     values = {
         name_angles + "_x_" + str(i): torch.rand(1, requires_grad=True)
@@ -250,7 +250,6 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
         assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=GRADCHECK_ATOL)
 
 
-@pytest.mark.xfail(raises=ValueError)
 @pytest.mark.parametrize("gate_type", ["scale", "hamevo", ""])
 def test_compatibility_gpsr(gate_type: str) -> None:
 
@@ -271,8 +270,9 @@ def test_compatibility_gpsr(gate_type: str) -> None:
 
     param_value = torch.pi / 2
     values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
-    exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+    with pytest.raises(ValueError):
+        exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
 
-    grad_gpsr = torch.autograd.grad(
-        exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
-    )
+        grad_gpsr = torch.autograd.grad(
+            exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
+        )
