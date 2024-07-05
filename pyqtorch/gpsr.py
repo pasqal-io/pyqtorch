@@ -154,7 +154,7 @@ class PSRExpectation(Function):
             shifted_values[param_name] = shifted_values[param_name] + shift
             f_plus = expectation_fn(shifted_values)
             shifted_values[param_name] = shifted_values[param_name] - 2 * shift
-            f_min = expectation_fn(shifted_values)
+            f_minus = expectation_fn(shifted_values)
             return (
                 spectral_gap
                 * (f_plus - f_min)
