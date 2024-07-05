@@ -166,6 +166,9 @@ class PSRExpectation(Function):
         ) -> Tensor:
             """Implement multi gap PSR rule.
 
+            See Kyriienko1 and Elfving, 2021 for details:
+            https://arxiv.org/pdf/2108.01218.pdf
+
             Args:
                 param_name: Name of the parameter to apply PSR.
                 values: Dictionary with parameter values.
@@ -194,7 +197,7 @@ class PSRExpectation(Function):
                 shifted_values[param_name] = shifted_values[param_name] - 2 * shifts[i]
                 f_minus = expectation_fn(shifted_values)
                 shifted_values[param_name] = shifted_values[param_name] + shifts[i]
-                F.append((f_plus - f_min))
+                F.append((f_plus - f_minus))
 
                 # calculate M matrix
                 for j in range(n_eqs):
@@ -208,8 +211,7 @@ class PSRExpectation(Function):
             F = torch.stack(F).reshape(n_eqs, -1)
             R = torch.linalg.solve(M, F)
 
-            dfdx = torch.sum(
-                spectral_gaps[:, None] * R, dim=0).reshape(
+            dfdx = torch.sum(spectral_gaps[:, None] * R, dim=0).reshape(
                 batch_size, n_obs
             )
 
