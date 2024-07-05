@@ -192,7 +192,7 @@ class PSRExpectation(Function):
                 shifted_values[param_name] = shifted_values[param_name] + shifts[i]
                 f_plus = expectation_fn(shifted_values)
                 shifted_values[param_name] = shifted_values[param_name] - 2 * shifts[i]
-                f_min = expectation_fn(shifted_values)
+                f_minus = expectation_fn(shifted_values)
                 shifted_values[param_name] = shifted_values[param_name] + shifts[i]
                 F.append((f_plus - f_min))
 
