@@ -120,7 +120,7 @@ class PSRExpectation(Function):
         values = param_dict(ctx.param_names, ctx.saved_tensors)
         shift = torch.tensor(torch.pi) / 2.0
 
-        def expectation_fn(values: dict[str, Tensor]) -> torch.Tensor:
+        def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
 
             Arguments:
