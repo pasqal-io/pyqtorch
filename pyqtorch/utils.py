@@ -10,9 +10,9 @@ from string import ascii_uppercase as ABC
 from typing import Any, Callable, Sequence
 
 import torch
-from numpy import array, log2
+from numpy import arange, array, delete, log2
 from numpy import ndarray as NDArray
-from torch import Tensor
+from torch import Tensor, moveaxis
 
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
 
@@ -386,10 +386,17 @@ def dm_partial_trace(rho: DensityMatrix, keep_indices: list[int]) -> DensityMatr
     batch_size = rho.shape[2]
     rho = rho.reshape(([2] * n_qubits * 2 + [batch_size]))
 
-    rho_subscripts = "".join(ABC_ARRAY[: n_qubits * 2 + 1])
-    keep_subscripts = "".join([rho_subscripts[i] for i in keep_indices]) + "".join(
-        [rho_subscripts[i + n_qubits] for i in keep_indices]
+    rho_subscripts = array(ABC_ARRAY[: n_qubits * 2 + 1], copy=True)
+    keep_subscripts = "".join(
+        [rho_subscripts[i] for i in keep_indices]
+        + [rho_subscripts[i + n_qubits] for i in keep_indices]
     )
+
+    # Trace by equating indices
+    trace_indices = delete(arange(n_qubits), keep_indices)
+    rho_subscripts[trace_indices + n_qubits] = rho_subscripts[trace_indices]
+    rho_subscripts = "".join(rho_subscripts)
+
     einsum_subscripts = (
         rho_subscripts + "->" + keep_subscripts + rho_subscripts[n_qubits * 2]
     )
@@ -397,6 +404,21 @@ def dm_partial_trace(rho: DensityMatrix, keep_indices: list[int]) -> DensityMatr
     rho_reduced = torch.einsum(einsum_subscripts, rho)
     n_keep = len(keep_indices)
     return rho_reduced.reshape(2**n_keep, 2**n_keep, batch_size)
+
+
+def generate_dm(n_qubits: int, batch_size: int) -> Tensor:
+    """Generates a random density matrix using a real hermitian matrix"""
+    density_list = []
+    for _ in range(batch_size):
+        rand_mat = torch.rand(2**n_qubits, 2**n_qubits) + 1j * torch.rand(
+            2**n_qubits, 2**n_qubits
+        )
+        herm_mat = rand_mat + torch.transpose(rand_mat, 0, 1)
+        density_mat = torch.matrix_exp(-herm_mat)
+        density_mat = density_mat / torch.trace(density_mat)
+        density_list.append(density_mat)
+
+    return moveaxis(torch.stack(density_list), 0, 2)
 
 
 def add_batch_dim(operator: Tensor, batch_size: int = 1) -> Tensor:

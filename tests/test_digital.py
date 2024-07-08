@@ -7,7 +7,9 @@ from typing import Callable, Tuple
 import pytest
 import torch
 from conftest import _calc_mat_vec_wavefunction
-from torch import Tensor
+from numpy import array, rollaxis, sort
+from qutip import Qobj
+from torch import Tensor, moveaxis
 
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
@@ -34,6 +36,7 @@ from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
     dm_partial_trace,
+    generate_dm,
     operator_kron,
     product_state,
     promote_operator,
@@ -615,13 +618,34 @@ def test_dm_partial_trace() -> None:
     n_qubits = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size = torch.randint(low=1, high=5, size=(1,)).item()
     state_str = "".join(random.choice("01") for _ in range(n_qubits))
+
+    # testing swaps
     rho = density_mat(product_state(state_str, batch_size=batch_size))
     keep_indices = random.sample(range(n_qubits), k=random.randint(1, n_qubits))
     n_keep = len(keep_indices)
     state_reduce_str = "".join([state_str[i] for i in keep_indices])
     rho_reduce = dm_partial_trace(rho, keep_indices)
+
     assert rho_reduce.shape == torch.Size([2**n_keep, 2**n_keep, batch_size])
     assert torch.allclose(
         rho_reduce,
         density_mat(product_state(state_reduce_str, batch_size=batch_size)),
     )
+
+    # testing reduced density matrix
+
+    rho_list = generate_dm(n_qubits, batch_size)
+
+    rho_sub = torch.from_numpy(
+        array(
+            [
+                Qobj(
+                    rollaxis(rho_list.numpy(), 2, 0)[i], dims=[[2] * n_qubits] * 2
+                ).ptrace(sort(keep_indices))
+                for i in range(batch_size)
+            ]
+        )
+    )
+    rho_sub = moveaxis(rho_sub, 0, 2).type(torch.cfloat)
+
+    assert torch.allclose(dm_partial_trace(rho_list, sort(keep_indices)), rho_sub)
