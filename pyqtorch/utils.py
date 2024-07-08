@@ -92,6 +92,18 @@ class DiffMode(StrEnum):
     """To be added."""
 
 
+class MeasurementMode(StrEnum):
+    """
+    Defines how to do measurements.
+
+    Options: Tomography - Perform measurements by projecting
+                observable terms into Z-basis, sampling and projecting back.
+             Shadow - Not yet implemented, coming soon.
+    """
+
+    TOMOGRAPHY = "tomography"
+
+
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
     """
     Function to test if the probabilities from the state sum up to 1.
