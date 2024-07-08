@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import cached_property
 from typing import Any, Tuple
 
 import torch
@@ -14,6 +15,8 @@ from pyqtorch.matrices import (
 )
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import Operator
+
+pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
 
 class Parametric(Primitive):
@@ -176,6 +179,18 @@ class RX(Parametric):
         """
         super().__init__("X", target, param_name)
 
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return pauli_singleq_eigenvalues
+
 
 class RY(Parametric):
     """
@@ -202,6 +217,18 @@ class RY(Parametric):
             param_name: Name of parameters.
         """
         super().__init__("Y", target, param_name)
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return pauli_singleq_eigenvalues
 
 
 class RZ(Parametric):
@@ -230,6 +257,18 @@ class RZ(Parametric):
         """
         super().__init__("Z", target, param_name)
 
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return pauli_singleq_eigenvalues
+
 
 class PHASE(Parametric):
     """
@@ -256,6 +295,18 @@ class PHASE(Parametric):
             param_name: Name of parameters.
         """
         super().__init__("I", target, param_name)
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.tensor([[0.0], [2.0]], dtype=torch.cdouble)
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
@@ -335,6 +386,23 @@ class ControlledRotationGate(Parametric):
             f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
         )
 
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.zeros(2 ** len(self.qubit_support) - 2),
+                pauli_singleq_eigenvalues,
+            )
+        )
+
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
         Get the corresponding unitary.
@@ -395,6 +463,23 @@ class CRX(ControlledRotationGate):
         """
         super().__init__("X", control, target, param_name)
 
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.zeros(2 ** len(self.qubit_support) - 2),
+                torch.linalg.eigvalsh(self.pauli).reshape(-1, 1),
+            )
+        )
+
 
 class CRY(ControlledRotationGate):
     """
@@ -416,6 +501,23 @@ class CRY(ControlledRotationGate):
         """
         super().__init__("Y", control, target, param_name)
 
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.zeros(2 ** len(self.qubit_support) - 2),
+                pauli_singleq_eigenvalues,
+            )
+        )
+
 
 class CRZ(ControlledRotationGate):
     """
@@ -436,6 +538,23 @@ class CRZ(ControlledRotationGate):
             param_name: Name of parameters.
         """
         super().__init__("Z", control, target, param_name)
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.zeros(2 ** len(self.qubit_support) - 2),
+                pauli_singleq_eigenvalues,
+            )
+        )
 
 
 class CPHASE(ControlledRotationGate):
@@ -459,6 +578,23 @@ class CPHASE(ControlledRotationGate):
             param_name: Name of parameters.
         """
         super().__init__("I", control, target, param_name)
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.tensor([-2.0, 0.0], dtype=torch.cdouble),
+                torch.zeros(2 ** len(self.qubit_support) - 2),
+            )
+        )
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
@@ -562,6 +698,18 @@ class U(Parametric):
         self.register_buffer(
             "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
         )
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return pauli_singleq_eigenvalues
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
