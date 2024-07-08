@@ -9,6 +9,7 @@ from pyqtorch.adjoint import AdjointExpectation
 from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.gpsr import PSRExpectation, check_support_psr
+from pyqtorch.measurement import Measurements
 from pyqtorch.utils import DiffMode, inner_prod
 
 logger = getLogger(__name__)
@@ -66,6 +67,7 @@ def expectation(
     values: dict[str, Tensor],
     observable: Observable,
     diff_mode: DiffMode = DiffMode.AD,
+    measurement: Measurements | None = None
 ) -> Tensor:
     """Compute the expectation value of `circuit` given a `state`, parameter values `values`
         given an `observable` and optionally compute gradients using diff_mode.
