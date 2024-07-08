@@ -258,15 +258,13 @@ class DropoutQuantumCircuit(QuantumCircuit):
             State: pure state vector
         """
         for op in self.operations:
-            if (
+            if not (
                 (hasattr(op, "param_name"))
                 and (values[op.param_name].requires_grad)
                 and not (int(1 - bernoulli(tensor(self.dropout_prob))))
             ):
-                continue
-
-            else:
                 state = op(state, values)
+
         return state
 
     def entangling_dropout(
@@ -282,11 +280,10 @@ class DropoutQuantumCircuit(QuantumCircuit):
             State: pure state vector
         """
         for op in self.operations:
-            if not (hasattr(op, "param_name")) and not (
-                int(1 - bernoulli(tensor(self.dropout_prob)))
-            ):
-                continue
-            else:
+            has_param = hasattr(op, "param_name")
+            keep = int(1 - bernoulli(tensor(self.dropout_prob)))
+
+            if has_param or keep:
                 state = op(state, values)
 
         return state
