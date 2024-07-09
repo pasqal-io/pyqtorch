@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from string import ascii_letters as ABC
 
-from numpy import array, log2
+from numpy import array
 from numpy.typing import NDArray
 from torch import Tensor, einsum
 
-from pyqtorch.utils import promote_operator
+from pyqtorch.matrices import _dagger
+from pyqtorch.utils import DensityMatrix
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -58,27 +59,43 @@ def apply_operator(
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
 
 
-def operator_product(op1: Tensor, op2: Tensor, target: int) -> Tensor:
+def apply_density_mat(op: Tensor, density_matrix: DensityMatrix) -> DensityMatrix:
+    """
+    Apply an operator to a density matrix, i.e., compute:
+    op1 * density_matrix * op1_dagger.
+
+    Args:
+        op (Tensor): The operator to apply.
+        density_matrix (DensityMatrix): The density matrix.
+
+    Returns:
+        DensityMatrix: The resulting density matrix after applying the operator and its dagger.
+    """
+    batch_size_op = op.size(-1)
+    batch_size_dm = density_matrix.size(-1)
+    if batch_size_dm > batch_size_op:
+        # The other condition is impossible beacause
+        # the operators are always initialize with batch_size = 1.
+        op = op.repeat(1, 1, batch_size_dm)
+    return einsum("ijb,jkb,klb->ilb", op, density_matrix, _dagger(op))
+
+
+def operator_product(op1: Tensor, op2: Tensor) -> Tensor:
     """
     Compute the product of two operators.
+    `torch.bmm` is not suitable for our purposes because,
+    in our convention, the batch_size is in the last dimension.
 
     Args:
         op1 (Tensor): The first operator.
         op2 (Tensor): The second operator.
-        target (int): The target qubit index.
-
     Returns:
         Tensor: The product of the two operators.
     """
-
-    n_qubits_1 = int(log2(op1.size(1)))
-    n_qubits_2 = int(log2(op2.size(1)))
+    # ? Should we continue to adjust the batch here?
+    # ? as now all gates are init with batch_size=1.
     batch_size_1 = op1.size(-1)
     batch_size_2 = op2.size(-1)
-    if n_qubits_1 > n_qubits_2:
-        op2 = promote_operator(op2, target, n_qubits_1)
-    elif n_qubits_1 < n_qubits_2:
-        op1 = promote_operator(op1, target, n_qubits_2)
     if batch_size_1 > batch_size_2:
         op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
     elif batch_size_2 > batch_size_1:

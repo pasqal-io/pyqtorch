@@ -35,7 +35,6 @@ from pyqtorch.utils import (
     density_mat,
     operator_kron,
     product_state,
-    promote_operator,
     random_state,
 )
 
@@ -421,15 +420,7 @@ def test_dm(n_qubits: int, batch_size: int) -> None:
     assert torch.allclose(dm, dm_proj)
 
 
-def test_promote(random_gate: Primitive, n_qubits: int, target: int) -> None:
-    op_prom = promote_operator(random_gate.unitary(), target, n_qubits)
-    assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
-    assert torch.allclose(
-        operator_product(op_prom, _dagger(op_prom), target),
-        torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2),
-    )
-
-
+# TODO: Modify this test as promote_operator has been erased.
 def test_operator_product(random_gate: Primitive, n_qubits: int, target: int) -> None:
     op = random_gate
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()

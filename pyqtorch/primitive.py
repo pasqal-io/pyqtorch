@@ -7,9 +7,10 @@ from typing import Any
 
 import numpy as np
 import torch
+from numpy import log2
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.apply import apply_density_mat, apply_operator, operator_product
 from pyqtorch.matrices import (
     IMAT,
     OPERATIONS_DICT,
@@ -72,20 +73,14 @@ class Primitive(torch.nn.Module):
         self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
     ) -> Tensor:
         if isinstance(state, DensityMatrix):
-            # TODO: fix error type int | tuple[int, ...] expected "int"
-            # Only supports single-qubit gates
-            return DensityMatrix(
-                operator_product(
-                    self.unitary(values),
-                    operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
-                    self.target,  # type: ignore [arg-type]
-                )
-            )
+            n_qubits = int(log2(state.size(1)))
+            return apply_density_mat(self.tensor(values, n_qubits), state)
         else:
             return apply_operator(
                 state, self.unitary(values), self.qubit_support, len(state.size()) - 1
             )
 
+    # ? Do we need to keep this method now ?
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return _dagger(self.unitary(values))
 
@@ -306,8 +301,7 @@ class ControlledOperationGate(Primitive):
             + operator_product(
                 proj1.tensor(values, n_qubits),
                 self.gate(self.target).tensor(values, n_qubits),
-                self.target,  # type: ignore [arg-type]
-            )  # TODO: remove the target param
+            )
         )
         return c_mat
 
