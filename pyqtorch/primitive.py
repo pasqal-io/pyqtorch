@@ -200,9 +200,28 @@ class N(Primitive):
 
 class SWAP(Primitive):
     def __init__(self, control: int, target: int):
+        # TODO: Change the control param name
         super().__init__(OPERATIONS_DICT["SWAP"], target)
-        self.control = (control,) if isinstance(control, int) else control
-        self.qubit_support = self.control + (target,)
+        self.control = control
+        self.qubit_support = (self.control,) + (target,)
+
+    def tensor(
+        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
+        from pyqtorch.circuit import Sequence
+
+        if diagonal:
+            raise NotImplementedError
+        if n_qubits < max(self.qubit_support) + 1:
+            n_qubits = max(self.qubit_support) + 1
+        seq = Sequence(
+            [
+                CNOT(control=self.control, target=self.target),  # type: ignore[arg-type]
+                CNOT(control=self.target, target=self.control),  # type: ignore[arg-type]
+                CNOT(control=self.control, target=self.target),  # type: ignore[arg-type]
+            ]
+        )
+        return seq.tensor(values, n_qubits)
 
 
 class CSWAP(Primitive):
@@ -217,6 +236,30 @@ class CSWAP(Primitive):
     def extra_repr(self) -> str:
         return f"control:{self.control}, target:{self.target}"
 
+    def tensor(
+        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
+        from pyqtorch.circuit import Sequence
+
+        if diagonal:
+            raise NotImplementedError
+        if n_qubits < max(self.qubit_support) + 1:
+            n_qubits = max(self.qubit_support) + 1
+        seq = Sequence(
+            [
+                Toffoli(
+                    control=(self.control[0], self.target[1]), target=self.target[0]  # type: ignore[index]
+                ),
+                Toffoli(
+                    control=(self.control[0], self.target[0]), target=self.target[1]  # type: ignore[index]
+                ),
+                Toffoli(
+                    control=(self.control[0], self.target[1]), target=self.target[0]  # type: ignore[index]
+                ),
+            ]  #! Can't take more that 1 control in this logic
+        )
+        return seq.tensor(values, n_qubits)
+
 
 class ControlledOperationGate(Primitive):
     def __init__(self, gate: str, control: int | tuple[int, ...], target: int):
@@ -228,10 +271,45 @@ class ControlledOperationGate(Primitive):
             n_control_qubits=len(self.control),
         ).squeeze(2)
         super().__init__(mat, target)
+        self.gate = globals()[gate]
         self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
 
     def extra_repr(self) -> str:
         return f"control:{self.control}, target:{(self.target,)}"
+
+    def tensor(
+        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
+        from pyqtorch.circuit import Sequence
+
+        if diagonal:
+            raise NotImplementedError
+        if n_qubits < max(self.qubit_support) + 1:
+            n_qubits = max(self.qubit_support) + 1
+        proj1 = Sequence(
+            [Projector(qubit_support=qubit, ket="1", bra="1") for qubit in self.control]
+        )
+        """
+        proj0 = Sequence(
+            [Projector(qubit_support=qubit, ket="0", bra="0") for qubit in self.control]
+        )
+        Don't work for multiple control qubit (want to keep it ?)
+        c_mat = proj0.tensor(values, n_qubits) + operator_product(
+            proj1.tensor(values, n_qubits),
+            self.gate(self.target).tensor(values, n_qubits),
+            self.target,
+        )
+        """
+        c_mat = (
+            I(target=self.control[0]).tensor(values, n_qubits)
+            - proj1.tensor(values, n_qubits)
+            + operator_product(
+                proj1.tensor(values, n_qubits),
+                self.gate(self.target).tensor(values, n_qubits),
+                self.target,  # type: ignore [arg-type]
+            )  # TODO: remove the target param
+        )
+        return c_mat
 
 
 class CNOT(ControlledOperationGate):
@@ -253,5 +331,5 @@ class CZ(ControlledOperationGate):
 
 
 class Toffoli(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], target: int):
+    def __init__(self, control: tuple[int, ...], target: int):
         super().__init__("X", control, target)

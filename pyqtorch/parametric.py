@@ -13,7 +13,6 @@ from pyqtorch.matrices import (
     _unitary,
 )
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import Operator
 
 
 class Parametric(Primitive):
@@ -121,7 +120,7 @@ class Parametric(Primitive):
         """
         return values.unsqueeze(0) if len(values.size()) == 0 else values
 
-    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Operator:
+    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         """
         Get the corresponding unitary.
 
@@ -135,7 +134,7 @@ class Parametric(Primitive):
         batch_size = len(thetas)
         return _unitary(thetas, self.pauli, self.identity, batch_size)
 
-    def jacobian(self, values: dict[str, Tensor] | Tensor = dict()) -> Operator:
+    def jacobian(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -257,7 +256,7 @@ class PHASE(Parametric):
         """
         super().__init__("I", target, param_name)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(self, values: dict[str, Tensor] = dict()) -> Tensor:
         """
         Get the corresponding unitary.
 
@@ -273,7 +272,7 @@ class PHASE(Parametric):
         batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
 
-    def jacobian(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def jacobian(self, values: dict[str, Tensor] = dict()) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -335,7 +334,7 @@ class ControlledRotationGate(Parametric):
             f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
         )
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(self, values: dict[str, Tensor] = dict()) -> Tensor:
         """
         Get the corresponding unitary.
 
@@ -350,7 +349,7 @@ class ControlledRotationGate(Parametric):
         mat = _unitary(thetas, self.pauli, self.identity, batch_size)
         return _controlled(mat, batch_size, len(self.control))
 
-    def jacobian(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def jacobian(self, values: dict[str, Tensor] = dict()) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -460,7 +459,7 @@ class CPHASE(ControlledRotationGate):
         """
         super().__init__("I", control, target, param_name)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(self, values: dict[str, Tensor] = dict()) -> Tensor:
         """
         Get the corresponding unitary.
 
@@ -476,7 +475,7 @@ class CPHASE(ControlledRotationGate):
         mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
         return _controlled(mat, batch_size, len(self.control))
 
-    def jacobian(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def jacobian(self, values: dict[str, Tensor] = dict()) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -563,7 +562,7 @@ class U(Parametric):
             "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
         )
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(self, values: dict[str, Tensor] = dict()) -> Tensor:
         """
         Get the corresponding unitary.
 
@@ -592,7 +591,7 @@ class U(Parametric):
         d = self.d.repeat(1, 1, batch_size) * cos_t * torch.conj(t_plus)
         return a - b + c + d
 
-    def jacobian(self, values: dict[str, Tensor] = {}) -> Operator:
+    def jacobian(self, values: dict[str, Tensor] = {}) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -620,7 +619,7 @@ class U(Parametric):
             RZ(self.qubit_support[0], self.omega),
         ]
 
-    def jacobian_decomposed(self, values: dict[str, Tensor] = dict()) -> list[Operator]:
+    def jacobian_decomposed(self, values: dict[str, Tensor] = dict()) -> list[Tensor]:
         """
         Get the corresponding unitary decomposition of the jacobian.
 
