@@ -102,6 +102,11 @@ class MeasurementMode(StrEnum):
     """
 
     TOMOGRAPHY = "tomography"
+    """ Perform measurements by sampling via projected bases.
+    """
+    SHADOWS = "shadow"
+    """ Perform measurements via shadow protocols.
+    """
 
 
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:

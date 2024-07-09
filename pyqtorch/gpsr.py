@@ -9,6 +9,7 @@ from torch.autograd import Function
 
 from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
 from pyqtorch.circuit import QuantumCircuit, Sequence
+from pyqtorch.measurement import MeasurementProtocols
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import inner_prod, param_dict
 
@@ -87,6 +88,7 @@ class PSRExpectation(Function):
         observable: Observable,
         param_names: list[str],
         *param_values: Tensor,
+        measurement: MeasurementProtocols | None = None,
     ) -> Tensor:
         ctx.circuit = circuit
         ctx.observable = observable
@@ -96,7 +98,10 @@ class PSRExpectation(Function):
         ctx.out_state = circuit.run(state, values)
         ctx.projected_state = observable.run(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
-        return inner_prod(ctx.out_state, ctx.projected_state).real
+        if measurement is None:
+            return inner_prod(ctx.out_state, ctx.projected_state).real
+        else:
+            raise NotImplementedError("Sampling not yet supported")
 
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
@@ -191,7 +196,7 @@ class PSRExpectation(Function):
                 else:
                     grads[op.param_name] = vjp(op, values)
 
-        return (None, None, None, None, *[grads[p] for p in ctx.param_names])
+        return (None, None, None, None, *[grads[p] for p in ctx.param_names], None)
 
 
 def check_support_psr(circuit: QuantumCircuit):
