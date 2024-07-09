@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable
 
 from torch import Tensor
-from utils import MeasurementMode
+from pyqtorch.utils import MeasurementMode
 
 
 def iterate_pauli_decomposition(

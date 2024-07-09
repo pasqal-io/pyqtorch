@@ -95,11 +95,11 @@ class PSRExpectation(Function):
         ctx.param_names = param_names
         ctx.state = state
         values = param_dict(param_names, param_values)
-        ctx.out_state = circuit.run(state, values)
-        ctx.projected_state = observable.run(ctx.out_state, values)
+        out_state = circuit.run(state, values)
+        projected_state = observable.run(out_state, values)
         ctx.save_for_backward(*param_values)
         if measurement is None:
-            return inner_prod(ctx.out_state, ctx.projected_state).real
+            return inner_prod(out_state, projected_state).real
         else:
             raise NotImplementedError("Sampling not yet supported")
 
