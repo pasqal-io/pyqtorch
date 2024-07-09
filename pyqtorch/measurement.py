@@ -2,28 +2,40 @@ from __future__ import annotations
 
 from typing import Callable
 
-from torch import Tensor
 from pyqtorch.utils import MeasurementMode
 
+# def rotate(circuit: QuantumCircuit, pauli_term: Module):
+#     rotations = []
 
-def iterate_pauli_decomposition(
-    circuit,
-    param_values,
-    pauli_decomposition,
-    n_shots: int,
-    state,
-) -> Tensor:
-    """Estimate total expectation value by averaging all Pauli terms.
+#     #for op, gate in [(X(0), Z), (Y(0), SDagger)]:
 
-    Args:
-        circuit: The circuit that is executed.
-        param_values: Parameters of the circuit.
-        pauli_decomposition: A list of Pauli decomposed terms.
-        n_shots: Number of shots to sample.
-        state: Initial state.
+#     return circuit
 
-    Returns: A torch.Tensor of bit strings n_shots x n_qubits.
-    """
+
+# def evaluate_single_term(
+#     circuit: QuantumCircuit,
+#     param_values: dict[str, Tensor],
+#     observable_term: Module,
+#     n_shots: int,
+#     state: Tensor,
+# ) -> Tensor:
+#     """Estimate total expectation value by averaging all Pauli terms.
+
+#     Args:
+#         circuit: The circuit that is executed.
+#         param_values: Parameters of the circuit.
+#         pauli_decomposition: A list of Pauli decomposed terms.
+#         n_shots: Number of shots to sample.
+#         state: Initial state.
+
+#     Returns: A torch.Tensor of bit strings n_shots x n_qubits.
+#     """
+
+#     # TODO: do pauli term conversion here
+#     # assumed this is already given
+#     pauli_term = observable_term
+#     support = pauli_term.qubit_support
+#     rotated_circuit = rotate(circuit=circuit, pauli_term=pauli_term)
 
 
 class MeasurementProtocols:
@@ -53,24 +65,22 @@ class MeasurementProtocols:
         n_shots = self.options.get("n_shots")
         if n_shots is None:
             raise KeyError(
-                "Tomography protocol requires a 'n_shots' kwarg of type 'int' or 'list[int]')."
+                "Tomography protocol requires a 'n_shots' kwarg of type 'int')."
             )
         raise NotImplementedError
 
-        # def
-
-        # estimated_values = []
-        # for observable_term in observable.operations:
-        #     estimated_values.append(
-        #         iterate_pauli_decomposition(
-        #             circuit=circuit,
-        #             param_values=param_values,
-        #             pauli_decomposition=pauli_decomposition,
-        #             n_shots=n_shots,
-        #             state=state,
-        #             backend=backend,
-        #             noise=noise,
-        #             endianness=endianness,
-        #         )
+        # def expectation_fn(
+        #     circuit: QuantumCircuit,
+        #     state: Tensor,
+        #     observable: Observable,
+        #     param_values: dict[str, Tensor],
+        #     n_shots: int,
+        # ) -> Tensor:
+        #     return torch.sum(
+        #         [
+        #             evaluate_single_term(circuit, param_values, term, n_shots, state)
+        #             for term in observable.operations
+        #         ]
         #     )
-        # return torch.transpose(torch.vstack(estimated_values), 1, 0)
+
+        # return expectation_fn

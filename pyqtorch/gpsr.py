@@ -96,12 +96,13 @@ class PSRExpectation(Function):
         ctx.state = state
         ctx.measurement = measurement
         values = param_dict(param_names, param_values)
-        out_state = circuit.run(state, values)
-        projected_state = observable.run(out_state, values)
         ctx.save_for_backward(*param_values)
         if measurement is None:
+            out_state = circuit.run(state, values)
+            projected_state = observable.run(out_state, values)
             return inner_prod(out_state, projected_state).real
         else:
+            expectation_fn = measurement.get_expectation_fn()
             raise NotImplementedError("Sampling not yet supported")
 
     @staticmethod
@@ -136,7 +137,12 @@ class PSRExpectation(Function):
                 Expectation evaluation.
             """
             return PSRExpectation.apply(
-                ctx.circuit, ctx.state, ctx.observable, values.keys(), *values.values(), ctx.measurement,
+                ctx.circuit,
+                ctx.state,
+                ctx.observable,
+                values.keys(),
+                *values.values(),
+                ctx.measurement,
             )
 
         def single_gap_shift(

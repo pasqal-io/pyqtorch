@@ -104,7 +104,7 @@ class MeasurementMode(StrEnum):
     TOMOGRAPHY = "tomography"
     """ Perform measurements by sampling via projected bases.
     """
-    SHADOWS = "shadow"
+    SHADOW = "shadow"
     """ Perform measurements via shadow protocols.
     """
 
