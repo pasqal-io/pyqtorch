@@ -105,10 +105,26 @@ class Primitive(torch.nn.Module):
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
-        return torch.linalg.eigvalsh(self.pauli).reshape(-1, 1)
+        """Get eigenvalues of the underlying generator.
+
+        Note that for a primitive, the generator is unclear
+        so we execute pass.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        pass
 
     @cached_property
     def spectral_gap(self) -> Tensor:
+        """Difference between the moduli of the two largest eigenvalues of the generator.
+
+        Returns:
+            Tensor: Spectral gap value.
+        """
         spectrum = self.eigenvals_generator
         spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
         return spectral_gap[spectral_gap.nonzero()]

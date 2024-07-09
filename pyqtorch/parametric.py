@@ -104,6 +104,18 @@ class Parametric(Primitive):
         """
         return f"target:{self.qubit_support}, param:{self.param_name}"
 
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.linalg.eigvalsh(self.pauli).reshape(-1, 1)
+
     def __hash__(self) -> int:
         """Hash qubit support and param_name
 
