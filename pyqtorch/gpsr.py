@@ -94,6 +94,7 @@ class PSRExpectation(Function):
         ctx.observable = observable
         ctx.param_names = param_names
         ctx.state = state
+        ctx.measurement = measurement
         values = param_dict(param_names, param_values)
         out_state = circuit.run(state, values)
         projected_state = observable.run(out_state, values)
@@ -135,7 +136,7 @@ class PSRExpectation(Function):
                 Expectation evaluation.
             """
             return PSRExpectation.apply(
-                ctx.circuit, ctx.state, ctx.observable, values.keys(), *values.values()
+                ctx.circuit, ctx.state, ctx.observable, values.keys(), *values.values(), ctx.measurement,
             )
 
         def single_gap_shift(
