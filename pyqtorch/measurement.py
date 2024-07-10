@@ -125,8 +125,8 @@ class MeasurementProtocols:
         options: Dictionary of options.
     """
 
-    def __init__(self, protocol: MeasurementMode, options: dict) -> None:
-        self.protocol = protocol
+    def __init__(self, protocol: str, options: dict) -> None:
+        self.protocol = MeasurementMode[protocol]
         self.options = options
 
         self._generator_map: dict = {

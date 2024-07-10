@@ -4,7 +4,7 @@ import pytest
 import torch
 
 import pyqtorch as pyq
-from pyqtorch import DiffMode, expectation
+from pyqtorch import DiffMode, MeasurementProtocols, expectation
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.utils import (
     GRADCHECK_ATOL,
@@ -276,3 +276,37 @@ def test_compatibility_gpsr(gate_type: str) -> None:
         grad_gpsr = torch.autograd.grad(
             exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
         )
+
+@pytest.mark.parametrize("n_qubits", [3, 4, 5])
+def test_all_diff_singlegap(n_qubits: int) -> None:
+    name_angles = "theta"
+
+    ops_rx = pyq.Sequence(
+        [pyq.RX(i, param_name=name_angles + "_x_" + str(i)) for i in range(n_qubits)]
+    )
+    ops_rz = pyq.Sequence(
+        [pyq.RZ(i, param_name=name_angles + "_z_" + str(i)) for i in range(n_qubits)]
+    )
+    cnot = pyq.CNOT(1, 2)
+    ops = [ops_rx, ops_rz, cnot]
+
+    circ = pyq.QuantumCircuit(n_qubits, ops)
+    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    state = pyq.random_state(n_qubits)
+
+    values = {
+        name_angles + "_x_" + str(i): torch.rand(1, requires_grad=True)
+        for i in range(n_qubits)
+    }
+    values.update(
+        {
+            name_angles + "_z_" + str(i): torch.rand(1, requires_grad=True)
+            for i in range(n_qubits)
+        }
+    )
+
+    exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+
+    tomo_protocol = MeasurementProtocols('tomography', {'n_shots': 1000})
+    exp_gpsr_shots = expectation(circ, state, values, obs, DiffMode.GPSR, measurement=tomo_protocol)
+    assert torch.allclose(exp_gpsr, exp_gpsr_shots)

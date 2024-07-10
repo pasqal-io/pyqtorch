@@ -56,6 +56,7 @@ from .analog import (
 from .api import expectation, run, sample
 from .apply import apply_operator
 from .circuit import Merge, QuantumCircuit, Sequence
+from .measurement import MeasurementProtocols
 from .noise import (
     AmplitudeDamping,
     BitFlip,
@@ -121,6 +122,7 @@ __all__ = [
     "DEFAULT_MATRIX_DTYPE",
     "DEFAULT_REAL_DTYPE",
     "DiffMode",
+    "MeasurementProtocols",
     "inner_prod",
     "is_normalized",
     "overlap",
