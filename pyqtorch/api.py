@@ -99,8 +99,8 @@ def expectation(
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit,
-            observable,
             state,
+            observable,
             embedding,
             values.keys(),
             *values.values(),
