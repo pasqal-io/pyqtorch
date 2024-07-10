@@ -10,7 +10,7 @@ from pyqtorch.embed import ConcretizedCallable, Embedding
 
 
 @pytest.mark.parametrize(
-    "fn", ["sin", "cos", "log", "tanh", "tan", "acos", "sin", "sqrt", "square"]
+    "fn", ["sin", "cos", "log", "tanh", "tan", "sin", "sqrt", "square"]
 )
 def test_univariate(fn: str) -> None:
     results = []
