@@ -9,7 +9,6 @@ from torch import Tensor
 from torch.nn import Module
 
 from pyqtorch.analog import Observable
-from pyqtorch.api import sample
 from pyqtorch.circuit import Merge, QuantumCircuit
 from pyqtorch.primitive import H, Primitive, SDagger, X, Y, Z
 from pyqtorch.utils import MeasurementMode
@@ -112,7 +111,7 @@ def evaluate_single_term(
     support = pauli_term.qubit_support
     rotated_circuit = rotate(circuit=circuit, pauli_term=pauli_term)
 
-    samples = sample(rotated_circuit, state, param_values, n_shots)
+    samples = rotated_circuit.sample(state, param_values, n_shots)
     estim_values = empirical_average(samples=samples, support=support)
     return estim_values
 
