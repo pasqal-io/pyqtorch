@@ -10,13 +10,12 @@ nav:
   - API: api.md
   - Advanced Features:
     - Differentiation: differentiation.md
-    - Parameter Embedding: embed.md
+    - Use Arbitrary Expressions as Gate Parameters via Embedding: embed.md
     - Analog Operations: analog.md
     - Digital noisy simulation: noise.md
     - Quantum Dropout: dropout.md
     - CUDA Profiling and debugging: cuda_debugging.md
     - Time-dependent simulation: time_dependent.md
-    - Arbitrary Expressions as Parameters: embed.md
   - Tutorials:
     - Fitting a nonlinear function: fitting_a_function.md
     - Solving a partial differential equation using DQC: pde.md
