@@ -313,3 +313,15 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
         circ, state, values, obs, DiffMode.GPSR, measurement=tomo_protocol
     )
     assert torch.allclose(exp_gpsr, exp_gpsr_shots, atol=1.0e-2)
+
+    grad_gpsr = torch.autograd.grad(
+        exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
+    )[0]
+
+    grad_gpsr_shots = torch.autograd.grad(
+        exp_gpsr_shots,
+        tuple(values.values()),
+        torch.ones_like(exp_gpsr_shots),
+        create_graph=True,
+    )[0]
+    assert torch.allclose(grad_gpsr, grad_gpsr_shots, atol=1.0e-2)
