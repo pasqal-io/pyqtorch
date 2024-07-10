@@ -83,7 +83,8 @@ class DiffMode(StrEnum):
     ADJOINT = "adjoint"
     """An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
-                                       Jones & Gacon, 2020."""
+                                       Jones & Gacon, 2020"""
+
     GPSR = "gpsr"
     """The generalized parameter-shift rule"""
 

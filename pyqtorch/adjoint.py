@@ -49,8 +49,8 @@ class AdjointExpectation(Function):
     def forward(
         ctx: Any,
         circuit: QuantumCircuit,
-        observable: Observable,
         state: Tensor,
+        observable: Observable,
         embedding: Embedding | None,
         param_names: list[str],
         *param_values: Tensor,
