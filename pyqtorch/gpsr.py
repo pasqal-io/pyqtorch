@@ -103,7 +103,9 @@ class PSRExpectation(Function):
             return inner_prod(out_state, projected_state).real
         else:
             measurement_callable = measurement.get_expectation_fn()
-            return measurement_callable(circuit, state, observable, values)
+            return measurement_callable(
+                circuit=circuit, state=state, observable=observable, param_values=values
+            )
 
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
@@ -203,7 +205,7 @@ class PSRExpectation(Function):
                 else:
                     grads[op.param_name] = vjp(op, values)
 
-        return (None, None, None, None, *[grads[p] for p in ctx.param_names], None)
+        return (None, None, None, None, None, *[grads[p] for p in ctx.param_names])
 
 
 def check_support_psr(circuit: QuantumCircuit):

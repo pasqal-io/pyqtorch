@@ -308,8 +308,8 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
 
     exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
 
-    tomo_protocol = MeasurementProtocols("tomography", {"n_shots": 1000})
+    tomo_protocol = MeasurementProtocols("tomography", {"n_shots": 100000})
     exp_gpsr_shots = expectation(
         circ, state, values, obs, DiffMode.GPSR, measurement=tomo_protocol
     )
-    assert torch.allclose(exp_gpsr, exp_gpsr_shots)
+    assert torch.allclose(exp_gpsr, exp_gpsr_shots, atol=1.0e-2)

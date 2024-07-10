@@ -9,7 +9,7 @@ from torch import Tensor
 from torch.nn import Module
 
 from pyqtorch.analog import Observable
-from pyqtorch.circuit import Merge, QuantumCircuit
+from pyqtorch.circuit import QuantumCircuit, Sequence
 from pyqtorch.primitive import H, Primitive, SDagger, X, Y, Z
 from pyqtorch.utils import MeasurementMode
 
@@ -55,38 +55,25 @@ def empirical_average(samples: list[Counter], support: list[int]) -> Tensor:
                 count * PARITY ** (sum([int(bit) for bit in bitstring]))
             )
         expectations.append(sum(counter_exps) / n_shots)
-    return torch.tensor(expectations)
+    return torch.tensor(expectations, dtype=torch.float64)
 
 
-def get_qubit_indices_for_op(
-    pauli_term: Module, op: Primitive | None = None
-) -> list[int]:
-    """Get qubit indices for the given op in the Pauli term if any.
-
-    Args:
-        pauli_term: Tuple of a Pauli block and a parameter.
-        op: Tuple of Primitive blocks or None.
-
-    Returns: A list of integers representing qubit indices.
-    """
-    blocks = getattr(pauli_term[0], "blocks", None)
-    blocks = blocks if blocks is not None else [pauli_term[0]]
-    indices = [
-        block.qubit_support[0]
-        for block in blocks
-        if (op is None) or (isinstance(block, type(op)))
-    ]
-    return indices
-
-
-def rotate(circuit: QuantumCircuit, pauli_term: Module):
+def rotate(circuit: QuantumCircuit, pauli_term: Primitive | Sequence):
     rotations = []
 
+    all_ops = []
+    if isinstance(pauli_term, Sequence):
+        all_ops = pauli_term.flatten()
+    else:
+        all_ops.append(pauli_term)
+
     for op, gate in [(X, Z), (Y, SDagger)]:
-        qubit_indices = get_qubit_indices_for_op(pauli_term, op=op)
+        qubit_indices = [
+            op_term.target for op_term in all_ops if isinstance(op_term, op)
+        ]
         for index in qubit_indices:
             rotations.append(gate(index) * H(index))
-    return Merge(circuit.operations + rotations)
+    return QuantumCircuit(circuit.n_qubits, circuit.operations + rotations)
 
 
 def evaluate_single_term(
@@ -134,7 +121,7 @@ class MeasurementProtocols:
         }
 
     def get_expectation_fn(self) -> Callable:
-        return self._generator_map[self.protocol]
+        return self._generator_map[self.protocol]()
 
     def _shadow_expectation(self) -> Callable:
         raise NotImplementedError("SHADOW protocol not yet supported.")
