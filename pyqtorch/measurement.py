@@ -58,7 +58,16 @@ def empirical_average(samples: list[Counter], support: list[int]) -> Tensor:
     return torch.tensor(expectations, dtype=torch.float64)
 
 
-def rotate(circuit: QuantumCircuit, pauli_term: Primitive | Sequence):
+def rotate(circuit: QuantumCircuit, pauli_term: Primitive | Sequence) -> QuantumCircuit:
+    """Rotate a circuit for sampling in Z-basis. 
+
+    Args:
+        circuit (QuantumCircuit): Circuit to rotate.
+        pauli_term (Primitive | Sequence): _description_
+
+    Returns:
+        QuantumCircuit: Rotated circuit.
+    """
     rotations = []
 
     all_ops = []
@@ -72,7 +81,8 @@ def rotate(circuit: QuantumCircuit, pauli_term: Primitive | Sequence):
             op_term.target for op_term in all_ops if isinstance(op_term, op)
         ]
         for index in qubit_indices:
-            rotations.append(gate(index) * H(index))
+            rotations.append(gate(index))
+            rotations.append(H(index))
     return QuantumCircuit(circuit.n_qubits, circuit.operations + rotations)
 
 
@@ -83,16 +93,16 @@ def evaluate_single_term(
     n_shots: int,
     state: Tensor,
 ) -> Tensor:
-    """Estimate total expectation value by averaging all Pauli terms.
+    """Estimate expectation value wrt a single pauli_term.
 
     Args:
         circuit: The circuit that is executed.
         param_values: Parameters of the circuit.
-        observable_term: A list of Pauli decomposed terms.
+        pauli_term: An observable term.
         n_shots: Number of shots to sample.
         state: Initial state.
 
-    Returns: A torch.Tensor of bit strings n_shots x n_qubits.
+    Returns: Empirical estimation of the expectation value.
     """
 
     support = pauli_term.qubit_support
