@@ -145,7 +145,6 @@ class MeasurementProtocols:
             raise KeyError(
                 "Tomography protocol requires a 'n_shots' kwarg of type 'int')."
             )
-        # raise NotImplementedError
 
         def expectation_fn(
             circuit: QuantumCircuit,

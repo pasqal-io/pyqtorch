@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Tuple, Callable
+from typing import Any, Tuple
 
 import torch
 from torch import Tensor, no_grad
@@ -102,7 +102,8 @@ class PSRExpectation(Function):
             projected_state = observable.run(out_state, values)
             return inner_prod(out_state, projected_state).real
         else:
-            return measurement.get_expectation_fn()(circuit, state, observable, values)
+            measurement_callable = measurement.get_expectation_fn()
+            return measurement_callable(circuit, state, observable, values)
 
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
