@@ -9,7 +9,7 @@ from torch import Tensor
 from torch.nn import Module
 
 from pyqtorch.analog import Observable
-from pyqtorch.circuit import QuantumCircuit, Sequence
+from pyqtorch.circuit import Merge, QuantumCircuit, Sequence
 from pyqtorch.primitive import H, Primitive, SDagger, X, Y, Z
 from pyqtorch.utils import MeasurementMode
 
@@ -59,7 +59,7 @@ def empirical_average(samples: list[Counter], support: list[int]) -> Tensor:
 
 
 def rotate(circuit: QuantumCircuit, pauli_term: Primitive | Sequence) -> QuantumCircuit:
-    """Rotate a circuit for sampling in Z-basis. 
+    """Rotate a circuit for sampling in Z-basis.
 
     Args:
         circuit (QuantumCircuit): Circuit to rotate.
@@ -77,12 +77,15 @@ def rotate(circuit: QuantumCircuit, pauli_term: Primitive | Sequence) -> Quantum
         all_ops.append(pauli_term)
 
     for op, gate in [(X, Z), (Y, SDagger)]:
-        qubit_indices = [
-            op_term.target for op_term in all_ops if isinstance(op_term, op)
-        ]
+        qubit_indices: list[int] = list()
+        for op_term in all_ops:
+            if isinstance(op_term, op):
+                if isinstance(op_term.target, tuple):
+                    qubit_indices += op_term.target
+                else:
+                    qubit_indices += [op_term.target]
         for index in qubit_indices:
-            rotations.append(gate(index))
-            rotations.append(H(index))
+            rotations.append(Merge([gate(index), H(index)]))
     return QuantumCircuit(circuit.n_qubits, circuit.operations + rotations)
 
 

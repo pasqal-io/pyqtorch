@@ -5,8 +5,8 @@ import torch
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, MeasurementProtocols, expectation
-from pyqtorch.primitive import Primitive
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
+from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
     GRADCHECK_ATOL,
 )
@@ -175,7 +175,8 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
 
 # Note pyq does not support using multiple times the same angle
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
-def test_all_diff_singlegap(n_qubits: int) -> None:
+@pytest.mark.parametrize("obs_op", [pyq.Z, pyq.X, pyq.Y])
+def test_all_diff_singlegap(n_qubits: int, obs_op: Primitive) -> None:
     name_angles = "theta"
 
     ops_rx = pyq.Sequence(
@@ -188,7 +189,7 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
     ops = [ops_rx, ops_rz, cnot]
 
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    obs = pyq.QuantumCircuit(n_qubits, [obs_op(0)])
     state = pyq.random_state(n_qubits)
 
     values = {
