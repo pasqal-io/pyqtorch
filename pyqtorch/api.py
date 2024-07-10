@@ -91,8 +91,14 @@ def expectation(
     if state is None:
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
-        state = circuit.run(state, values)
-        return inner_prod(state, observable.run(state, values)).real
+        if measurement is None:
+            state = circuit.run(state, values)
+            return inner_prod(state, observable.run(state, values)).real
+        else:
+            measurement_callable = measurement.get_expectation_fn()
+            return measurement_callable(
+                circuit=circuit, state=state, observable=observable, param_values=values
+            )
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit, state, observable, values.keys(), *values.values()

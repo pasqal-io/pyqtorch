@@ -279,7 +279,7 @@ def test_compatibility_gpsr(gate_type: str) -> None:
 
 
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
-def test_all_diff_singlegap(n_qubits: int) -> None:
+def test_all_diff_measurements(n_qubits: int) -> None:
     name_angles = "theta"
 
     ops_rx = pyq.Sequence(
@@ -306,13 +306,30 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
         }
     )
 
+    exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
     exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
 
     tomo_protocol = MeasurementProtocols("tomography", {"n_shots": 100000})
+
+    exp_ad_shots = expectation(
+        circ, state, values, obs, DiffMode.AD, measurement=tomo_protocol
+    )
+
+    assert torch.allclose(exp_ad, exp_ad_shots, atol=1.0e-2)
+
     exp_gpsr_shots = expectation(
         circ, state, values, obs, DiffMode.GPSR, measurement=tomo_protocol
     )
     assert torch.allclose(exp_gpsr, exp_gpsr_shots, atol=1.0e-2)
+
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values.values()), torch.ones_like(exp_ad), create_graph=True
+    )[0]
+
+    # grad_ad_shots = torch.autograd.grad(
+    #     exp_ad_shots, tuple(values.values()), torch.ones_like(exp_ad_shots), create_graph=True
+    # )[0]
+    # assert torch.allclose(grad_ad, grad_ad_shots, atol=1.0e-2)
 
     grad_gpsr = torch.autograd.grad(
         exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
