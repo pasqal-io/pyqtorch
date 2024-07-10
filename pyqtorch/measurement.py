@@ -152,7 +152,6 @@ class MeasurementProtocols:
             state: Tensor,
             observable: Observable,
             param_values: dict[str, Tensor],
-            n_shots: int,
         ) -> Tensor:
             res = torch.sum(
                 torch.stack(

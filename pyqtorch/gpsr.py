@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Tuple
+from typing import Any, Tuple, Callable
 
 import torch
 from torch import Tensor, no_grad
@@ -86,9 +86,9 @@ class PSRExpectation(Function):
         circuit: QuantumCircuit,
         state: Tensor,
         observable: Observable,
+        measurement: MeasurementProtocols | None,
         param_names: list[str],
         *param_values: Tensor,
-        measurement: MeasurementProtocols | None = None,
     ) -> Tensor:
         ctx.circuit = circuit
         ctx.observable = observable
@@ -102,8 +102,7 @@ class PSRExpectation(Function):
             projected_state = observable.run(out_state, values)
             return inner_prod(out_state, projected_state).real
         else:
-            expectation_fn = measurement.get_expectation_fn()
-            raise NotImplementedError("Sampling not yet supported")
+            return measurement.get_expectation_fn()(circuit, state, observable, values)
 
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
@@ -140,9 +139,9 @@ class PSRExpectation(Function):
                 ctx.circuit,
                 ctx.state,
                 ctx.observable,
+                ctx.measurement,
                 values.keys(),
                 *values.values(),
-                ctx.measurement,
             )
 
         def single_gap_shift(

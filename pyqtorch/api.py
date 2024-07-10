@@ -103,9 +103,9 @@ def expectation(
             circuit,
             state,
             observable,
+            measurement,
             values.keys(),
             *values.values(),
-            measurement,
         )
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")
