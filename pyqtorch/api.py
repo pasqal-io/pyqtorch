@@ -78,6 +78,7 @@ def expectation(
                 denoting the current parameter values for each parameter in `circuit`.
         observable: A pyq.Observable instance.
         diff_mode: The differentiation mode.
+        measurement: Measurement protocol used. If None, no measurement is carried out.
     Returns:
         An expectation value.
     """
