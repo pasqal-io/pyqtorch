@@ -60,10 +60,6 @@ class Parametric(Primitive):
             Returns:
                 A Torch Tensor denoting values for the `param_name`.
             """
-            # self.param_name will be a str
-            if embedding is not None:
-                values[self.param_name] = embedding.eval_leaf(self.param_name, values)  # type: ignore[index, arg-type]
-
             return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 
         def parse_tensor(

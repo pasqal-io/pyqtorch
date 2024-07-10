@@ -6,11 +6,11 @@ a FeatureParameter. To do so, a name has to be assigned to the outcome of the ev
 supplied to the `pyq.QuantumCircuit` within an instance of `Embedding`.
 
 ### Using pyq.torch_call to create torch callables
-`pyq.torch_call` expects a name for a function and a list of arguments
+`pyq.ConcretizedCallable` expects a name for a function and a list of arguments
 ```python exec="on" source="material-block" html="1" session="expr"
 import torch
 import pyqtorch as pyq
-sin_x, sin_x_fn = 'sin_x', pyq.torch_call(abstract_fn = 'sin', args=['x'])
+sin_x, sin_x_fn = 'sin_x', pyq.ConcretizedCallable(call_name = 'sin', abstract_args=['x'])
 # We can now evaluate sin_x_fn using a values dict
 x = torch.rand(1, requires_grad=True)
 values = {'x': x}
@@ -31,3 +31,7 @@ expval = pyq.expectation(circuit=circ, state=state, values=values, observable= p
 
 print(torch.autograd.grad(expval, x, torch.ones_like(expval))[0])
 ```
+
+### See the ConcretizedCallable and Embedding docs for more details:
+::: pyqtorch.embed.ConcretizedCallable
+::: pyqtorch.embed.Embedding

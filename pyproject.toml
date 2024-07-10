@@ -35,7 +35,7 @@ classifiers=[
 dependencies = ["torch", "numpy"]
 
 [project.optional-dependencies]
-dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert", "matplotlib", "qutip~=4.7.5"]
+dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert", "matplotlib", "qutip~=4.7.5", "jax"]
 
 [tool.hatch.envs.tests]
 features = [

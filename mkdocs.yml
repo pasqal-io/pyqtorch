@@ -10,6 +10,7 @@ nav:
   - API: api.md
   - Advanced Features:
     - Differentiation: differentiation.md
+    - Parameter Embedding: embed.md
     - Analog Operations: analog.md
     - Digital noisy simulation: noise.md
     - Quantum Dropout: dropout.md

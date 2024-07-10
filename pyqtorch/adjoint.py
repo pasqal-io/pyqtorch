@@ -61,7 +61,9 @@ class AdjointExpectation(Function):
         ctx.param_names = param_names
         values = param_dict(param_names, param_values)
         if embedding is not None:
-            values = {**values, **embedding.assign_leaves(values)}
+            msg = "AdjointExpectation does not support Embedding yet."
+            logger.error(msg)
+            raise NotImplementedError(msg)
         ctx.out_state = circuit.run(state, values, embedding)
         ctx.projected_state = observable.run(ctx.out_state, values)
         ctx.save_for_backward(*param_values)

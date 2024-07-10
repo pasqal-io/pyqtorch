@@ -79,8 +79,6 @@ class Primitive(torch.nn.Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
-        if embedding is not None and hasattr(self, "param_name"):
-            values[self.param_name] = embedding.eval_leaf(self.param_name, values)
         if isinstance(state, DensityMatrix):
             # TODO: fix error type int | tuple[int, ...] expected "int"
             # Only supports single-qubit gates

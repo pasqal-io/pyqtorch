@@ -33,6 +33,8 @@ def run(
     Returns:
          A torch.Tensor of shape [2, 2, ..., batch_size]
     """
+    if embedding is not None:
+        values = embedding(values)
     logger.debug(f"Running circuit {circuit} on state {state} and values {values}.")
     return circuit.run(state, values, embedding=embedding)
 
@@ -83,6 +85,8 @@ def expectation(
     Returns:
         An expectation value.
     """
+    if embedding is not None and diff_mode != DiffMode.AD:
+        raise NotImplementedError("Only diff_mode AD supports embedding")
     logger.debug(
         f"Computing expectation of circuit {circuit} on state {state}, values {values},\
           given observable {observable} and diff_mode {diff_mode}."
@@ -92,9 +96,9 @@ def expectation(
     if state is None:
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
-        state = circuit.run(state, values, embedding=embedding)
+        state = run(circuit, state, values, embedding=embedding)
         return inner_prod(
-            state, observable.run(state, values, embedding=embedding)
+            state, run(observable, state, values, embedding=embedding)
         ).real
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(

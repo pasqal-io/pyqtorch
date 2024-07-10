@@ -1,134 +1,285 @@
 from __future__ import annotations
 
+from importlib import import_module
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any, Optional, Tuple
 
-import torch
+from numpy.typing import ArrayLike, DTypeLike
 
 logger = getLogger(__name__)
 
 
-def torch_call(
-    abstract_fn: str, args: list[str | float]
-) -> Callable[[dict], torch.Tensor]:
-    """Convert a `Call` object into a torchified function which can be evaluated using
-    a vparams and inputs dict.
-    """
-    fn = getattr(torch, abstract_fn)
-
-    def evaluate(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-        tensor_args = []
-        for symbol in args:
-            if isinstance(symbol, float):
-                tensor_args.append(torch.tensor(symbol))
-            elif isinstance(symbol, str):
-                tensor_args.append(inputs[symbol])
-        return fn(*tensor_args)
-
-    return evaluate
+ARRAYLIKE_FN_MAP = {
+    "torch": ("torch", "tensor"),
+    "jax": ("jax.numpy", "array"),
+    "numpy": ("numpy", "array"),
+}
 
 
-class Embedding(torch.nn.Module):
-    """
-    The Embedding class interfaces `root` parameters, a.k.a trainable and non-trainable symbols
-    passed by the user, with names given to torch_calls using those parameters.
+DEFAULT_JAX_MAPPING = {
+    "mul": ("jax.numpy", "multiply"),
+    "sub": ("jax.numpy", "subtract"),
+    "div": ("jax.numpy", "divide"),
+}
+DEFAULT_TORCH_MAPPING: dict = {}
+DEFAULT_NUMPY_MAPPING = {
+    "mul": ("numpy", "multiply"),
+    "sub": ("numpy", "subtract"),
+    "div": ("numpy", "divide"),
+}
 
-    vparam_names: A list of abstract variational parameter names.
-    fparam_names: A list of abstract feature parameter names.
-    leaf_to_call: Map from intermediate and leaf variables (which will be used as angles in gates)
-                to torch callables which expect a dictionary of root and intermediate variables.
-    dtype: The precision of the parameters.
-    device: The device on which the parameters are stored.
+DEFAULT_INSTRUCTION_MAPPING = {
+    "torch": DEFAULT_TORCH_MAPPING,
+    "jax": DEFAULT_JAX_MAPPING,
+    "numpy": DEFAULT_NUMPY_MAPPING,
+}
+
+
+class ConcretizedCallable:
+    """Transform an abstract function name and arguments into
+        a callable in a linear algebra engine which can be evaluated
+        using user input.
+    Arguments:
+        call_name: The name of the function.
+        abstract_args: A list of arguments to the function,
+                       can be numeric types for constants or strings for parameters
+        instruction_mapping: A dict containing user-passed mappings from a function name
+                            to its implementation.
+        engine_name: The name of the framework to use.
+        device: Which device to use.
+
+    Example:
+    ```
+    import torch
+
+    from pyqtorch.embed import ConcretizedCallable
+
+
+    In [11]: call = ConcretizedCallable('sin', ['x'], engine_name='numpy')
+    In [12]: call({'x': 0.5})
+    Out[12]: 0.479425538604203
+
+    In [13]: call = ConcretizedCallable('sin', ['x'], engine_name='torch')
+    In [14]: call({'x': torch.rand(1)})
+    Out[14]: tensor([0.5531])
+
+    In [15]: call = ConcretizedCallable('sin', ['x'], engine_name='jax')
+    In [16]: call({'x': 0.5})
+    Out[16]: Array(0.47942555, dtype=float32, weak_type=True)
+    ```
+
+
+
     """
 
     def __init__(
         self,
-        vparam_names: list[str],
-        fparam_names: list[str],
-        leaf_to_call: dict[str, Callable],
-        dtype: torch.dtype = torch.float64,
-        device: torch.device = torch.device("cpu"),
+        call_name: str,
+        abstract_args: list[str | float | int],
+        instruction_mapping: dict[str, Tuple[str, str]] = dict(),
+        engine_name: str = "torch",
+        device: str = "cpu",
     ) -> None:
-        super().__init__()
-        self.vparams = torch.nn.ParameterDict(
-            {p: torch.rand(1, requires_grad=True) for p in vparam_names}
-        )
-        self.fparams: dict[str, torch.Tensor | None] = {p: None for p in fparam_names}
-        self.leaf_to_call: dict[str, Callable] = leaf_to_call
-        self._dtype = dtype
-        self._device = device
-        logger.debug(
-            f"Embedding initialized with vparams: {list(self.vparams.keys())},\
-                     ,fparams {list(self.fparams.keys())}\
-                    and leaf parameters {list(self.leaf_to_call.keys())}."
-        )
-
-    @property
-    def device(self) -> torch.device:
-        return self._device
-
-    @property
-    def dtype(self) -> torch.dtype:
-        return self._dtype
-
-    def to(self, args: Any, kwargs: Any) -> None:
-        self.vparams = {p: t.to(*args, **kwargs) for p, t in self.vparams.items()}
+        instruction_mapping = {
+            **instruction_mapping,
+            **DEFAULT_INSTRUCTION_MAPPING[engine_name],
+        }
+        self.call_name = call_name
+        self.abstract_args = abstract_args
+        self.engine_name = engine_name
+        self.device = device
+        self.engine_call = None
+        engine_call = None
+        engine = None
         try:
-            k = next(iter(self.vparams))
-            t = self.vparams[k]
-            self._device = t.device
-            self._dtype = t.dtype
-        except Exception:
-            pass
+            engine_name, fn_name = ARRAYLIKE_FN_MAP[engine_name]
+            engine = import_module(engine_name)
+            self.arraylike_fn = getattr(engine, fn_name)
+        except (ModuleNotFoundError, ImportError) as e:
+            logger.error(f"Unable to import {engine_call} due to {e}.")
 
-    def assign_fparams(self, inputs: dict[str, torch.Tensor]) -> None:
-        for key, _ in self.fparams.items():
-            self.fparams[key] = inputs[key]
-
-    def flush_fparams(self) -> None:
-        for key, _ in self.fparams.items():
-            self.fparams[key] = None
-
-    def eval_leaf(
-        self, leaf_name: str, root_and_intermediates: dict[str, torch.Tensor]
-    ) -> torch.Tensor:
-        return self.leaf_to_call[leaf_name](root_and_intermediates)
-
-    def assign_leaves(
-        self, root_params: dict[str, torch.Tensor]
-    ) -> dict[str, torch.Tensor]:
-        """Expects a dict of user-passed name:value pairs for featureparameters
-        and assigns all intermediate and leaf variables using the current vparam values
-        and the passed values for featureparameters."""
-        intermediates_and_leaves: dict[str, torch.Tensor] = {}
         try:
-            assert root_params.keys() == self.fparams.keys()
-        except Exception as e:
+            try:
+                self.engine_call = getattr(engine, call_name)
+            except AttributeError:
+                pass
+            if self.engine_call is None:
+                mod, fn = instruction_mapping[call_name]
+                self.engine_call = getattr(import_module(mod), fn)
+        except (ImportError, KeyError) as e:
             logger.error(
-                f"Please pass a dict containing name:value for each fparam. Got {e}"
-            )
-        for var, torchcall in self.leaf_to_call.items():
-            intermediates_and_leaves[var] = torchcall(
-                {
-                    **self.vparams,
-                    **root_params,
-                    **intermediates_and_leaves,
-                },  # we add the "intermediate" variables too
+                f"Requested function {call_name} can not be imported from {engine_name} and is\
+                        not in instruction_mapping {instruction_mapping} due to {e}."
             )
 
-        return intermediates_and_leaves
+    def evaluate(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
+        arraylike_args = []
+        for symbol_or_numeric in self.abstract_args:
+            if isinstance(symbol_or_numeric, (float, int)):
+                arraylike_args.append(
+                    self.arraylike_fn(symbol_or_numeric, device=self.device)
+                )
+            elif isinstance(symbol_or_numeric, str):
+                arraylike_args.append(inputs[symbol_or_numeric])
+        return self.engine_call(*arraylike_args)  # type: ignore[misc]
 
-    def __call__(self, root_params: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        return self.assign_leaves(root_params)
+    def __call__(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
+        return self.evaluate(inputs)
+
+    def to(self, args: Any, kwargs: Any) -> ConcretizedCallable:
+        # TODO do properly
+        self.device = kwargs["device"]
+        return self
+
+
+def init_param(
+    engine_name: str, trainable: bool = True, device: str = "cpu"
+) -> ArrayLike:
+    engine = import_module(engine_name)
+    if engine_name == "jax":
+        return engine.random.uniform(engine.random.PRNGKey(42), shape=(1,))
+    elif engine_name == "torch":
+        return engine.rand(1, requires_grad=trainable, device=device)
+    elif engine_name == "numpy":
+        return engine.random.uniform(0, 1)
+
+
+class Embedding:
+    """A class relating variational and featureparameters used in ConcretizedCallable instances to
+    parameter names used in gates.
+
+    Arguments:
+        vparam_names: A list of variational parameters.
+        fparam_names: A list of feature parameters.
+        var_to_call: A dict mapping from gate parameters to instances of ConcretizedCallables.
+        tparam_name: Optional name for a time parameter.
+        engine_name: The name of the linear algebra engine.
+        device: The device to use
+
+    Example:
+    ```
+    from __future__ import annotations
+
+    import numpy as np
+    import pytest
+    import torch
+    import torch.autograd.gradcheck
+
+    import pyqtorch as pyq
+    from pyqtorch.embed import ConcretizedCallable, Embedding
+    name0, fn0 = "fn0", ConcretizedCallable("sin", ["x"])
+    name1, fn1 = "fn1", ConcretizedCallable("mul", ["fn0", "y"])
+    name2, fn2 = "fn2", ConcretizedCallable("mul", ["fn1", 2.0])
+    name3, fn3 = "fn3", ConcretizedCallable("log", ["fn2"])
+    embedding = pyq.Embedding(
+        vparam_names=["x"],
+        fparam_names=["y"],
+        var_to_call={name0: fn0, name1: fn1, name2: fn2, name3: fn3},
+    )
+    rx = pyq.RX(0, param_name=name0)
+    cry = pyq.CRY(0, 1, param_name=name1)
+    phase = pyq.PHASE(1, param_name=name2)
+    ry = pyq.RY(1, param_name=name3)
+    cnot = pyq.CNOT(1, 2)
+    ops = [rx, cry, phase, ry, cnot]
+    n_qubits = 3
+    circ = pyq.QuantumCircuit(n_qubits, ops)
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)])
+
+    state = pyq.zero_state(n_qubits)
+
+    x = torch.rand(1, requires_grad=True)
+    y = torch.rand(1, requires_grad=True)
+
+    values_ad = {"x": x, "y": y}
+    embedded_params = embedding(values_ad)
+    wf = pyq.run(circ, state, embedded_params, embedding)
+    ```
+    """
+
+    def __init__(
+        self,
+        vparam_names: list[str] = [],
+        fparam_names: list[str] = [],
+        var_to_call: dict[str, ConcretizedCallable] = dict(),
+        tparam_name: Optional[str] = None,
+        engine_name: str = "torch",
+        device: str = "cpu",
+    ) -> None:
+
+        self.vparams = {
+            vp: init_param(engine_name, trainable=True, device=device)
+            for vp in vparam_names
+        }
+        self.fparam_names: list[str] = fparam_names
+        self.tparam_name = tparam_name
+        self.var_to_call: dict[str, ConcretizedCallable] = var_to_call
+        self._dtype: DTypeLike = None
+        self.time_dependent_vars: list[str] = []
+        self._device = device
+        self._time_vars_identified = False
 
     @property
     def root_param_names(self) -> list[str]:
-        return list(self.fparams.keys()) + list(self.vparams.keys())
+        return list(self.vparams.keys()) + self.fparam_names
+
+    def embed_all(
+        self,
+        inputs: dict[str, ArrayLike],
+    ) -> dict[str, ArrayLike]:
+        """The standard embedding of all intermediate and leaf parameters.
+        Include the root_params, i.e., the vparams and fparams original values
+        to be reused in computations.
+        """
+        for intermediate_or_leaf_var, engine_callable in self.var_to_call.items():
+            # We mutate the original inputs dict and include intermediates and leaves.
+            if not self._time_vars_identified:
+                # we do this only on the first embedding call
+                if self.tparam_name and any(
+                    [
+                        p in [self.tparam_name] + self.time_dependent_vars
+                        for p in engine_callable.abstract_args
+                    ]  # we check if any parameter in the callables args is time
+                    # or depends on an intermediate variable which itself depends on time
+                ):
+                    self.time_dependent_vars.append(intermediate_or_leaf_var)
+                    # we remember which parameters depend on time
+            inputs[intermediate_or_leaf_var] = engine_callable(inputs)
+        self._time_vars_identified = True
+        return inputs
+
+    def reembed_time(
+        self,
+        embedded_params: dict[str, ArrayLike],
+        tparam_value: ArrayLike,
+    ) -> dict[str, ArrayLike]:
+        """Receive already embedded params containing intermediate and leaf parameters
+        and recalculate the those which are dependent on the time parameter using the new value
+        `tparam_value`.
+        """
+        assert self.tparam_name is not None
+        embedded_params[self.tparam_name] = tparam_value
+        for time_dependent_param in self.time_dependent_vars:
+            embedded_params[time_dependent_param] = self.var_to_call[
+                time_dependent_param
+            ](embedded_params)
+        return embedded_params
+
+    def __call__(self, inputs: dict[str, ArrayLike]) -> dict[str, ArrayLike]:
+        """Functional version of legacy embedding: Return a new dictionary\
+        with all embedded parameters."""
+        return self.embed_all(inputs)
 
     @property
-    def leaf_param_names(self) -> list[str]:
-        return list(self.leaf_to_call.keys())
+    def dtype(self) -> DTypeLike:
+        return self._dtype
 
-    def set_rootparam(self, param_name: str) -> None:
-        # TODO make it possible to make trainable params non-trainable and vice versa
-        pass
+    @property
+    def device(self) -> str:
+        return self._device
+
+    def to(self, args: Any, kwargs: Any) -> None:
+        self.vparams = {p: t.to(*args, **kwargs) for p, t in self.vparams.items()}
+        self.var_to_call = {
+            p: call.to(*args, **kwargs) for p, call in self.var_to_call.items()
+        }
