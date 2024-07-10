@@ -125,7 +125,7 @@ class MeasurementProtocols:
     """
 
     def __init__(self, protocol: str, options: dict) -> None:
-        self.protocol = MeasurementMode[protocol]
+        self.protocol = MeasurementMode(protocol)
         self.options = options
 
         self._generator_map: dict = {
