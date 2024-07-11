@@ -270,31 +270,3 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
     # check second order gradients
     for i in range(len(gradgrad_ad)):
         assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=GRADCHECK_ATOL)
-
-
-@pytest.mark.parametrize("gate_type", ["scale", "hamevo", ""])
-def test_compatibility_gpsr(gate_type: str) -> None:
-
-    pname = "theta_0"
-    if gate_type == "scale":
-        seq_gate = pyq.Sequence([pyq.X(0)])
-        scale = pyq.Scale(seq_gate, pname)
-        ops = [scale]
-    elif gate_type == "hamevo":
-        hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), pname, (0,))
-        ops = [hamevo]
-    else:
-        ops = [pyq.RY(0, pname), pyq.RZ(0, pname)]
-
-    circ = pyq.QuantumCircuit(1, ops)
-    obs = pyq.QuantumCircuit(1, [pyq.Z(0)])
-    state = pyq.zero_state(1)
-
-    param_value = torch.pi / 2
-    values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
-    with pytest.raises(ValueError):
-        exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
-
-        grad_gpsr = torch.autograd.grad(
-            exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
-        )

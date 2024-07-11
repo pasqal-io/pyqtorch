@@ -207,7 +207,7 @@ class PSRExpectation(Function):
             # calculate F vector and M matrix
             # (see: https://arxiv.org/pdf/2108.01218.pdf on p. 4 for definitions)
             F = []
-            M = torch.empty((n_eqs, n_eqs))
+            M = torch.empty((n_eqs, n_eqs)).to(device=device)
             n_obs = 1
             for i in range(n_eqs):
                 shifted_values = values.copy()

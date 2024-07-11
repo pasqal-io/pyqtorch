@@ -19,6 +19,8 @@ Operator = Tensor
 ATOL = 1e-06
 RTOL = 0.0
 GRADCHECK_ATOL = 1e-06
+PSR_ACCEPTANCE = 1e-5
+GPSR_ACCEPTANCE = 1e-1
 
 logger = getLogger(__name__)
 
