@@ -79,6 +79,7 @@ class ConcretizedCallable:
         instruction_mapping: dict[str, Tuple[str, str]] = dict(),
         engine_name: str = "torch",
         device: str = "cpu",
+        dtype: Any = None,
     ) -> None:
         instruction_mapping = {
             **instruction_mapping,
@@ -87,7 +88,8 @@ class ConcretizedCallable:
         self.call_name = call_name
         self.abstract_args = abstract_args
         self.engine_name = engine_name
-        self.device = device
+        self._device = device
+        self._dtype = dtype
         self.engine_call = None
         engine_call = None
         engine = None
@@ -126,9 +128,17 @@ class ConcretizedCallable:
     def __call__(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
         return self.evaluate(inputs)
 
-    def to(self, args: Any, kwargs: Any) -> ConcretizedCallable:
-        # TODO do properly
-        self.device = kwargs["device"]
+    @property
+    def device(self) -> str:
+        return self._device
+
+    @property
+    def dtype(self) -> Any:
+        return self._dtype
+
+    def to(self, *args: Any, **kwargs: Any) -> ConcretizedCallable:
+        self._device = kwargs.get("device", None)
+        self._dtype = kwargs.get("dtype", None)
         return self
 
 
@@ -278,7 +288,7 @@ class Embedding:
     def device(self) -> str:
         return self._device
 
-    def to(self, args: Any, kwargs: Any) -> None:
+    def to(self, *args: Any, **kwargs: Any) -> None:
         self.vparams = {p: t.to(*args, **kwargs) for p, t in self.vparams.items()}
         self.var_to_call = {
             p: call.to(*args, **kwargs) for p, call in self.var_to_call.items()
