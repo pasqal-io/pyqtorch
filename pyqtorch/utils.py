@@ -87,6 +87,7 @@ class DiffMode(StrEnum):
     """An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
                                        Jones & Gacon, 2020"""
+
     GPSR = "gpsr"
     """To be added."""
 
@@ -293,40 +294,6 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
     return kron_product.reshape(
         op1.size(0) * op2.size(0), op1.size(1) * op2.size(1), op1.size(2)
     )
-
-
-def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
-    from pyqtorch.primitive import I
-
-    """
-    Promotes `operator` to the size of the circuit (number of qubits and batch).
-    Targeting the first qubit implies target = 0, so target > n_qubits - 1.
-
-    Arguments:
-        operator: The operator tensor to be promoted.
-        target: The index of the target qubit to which the operator is applied.
-            Targeting the first qubit implies target = 0, so target > n_qubits - 1.
-        n_qubits: Number of qubits in the circuit.
-
-    Returns:
-        Tensor: The promoted operator tensor.
-
-    Raises:
-        ValueError: If `target` is outside the valid range of qubits.
-    """
-    if target > n_qubits - 1:
-        raise ValueError(
-            "The target must be a valid qubit index within the circuit's range."
-        )
-    qubits = torch.arange(0, n_qubits)
-    qubits = qubits[qubits != target]
-    for qubit in qubits:
-        operator = torch.where(
-            target > qubit,
-            operator_kron(I(target).unitary(), operator),
-            operator_kron(operator, I(target).unitary()),
-        )
-    return operator
 
 
 def random_dm_promotion(

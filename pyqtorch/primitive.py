@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import logging
+from functools import cached_property
 from logging import getLogger
 from typing import Any
 
 import numpy as np
 import torch
+from numpy import log2
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.apply import apply_density_mat, apply_operator, operator_product
 from pyqtorch.matrices import (
     IMAT,
     OPERATIONS_DICT,
@@ -111,9 +113,8 @@ class Primitive(torch.nn.Module):
                 return noise_gate(state, values)
         else:
             if isinstance(state, DensityMatrix):
-                # FIXME: fix error type int | tuple[int, ...] expected "int"
-                # Only supports single-qubit gates
-                return operator_product(self.unitary(values), state, self.target)  # type: ignore [arg-type]
+                n_qubits = int(log2(state.size(1)))
+                return apply_density_mat(self.tensor(values, n_qubits), state)
             else:
                 return apply_operator(
                     state,
@@ -122,6 +123,7 @@ class Primitive(torch.nn.Module):
                     len(state.size()) - 1,
                 )
 
+    # ? Do we need to keep this method now ?
     def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return _dagger(self.unitary(values))
 
@@ -138,6 +140,16 @@ class Primitive(torch.nn.Module):
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
         return self
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        return torch.linalg.eigvalsh(self.pauli).reshape(-1, 1)
+
+    @cached_property
+    def spectral_gap(self) -> Tensor:
+        spectrum = self.eigenvals_generator
+        spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
+        return spectral_gap[spectral_gap.nonzero()]
 
     def tensor(
         self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
@@ -263,9 +275,28 @@ class N(Primitive):
 
 class SWAP(Primitive):
     def __init__(self, control: int, target: int):
+        # TODO: Change the control param name
         super().__init__(OPERATIONS_DICT["SWAP"], target)
-        self.control = (control,) if isinstance(control, int) else control
-        self.qubit_support = self.control + (target,)
+        self.control = control
+        self.qubit_support = (self.control,) + (target,)
+
+    def tensor(
+        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
+        from pyqtorch.circuit import Sequence
+
+        if diagonal:
+            raise NotImplementedError
+        if n_qubits < max(self.qubit_support) + 1:
+            n_qubits = max(self.qubit_support) + 1
+        seq = Sequence(
+            [
+                CNOT(control=self.control, target=self.target),  # type: ignore[arg-type]
+                CNOT(control=self.target, target=self.control),  # type: ignore[arg-type]
+                CNOT(control=self.control, target=self.target),  # type: ignore[arg-type]
+            ]
+        )
+        return seq.tensor(values, n_qubits)
 
 
 class CSWAP(Primitive):
@@ -280,6 +311,30 @@ class CSWAP(Primitive):
     def extra_repr(self) -> str:
         return f"control:{self.control}, target:{self.target}"
 
+    def tensor(
+        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
+        from pyqtorch.circuit import Sequence
+
+        if diagonal:
+            raise NotImplementedError
+        if n_qubits < max(self.qubit_support) + 1:
+            n_qubits = max(self.qubit_support) + 1
+        seq = Sequence(
+            [
+                Toffoli(
+                    control=(self.control[0], self.target[1]), target=self.target[0]  # type: ignore[index]
+                ),
+                Toffoli(
+                    control=(self.control[0], self.target[0]), target=self.target[1]  # type: ignore[index]
+                ),
+                Toffoli(
+                    control=(self.control[0], self.target[1]), target=self.target[0]  # type: ignore[index]
+                ),
+            ]  #! Can't take more that 1 control in this logic
+        )
+        return seq.tensor(values, n_qubits)
+
 
 class ControlledOperationGate(Primitive):
     def __init__(self, gate: str, control: int | tuple[int, ...], target: int):
@@ -291,10 +346,44 @@ class ControlledOperationGate(Primitive):
             n_control_qubits=len(self.control),
         ).squeeze(2)
         super().__init__(mat, target)
+        self.gate = globals()[gate]
         self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
 
     def extra_repr(self) -> str:
         return f"control:{self.control}, target:{(self.target,)}"
+
+    def tensor(
+        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+    ) -> Tensor:
+        from pyqtorch.circuit import Sequence
+
+        if diagonal:
+            raise NotImplementedError
+        if n_qubits < max(self.qubit_support) + 1:
+            n_qubits = max(self.qubit_support) + 1
+        proj1 = Sequence(
+            [Projector(qubit_support=qubit, ket="1", bra="1") for qubit in self.control]
+        )
+        """
+        proj0 = Sequence(
+            [Projector(qubit_support=qubit, ket="0", bra="0") for qubit in self.control]
+        )
+        Don't work for multiple control qubit (want to keep it ?)
+        c_mat = proj0.tensor(values, n_qubits) + operator_product(
+            proj1.tensor(values, n_qubits),
+            self.gate(self.target).tensor(values, n_qubits),
+            self.target,
+        )
+        """
+        c_mat = (
+            I(target=self.control[0]).tensor(values, n_qubits)
+            - proj1.tensor(values, n_qubits)
+            + operator_product(
+                proj1.tensor(values, n_qubits),
+                self.gate(self.target).tensor(values, n_qubits),
+            )
+        )
+        return c_mat
 
 
 class CNOT(ControlledOperationGate):
@@ -316,5 +405,5 @@ class CZ(ControlledOperationGate):
 
 
 class Toffoli(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], target: int):
+    def __init__(self, control: tuple[int, ...], target: int):
         super().__init__("X", control, target)

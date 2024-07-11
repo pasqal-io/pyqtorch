@@ -18,7 +18,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import IMAT, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import State, product_state, zero_state
+from pyqtorch.utils import product_state, zero_state
 
 logger = getLogger(__name__)
 
@@ -98,8 +98,8 @@ class Sequence(Module):
         return hash(reduce(add, (hash(op) for op in self.operations)))
 
     def forward(
-        self, state: State, values: dict[str, Tensor] | ParameterDict = {}
-    ) -> State:
+        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = {}
+    ) -> Tensor:
         for op in self.operations:
             state = op(state, values)
         return state
@@ -158,9 +158,9 @@ class QuantumCircuit(Sequence):
 
     def run(
         self,
-        state: State = None,
+        state: Tensor = None,
         values: dict[str, Tensor] | ParameterDict = {},
-    ) -> State:
+    ) -> Tensor:
         if state is None:
             state = self.init_state()
         elif isinstance(state, str):

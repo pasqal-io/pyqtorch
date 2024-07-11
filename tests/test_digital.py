@@ -10,7 +10,7 @@ from conftest import _calc_mat_vec_wavefunction
 from torch import Tensor
 
 import pyqtorch as pyq
-from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     HMAT,
@@ -34,7 +34,6 @@ from pyqtorch.utils import (
     density_mat,
     operator_kron,
     product_state,
-    promote_operator,
     random_state,
 )
 
@@ -420,38 +419,7 @@ def test_dm(n_qubits: int, batch_size: int) -> None:
     assert torch.allclose(dm, dm_proj)
 
 
-def test_promote(random_gate: Primitive, n_qubits: int, target: int) -> None:
-    op_prom = promote_operator(random_gate.unitary(), target, n_qubits)
-    assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
-    assert torch.allclose(
-        operator_product(
-            op_prom, torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2), target
-        ),
-        torch.eye(2**n_qubits, dtype=torch.cdouble).unsqueeze(2),
-    )
-
-
-# FIXME: Modify this test
-def test_operator_product(random_gate: Primitive, n_qubits: int, target: int) -> None:
-    op = random_gate
-    batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
-    batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
-    max_batch = max(batch_size_2, batch_size_1)
-    op_prom = promote_operator(op.unitary(), target, n_qubits).repeat(
-        1, 1, batch_size_1
-    )
-    op_mul = operator_product(
-        op.unitary().repeat(1, 1, batch_size_2),
-        torch.eye(2**n_qubits, dtype=torch.cdouble),
-        target,
-    )
-    assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
-    assert torch.allclose(
-        op_mul,
-        torch.eye(2**n_qubits, dtype=torch.cdouble)
-        .unsqueeze(2)
-        .repeat(1, 1, max_batch),
-    )
+# TODO: Modify test_operator_product as promote_operator has been erased.
 
 
 @pytest.mark.parametrize(
