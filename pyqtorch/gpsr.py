@@ -147,6 +147,17 @@ class PSRExpectation(Function):
             Returns:
                 Gradient evaluation for param_name.
             """
+
+            # device conversions
+            device = torch.device("cpu")
+            try:
+                device = [v.device for v in values.values()][0]
+            except Exception:
+                pass
+            spectral_gap = spectral_gap.to(device=device)
+            shift = shift.to(device=device)
+
+            # apply shift rule
             shifted_values = values.copy()
             shifted_values[param_name] = shifted_values[param_name] + shift
             f_plus = expectation_fn(shifted_values)
@@ -184,6 +195,14 @@ class PSRExpectation(Function):
             shifts = shift_prefac * torch.linspace(
                 PI / 2 - PI / 5, PI / 2 + PI / 5, n_eqs
             )
+
+            device = torch.device("cpu")
+            try:
+                device = [v.device for v in values.values()][0]
+            except Exception:
+                pass
+            spectral_gaps = spectral_gaps.to(device=device)
+            shifts = shifts.to(device=device)
 
             # calculate F vector and M matrix
             # (see: https://arxiv.org/pdf/2108.01218.pdf on p. 4 for definitions)
