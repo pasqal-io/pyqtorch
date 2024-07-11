@@ -9,8 +9,8 @@ import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
 from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.primitive import Primitive
 from pyqtorch.parametric import Parametric
+from pyqtorch.primitive import Primitive
 from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE
 
 
@@ -28,6 +28,7 @@ def circuit_psr(n_qubits: int) -> QuantumCircuit:
     circ = QuantumCircuit(n_qubits, ops)
 
     return circ
+
 
 def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
     """Helper function to make an example circuit using multi gap GPSR."""
@@ -47,6 +48,7 @@ def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
 
     return circ
 
+
 def circuit_sequence(n_qubits: int) -> QuantumCircuit:
     """Helper function to make an example circuit using Sequences of rotations."""
     name_angles = "theta"
@@ -61,6 +63,7 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
     ops = [ops_rx, ops_rz, cnot]
     circ = QuantumCircuit(n_qubits, ops)
     return circ
+
 
 @pytest.mark.parametrize(
     ["n_qubits", "batch_size", "circuit_fn"],
@@ -84,8 +87,7 @@ def test_expectation_psr(
     values = {
         op.param_name: torch.rand(batch_size, requires_grad=True)
         for op in circ.flatten()
-        if isinstance(op, Parametric)
-        and isinstance(op.param_name, str)
+        if isinstance(op, Parametric) and isinstance(op.param_name, str)
     }
     state = pyq.random_state(n_qubits)
 
@@ -107,7 +109,7 @@ def test_expectation_psr(
         grad_gpsr, tuple(values.values()), torch.ones_like(grad_gpsr)
     )
 
-    atol = PSR_ACCEPTANCE if circuit_fn == circuit_psr else GPSR_ACCEPTANCE
+    atol = PSR_ACCEPTANCE if circuit_fn != circuit_gpsr else GPSR_ACCEPTANCE
 
     assert torch.allclose(exp_ad, exp_gpsr)
 
