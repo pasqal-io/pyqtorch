@@ -28,12 +28,31 @@ def circuit_psr(n_qubits: int) -> QuantumCircuit:
 
     return circ
 
+def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
+    """Helper function to make an example circuit."""
+
+    ops = [
+        pyq.Y(1),
+        pyq.RX(0, "theta_0"),
+        pyq.PHASE(0, "theta_1"),
+        pyq.CSWAP(0, (1, 2)),
+        pyq.CRX(1, 2, "theta_2"),
+        pyq.CPHASE(1, 2, "theta_3"),
+        pyq.CNOT(0, 1),
+        pyq.Toffoli((2, 1), 0),
+    ]
+
+    circ = QuantumCircuit(n_qubits, ops)
+
+    return circ
 
 @pytest.mark.parametrize(
     ["n_qubits", "batch_size", "n_obs", "circuit_fn"],
     [
         (2, 1, 2, circuit_psr),
         (5, 10, 1, circuit_psr),
+        (3, 1, 2, circuit_gpsr),
+        (5, 10, 1, circuit_gpsr),
     ],
 )
 def test_expectation_psr(
@@ -48,7 +67,6 @@ def test_expectation_psr(
         for op in circ.flatten()
         if isinstance(op, Parametric)
         and isinstance(op.param_name, str)
-        and op.param_name != ""
     }
     state = pyq.random_state(n_qubits)
 
@@ -61,6 +79,7 @@ def test_expectation_psr(
         grad_ad, tuple(values.values()), torch.ones_like(grad_ad)
     )
 
+    # Apply PSR
     exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
     grad_gpsr = torch.autograd.grad(
         exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True

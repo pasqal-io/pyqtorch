@@ -261,7 +261,7 @@ class PSRExpectation(Function):
 
         grads = {p: None for p in ctx.param_names}
         for op in ctx.circuit.flatten():
-            if isinstance(op, Parametric) and values[op.param_name].requires_grad:  # type: ignore[index]
+            if isinstance(op, Parametric) and isinstance(op.param_name, str) and values[op.param_name].requires_grad:  # type: ignore[index]
                 if grads[op.param_name] is not None:
                     grads[op.param_name] += vjp(op, values)
                 else:
