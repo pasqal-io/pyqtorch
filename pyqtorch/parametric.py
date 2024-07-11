@@ -31,7 +31,7 @@ class Parametric(Primitive):
         self,
         generator_name: str,
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes Parametric.
@@ -48,26 +48,53 @@ class Parametric(Primitive):
         self.noise = noise
 
         def parse_values(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-            """Get from values input dictionary the values for param_name.
+            """The legacy way of using parametric gates:
+               The Parametric gate received a string as a 'param_name' and performs a
+               a lookup in the passed `values` dict for to retrieve the torch.Tensor passed
+               under the key `param_name`.
 
             Arguments:
-                values: Values of parameters
+                values: A dict containing param_name:torch.Tensor pairs
             Returns:
-                Parameters values from values.
+                A Torch Tensor denoting values for the `param_name`.
             """
-            return Parametric._expand_values(values[self.param_name])
+            # self.param_name will be a str
+            return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 
         def parse_tensor(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-            """Return values if param_name empty string.
+            """Functional version of the Parametric gate:
+               In case the user did not pass a `param_name`,
+               pyqtorch assumes `values` will be a torch.Tensor instead of a dict.
 
             Arguments:
-                values: Values of parameters
+                values: A dict containing param_name:torch.Tensor pairs
             Returns:
-                Values of parameters.
+                A Torch Tensor with which to evaluate the Parametric Gate.
             """
+            # self.param_name will be ""
             return Parametric._expand_values(values)
 
-        self.parse_values = parse_tensor if param_name == "" else parse_values
+        def parse_constant(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+            """Fix a the parameter of a Parametric Gate to a numeric constant
+               if the user passed a numeric input for the `param_name`.
+
+            Arguments:
+                values: A dict containing param_name:torch.Tensor pairs
+            Returns:
+                A Torch Tensor with which to evaluate the Parametric Gate.
+            """
+            # self.param_name will be a torch.Tensor
+            return Parametric._expand_values(
+                torch.tensor(param_name, device=self.device, dtype=self.dtype)
+            )
+
+        if param_name == "":
+            self.parse_values = parse_tensor
+            self.param_name = self.param_name
+        elif isinstance(param_name, str):
+            self.parse_values = parse_values
+        elif isinstance(param_name, (float, int, torch.Tensor)):
+            self.parse_values = parse_constant
 
     def extra_repr(self) -> str:
         """String representation of the operation.

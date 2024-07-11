@@ -87,92 +87,29 @@ def test_rotation_gates(batch_size: int, gate: Primitive, n_qubits: int) -> None
     assert torch.allclose(wf_mat, wf_pyq, rtol=RTOL, atol=ATOL)
 
 
-def test_projectors() -> None:
-    t0 = torch.tensor([[0.0], [0.0]], dtype=DEFAULT_MATRIX_DTYPE)
-    t1 = torch.tensor([[1.0], [0.0]], dtype=DEFAULT_MATRIX_DTYPE)
-    t2 = torch.tensor([[0.0], [1.0]], dtype=DEFAULT_MATRIX_DTYPE)
-    assert torch.allclose(t1, pyq.Projector(0, ket="0", bra="0")(product_state("0")))
-    assert torch.allclose(t0, pyq.Projector(0, ket="0", bra="0")(product_state("1")))
-    assert torch.allclose(t2, pyq.Projector(0, ket="1", bra="1")(product_state("1")))
-    assert torch.allclose(t0, pyq.Projector(0, ket="1", bra="1")(product_state("0")))
-    t00 = torch.tensor(
-        [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        dtype=torch.complex128,
-    )
-    t01 = torch.tensor(
-        [[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        dtype=torch.complex128,
-    )
-    t10 = torch.tensor(
-        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]],
-        dtype=torch.complex128,
-    )
-    t11 = torch.tensor(
-        [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]],
-        dtype=torch.complex128,
-    )
-    assert torch.allclose(
-        pyq.Projector((0, 1), ket="00", bra="00")(product_state("00")), t00
-    )
-    assert torch.allclose(
-        pyq.Projector((0, 1), ket="10", bra="01")(product_state("01")), t10
-    )
-    assert torch.allclose(
-        pyq.Projector((0, 1), ket="01", bra="10")(product_state("10")), t01
-    )
-    assert torch.allclose(
-        pyq.Projector((0, 1), ket="11", bra="11")(product_state("11")), t11
-    )
-    t000 = torch.tensor(
-        [
-            [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ],
-        dtype=torch.complex128,
-    )
-    t100 = torch.tensor(
-        [
-            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-            [[[1.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ],
-        dtype=torch.complex128,
-    )
-    t001 = torch.tensor(
-        [
-            [[[0.0 + 0.0j], [1.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ],
-        dtype=torch.complex128,
-    )
-    t010 = torch.tensor(
-        [
-            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[1.0 + 0.0j], [0.0 + 0.0j]]],
-            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-        ],
-        dtype=torch.complex128,
-    )
-    t111 = torch.tensor(
-        [
-            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [0.0 + 0.0j]]],
-            [[[0.0 + 0.0j], [0.0 + 0.0j]], [[0.0 + 0.0j], [1.0 + 0.0j]]],
-        ],
-        dtype=torch.complex128,
-    )
-    assert torch.allclose(
-        pyq.Projector((0, 1, 2), ket="000", bra="000")(product_state("000")), t000
-    )
-    assert torch.allclose(
-        pyq.Projector((0, 1, 2), ket="100", bra="001")(product_state("001")), t100
-    )
-    assert torch.allclose(
-        pyq.Projector((0, 1, 2), ket="010", bra="010")(product_state("010")), t010
-    )
-    assert torch.allclose(
-        pyq.Projector((0, 1, 2), ket="001", bra="100")(product_state("100")), t001
-    )
-    assert torch.allclose(
-        pyq.Projector((0, 1, 2), ket="111", bra="111")(product_state("111")), t111
-    )
+@pytest.mark.parametrize("n_qubits", [1, 2, 3])
+def test_projectors(n_qubits: int) -> None:
+    qubit_support = tuple(range(n_qubits))
+    max_possibility = 2**n_qubits
+    possible_nbs = list(range(max_possibility - 1))
+    for ket in [random.choice(possible_nbs) for _ in range(2 * n_qubits)]:
+        for bra in [random.choice(possible_nbs) for _ in range(2 * n_qubits)]:
+            t_mat = torch.zeros(max_possibility, dtype=DEFAULT_MATRIX_DTYPE)
+            t_mat[ket] = 1.0 + 0.0j
+            t_mat = t_mat.reshape((2,) * n_qubits + (1,))
+            assert torch.allclose(
+                pyq.Projector(
+                    qubit_support, ket=f"{ket:0{n_qubits}b}", bra=f"{bra:0{n_qubits}b}"
+                )(product_state(f"{bra:0{n_qubits}b}")),
+                t_mat,
+            )
+        if ket > 0:
+            assert torch.allclose(
+                pyq.Projector(
+                    qubit_support, ket=f"{ket:0{n_qubits}b}", bra=f"{ket:0{n_qubits}b}"
+                )(product_state(f"{ket-1:0{n_qubits}b}")),
+                torch.zeros((2,) * n_qubits + (1,), dtype=DEFAULT_MATRIX_DTYPE),
+            )
 
 
 @pytest.mark.parametrize(
@@ -664,3 +601,16 @@ def test_damping_gates(
         assert torch.allclose(
             DampingGate(target, error_probability=1, rate=1)(rho_1), rho_0
         )
+
+
+@pytest.mark.parametrize("gate", [pyq.RX, pyq.RY, pyq.RZ])
+def test_parametric_constantparam(gate: pyq.parametric.Parametric) -> None:
+    n_qubits = 4
+    max_batch_size = 10
+    target = torch.randint(0, n_qubits, (1,)).item()
+    param_val = torch.rand(torch.randint(1, max_batch_size, (1,)).item())
+    state = pyq.random_state(n_qubits)
+    assert torch.allclose(
+        gate(target, "theta")(state, {"theta": param_val}),
+        gate(target, param_val)(state),
+    )
