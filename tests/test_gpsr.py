@@ -9,12 +9,13 @@ import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
 from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.primitive import Primitive
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE
 
 
 def circuit_psr(n_qubits: int) -> QuantumCircuit:
-    """Helper function to make an example circuit."""
+    """Helper function to make an example circuit using single gap PSR."""
 
     ops = [
         pyq.RX(0, "x"),
@@ -29,7 +30,7 @@ def circuit_psr(n_qubits: int) -> QuantumCircuit:
     return circ
 
 def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
-    """Helper function to make an example circuit."""
+    """Helper function to make an example circuit using multi gap GPSR."""
 
     ops = [
         pyq.Y(1),
@@ -46,21 +47,39 @@ def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
 
     return circ
 
+def circuit_sequence(n_qubits: int) -> QuantumCircuit:
+    """Helper function to make an example circuit using Sequences of rotations."""
+    name_angles = "theta"
+
+    ops_rx = pyq.Sequence(
+        [pyq.RX(i, param_name=name_angles + "_x_" + str(i)) for i in range(n_qubits)]
+    )
+    ops_rz = pyq.Sequence(
+        [pyq.RZ(i, param_name=name_angles + "_z_" + str(i)) for i in range(n_qubits)]
+    )
+    cnot = pyq.CNOT(1, 2)
+    ops = [ops_rx, ops_rz, cnot]
+    circ = QuantumCircuit(n_qubits, ops)
+    return circ
+
 @pytest.mark.parametrize(
-    ["n_qubits", "batch_size", "n_obs", "circuit_fn"],
+    ["n_qubits", "batch_size", "circuit_fn"],
     [
-        (2, 1, 2, circuit_psr),
-        (5, 10, 1, circuit_psr),
-        (3, 1, 2, circuit_gpsr),
-        (5, 10, 1, circuit_gpsr),
+        (2, 1, circuit_psr),
+        (5, 10, circuit_psr),
+        (3, 1, circuit_gpsr),
+        (5, 10, circuit_gpsr),
+        (3, 1, circuit_sequence),
+        (5, 10, circuit_sequence),
     ],
 )
+@pytest.mark.parametrize("ops_op", [pyq.Z, pyq.Y])
 def test_expectation_psr(
-    n_qubits: int, batch_size: int, n_obs: int, circuit_fn: Callable
+    n_qubits: int, batch_size: int, circuit_fn: Callable, ops_op: Primitive
 ) -> None:
     torch.manual_seed(42)
     circ = circuit_fn(n_qubits)
-    obs = Observable(n_qubits, [pyq.Z(i) for i in range(n_qubits)])
+    obs = Observable(n_qubits, [ops_op(i) for i in range(n_qubits)])
 
     values = {
         op.param_name: torch.rand(batch_size, requires_grad=True)
