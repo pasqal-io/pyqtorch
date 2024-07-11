@@ -12,7 +12,7 @@ from pyqtorch.matrices import (
     _jacobian,
     _unitary,
 )
-from pyqtorch.primitive import Primitive
+from pyqtorch.primitive import Noisy_protocols, Primitive
 from pyqtorch.utils import Operator
 
 
@@ -32,6 +32,7 @@ class Parametric(Primitive):
         generator_name: str,
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes Parametric.
 
@@ -39,10 +40,12 @@ class Parametric(Primitive):
             generator_name: Name of the operation.
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__(OPERATIONS_DICT[generator_name], target)
+        super().__init__(OPERATIONS_DICT[generator_name], target, noise)
         self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
+        self.noise = noise
 
         def parse_values(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
             """Get from values input dictionary the values for param_name.
@@ -72,7 +75,14 @@ class Parametric(Primitive):
         Returns:
             String with information on operation.
         """
-        return f"target:{self.qubit_support}, param:{self.param_name}"
+        noise_info = ""
+        if self.noise:
+            if isinstance(self.noise, Noisy_protocols):
+                noise_info = str(self.noise)
+            elif isinstance(self.noise, dict):
+                noise_info = ", ".join(str(noise_instance) for noise_instance in self.noise.values())
+            return f"target: {self.qubit_support}, param: {self.param_name}, Noise: {noise_info}"
+        return f"target: {self.qubit_support}, param: {self.param_name}"
 
     def __hash__(self) -> int:
         """Hash qubit support and param_name
@@ -140,14 +150,16 @@ class RX(Parametric):
         self,
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes RX.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("X", target, param_name)
+        super().__init__("X", target, param_name, noise)
 
 
 class RY(Parametric):
@@ -167,14 +179,16 @@ class RY(Parametric):
         self,
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes RY.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("Y", target, param_name)
+        super().__init__("Y", target, param_name, noise)
 
 
 class RZ(Parametric):
@@ -194,14 +208,16 @@ class RZ(Parametric):
         self,
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes RZ.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("Z", target, param_name)
+        super().__init__("Z", target, param_name, noise)
 
 
 class PHASE(Parametric):
@@ -221,14 +237,16 @@ class PHASE(Parametric):
         self,
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes PHASE.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("I", target, param_name)
+        super().__init__("I", target, param_name, noise)
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """

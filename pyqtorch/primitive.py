@@ -16,7 +16,7 @@ from pyqtorch.matrices import (
     _dagger,
 )
 from pyqtorch.noise import Noisy_protocols
-from pyqtorch.utils import DensityMatrix, product_state
+from pyqtorch.utils import DensityMatrix, density_mat, product_state
 
 logger = getLogger(__name__)
 
@@ -66,21 +66,16 @@ class Primitive(torch.nn.Module):
 
     def __hash__(self) -> int:
         return hash(self.qubit_support)
-
+    
     def extra_repr(self) -> str:
+        noise_info = ""
         if self.noise:
-            noise_details = []
             if isinstance(self.noise, Noisy_protocols):
-                noise_details.append(
-                    f"{self.noise.protocol}({self.noise.options['error_probability']})"
-                )
+                noise_info = str(self.noise)
             elif isinstance(self.noise, dict):
-                for noise_instance in self.noise.values():
-                    noise_details.append(
-                        f"{noise_instance.protocol}({noise_instance.options['error_probability']})"
-                    )
-            return f"{self.qubit_support}, Noise: " + ", ".join(noise_details)
-        return f"{self.qubit_support}"
+                noise_info = ", ".join(str(noise_instance) for noise_instance in self.noise.values())
+            return f"target: {self.qubit_support}, Noise: {noise_info}"
+        return f"target: {self.qubit_support}"
 
     def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
         return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
@@ -89,12 +84,18 @@ class Primitive(torch.nn.Module):
         self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
     ) -> Tensor:
         if self.noise:
+            if not isinstance(state, DensityMatrix):
+                state = density_mat(state)
             state = operator_product(self.unitary(values), state, self.target)  # type: ignore [arg-type]
             if isinstance(self.noise, dict):
                 for noise_instance in self.noise.values():
                     protocol = noise_instance.protocol_to_gate()
                     noise_gate = protocol(
-                        target=self.target,
+                        target=(
+                            noise_instance.target
+                            if noise_instance.target
+                            else self.target
+                        ),
                         error_probability=noise_instance.error_probability,
                     )
                     state = noise_gate(state, values)
@@ -102,10 +103,10 @@ class Primitive(torch.nn.Module):
             else:
                 protocol = self.noise.protocol_to_gate()
                 noise_gate = protocol(
-                    target=self.target,
+                    target=(self.noise.target if self.noise.target else self.target),
                     error_probability=self.noise.error_probability,
                 )
-                return noise_gate(state, values)  # ? Is values mandatory here ?
+                return noise_gate(state, values)
         else:
             if isinstance(state, DensityMatrix):
                 # FIXME: fix error type int | tuple[int, ...] expected "int"
@@ -171,43 +172,72 @@ class X(Primitive):
 
 
 class Y(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["Y"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["Y"], target, noise)
 
 
 class Z(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["Z"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["Z"], target, noise)
 
 
 class I(Primitive):  # noqa: E742
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["I"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["I"], target, noise)
 
     def forward(self, state: Tensor, values: dict[str, Tensor] = dict()) -> Tensor:
         return state
 
 
 class H(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["H"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["H"], target, noise)
 
 
 class T(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["T"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["T"], target, noise)
 
 
 class S(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["S"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["S"], target, noise)
 
 
 class SDagger(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["SDAGGER"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["SDAGGER"], target, noise)
 
 
+# TODO: Add noise param
 class Projector(Primitive):
     def __init__(self, qubit_support: int | tuple[int, ...], ket: str, bra: str):
         support = (qubit_support,) if isinstance(qubit_support, int) else qubit_support
@@ -221,8 +251,12 @@ class Projector(Primitive):
 
 
 class N(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["N"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["N"], target, noise)
 
 
 class SWAP(Primitive):
