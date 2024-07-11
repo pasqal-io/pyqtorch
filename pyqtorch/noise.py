@@ -8,7 +8,6 @@ from torch import Tensor
 
 from pyqtorch.apply import apply_density_mat
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
-from pyqtorch.utils import DensityMatrix, density_mat
 
 
 class Noise(torch.nn.Module):

@@ -70,8 +70,8 @@ class Primitive(torch.nn.Module):
         return hash(self.qubit_support)
 
     def extra_repr(self) -> str:
-        noise_info = ""
         if self.noise:
+            noise_info = ""
             if isinstance(self.noise, Noisy_protocols):
                 noise_info = str(self.noise)
             elif isinstance(self.noise, dict):
@@ -90,14 +90,17 @@ class Primitive(torch.nn.Module):
         if self.noise:
             if not isinstance(state, DensityMatrix):
                 state = density_mat(state)
-            state = operator_product(self.unitary(values), state, self.target)  # type: ignore [arg-type]
+            n_qubits = int(log2(state.size(1)))
+            state = apply_density_mat(
+                self.tensor(values, n_qubits), state
+            )  # try to call fwd with dm
             if isinstance(self.noise, dict):
                 for noise_instance in self.noise.values():
                     protocol = noise_instance.protocol_to_gate()
                     noise_gate = protocol(
                         target=(
                             noise_instance.target
-                            if noise_instance.target
+                            if noise_instance.target is not None
                             else self.target
                         ),
                         error_probability=noise_instance.error_probability,
@@ -107,9 +110,15 @@ class Primitive(torch.nn.Module):
             else:
                 protocol = self.noise.protocol_to_gate()
                 noise_gate = protocol(
-                    target=(self.noise.target if self.noise.target else self.target),
+                    target=(
+                        self.noise.target
+                        if self.noise.target is not None
+                        else self.target
+                    ),
                     error_probability=self.noise.error_probability,
                 )
+                print(noise_gate.target, self.noise.target)
+                print(self.noise.target if self.noise.target else self.target)
                 return noise_gate(state, values)
         else:
             if isinstance(state, DensityMatrix):
@@ -337,7 +346,13 @@ class CSWAP(Primitive):
 
 
 class ControlledOperationGate(Primitive):
-    def __init__(self, gate: str, control: int | tuple[int, ...], target: int):
+    def __init__(
+        self,
+        gate: str,
+        control: int | tuple[int, ...],
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
         self.control = (control,) if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
         mat = _controlled(
@@ -345,11 +360,23 @@ class ControlledOperationGate(Primitive):
             batch_size=1,
             n_control_qubits=len(self.control),
         ).squeeze(2)
-        super().__init__(mat, target)
+        super().__init__(mat, target, noise)
         self.gate = globals()[gate]
         self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
+        self.noise = noise
 
     def extra_repr(self) -> str:
+        if self.noise:
+            noise_info = ""
+            if isinstance(self.noise, Noisy_protocols):
+                noise_info = str(self.noise)
+            elif isinstance(self.noise, dict):
+                noise_info = ", ".join(
+                    str(noise_instance) for noise_instance in self.noise.values()
+                )
+            return (
+                f"control:{self.control}, target:{(self.target,)}, Noise: {noise_info}"
+            )
         return f"control:{self.control}, target:{(self.target,)}"
 
     def tensor(
@@ -364,17 +391,6 @@ class ControlledOperationGate(Primitive):
         proj1 = Sequence(
             [Projector(qubit_support=qubit, ket="1", bra="1") for qubit in self.control]
         )
-        """
-        proj0 = Sequence(
-            [Projector(qubit_support=qubit, ket="0", bra="0") for qubit in self.control]
-        )
-        Don't work for multiple control qubit (want to keep it ?)
-        c_mat = proj0.tensor(values, n_qubits) + operator_product(
-            proj1.tensor(values, n_qubits),
-            self.gate(self.target).tensor(values, n_qubits),
-            self.target,
-        )
-        """
         c_mat = (
             I(target=self.control[0]).tensor(values, n_qubits)
             - proj1.tensor(values, n_qubits)
@@ -387,23 +403,43 @@ class ControlledOperationGate(Primitive):
 
 
 class CNOT(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("X", control, target)
+    def __init__(
+        self,
+        control: int | tuple[int, ...],
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__("X", control, target, noise)
 
 
 CX = CNOT
 
 
 class CY(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("Y", control, target)
+    def __init__(
+        self,
+        control: int | tuple[int, ...],
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__("Y", control, target, noise)
 
 
 class CZ(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("Z", control, target)
+    def __init__(
+        self,
+        control: int | tuple[int, ...],
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__("Z", control, target, noise)
 
 
 class Toffoli(ControlledOperationGate):
-    def __init__(self, control: tuple[int, ...], target: int):
-        super().__init__("X", control, target)
+    def __init__(
+        self,
+        control: tuple[int, ...],
+        target: int,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
+        super().__init__("X", control, target, noise)
