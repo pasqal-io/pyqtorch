@@ -66,14 +66,16 @@ class Primitive(torch.nn.Module):
 
     def __hash__(self) -> int:
         return hash(self.qubit_support)
-    
+
     def extra_repr(self) -> str:
         noise_info = ""
         if self.noise:
             if isinstance(self.noise, Noisy_protocols):
                 noise_info = str(self.noise)
             elif isinstance(self.noise, dict):
-                noise_info = ", ".join(str(noise_instance) for noise_instance in self.noise.values())
+                noise_info = ", ".join(
+                    str(noise_instance) for noise_instance in self.noise.values()
+                )
             return f"target: {self.qubit_support}, Noise: {noise_info}"
         return f"target: {self.qubit_support}"
 

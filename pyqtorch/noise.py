@@ -341,11 +341,11 @@ class GeneralizedAmplitudeDamping(Noise):
 class Noisy_protocols:
     BITFLIP = "BitFlip"
     PHASEFLIP = "PhaseFlip"
+    DEPOLARIZING = "Depolarizing"
     PAULI_CHANNEL = "PauliChannel"
     AMPLITUDE_DAMPING = "AmplitudeDamping"
     PHASE_DAMPING = "PhaseDamping"
     GENERALIZED_AMPLITUDE_DAMPING = "GeneralizedAmplitudeDamping"
-    DEPHASING = "Dephasing"
 
     def __init__(self, protocol: str, options: dict = dict()) -> None:
         self.protocol: str = protocol
@@ -353,9 +353,12 @@ class Noisy_protocols:
 
     def __repr__(self) -> str:
         if self.target:
-            return f"{self.protocol}(error_probability={self.error_probability}, target={self.target})"
+            return (
+                f"{self.protocol}(error_probability={self.error_probability}, "
+                f"target={self.target})"
+            )
         return f"{self.protocol}(error_probability={self.error_probability})"
-        
+
     @property
     def error_probability(self):
         return self.options.get("error_probability")

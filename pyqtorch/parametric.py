@@ -107,7 +107,9 @@ class Parametric(Primitive):
             if isinstance(self.noise, Noisy_protocols):
                 noise_info = str(self.noise)
             elif isinstance(self.noise, dict):
-                noise_info = ", ".join(str(noise_instance) for noise_instance in self.noise.values())
+                noise_info = ", ".join(
+                    str(noise_instance) for noise_instance in self.noise.values()
+                )
             return f"target: {self.qubit_support}, param: {self.param_name}, Noise: {noise_info}"
         return f"target: {self.qubit_support}, param: {self.param_name}"
 
