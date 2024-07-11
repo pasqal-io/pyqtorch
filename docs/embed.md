@@ -5,7 +5,7 @@ value for its parameter in the forward-pass when initialized using a `str` param
 a FeatureParameter. To do so, a name has to be assigned to the outcome of the evaluation of `sin(x)` and
 supplied to the `pyq.QuantumCircuit` within an instance of `Embedding`.
 
-### Using pyq.torch_call to create torch callables
+### Creating parameter expressions using `ConcretizedCallable`
 `pyq.ConcretizedCallable` expects a name for a function and a list of arguments
 ```python exec="on" source="material-block" html="1" session="expr"
 import torch
@@ -18,20 +18,24 @@ result = sin_x_fn(values)
 print(torch.autograd.grad(result, x, torch.ones_like(result))[0])
 ```
 
-### Wrapping torch_calls in the Embedding class
-Now, we can pass `sin_x : sin_x_fn` in form of a dict to the `Embedding`
-along with information what are trainable and non-trainable symbols.
+### Interfacing `ConcretizedCallable` with QuantumCircuit parameters via the `Embedding` class
+Lets use `sin_x` in another callable, so our gate will be parametrized by the result of the expression `y * sin(x)` where `y` is trainable and `x` is a feature parameter.
+We can tell `pyq` how to associate each callable with its underlying parameters via the `Embedding` class which expects arguments regarding what are trainable and non-trainable symbols.
 
 ```python exec="on" source="material-block" html="1" session="expr"
 
-embedding = pyq.Embedding([], ['x'], {sin_x: sin_x_fn})
-circ = pyq.QuantumCircuit(1, [pyq.RX(0, sin_x)])
+mul_sinx_y, mul_sinx_y_fn = 'mul_sinx_y', pyq.ConcretizedCallable(call_name = 'mul', abstract_args=['sin_x', 'y'])
+embedding = pyq.Embedding(vparam_names=['y'], fparam_names=['x'], var_to_call={sin_x: sin_x_fn, mul_sinx_y: mul_sinx_y_fn})
+circ = pyq.QuantumCircuit(1, [pyq.RX(0, mul_sinx_y)])
 state= pyq.zero_state(1)
+y = torch.rand(1, requires_grad=True)
+values = {'x': x, 'y': y}
 expval = pyq.expectation(circuit=circ, state=state, values=values, observable= pyq.Observable(1, [pyq.Z(0)]),diff_mode=pyq.DiffMode.AD,embedding=embedding)
-
-print(torch.autograd.grad(expval, x, torch.ones_like(expval))[0])
+print(torch.autograd.grad(expval, (x, y), torch.ones_like(expval)))
 ```
 
-### See the ConcretizedCallable and Embedding docs for more details:
+### See the docstrings for more details and examples:
+#### ConcretizedCallable
 ::: pyqtorch.embed.ConcretizedCallable
+#### Embedding
 ::: pyqtorch.embed.Embedding
