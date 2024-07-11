@@ -38,7 +38,7 @@ dependencies = ["torch", "numpy"]
 dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "matplotlib"]
 testlibs = [ "jax", "qutip~=4.7.5"]
 [tool.hatch.envs.tests]
-features=["testlibs"]
+features=["testlibs", "dev"]
 
 [tool.hatch.envs.tests.scripts]
 test = "pytest -n auto {args}"
