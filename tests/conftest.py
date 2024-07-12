@@ -20,8 +20,8 @@ from pyqtorch.noise import (
     PhaseDamping,
     PhaseFlip,
 )
-from pyqtorch.parametric import PHASE, RX, RY, RZ
-from pyqtorch.primitive import H, I, Primitive, S, T, X, Y, Z
+from pyqtorch.parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ
+from pyqtorch.primitive import CNOT, CY, CZ, H, I, Primitive, S, T, X, Y, Z
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -86,10 +86,20 @@ def random_input_state(n_qubits: int, batch_size: int) -> Any:
 
 
 @pytest.fixture
+def random_input_dm(random_input_state: Tensor) -> Any:
+    return density_mat(random_input_state)
+
+
+@pytest.fixture
 def rho_input(batch_size: int, target: int, n_qubits: int) -> Any:
     rho_0: DensityMatrix = density_mat(product_state("0", batch_size))
     rho_input: DensityMatrix = random_dm_promotion(target, rho_0, n_qubits)
     return rho_input
+
+
+@pytest.fixture
+def random_noise():
+    pass
 
 
 @pytest.fixture
@@ -104,6 +114,26 @@ def random_rotation_gate(target: int) -> Any:
     ROTATION_GATES = [RX, RY, RZ, PHASE]
     rotation_gate = random.choice(ROTATION_GATES)
     return rotation_gate(target, "theta")
+
+
+@pytest.fixture
+def random_controlled_gate(n_qubits: int, target: int) -> Any:
+    if n_qubits < 2:
+        raise ValueError("The controlled gates are defined on 2 qubits minimum")
+    CONTROLLED_GATES = [CNOT, CY, CZ]
+    controlled_gate = random.choice(CONTROLLED_GATES)
+    control = random.choice([i for i in range(n_qubits) if i != target])
+    return controlled_gate(control, target)
+
+
+@pytest.fixture
+def random_rotation_control_gate(n_qubits: int, target: int) -> Any:
+    if n_qubits < 2:
+        raise ValueError("The controlled gates are defined on 2 qubits minimum")
+    ROTATION_CONTROL_GATES = [CRX, CRY, CRZ, CPHASE]
+    controlled_gate = random.choice(ROTATION_CONTROL_GATES)
+    control = random.choice([i for i in range(n_qubits) if i != target])
+    return controlled_gate(control, target, "theta")
 
 
 @pytest.fixture
@@ -126,8 +156,7 @@ def random_noise_gate(n_qubits: int) -> Any:
         return noise_gate(torch.randint(0, n_qubits, (1,)).item(), noise_prob)
     elif noise_gate == GeneralizedAmplitudeDamping:
         noise_prob = torch.rand(size=(2,))
-        p, r = noise_prob[0], noise_prob[1]
-        return noise_gate(torch.randint(0, n_qubits, (1,)).item(), p, r)
+        return noise_gate(torch.randint(0, n_qubits, (1,)).item(), noise_prob)
     else:
         noise_prob = torch.rand(size=(1,)).item()
         return noise_gate(torch.randint(0, n_qubits, (1,)).item(), noise_prob)
@@ -265,7 +294,7 @@ def damping_expected_state(
                 [[[1 - (r - p * r)], [0]], [[0], [r - p * r]]], dtype=torch.cdouble
             )
         )
-        DampingGate = random_damping_gate(target, p, r)
+        DampingGate = random_damping_gate(target, damping_rate)
         expected_state = random_dm_promotion(target, expected_state, n_qubits).repeat(
             1, 1, batch_size
         )
@@ -278,7 +307,7 @@ def damping_expected_state(
 @pytest.fixture
 def damping_gates_prob_0(random_damping_gate: Noise, target: int) -> Any:
     if random_damping_gate == GeneralizedAmplitudeDamping:
-        damping_gate_0 = random_damping_gate(target, probability=0, rate=0)
+        damping_gate_0 = random_damping_gate(target, (0, 0))
     else:
         damping_gate_0 = random_damping_gate(target, rate=0)
     return damping_gate_0
