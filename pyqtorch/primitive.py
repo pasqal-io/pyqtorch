@@ -91,9 +91,7 @@ class Primitive(torch.nn.Module):
             if not isinstance(state, DensityMatrix):
                 state = density_mat(state)
             n_qubits = int(log2(state.size(1)))
-            state = apply_density_mat(
-                self.tensor(values, n_qubits), state
-            )  # try to call fwd with dm
+            state = apply_density_mat(self.tensor(values, n_qubits), state)
             if isinstance(self.noise, dict):
                 for noise_instance in self.noise.values():
                     protocol = noise_instance.protocol_to_gate()
@@ -117,8 +115,6 @@ class Primitive(torch.nn.Module):
                     ),
                     error_probability=self.noise.error_probability,
                 )
-                print(noise_gate.target, self.noise.target)
-                print(self.noise.target if self.noise.target else self.target)
                 return noise_gate(state, values)
         else:
             if isinstance(state, DensityMatrix):
@@ -260,15 +256,22 @@ class SDagger(Primitive):
         super().__init__(OPERATIONS_DICT["SDAGGER"], target, noise)
 
 
-# TODO: Add noise param
 class Projector(Primitive):
-    def __init__(self, qubit_support: int | tuple[int, ...], ket: str, bra: str):
+    def __init__(
+        self,
+        qubit_support: int | tuple[int, ...],
+        ket: str,
+        bra: str,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
         support = (qubit_support,) if isinstance(qubit_support, int) else qubit_support
         if len(ket) != len(bra):
             raise ValueError("Input ket and bra bitstrings must be of same length.")
         ket_state = product_state(ket).flatten()
         bra_state = product_state(bra).flatten()
-        super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), support[-1])
+        super().__init__(
+            OPERATIONS_DICT["PROJ"](ket_state, bra_state), support[-1], noise
+        )
         # Override the attribute in AbstractOperator.
         self.qubit_support = support
 

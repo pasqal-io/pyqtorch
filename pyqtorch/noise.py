@@ -23,9 +23,7 @@ class Noise(torch.nn.Module):
         for index, tensor in enumerate(kraus):
             self.register_buffer(f"kraus_{index}", tensor)
         self._device: torch.device = kraus[0].device
-        self.probabilities: tuple[float, ...] | float = (
-            error_probability  # Maybe to change
-        )
+        self.probabilities: tuple[float, ...] | float = error_probability
 
     def extra_repr(self) -> str:
         return f"qubit_support = {self.qubit_support}, error_probability = {self.probabilities}"

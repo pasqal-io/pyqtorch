@@ -90,7 +90,7 @@ def operator_product(op1: Tensor, op2: Tensor) -> Tensor:
         op1 (Tensor): The first operator.
         op2 (Tensor): The second operator.
     Returns:
-        DensityMatrix: The resulting density matrix after applying the operator and its dagger.
+        Tensor: The product of the two operators.
     """
     # ? Should we continue to adjust the batch here?
     # ? as now all gates are init with batch_size=1.
