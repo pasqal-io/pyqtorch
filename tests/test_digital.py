@@ -615,7 +615,7 @@ def test_parametric_constantparam(gate: pyq.parametric.Parametric) -> None:
 
 
 def test_dm_partial_trace() -> None:
-    n_qubits = torch.randint(low=1, high=5, size=(1,)).item()
+    n_qubits = torch.randint(low=1, high=7, size=(1,)).item()
     batch_size = torch.randint(low=1, high=5, size=(1,)).item()
     state_str = "".join(random.choice("01") for _ in range(n_qubits))
 
@@ -633,7 +633,6 @@ def test_dm_partial_trace() -> None:
     )
 
     # testing reduced density matrix
-
     rho_list = generate_dm(n_qubits, batch_size)
 
     rho_sub = torch.from_numpy(

@@ -387,9 +387,8 @@ def dm_partial_trace(rho: DensityMatrix, keep_indices: list[int]) -> DensityMatr
     rho = rho.reshape(([2] * n_qubits * 2 + [batch_size]))
 
     rho_subscripts = array(ABC_ARRAY[: n_qubits * 2 + 1], copy=True)
-    keep_subscripts = "".join(
-        [rho_subscripts[i] for i in keep_indices]
-        + [rho_subscripts[i + n_qubits] for i in keep_indices]
+    keep_subscripts = "".join(rho_subscripts[keep_indices]) + "".join(
+        rho_subscripts[array(keep_indices) + n_qubits]
     )
 
     # Trace by equating indices
