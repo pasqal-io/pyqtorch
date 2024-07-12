@@ -98,13 +98,10 @@ class ConcretizedCallable:
             engine = import_module(engine_name)
             self.arraylike_fn = getattr(engine, fn_name)
         except (ModuleNotFoundError, ImportError) as e:
-            logger.error(f"Unable to import {engine_call} due to {e}.")
+            logger.error(f"Unable to import {engine_name} due to {e}.")
 
         try:
-            try:
-                self.engine_call = getattr(engine, call_name)
-            except AttributeError:
-                pass
+            self.engine_call = getattr(engine, call_name, None)
             if self.engine_call is None:
                 mod, fn = instruction_mapping[call_name]
                 self.engine_call = getattr(import_module(mod), fn)
@@ -155,7 +152,7 @@ def init_param(
 
 
 class Embedding:
-    """A class relating variational and featureparameters used in ConcretizedCallable instances to
+    """A class relating variational and feature parameters used in ConcretizedCallable instances to
     parameter names used in gates.
 
     Arguments:
@@ -267,7 +264,11 @@ class Embedding:
         and recalculate the those which are dependent on the time parameter using the new value
         `tparam_value`.
         """
-        assert self.tparam_name is not None
+        if self.tparam_name is None:
+            raise ValueError(
+                "`reembed_time` requires a `tparam_name` to be passed\
+                              when initializing the `Embedding` class"
+            )
         embedded_params[self.tparam_name] = tparam_value
         for time_dependent_param in self.time_dependent_vars:
             embedded_params[time_dependent_param] = self.var_to_call[

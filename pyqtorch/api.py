@@ -36,7 +36,7 @@ def run(
     if embedding is not None:
         values = embedding(values)
     logger.debug(f"Running circuit {circuit} on state {state} and values {values}.")
-    return circuit.run(state, values, embedding=embedding)
+    return circuit.run(state=state, values=values, embedding=embedding)
 
 
 def sample(
@@ -62,7 +62,9 @@ def sample(
     logger.debug(
         f"Sampling circuit {circuit} on state {state} and values {values} with n_shots {n_shots}."
     )
-    return circuit.sample(state, values, n_shots, embedding=embedding)
+    return circuit.sample(
+        state=state, values=values, n_shots=n_shots, embedding=embedding
+    )
 
 
 def expectation(
@@ -112,7 +114,7 @@ def expectation(
     elif diff_mode == DiffMode.GPSR:
         check_support_psr(circuit)
         return PSRExpectation.apply(
-            circuit, state, observable, values.keys(), *values.values()
+            circuit, state, observable, embedding, values.keys(), *values.values()
         )
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")
