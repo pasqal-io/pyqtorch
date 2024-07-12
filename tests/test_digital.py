@@ -385,7 +385,7 @@ def test_U() -> None:
     n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
     params = ["phi", "theta", "omega"]
-    u = pyq.U(target, *params)
+    u = pyq.U(target, phi=params[0], theta=params[1], omega=params[2])
     values = {param: torch.rand(1) for param in params}
     state = pyq.random_state(n_qubits)
     assert torch.allclose(
