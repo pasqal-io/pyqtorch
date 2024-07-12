@@ -101,8 +101,8 @@ class Parametric(Primitive):
         Returns:
             String with information on operation.
         """
-        noise_info = ""
         if self.noise:
+            noise_info = ""
             if isinstance(self.noise, Noisy_protocols):
                 noise_info = str(self.noise)
             elif isinstance(self.noise, dict):
@@ -329,6 +329,7 @@ class ControlledRotationGate(Parametric):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes a ControlledRotationGate.
 
@@ -337,12 +338,14 @@ class ControlledRotationGate(Parametric):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
         self.control = control if isinstance(control, tuple) else (control,)
-        super().__init__(gate, target, param_name)
+        super().__init__(gate, target, param_name, noise)
         self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
         # In this class, target is always an int but herit from Parametric and Primitive that:
         # target : int | tuple[int,...]
+        self.noise = noise
 
     def extra_repr(self) -> str:
         """String representation of the operation.
@@ -350,6 +353,18 @@ class ControlledRotationGate(Parametric):
         Returns:
             String with information on operation.
         """
+        if self.noise:
+            noise_info = ""
+            if isinstance(self.noise, Noisy_protocols):
+                noise_info = str(self.noise)
+            elif isinstance(self.noise, dict):
+                noise_info = ", ".join(
+                    str(noise_instance) for noise_instance in self.noise.values()
+                )
+            return (
+                f"control: {self.control}, target: {self.qubit_support}, "
+                f"param: {self.param_name}, Noise: {noise_info}"
+            )
         return (
             f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
         )
@@ -404,6 +419,7 @@ class CRX(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes controlled RX.
 
@@ -411,8 +427,9 @@ class CRX(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("X", control, target, param_name)
+        super().__init__("X", control, target, param_name, noise)
 
 
 class CRY(ControlledRotationGate):
@@ -425,6 +442,7 @@ class CRY(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes controlled RY.
 
@@ -432,8 +450,9 @@ class CRY(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("Y", control, target, param_name)
+        super().__init__("Y", control, target, param_name, noise)
 
 
 class CRZ(ControlledRotationGate):
@@ -446,6 +465,7 @@ class CRZ(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes controlled RZ.
 
@@ -453,8 +473,9 @@ class CRZ(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("Z", control, target, param_name)
+        super().__init__("Z", control, target, param_name, noise)
 
 
 class CPHASE(ControlledRotationGate):
@@ -469,6 +490,7 @@ class CPHASE(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str = "",
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
         """Initializes controlled PHASE.
 
@@ -476,8 +498,9 @@ class CPHASE(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("I", control, target, param_name)
+        super().__init__("I", control, target, param_name, noise)
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Tensor:
         """
@@ -556,18 +579,27 @@ class U(Parametric):
 
     n_params = 3
 
-    def __init__(self, target: int, phi: str, theta: str, omega: str):
+    def __init__(
+        self,
+        target: int,
+        phi: str,
+        theta: str,
+        omega: str,
+        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+    ):
         """Initializes U gate.
 
         Arguments:
+            target: Target qubit.
             phi: Phi parameter.
             theta: Theta parameter.
             omega: Omega parameter.
+            noise: Optional noise protocols to apply.
         """
         self.phi = phi
         self.theta = theta
         self.omega = omega
-        super().__init__("X", target, param_name="")
+        super().__init__("X", target, param_name="", noise=noise)
 
         self.register_buffer(
             "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
