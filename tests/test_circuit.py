@@ -104,14 +104,14 @@ def test_noise_circ(
     n_qubits: int,
     batch_size: int,
     random_input_dm: DensityMatrix,
-    random_gate: Primitive,
+    random_single_qubit_gate: Primitive,
     random_noise_gate: Noise,
     random_rotation_gate: Parametric,
     random_controlled_gate: ControlledOperationGate,
     random_rotation_control_gate: ControlledRotationGate,
 ) -> None:
     OPERATORS = [
-        random_gate,
+        random_single_qubit_gate,
         random_noise_gate,
         random_rotation_gate,
         random_controlled_gate,

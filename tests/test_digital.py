@@ -10,7 +10,7 @@ from conftest import _calc_mat_vec_wavefunction
 from torch import Tensor
 
 import pyqtorch as pyq
-from pyqtorch.apply import apply_operator
+from pyqtorch.apply import apply_density_mat, apply_operator, operator_product
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     HMAT,
@@ -18,6 +18,7 @@ from pyqtorch.matrices import (
     XMAT,
     YMAT,
     ZMAT,
+    _dagger,
 )
 from pyqtorch.noise import (
     AmplitudeDamping,
@@ -419,7 +420,44 @@ def test_dm(n_qubits: int, batch_size: int) -> None:
     assert torch.allclose(dm, dm_proj)
 
 
-# TODO: Modify test_operator_product as promote_operator has been erased.
+@pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
+def test_operator_product(
+    random_rotation_gate: Parametric,
+    random_unitary_gate: Primitive,
+    n_qubits: int,
+) -> None:
+    batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
+    batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
+    max_batch = max(batch_size_2, batch_size_1)
+    values = {random_rotation_gate.param_name: torch.rand(1)}
+    op = random_unitary_gate.tensor(values=values, n_qubits=n_qubits)  # type: ignore [arg-type]
+    op_mul = operator_product(
+        op.repeat(1, 1, batch_size_1), _dagger(op.repeat(1, 1, batch_size_2))
+    )
+    assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
+    assert torch.allclose(
+        op_mul,
+        torch.eye(2**n_qubits, dtype=torch.cdouble)
+        .unsqueeze(2)
+        .repeat(1, 1, max_batch),
+    )
+
+
+@pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
+def test_apply_density_mat(
+    random_rotation_gate: Parametric,
+    random_unitary_gate: Primitive,
+    n_qubits: int,
+    batch_size: int,
+    random_input_dm: DensityMatrix,
+) -> None:
+    values = {random_rotation_gate.param_name: torch.rand(1)}
+    op = random_unitary_gate.tensor(values=values, n_qubits=n_qubits)  # type: ignore [arg-type]
+    rho = random_input_dm
+    rho_evol = apply_density_mat(op, rho)
+    assert rho_evol.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+    rho_expected = operator_product(op, operator_product(rho, _dagger(op)))
+    assert torch.allclose(rho_evol, rho_expected)
 
 
 @pytest.mark.parametrize(
@@ -540,9 +578,7 @@ def test_damping_gates(
     n_qubits: int,
     target: int,
     batch_size: int,
-    random_damping_gate: Noise,
     damping_expected_state: tuple,
-    damping_rate: Tensor,
     damping_gates_prob_0: Tensor,
     random_input_dm: DensityMatrix,
     rho_input: Tensor,

@@ -20,8 +20,32 @@ from pyqtorch.noise import (
     PhaseDamping,
     PhaseFlip,
 )
-from pyqtorch.parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ
-from pyqtorch.primitive import CNOT, CY, CZ, H, I, Primitive, S, T, X, Y, Z
+from pyqtorch.parametric import (
+    CPHASE,
+    CRX,
+    CRY,
+    CRZ,
+    PHASE,
+    RX,
+    RY,
+    RZ,
+    ControlledRotationGate,
+    Parametric,
+)
+from pyqtorch.primitive import (
+    CNOT,
+    CY,
+    CZ,
+    ControlledOperationGate,
+    H,
+    I,
+    Primitive,
+    S,
+    T,
+    X,
+    Y,
+    Z,
+)
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -97,13 +121,14 @@ def rho_input(batch_size: int, target: int, n_qubits: int) -> Any:
     return rho_input
 
 
+# TODO: create random noisy protocols
 @pytest.fixture
 def random_noise():
     pass
 
 
 @pytest.fixture
-def random_gate(target: int) -> Any:
+def random_single_qubit_gate(target: int) -> Any:
     GATES = [X, Y, Z, I, H]
     gate = random.choice(GATES)
     return gate(target)
@@ -134,6 +159,23 @@ def random_rotation_control_gate(n_qubits: int, target: int) -> Any:
     controlled_gate = random.choice(ROTATION_CONTROL_GATES)
     control = random.choice([i for i in range(n_qubits) if i != target])
     return controlled_gate(control, target, "theta")
+
+
+@pytest.fixture
+def random_unitary_gate(
+    random_single_qubit_gate: Primitive,
+    random_rotation_gate: Parametric,
+    random_controlled_gate: ControlledOperationGate,
+    random_rotation_control_gate: ControlledRotationGate,
+) -> Any:
+    UNITARY_GATES = [
+        random_single_qubit_gate,
+        random_controlled_gate,
+        random_rotation_gate,
+        random_rotation_control_gate,
+    ]
+    unitary_gate = random.choice(UNITARY_GATES)
+    return unitary_gate
 
 
 @pytest.fixture
