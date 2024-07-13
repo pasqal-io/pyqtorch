@@ -422,14 +422,13 @@ def test_dm(n_qubits: int, batch_size: int) -> None:
 
 @pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
 def test_operator_product(
-    random_rotation_gate: Parametric,
-    random_unitary_gate: Primitive,
+    random_unitary_gate: Primitive | Parametric,
     n_qubits: int,
 ) -> None:
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
     max_batch = max(batch_size_2, batch_size_1)
-    values = {random_rotation_gate.param_name: torch.rand(1)}
+    values = {"theta": torch.rand(1)}
     op = random_unitary_gate.tensor(values=values, n_qubits=n_qubits)  # type: ignore [arg-type]
     op_mul = operator_product(
         op.repeat(1, 1, batch_size_1), _dagger(op.repeat(1, 1, batch_size_2))
@@ -445,13 +444,12 @@ def test_operator_product(
 
 @pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
 def test_apply_density_mat(
-    random_rotation_gate: Parametric,
-    random_unitary_gate: Primitive,
+    random_unitary_gate: Primitive | Parametric,
     n_qubits: int,
     batch_size: int,
     random_input_dm: DensityMatrix,
 ) -> None:
-    values = {random_rotation_gate.param_name: torch.rand(1)}
+    values = {"theta": torch.rand(1)}
     op = random_unitary_gate.tensor(values=values, n_qubits=n_qubits)  # type: ignore [arg-type]
     rho = random_input_dm
     rho_evol = apply_density_mat(op, rho)
@@ -617,3 +615,20 @@ def test_parametric_constantparam(gate: pyq.parametric.Parametric) -> None:
         gate(target, "theta")(state, {"theta": param_val}),
         gate(target, param_val)(state),
     )
+
+
+@pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
+def test_noisy_primitive(
+    random_noisy_unitary_gate: tuple,
+    random_input_dm: DensityMatrix,
+    n_qubits: int,
+    batch_size: int,
+) -> None:
+    noisy_primitive, primitve_gate, noise_gate = random_noisy_unitary_gate
+    state = random_input_dm
+    values = {"theta": torch.rand(1)}
+    rho_evol = noisy_primitive(state, values)
+    assert rho_evol.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+    rho_expected = noise_gate(primitve_gate(state, values))
+    assert rho_expected.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
+    assert torch.allclose(rho_evol, rho_expected)

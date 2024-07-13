@@ -16,6 +16,7 @@ from pyqtorch.noise import (
     Depolarizing,
     GeneralizedAmplitudeDamping,
     Noise,
+    Noisy_protocols,
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
@@ -205,6 +206,84 @@ def random_noise_gate(n_qubits: int) -> Any:
 
 
 @pytest.fixture
+def random_noisy_protocol() -> Any:
+    NOISE_PROTOCOLS = [
+        Noisy_protocols.BITFLIP,
+        Noisy_protocols.PHASEFLIP,
+        Noisy_protocols.PAULI_CHANNEL,
+        Noisy_protocols.DEPOLARIZING,
+        Noisy_protocols.AMPLITUDE_DAMPING,
+        Noisy_protocols.PHASE_DAMPING,
+        Noisy_protocols.GENERALIZED_AMPLITUDE_DAMPING,
+    ]
+    noise_protocol = random.choice(NOISE_PROTOCOLS)
+    if noise_protocol == Noisy_protocols.PAULI_CHANNEL:
+        noise_prob = torch.rand(size=(3,))
+        noise_prob = noise_prob / (
+            noise_prob.sum(dim=0, keepdim=True) + torch.rand((1,)).item()
+        )
+    elif noise_protocol == Noisy_protocols.GENERALIZED_AMPLITUDE_DAMPING:
+        noise_prob = torch.rand(size=(2,))
+    else:
+        noise_prob = torch.rand(size=(1,)).item()
+    return Noisy_protocols(
+        protocol=noise_protocol,
+        options={"error_probability": noise_prob},
+    )
+
+
+@pytest.fixture
+def random_noisy_unitary_gate(
+    n_qubits: int, target: int, random_noisy_protocol: Noisy_protocols
+) -> Any:
+    if n_qubits < 2:
+        raise ValueError("The controlled gates are defined on 2 qubits minimum")
+    SINGLE_GATES = [X, Y, Z, I, H]
+    ROTATION_GATES = [RX, RY, RZ, PHASE]
+    CONTROLLED_GATES = [CNOT, CY, CZ]
+    ROTATION_CONTROL_GATES = [CRX, CRY, CRZ, CPHASE]
+    UNITARY_GATES = (
+        SINGLE_GATES + ROTATION_GATES + CONTROLLED_GATES + ROTATION_CONTROL_GATES
+    )
+    unitary_gate = random.choice(UNITARY_GATES)
+    protocol_gate = random_noisy_protocol.protocol_to_gate()
+    noise_gate = protocol_gate(target, random_noisy_protocol.error_probability)
+    if unitary_gate in SINGLE_GATES:
+        return (
+            unitary_gate(target=target, noise=random_noisy_protocol),  # type: ignore[call-arg]
+            unitary_gate(target=target),  # type: ignore[call-arg]
+            noise_gate,
+        )  # type: ignore[call-arg]
+    if unitary_gate in ROTATION_GATES:
+        return (
+            unitary_gate(
+                target=target, param_name="theta", noise=random_noisy_protocol
+            ),  # type: ignore[call-arg]
+            unitary_gate(target=target, param_name="theta"),  # type: ignore[call-arg]
+            noise_gate,
+        )
+    if unitary_gate in CONTROLLED_GATES:
+        control = random.choice([i for i in range(n_qubits) if i != target])
+        return (
+            unitary_gate(control=control, target=target, noise=random_noisy_protocol),  # type: ignore[call-arg]
+            unitary_gate(control=control, target=target),  # type: ignore[call-arg]
+            noise_gate,
+        )
+    if unitary_gate in ROTATION_CONTROL_GATES:
+        control = random.choice([i for i in range(n_qubits) if i != target])
+        return (
+            unitary_gate(
+                control=control,
+                target=target,
+                param_name="theta",
+                noise=random_noisy_protocol,
+            ),  # type: ignore[call-arg]
+            unitary_gate(control=control, target=target, param_name="theta"),  # type: ignore[call-arg]
+            noise_gate,
+        )
+
+
+@pytest.fixture
 def random_flip_gate() -> Any:
     FLIP_GATES = [BitFlip, PhaseFlip, Depolarizing, PauliChannel]
     # The gate is not initialize
@@ -266,7 +345,7 @@ def flip_expected_state(
 @pytest.fixture
 def flip_gates_prob_0(random_flip_gate: Noise, target: int) -> Any:
     if random_flip_gate == PauliChannel:
-        FlipGate_0 = random_flip_gate(target, error_probabilities=(0, 0, 0))
+        FlipGate_0 = random_flip_gate(target, error_probability=(0, 0, 0))
     else:
         FlipGate_0 = random_flip_gate(target, error_probability=0)
     return FlipGate_0
@@ -295,7 +374,7 @@ def flip_gates_prob_1(
         )
     elif random_flip_gate == PauliChannel:
         px, py, pz = 1 / 3, 1 / 3, 1 / 3
-        FlipGate_1 = random_flip_gate(target, error_probabilities=(px, py, pz))
+        FlipGate_1 = random_flip_gate(target, error_probability=(px, py, pz))
         expected_op = (
             px * density_mat(X(target)(random_input_state))  # type: ignore
             + py * density_mat(Y(target)(random_input_state))
@@ -351,7 +430,7 @@ def damping_gates_prob_0(random_damping_gate: Noise, target: int) -> Any:
     if random_damping_gate == GeneralizedAmplitudeDamping:
         damping_gate_0 = random_damping_gate(target, (0, 0))
     else:
-        damping_gate_0 = random_damping_gate(target, rate=0)
+        damping_gate_0 = random_damping_gate(target, 0)
     return damping_gate_0
 
 

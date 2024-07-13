@@ -216,7 +216,37 @@ class I(Primitive):  # noqa: E742
     ):
         super().__init__(OPERATIONS_DICT["I"], target, noise)
 
+    # FIXME: apply_operator is not compatible with the identity tensor
     def forward(self, state: Tensor, values: dict[str, Tensor] = dict()) -> Tensor:
+        if self.noise:
+            if not isinstance(state, DensityMatrix):
+                state = density_mat(state)
+            n_qubits = int(log2(state.size(1)))
+            state = apply_density_mat(self.tensor(values, n_qubits), state)
+            if isinstance(self.noise, dict):
+                for noise_instance in self.noise.values():
+                    protocol = noise_instance.protocol_to_gate()
+                    noise_gate = protocol(
+                        target=(
+                            noise_instance.target
+                            if noise_instance.target is not None
+                            else self.target
+                        ),
+                        error_probability=noise_instance.error_probability,
+                    )
+                    state = noise_gate(state, values)
+                return state
+            else:
+                protocol = self.noise.protocol_to_gate()
+                noise_gate = protocol(
+                    target=(
+                        self.noise.target
+                        if self.noise.target is not None
+                        else self.target
+                    ),
+                    error_probability=self.noise.error_probability,
+                )
+                return noise_gate(state, values)
         return state
 
 

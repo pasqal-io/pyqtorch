@@ -209,7 +209,7 @@ class PauliChannel(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        error_probabilities (Tuple[float, ...]): Tuple containing probabilities
+        error_probability (Tuple[float, ...]): Tuple containing probabilities
             of X, Y, and Z errors.
 
     Raises:
@@ -219,25 +219,25 @@ class PauliChannel(Noise):
     def __init__(
         self,
         target: int,
-        error_probabilities: tuple[float, ...],
+        error_probability: tuple[float, ...],
     ):
-        sum_prob = sum(error_probabilities)
+        sum_prob = sum(error_probability)
         if sum_prob > 1.0:
             raise ValueError("The sum of probabilities can't be greater than 1.0")
-        for probability in error_probabilities:
+        for probability in error_probability:
             if probability > 1.0 or probability < 0.0:
                 raise ValueError("The probability values are not correct probabilities")
         px, py, pz = (
-            error_probabilities[0],
-            error_probabilities[1],
-            error_probabilities[2],
+            error_probability[0],
+            error_probability[1],
+            error_probability[2],
         )
         K0: Tensor = sqrt(1.0 - (px + py + pz)) * IMAT
         K1: Tensor = sqrt(px) * XMAT
         K2: Tensor = sqrt(py) * YMAT
         K3: Tensor = sqrt(pz) * ZMAT
         kraus_pauli_channel: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(kraus_pauli_channel, target, error_probabilities)
+        super().__init__(kraus_pauli_channel, target, error_probability)
 
 
 class AmplitudeDamping(Noise):
@@ -258,7 +258,7 @@ class AmplitudeDamping(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        rate (float): The damping rate, indicating the probability of amplitude loss.
+        error_probability (float): The damping rate, indicating the probability of amplitude loss.
 
     Raises:
         TypeError: If the rate value is not a float.
@@ -268,8 +268,9 @@ class AmplitudeDamping(Noise):
     def __init__(
         self,
         target: int,
-        rate: float,
+        error_probability: float,
     ):
+        rate = error_probability
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
         K0: Tensor = torch.tensor(
@@ -298,7 +299,7 @@ class PhaseDamping(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        rate (float): The damping rate, indicating the probability of phase damping.
+        error_probability (float): The damping rate, indicating the probability of phase damping.
 
     Raises:
         TypeError: If the rate value is not a float.
@@ -308,8 +309,9 @@ class PhaseDamping(Noise):
     def __init__(
         self,
         target: int,
-        rate: float,
+        error_probability: float,
     ):
+        rate = error_probability
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
         K0: Tensor = torch.tensor(
@@ -353,30 +355,28 @@ class GeneralizedAmplitudeDamping(Noise):
     def __init__(
         self,
         target: int,
-        error_probabilities: tuple[float, ...],
+        error_probability: tuple[float, ...],
     ):
-        error_probability = error_probabilities[0]
-        rate = error_probabilities[1]
-        if error_probability > 1.0 or error_probability < 0.0:
+        probability = error_probability[0]
+        rate = error_probability[1]
+        if probability > 1.0 or probability < 0.0:
             raise ValueError("The probability value is not a correct probability")
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
-        K0: Tensor = sqrt(error_probability) * torch.tensor(
+        K0: Tensor = sqrt(probability) * torch.tensor(
             [[1, 0], [0, sqrt(1 - rate)]], dtype=DEFAULT_MATRIX_DTYPE
         )
-        K1: Tensor = sqrt(error_probability) * torch.tensor(
+        K1: Tensor = sqrt(probability) * torch.tensor(
             [[0, sqrt(rate)], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE
         )
-        K2: Tensor = sqrt(1.0 - error_probability) * torch.tensor(
+        K2: Tensor = sqrt(1.0 - probability) * torch.tensor(
             [[sqrt(1 - rate), 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE
         )
-        K3: Tensor = sqrt(1.0 - error_probability) * torch.tensor(
+        K3: Tensor = sqrt(1.0 - probability) * torch.tensor(
             [[0, 0], [sqrt(rate), 0]], dtype=DEFAULT_MATRIX_DTYPE
         )
         kraus_generalized_amplitude_damping: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(
-            kraus_generalized_amplitude_damping, target, error_probabilities
-        )
+        super().__init__(kraus_generalized_amplitude_damping, target, error_probability)
 
 
 class Noisy_protocols:
