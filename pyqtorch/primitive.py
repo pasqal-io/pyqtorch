@@ -10,6 +10,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     IMAT,
     OPERATIONS_DICT,
@@ -71,29 +72,43 @@ class Primitive(torch.nn.Module):
     def extra_repr(self) -> str:
         return f"{self.qubit_support}"
 
-    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+    def unitary(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
     ) -> Tensor:
         if isinstance(state, DensityMatrix):
             # TODO: fix error type int | tuple[int, ...] expected "int"
             # Only supports single-qubit gates
             return DensityMatrix(
                 operator_product(
-                    self.unitary(values),
+                    self.unitary(values, embedding),
                     operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
                     self.target,  # type: ignore [arg-type]
                 )
             )
         else:
             return apply_operator(
-                state, self.unitary(values), self.qubit_support, len(state.size()) - 1
+                state,
+                self.unitary(values, embedding),
+                self.qubit_support,
+                len(state.size()) - 1,
             )
 
-    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return _dagger(self.unitary(values))
+    def dagger(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        return _dagger(self.unitary(values, embedding))
 
     @property
     def device(self) -> torch.device:
@@ -181,7 +196,12 @@ class I(Primitive):  # noqa: E742
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["I"], target)
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] = dict()) -> Tensor:
+    def forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         return state
 
 
