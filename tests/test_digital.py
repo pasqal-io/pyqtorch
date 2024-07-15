@@ -90,11 +90,11 @@ def test_rotation_gates(batch_size: int, gate: Primitive, n_qubits: int) -> None
     if not isinstance(block, pyq.PHASE):
         assert torch.allclose(
             block.eigenvals_generator,
-            torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble),
+            torch.tensor([[-1.0], [1.0]], dtype=block.device),
         )
     else:
         assert torch.allclose(
-            block.eigenvals_generator, torch.tensor([[0.0], [2.0]], dtype=torch.cdouble)
+            block.eigenvals_generator, torch.tensor([[0.0], [2.0]], dtype=block.device)
         )
 
 
