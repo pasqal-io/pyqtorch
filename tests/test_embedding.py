@@ -204,10 +204,14 @@ def test_reembedding_forward() -> None:
                 state = op(state, values)
             return state
 
-    gen = pyq.Scale(pyq.Z(0), "t")
+    leaf0, native_call0 = "%0", ConcretizedCallable("sin", ["t"], {}, "torch")
+    gen = pyq.Scale(pyq.Z(0), leaf0)
     custom = CustomReembed(gen)
     embed = pyq.Embedding(
-        vparam_names=[], fparam_names=[], var_to_call={}, tparam_name="t"
+        vparam_names=[],
+        fparam_names=[],
+        var_to_call={leaf0: native_call0},
+        tparam_name="t",
     )
     wf = custom(state=pyq.zero_state(2), values={"t": torch.rand(1)}, embedding=embed)
     assert not torch.any(torch.isnan(wf))
