@@ -201,7 +201,7 @@ class RX(Parametric):
         Returns:
             Eigenvalues of the generator operator.
         """
-        return pauli_singleq_eigenvalues
+        return pauli_singleq_eigenvalues.to(device=self.device, dtype=self.dtype)
 
 
 class RY(Parametric):
@@ -240,7 +240,7 @@ class RY(Parametric):
         Returns:
             Eigenvalues of the generator operator.
         """
-        return pauli_singleq_eigenvalues
+        return pauli_singleq_eigenvalues.to(device=self.device, dtype=self.dtype)
 
 
 class RZ(Parametric):
@@ -279,7 +279,7 @@ class RZ(Parametric):
         Returns:
             Eigenvalues of the generator operator.
         """
-        return pauli_singleq_eigenvalues
+        return pauli_singleq_eigenvalues.to(device=self.device, dtype=self.dtype)
 
 
 class PHASE(Parametric):
@@ -318,7 +318,7 @@ class PHASE(Parametric):
         Returns:
             Eigenvalues of the generator operator.
         """
-        return torch.tensor([[0.0], [2.0]], dtype=torch.cdouble)
+        return torch.tensor([[0.0], [2.0]], dtype=self.dtype, device=self.device)
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
@@ -410,7 +410,11 @@ class ControlledRotationGate(Parametric):
         """
         return torch.cat(
             (
-                torch.zeros(2 ** len(self.qubit_support) - 2),
+                torch.zeros(
+                    2 ** len(self.qubit_support) - 2,
+                    device=self.device,
+                    dtype=self.dtype,
+                ),
                 pauli_singleq_eigenvalues.flatten(),
             )
         ).reshape(-1, 1)
@@ -487,7 +491,11 @@ class CRX(ControlledRotationGate):
         """
         return torch.cat(
             (
-                torch.zeros(2 ** len(self.qubit_support) - 2),
+                torch.zeros(
+                    2 ** len(self.qubit_support) - 2,
+                    device=self.device,
+                    dtype=self.dtype,
+                ),
                 torch.linalg.eigvalsh(self.pauli),
             )
         ).reshape(-1, 1)
@@ -525,7 +533,11 @@ class CRY(ControlledRotationGate):
         """
         return torch.cat(
             (
-                torch.zeros(2 ** len(self.qubit_support) - 2),
+                torch.zeros(
+                    2 ** len(self.qubit_support) - 2,
+                    device=self.device,
+                    dtype=self.dtype,
+                ),
                 pauli_singleq_eigenvalues.flatten(),
             )
         ).reshape(-1, 1)
@@ -563,7 +575,11 @@ class CRZ(ControlledRotationGate):
         """
         return torch.cat(
             (
-                torch.zeros(2 ** len(self.qubit_support) - 2),
+                torch.zeros(
+                    2 ** len(self.qubit_support) - 2,
+                    device=self.device,
+                    dtype=self.dtype,
+                ),
                 pauli_singleq_eigenvalues.flatten(),
             )
         ).reshape(-1, 1)
@@ -603,8 +619,12 @@ class CPHASE(ControlledRotationGate):
         """
         return torch.cat(
             (
-                torch.tensor([-2.0, 0.0], dtype=torch.cdouble),
-                torch.zeros(2 ** len(self.qubit_support) - 2),
+                torch.tensor([-2.0, 0.0], device=self.device, dtype=self.dtype),
+                torch.zeros(
+                    2 ** len(self.qubit_support) - 2,
+                    device=self.device,
+                    dtype=self.dtype,
+                ),
             )
         ).reshape(-1, 1)
 
@@ -721,7 +741,7 @@ class U(Parametric):
         Returns:
             Eigenvalues of the generator operator.
         """
-        return pauli_singleq_eigenvalues
+        return pauli_singleq_eigenvalues.to(device=self.device, dtype=self.dtype)
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
