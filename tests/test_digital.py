@@ -50,6 +50,8 @@ state_0000 = product_state("0000")
 state_1110 = product_state("1110")
 state_1111 = product_state("1111")
 
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
 
 def test_identity() -> None:
     assert torch.allclose(product_state("0"), pyq.I(0)(product_state("0"), None))
@@ -294,19 +296,30 @@ def test_Toffoli_controlqubits0(initial_state: Tensor, expected_state: Tensor) -
 )
 @pytest.mark.parametrize("gate", ["RX", "RY", "RZ", "PHASE"])
 @pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 def test_multi_controlled_gates(
-    initial_state: Tensor, expects_rotation: bool, batch_size: int, gate: str
+    initial_state: Tensor,
+    expects_rotation: bool,
+    batch_size: int,
+    gate: str,
+    dtype: torch.dtype,
 ) -> None:
     phi = "phi"
+
+    initial_state = initial_state.to(device=device, dtype=dtype)
     rot_gate = getattr(pyq, gate)
     controlled_rot_gate = getattr(pyq, "C" + gate)
     phi = torch.rand(batch_size)
     n_qubits = int(log2(torch.numel(initial_state)))
     qubits = tuple([i for i in range(n_qubits)])
-    op = controlled_rot_gate(qubits[:-1], qubits[-1], "phi")
+    op = controlled_rot_gate(qubits[:-1], qubits[-1], "phi").to(
+        device=device, dtype=dtype
+    )
     out = op(initial_state, {"phi": phi})
     expected_state = (
-        rot_gate(qubits[-1], "phi")(initial_state, {"phi": phi})
+        rot_gate(qubits[-1], "phi").to(device=device, dtype=dtype)(
+            initial_state, {"phi": phi}
+        )
         if expects_rotation
         else initial_state
     )
@@ -315,6 +328,8 @@ def test_multi_controlled_gates(
         assert len(op.spectral_gap) == 2
     else:
         assert op.spectral_gap == 2.0
+
+    assert op.eigenvals_generator.dtype == dtype
 
 
 @pytest.mark.parametrize(
