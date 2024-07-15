@@ -88,9 +88,14 @@ def test_rotation_gates(batch_size: int, gate: Primitive, n_qubits: int) -> None
     assert torch.allclose(wf_mat, wf_pyq, rtol=RTOL, atol=ATOL)
     assert block.spectral_gap == 2.0
     if not isinstance(block, pyq.PHASE):
-        assert torch.allclose(block.eigenvals_generator, torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble))
+        assert torch.allclose(
+            block.eigenvals_generator,
+            torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble),
+        )
     else:
-        assert torch.allclose(block.eigenvals_generator, torch.tensor([[0.0], [2.0]], dtype=torch.cdouble))
+        assert torch.allclose(
+            block.eigenvals_generator, torch.tensor([[0.0], [2.0]], dtype=torch.cdouble)
+        )
 
 
 @pytest.mark.parametrize("n_qubits", [1, 2, 3])
