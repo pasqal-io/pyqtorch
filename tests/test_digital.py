@@ -50,6 +50,8 @@ state_0000 = product_state("0000")
 state_1110 = product_state("1110")
 state_1111 = product_state("1111")
 
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
 
 def test_identity() -> None:
     assert torch.allclose(product_state("0"), pyq.I(0)(product_state("0"), None))
@@ -74,7 +76,7 @@ def test_single_qubit_gates(gate: Primitive, n_qubits: int) -> None:
 
 
 @pytest.mark.parametrize("batch_size", [i for i in range(2, 10)])
-@pytest.mark.parametrize("gate", [pyq.RX, pyq.RY, pyq.RZ])
+@pytest.mark.parametrize("gate", [pyq.RX, pyq.RY, pyq.RZ, pyq.PHASE])
 @pytest.mark.parametrize("n_qubits", [1, 2, 4])
 def test_rotation_gates(batch_size: int, gate: Primitive, n_qubits: int) -> None:
     params = [f"th{i}" for i in range(gate.n_params)]
@@ -86,6 +88,16 @@ def test_rotation_gates(batch_size: int, gate: Primitive, n_qubits: int) -> None
     wf_pyq = block(init_state, values)
     wf_mat = _calc_mat_vec_wavefunction(block, n_qubits, init_state, values=values)
     assert torch.allclose(wf_mat, wf_pyq, rtol=RTOL, atol=ATOL)
+    assert block.spectral_gap == 2.0
+    if not isinstance(block, pyq.PHASE):
+        assert torch.allclose(
+            block.eigenvals_generator,
+            torch.tensor([[-1.0], [1.0]], dtype=block.dtype),
+        )
+    else:
+        assert torch.allclose(
+            block.eigenvals_generator, torch.tensor([[0.0], [2.0]], dtype=block.dtype)
+        )
 
 
 @pytest.mark.parametrize("n_qubits", [1, 2, 3])
@@ -206,8 +218,6 @@ def test_multicontrol_rotation(
 
     val_param = {"theta": torch.Tensor([1.0])}
     projector_apply_res = projector(initial_state, val_param)
-    print(final_state, projector_apply_res)
-
     assert torch.allclose(final_state, projector_apply_res, atol=1.0e-4)
 
 
@@ -286,23 +296,40 @@ def test_Toffoli_controlqubits0(initial_state: Tensor, expected_state: Tensor) -
 )
 @pytest.mark.parametrize("gate", ["RX", "RY", "RZ", "PHASE"])
 @pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 def test_multi_controlled_gates(
-    initial_state: Tensor, expects_rotation: bool, batch_size: int, gate: str
+    initial_state: Tensor,
+    expects_rotation: bool,
+    batch_size: int,
+    gate: str,
+    dtype: torch.dtype,
 ) -> None:
     phi = "phi"
+
+    initial_state = initial_state.to(device=device, dtype=dtype)
     rot_gate = getattr(pyq, gate)
     controlled_rot_gate = getattr(pyq, "C" + gate)
     phi = torch.rand(batch_size)
     n_qubits = int(log2(torch.numel(initial_state)))
     qubits = tuple([i for i in range(n_qubits)])
-    op = controlled_rot_gate(qubits[:-1], qubits[-1], "phi")
+    op = controlled_rot_gate(qubits[:-1], qubits[-1], "phi").to(
+        device=device, dtype=dtype
+    )
     out = op(initial_state, {"phi": phi})
     expected_state = (
-        rot_gate(qubits[-1], "phi")(initial_state, {"phi": phi})
+        rot_gate(qubits[-1], "phi").to(device=device, dtype=dtype)(
+            initial_state, {"phi": phi}
+        )
         if expects_rotation
         else initial_state
     )
     assert torch.allclose(out, expected_state)
+    if gate != "PHASE":
+        assert len(op.spectral_gap) == 2
+    else:
+        assert op.spectral_gap == 2.0
+
+    assert op.eigenvals_generator.dtype == dtype
 
 
 @pytest.mark.parametrize(
@@ -319,6 +346,8 @@ def test_parametrized_phase_gate(
     phase = pyq.PHASE(target, "phi")
     constant_phase = pyq.S(target)
     assert torch.allclose(phase(state, {"phi": phi}), constant_phase(state, None))
+    assert phase.spectral_gap == 2.0
+    assert constant_phase.spectral_gap == 1.0
 
 
 def test_dagger_single_qubit() -> None:
@@ -394,6 +423,7 @@ def test_U() -> None:
         u(state, values),
         pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values),
     )
+    assert u.spectral_gap == 2.0
 
 
 def test_dm(n_qubits: int, batch_size: int) -> None:
