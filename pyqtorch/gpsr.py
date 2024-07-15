@@ -91,7 +91,7 @@ class PSRExpectation(Function):
         *param_values: Tensor,
     ) -> Tensor:
         if embedding is not None:
-            logger.error("GPSR does not support Embedding yet.")
+            logger.error("GPSR does not support Embedding.")
         ctx.circuit = circuit
         ctx.observable = observable
         ctx.param_names = param_names
