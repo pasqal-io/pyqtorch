@@ -56,6 +56,7 @@ from .analog import (
 from .api import expectation, run, sample
 from .apply import apply_operator
 from .circuit import Merge, QuantumCircuit, Sequence
+from .embed import ConcretizedCallable, Embedding
 from .noise import (
     AmplitudeDamping,
     BitFlip,
@@ -118,6 +119,8 @@ from .utils import (
 )
 
 __all__ = [
+    "ConcretizedCallable",
+    "Embedding",
     "run",
     "sample",
     "expectation",

@@ -5,6 +5,7 @@ from typing import Any, Tuple
 import torch
 from torch import Tensor
 
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
@@ -44,7 +45,10 @@ class Parametric(Primitive):
         self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
 
-        def parse_values(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        def parse_values(
+            values: dict[str, Tensor] | Tensor = dict(),
+            embedding: Embedding | None = None,
+        ) -> Tensor:
             """The legacy way of using parametric gates:
                The Parametric gate received a string as a 'param_name' and performs a
                a lookup in the passed `values` dict for to retrieve the torch.Tensor passed
@@ -52,13 +56,16 @@ class Parametric(Primitive):
 
             Arguments:
                 values: A dict containing param_name:torch.Tensor pairs
+                embedding: An optional embedding.
             Returns:
                 A Torch Tensor denoting values for the `param_name`.
             """
-            # self.param_name will be a str
             return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 
-        def parse_tensor(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        def parse_tensor(
+            values: dict[str, Tensor] | Tensor = dict(),
+            embedding: Embedding | None = None,
+        ) -> Tensor:
             """Functional version of the Parametric gate:
                In case the user did not pass a `param_name`,
                pyqtorch assumes `values` will be a torch.Tensor instead of a dict.
@@ -71,7 +78,10 @@ class Parametric(Primitive):
             # self.param_name will be ""
             return Parametric._expand_values(values)
 
-        def parse_constant(values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+        def parse_constant(
+            values: dict[str, Tensor] | Tensor = dict(),
+            embedding: Embedding | None = None,
+        ) -> Tensor:
             """Fix a the parameter of a Parametric Gate to a numeric constant
                if the user passed a numeric input for the `param_name`.
 
@@ -82,7 +92,7 @@ class Parametric(Primitive):
             """
             # self.param_name will be a torch.Tensor
             return Parametric._expand_values(
-                torch.tensor(param_name, device=self.device, dtype=self.dtype)
+                torch.tensor(self.param_name, device=self.device, dtype=self.dtype)
             )
 
         if param_name == "":
@@ -121,21 +131,30 @@ class Parametric(Primitive):
         """
         return values.unsqueeze(0) if len(values.size()) == 0 else values
 
-    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Operator:
+    def unitary(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
         Arguments:
-            values: Parameter value.
+            values: A dict containing a Parameter name and value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         return _unitary(thetas, self.pauli, self.identity, batch_size)
 
-    def jacobian(self, values: dict[str, Tensor] | Tensor = dict()) -> Operator:
+    def jacobian(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Operator:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -145,9 +164,20 @@ class Parametric(Primitive):
         Returns:
             The unitary representation of the jacobian.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         return _jacobian(thetas, self.pauli, self.identity, batch_size)
+
+    def to(self, *args: Any, **kwargs: Any) -> Primitive:
+        super().to(*args, **kwargs)
+        self._device = self.pauli.device
+        self.param_name = (
+            self.param_name.to(*args, **kwargs)
+            if isinstance(self.param_name, torch.Tensor)
+            else self.param_name
+        )
+        self._dtype = self.pauli.dtype
+        return self
 
 
 class RX(Parametric):
@@ -257,12 +287,15 @@ class PHASE(Parametric):
         """
         super().__init__("I", target, param_name)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
         Arguments:
-            values: Parameter value.
+            values: A dict containing a Parameter name and value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
@@ -273,7 +306,9 @@ class PHASE(Parametric):
         batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
 
-    def jacobian(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def jacobian(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -283,7 +318,7 @@ class PHASE(Parametric):
         Returns:
             The unitary representation of the jacobian.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_mat = (
             torch.zeros((2, 2), dtype=self.identity.dtype)
             .unsqueeze(2)
@@ -335,22 +370,27 @@ class ControlledRotationGate(Parametric):
             f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
         )
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
         Arguments:
-            values: Parameter value.
+            values: A dict containing a Parameter name and value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         mat = _unitary(thetas, self.pauli, self.identity, batch_size)
         return _controlled(mat, batch_size, len(self.control))
 
-    def jacobian(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def jacobian(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -360,7 +400,7 @@ class ControlledRotationGate(Parametric):
         Returns:
             The unitary representation of the jacobian.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         n_control = len(self.control)
         jU = _jacobian(thetas, self.pauli, self.identity, batch_size)
@@ -460,23 +500,28 @@ class CPHASE(ControlledRotationGate):
         """
         super().__init__("I", control, target, param_name)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
         Arguments:
-            values: Parameter value.
+            values: A dict containing a Parameter name and value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
         mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
         return _controlled(mat, batch_size, len(self.control))
 
-    def jacobian(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def jacobian(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -486,7 +531,7 @@ class CPHASE(ControlledRotationGate):
         Returns:
             The unitary representation of the jacobian.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         n_control = len(self.control)
         jU = (
@@ -563,16 +608,21 @@ class U(Parametric):
             "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
         )
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
         Arguments:
             values: Parameter value.
+            embedding: An optional embedding for parameters.
 
         Returns:
             The unitary representation.
         """
+        if embedding is not None:
+            raise NotImplementedError()
         phi, theta, omega = list(
             map(
                 lambda t: t.unsqueeze(0) if len(t.size()) == 0 else t,
@@ -592,7 +642,9 @@ class U(Parametric):
         d = self.d.repeat(1, 1, batch_size) * cos_t * torch.conj(t_plus)
         return a - b + c + d
 
-    def jacobian(self, values: dict[str, Tensor] = {}) -> Operator:
+    def jacobian(
+        self, values: dict[str, Tensor] = {}, embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary of the jacobian.
 

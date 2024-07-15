@@ -15,7 +15,12 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
+<<<<<<< HEAD
 from pyqtorch.matrices import add_batch_dim
+=======
+from pyqtorch.embed import Embedding
+from pyqtorch.matrices import IMAT, add_batch_dim
+>>>>>>> main
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, product_state, zero_state
@@ -98,10 +103,13 @@ class Sequence(Module):
         return hash(reduce(add, (hash(op) for op in self.operations)))
 
     def forward(
-        self, state: State, values: dict[str, Tensor] | ParameterDict = {}
+        self,
+        state: State,
+        values: dict[str, Tensor] | ParameterDict = {},
+        embedding: Embedding | None = None,
     ) -> State:
         for op in self.operations:
-            state = op(state, values)
+            state = op(state, values, embedding)
         return state
 
     @property
@@ -160,12 +168,13 @@ class QuantumCircuit(Sequence):
         self,
         state: State = None,
         values: dict[str, Tensor] | ParameterDict = {},
+        embedding: Embedding | None = None,
     ) -> State:
         if state is None:
             state = self.init_state()
         elif isinstance(state, str):
             state = self.state_from_bitstring(state)
-        return self.forward(state, values)
+        return self.forward(state, values, embedding)
 
     def __hash__(self) -> int:
         return hash(reduce(add, (hash(op) for op in self.operations))) + hash(
@@ -185,6 +194,7 @@ class QuantumCircuit(Sequence):
         state: Tensor = None,
         values: dict[str, Tensor] = dict(),
         n_shots: int = 1000,
+        embedding: Embedding | None = None,
     ) -> list[Counter]:
         if n_shots < 1:
             raise ValueError("You can only call sample with n_shots>0.")
@@ -206,7 +216,7 @@ class QuantumCircuit(Sequence):
 
         with torch.no_grad():
             state = torch.flatten(
-                self.run(values=values, state=state),
+                self.run(state=state, values=values, embedding=embedding),
                 start_dim=0,
                 end_dim=-2,
             ).t()
@@ -244,7 +254,12 @@ class Merge(Sequence):
                 f"Require all operations to act on a single qubit. Got: {operations}."
             )
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] | None = None) -> Tensor:
+    def forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         batch_size = state.shape[-1]
         if values:
             batch_size = max(
@@ -260,16 +275,21 @@ class Merge(Sequence):
             )
         return apply_operator(
             state,
-            self.unitary(values, batch_size),
+            self.unitary(values, embedding, batch_size),
             self.qubits,
         )
 
-    def unitary(self, values: dict[str, Tensor] | None, batch_size: int) -> Tensor:
+    def unitary(
+        self,
+        values: dict[str, Tensor] | None,
+        embedding: Embedding | None,
+        batch_size: int,
+    ) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
             (
-                add_batch_dim(op.unitary(values), batch_size)
+                add_batch_dim(op.unitary(values, embedding), batch_size)
                 for op in reversed(self.operations)
             ),
         )
