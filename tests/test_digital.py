@@ -331,6 +331,8 @@ def test_parametrized_phase_gate(
     phase = pyq.PHASE(target, "phi")
     constant_phase = pyq.S(target)
     assert torch.allclose(phase(state, {"phi": phi}), constant_phase(state, None))
+    assert phase.spectral_gap == 2.0
+    assert constant_phase.spectral_gap == 1.0
 
 
 def test_dagger_single_qubit() -> None:
