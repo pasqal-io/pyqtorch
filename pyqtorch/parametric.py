@@ -454,7 +454,7 @@ class ControlledRotationGate(Parametric):
             )
         ).reshape(-1, 1)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None) -> Operator:
         """
         Get the corresponding unitary.
 
