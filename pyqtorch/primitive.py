@@ -134,6 +134,7 @@ class Primitive(torch.nn.Module):
             Tensor: Spectral gap value.
         """
         spectrum = self.eigenvals_generator
+        print(spectrum, spectrum.shape)
         spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
         return spectral_gap[spectral_gap.nonzero()]
 

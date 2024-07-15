@@ -74,7 +74,7 @@ def test_single_qubit_gates(gate: Primitive, n_qubits: int) -> None:
 
 
 @pytest.mark.parametrize("batch_size", [i for i in range(2, 10)])
-@pytest.mark.parametrize("gate", [pyq.RX, pyq.RY, pyq.RZ])
+@pytest.mark.parametrize("gate", [pyq.RX, pyq.RY, pyq.RZ, pyq.PHASE])
 @pytest.mark.parametrize("n_qubits", [1, 2, 4])
 def test_rotation_gates(batch_size: int, gate: Primitive, n_qubits: int) -> None:
     params = [f"th{i}" for i in range(gate.n_params)]
@@ -86,6 +86,11 @@ def test_rotation_gates(batch_size: int, gate: Primitive, n_qubits: int) -> None
     wf_pyq = block(init_state, values)
     wf_mat = _calc_mat_vec_wavefunction(block, n_qubits, init_state, values=values)
     assert torch.allclose(wf_mat, wf_pyq, rtol=RTOL, atol=ATOL)
+    assert block.spectral_gap == 2.0
+    if not isinstance(block, pyq.PHASE):
+        assert torch.allclose(block.eigenvals_generator, torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble))
+    else:
+        assert torch.allclose(block.eigenvals_generator, torch.tensor([[0.0], [2.0]], dtype=torch.cdouble))
 
 
 @pytest.mark.parametrize("n_qubits", [1, 2, 3])
@@ -206,8 +211,6 @@ def test_multicontrol_rotation(
 
     val_param = {"theta": torch.Tensor([1.0])}
     projector_apply_res = projector(initial_state, val_param)
-    print(final_state, projector_apply_res)
-
     assert torch.allclose(final_state, projector_apply_res, atol=1.0e-4)
 
 
@@ -303,6 +306,10 @@ def test_multi_controlled_gates(
         else initial_state
     )
     assert torch.allclose(out, expected_state)
+    if gate != "PHASE":
+        assert len(op.spectral_gap) == 2
+    else:
+        assert op.spectral_gap == 2.0
 
 
 @pytest.mark.parametrize(

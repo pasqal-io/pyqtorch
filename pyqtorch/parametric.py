@@ -411,9 +411,9 @@ class ControlledRotationGate(Parametric):
         return torch.cat(
             (
                 torch.zeros(2 ** len(self.qubit_support) - 2),
-                pauli_singleq_eigenvalues,
+                pauli_singleq_eigenvalues.flatten(),
             )
-        )
+        ).reshape(-1,1)
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
@@ -488,9 +488,9 @@ class CRX(ControlledRotationGate):
         return torch.cat(
             (
                 torch.zeros(2 ** len(self.qubit_support) - 2),
-                torch.linalg.eigvalsh(self.pauli).reshape(-1, 1),
+                torch.linalg.eigvalsh(self.pauli),
             )
-        )
+        ).reshape(-1,1)
 
 
 class CRY(ControlledRotationGate):
@@ -526,9 +526,9 @@ class CRY(ControlledRotationGate):
         return torch.cat(
             (
                 torch.zeros(2 ** len(self.qubit_support) - 2),
-                pauli_singleq_eigenvalues,
+                pauli_singleq_eigenvalues.flatten(),
             )
-        )
+        ).reshape(-1,1)
 
 
 class CRZ(ControlledRotationGate):
@@ -564,9 +564,9 @@ class CRZ(ControlledRotationGate):
         return torch.cat(
             (
                 torch.zeros(2 ** len(self.qubit_support) - 2),
-                pauli_singleq_eigenvalues,
+                pauli_singleq_eigenvalues.flatten(),
             )
-        )
+        ).reshape(-1,1)
 
 
 class CPHASE(ControlledRotationGate):
@@ -606,7 +606,7 @@ class CPHASE(ControlledRotationGate):
                 torch.tensor([-2.0, 0.0], dtype=torch.cdouble),
                 torch.zeros(2 ** len(self.qubit_support) - 2),
             )
-        )
+        ).reshape(-1,1)
 
     def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
         """
