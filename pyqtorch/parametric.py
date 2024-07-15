@@ -350,7 +350,9 @@ class PHASE(Parametric):
         """
         return torch.tensor([[0.0], [2.0]], dtype=self.dtype, device=self.device)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -361,7 +363,7 @@ class PHASE(Parametric):
         Returns:
             The unitary representation.
         """
-        thetas = self.parse_values(values)
+        thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         batch_mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
         batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
@@ -454,7 +456,9 @@ class ControlledRotationGate(Parametric):
             )
         ).reshape(-1, 1)
 
-    def unitary(self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -670,7 +674,9 @@ class CPHASE(ControlledRotationGate):
             )
         ).reshape(-1, 1)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -788,7 +794,9 @@ class U(Parametric):
         """
         return pauli_singleq_eigenvalues.to(device=self.device, dtype=self.dtype)
 
-    def unitary(self, values: dict[str, Tensor] = dict()) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
