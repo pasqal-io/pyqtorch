@@ -53,7 +53,7 @@ class Primitive(torch.nn.Module):
         if isinstance(target, np.integer):
             self.qubit_support = (target.item(),)
         self.register_buffer("pauli", pauli)
-        self.register_buffer("pauli_generator", pauli_generator)
+        self.pauli_generator = pauli_generator
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
 
