@@ -6,7 +6,14 @@ import pytest
 import torch
 from conftest import _calc_mat_vec_wavefunction
 
-from pyqtorch.primitive import OPS_1Q, OPS_2Q, OPS_3Q, OPS_DIGITAL, Toffoli
+from pyqtorch.parametric import OPS_PARAM, OPS_PARAM_1Q, OPS_PARAM_2Q
+from pyqtorch.primitive import (
+    OPS_1Q,
+    OPS_2Q,
+    OPS_3Q,
+    OPS_DIGITAL,
+    Toffoli,
+)
 from pyqtorch.utils import (
     ATOL,
     RTOL,
@@ -16,11 +23,8 @@ from pyqtorch.utils import (
 pi = torch.tensor(torch.pi)
 
 
-# TODO: Fails for certain qubit support combinations
-# Will fix in this MR.
-@pytest.mark.xfail
 @pytest.mark.parametrize("n_qubits", [4, 5])
-@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("batch_size", [1, 3, 5])
 def test_digital_tensor(n_qubits: int, batch_size: int) -> None:
     for op in OPS_DIGITAL:
         if op in OPS_1Q:
@@ -33,7 +37,24 @@ def test_digital_tensor(n_qubits: int, batch_size: int) -> None:
         op_concrete = op(*supp)
         psi_init = random_state(n_qubits, batch_size)
         psi_star = op_concrete(psi_init)
-        psi_expected = _calc_mat_vec_wavefunction(op_concrete, n_qubits, psi_init)
+        psi_expected = _calc_mat_vec_wavefunction(op_concrete, psi_init)
+        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("batch_size", [1, 3, 5])
+@pytest.mark.parametrize("n_qubits", [4, 5])
+def test_param_tensor(n_qubits: int, batch_size: int) -> None:
+    for op in OPS_PARAM:
+        if op in OPS_PARAM_1Q:
+            supp: tuple = (random.randint(0, n_qubits - 1),)
+        elif op in OPS_PARAM_2Q:
+            supp = (random.randint(1, n_qubits - 1), 0)
+        params = [f"th{i}" for i in range(op.n_params)]
+        values = {param: torch.rand(batch_size) for param in params}
+        op_concrete = op(*supp, *params)
+        psi_init = random_state(n_qubits)
+        psi_star = op_concrete(psi_init, values)
+        psi_expected = _calc_mat_vec_wavefunction(op_concrete, psi_init, values=values)
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
@@ -46,7 +67,7 @@ def test_digital_tensor(n_qubits: int, batch_size: int) -> None:
 #     assert hamevo.generator_type == GeneratorType.OPERATION
 #     psi = pyq.zero_state(2)
 #     psi_star = hamevo(psi)
-#     psi_expected = _calc_mat_vec_wavefunction(hamevo, len(sup), psi)
+#     psi_expected = _calc_mat_vec_wavefunction(hamevo, psi)
 #     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
