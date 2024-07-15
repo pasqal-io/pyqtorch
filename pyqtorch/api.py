@@ -28,8 +28,9 @@ def run(
     Arguments:
     circuit: A pyqtorch.QuantumCircuit instance.
     state: A torch.Tensor of shape [2, 2, ..., batch_size].
-    values: A dictionary containing `parameter_name`: torch.Tensor key,value pairs denoting
+    values: A dictionary containing <'parameter_name': torch.Tensor> pairs denoting
             the current parameter values for each parameter in `circuit`.
+    embedding: An optional instance of `Embedding`.
     Returns:
          A torch.Tensor of shape [2, 2, ..., batch_size]
     """
@@ -53,9 +54,10 @@ def sample(
     Arguments:
     circuit: A pyqtorch.QuantumCircuit instance.
     state: A torch.Tensor of shape [2, 2, ..., batch_size].
-    values: A dictionary containing `parameter_name`: torch.Tensor key,value pairs
+    values: A dictionary containing <'parameter_name': torch.Tensor> pairs
             denoting the current parameter values for each parameter in `circuit`.
     n_shots: A positive int denoting the number of requested samples.
+    embedding: An optional instance of `Embedding`.
     Returns:
          A list of Counter objects containing bitstring:num_samples pairs.
     """
@@ -80,10 +82,11 @@ def expectation(
     Arguments:
         circuit: A pyqtorch.QuantumCircuit instance.
         state: A torch.Tensor of shape [2, 2, ..., batch_size].
-        values: A dictionary containing `parameter_name`: torch.Tensor key,value pairs
+        values: A dictionary containing <'parameter_name': torch.Tensor> pairs
                 denoting the current parameter values for each parameter in `circuit`.
         observable: A pyq.Observable instance.
         diff_mode: The differentiation mode.
+        embedding: An optional instance of `Embedding`.
     Returns:
         An expectation value.
     """
