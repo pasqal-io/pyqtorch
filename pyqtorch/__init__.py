@@ -48,7 +48,7 @@ logger.info(f"PyQTorch logger successfully setup with log level {LOG_LEVEL}")
 
 from .analog import (
     Add,
-    DiagonalObservable,
+    # DiagonalObservable,
     HamiltonianEvolution,
     Observable,
     Scale,
@@ -166,7 +166,7 @@ __all__ = [
     "Z",
     "apply_operator",
     "Observable",
-    "DiagonalObservable",
+    # "DiagonalObservable",
     "sesolve",
     "mesolve",
 ]
