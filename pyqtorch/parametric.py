@@ -415,7 +415,7 @@ class ControlledRotationGate(Parametric):
                     device=self.device,
                     dtype=self.dtype,
                 ),
-                pauli_singleq_eigenvalues.flatten(),
+                pauli_singleq_eigenvalues.flatten().to(device=self.device, dtype=self.dtype),
             )
         ).reshape(-1, 1)
 
@@ -538,7 +538,7 @@ class CRY(ControlledRotationGate):
                     device=self.device,
                     dtype=self.dtype,
                 ),
-                pauli_singleq_eigenvalues.flatten(),
+                pauli_singleq_eigenvalues.flatten().to(device=self.device, dtype=self.dtype),
             )
         ).reshape(-1, 1)
 
@@ -580,7 +580,7 @@ class CRZ(ControlledRotationGate):
                     device=self.device,
                     dtype=self.dtype,
                 ),
-                pauli_singleq_eigenvalues.flatten(),
+                pauli_singleq_eigenvalues.flatten().to(device=self.device, dtype=self.dtype),
             )
         ).reshape(-1, 1)
 
