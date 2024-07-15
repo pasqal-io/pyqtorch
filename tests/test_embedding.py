@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from functools import reduce
+from operator import add
+
 import numpy as np
 import pytest
 import torch
 import torch.autograd.gradcheck
+from torch.nn import Module
 
 import pyqtorch as pyq
 from pyqtorch.embed import ConcretizedCallable, Embedding
+from pyqtorch.primitive import Primitive
 
 
 @pytest.mark.parametrize(
@@ -167,3 +172,42 @@ def test_move_embedding(engine: str) -> None:
     embedding.to(device="cpu", dtype=torch.float32)
     embedding.to(device="cpu")
     embedding.to(dtype=torch.float32)
+
+
+def test_reembedding_forward() -> None:
+
+    class CustomReembed(pyq.Add):
+        def __init__(self, operations: list[Module] | Primitive | pyq.Sequence):
+            super().__init__(operations=operations)
+
+        def forward(
+            self,
+            state: torch.Tensor,
+            values: dict[str, torch.Tensor] = dict(),
+            embedding: Embedding | None = None,
+        ) -> torch.Tensor:
+            return reduce(
+                add,
+                [
+                    self.run(state, values, embedding.reembed_time(values, val))  # type: ignore[union-attr, arg-type]
+                    for val in torch.linspace(0.0, 10, 10)
+                ],
+            )
+
+        def run(
+            self,
+            state: torch.Tensor,
+            values: dict[str, torch.Tensor],
+            embedding: Embedding | None = None,
+        ) -> torch.Tensor:
+            for op in self.operations:
+                state = op(state, values)
+            return state
+
+    gen = pyq.Scale(pyq.Z(0), "t")
+    custom = CustomReembed(gen)
+    embed = pyq.Embedding(
+        vparam_names=[], fparam_names=[], var_to_call={}, tparam_name="t"
+    )
+    wf = custom(state=pyq.zero_state(2), values={"t": torch.rand(1)}, embedding=embed)
+    assert not torch.any(torch.isnan(wf))
