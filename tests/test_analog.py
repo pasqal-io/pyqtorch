@@ -440,3 +440,40 @@ def test_hamevo_endianness_cnot() -> None:
     cnot_op = pyq.CNOT(0, 1)
     wf_cnot = cnot_op(state_10)
     assert torch.allclose(wf_cnot, wf_hamevo, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("n_qubits", [2, 4, 6])
+def test_timedependent(
+    n_qubits: int,
+) -> None:
+
+    tparam = "theta"
+    vparam = "rtheta"
+    parametric = True
+    ops = [pyq.RX, pyq.RY] * 2
+
+    qubit_targets = [0, 1]
+    generator = pyq.QuantumCircuit(
+        n_qubits,
+        [
+            pyq.Add([op(q, vparam) for op, q in zip(ops, qubit_targets)]),
+            *[op(q, vparam) for op, q in zip(ops, qubit_targets)],
+        ],
+    )
+    generator = generator.tensor(
+        n_qubits=n_qubits, values={vparam: torch.tensor([0.5])}
+    )
+    generator = generator + torch.conj(torch.transpose(generator, 0, 1))
+    hamevo = pyq.HamiltonianEvolution(
+        generator, tparam, tuple(range(n_qubits)), parametric, is_time_dependent=True
+    )
+    # assert hamevo.generator_type == GeneratorType.TENSOR
+    vals = {tparam: torch.tensor([0.5])}
+    psi = random_state(n_qubits)
+    from pyqtorch.embed import Embedding
+
+    embedding = Embedding(vparam_names=[vparam], tparam_name=tparam)
+    psi_star = hamevo(psi, vals, embedding)
+    breakpoint()
+    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)

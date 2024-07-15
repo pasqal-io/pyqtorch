@@ -16,9 +16,11 @@ from pyqtorch.circuit import Sequence
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
+from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
     ATOL,
     Operator,
+    SolverType,
     State,
     StrEnum,
     inner_prod,
@@ -67,6 +69,8 @@ class GeneratorType(StrEnum):
     """Generators of type torch.Tensor in which case a qubit_support needs to be passed."""
     SYMBOL = "symbol"
     """Generators which are symbolic, i.e. will be passed via the 'values' dict by the user."""
+    TIME_DEPENDENT = "time_dependent"
+    """Generators which are time dependent."""
 
 
 class Scale(Sequence):
@@ -512,6 +516,10 @@ class HamiltonianEvolution(Sequence):
         qubit_support: Tuple[int, ...] | None = None,
         generator_parametric: bool = False,
         cache_length: int = 1,
+        is_time_dependent: bool = False,
+        duration: int = 100,
+        steps: int = 10,
+        solver=SolverType.KRYLOV_SE,
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -522,7 +530,10 @@ class HamiltonianEvolution(Sequence):
             qubit_support: The qubits the operator acts on.
             generator_parametric: Whether the generator is parametric or not.
         """
-
+        self.is_time_dependent = is_time_dependent
+        self.solver_name = solver
+        self.duration = duration
+        self.steps = steps
         if isinstance(generator, Tensor):
             assert (
                 qubit_support is not None
@@ -665,15 +676,50 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The transformed state.
         """
+        if self.is_time_dependent and embedding is not None:
+            n_qubits = len(state.shape) - 1
+            batch_size = state.shape[-1]
+            tsave = torch.linspace(0, float(self.duration), self.steps)
 
-        evolved_op = self.tensor(values, None)
-        return apply_operator(
-            state=state,
-            operator=evolved_op,
-            qubits=self.qubit_support,
-            n_qubits=len(state.size()) - 1,
-            batch_size=evolved_op.shape[BATCH_DIM],
-        )
+            def Ht(t: torch.Tensor) -> torch.Tensor:
+                """Accepts a value 't' for time
+                and returns a (2**n_qubits, 2**n_qubits) Hamiltonian.
+                """
+                # We use the origial embedded params and return a new dict
+                # where we reembedded all parameters depending on time with value 't'
+                reembedded_time_values = embedding.reembed_time(values, t)
+                return (
+                    self.generator[0]
+                    .tensor(reembedded_time_values, n_qubits)
+                    .squeeze(2)
+                )  # squeeze the batch dim and return shape (2**n_qubits, 2**n_qubits)
+
+            sol = sesolve(
+                Ht,  # returns a tensor of shape (2**n_qubits, 2**n_qubits)
+                torch.flatten(
+                    state, start_dim=0, end_dim=-2
+                ),  # reshape to (2**n_qubits, batch_size)
+                tsave,
+                self.solver_name,
+            )
+
+            state = sol.states[
+                -1
+            ]  # Retrieve the last state of shape (2**n_qubits, batch_size)
+
+            return state.reshape(
+                [2] * n_qubits + [batch_size]
+            )  # reshape to [2] * n_qubits + [batch_size]
+
+        else:
+            evolved_op = self.tensor(values, None)
+            return apply_operator(
+                state=state,
+                operator=evolved_op,
+                qubits=self.qubit_support,
+                n_qubits=len(state.size()) - 1,
+                batch_size=evolved_op.shape[BATCH_DIM],
+            )
 
     def tensor(
         self,
