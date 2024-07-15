@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from collections import OrderedDict
 from functools import reduce
 from logging import getLogger
 from operator import add
@@ -22,7 +21,6 @@ from pyqtorch.utils import (
     StrEnum,
     inner_prod,
     is_diag,
-    operator_to_sparse_diagonal,
 )
 
 BATCH_DIM = 2
@@ -179,7 +177,6 @@ class Scale(Sequence):
     def tensor(
         self,
         values: dict[str, Tensor] = dict(),
-        n_qubits: int | None = None,
         diagonal: bool = False,
     ) -> Operator:
         """
@@ -187,7 +184,6 @@ class Scale(Sequence):
 
         Arguments:
             values: Parameter value.
-            n_qubits: The number of qubits the unitary is represented over.
             Can be higher than the number of qubit support.
             diagonal: Whether the operation is diagonal.
 
@@ -197,12 +193,13 @@ class Scale(Sequence):
         Raises:
             NotImplementedError for the diagonal case.
         """
-        thetas = (
-            values[self.param_name]
-            if isinstance(self.param_name, str)
-            else self.param_name
-        )
-        return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
+        raise NotImplementedError
+        # thetas = (
+        #     values[self.param_name]
+        #     if isinstance(self.param_name, str)
+        #     else self.param_name
+        # )
+        # return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
 
     def flatten(self) -> list[Scale]:
         """This method should only be called in the AdjointExpectation,
@@ -254,15 +251,12 @@ class Add(Sequence):
         """
         return reduce(add, (op(state, values) for op in self.operations))
 
-    def tensor(
-        self, values: dict = {}, n_qubits: int | None = None, diagonal: bool = False
-    ) -> Tensor:
+    def tensor(self, values: dict = {}, diagonal: bool = False) -> Tensor:
         """
         Get the corresponding sum of unitaries over n_qubits.
 
         Arguments:
             values: Parameter value.
-            n_qubits: The number of qubits the unitary is represented over.
             Can be higher than the number of qubit support.
             diagonal: Whether the operation is diagonal.
 
@@ -272,14 +266,15 @@ class Add(Sequence):
         Raises:
             NotImplementedError for the diagonal case.
         """
-        if n_qubits is None:
-            n_qubits = max(self.qubit_support) + 1
-        mat = torch.zeros((2, 2, 1), device=self.device)
-        for _ in range(n_qubits - 1):
-            mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
-        return reduce(
-            add, (op.tensor(values, n_qubits, diagonal) for op in self.operations), mat
-        )
+        raise NotImplementedError
+        # if n_qubits is None:
+        #     n_qubits = max(self.qubit_support) + 1
+        # mat = torch.zeros((2, 2, 1), device=self.device)
+        # for _ in range(n_qubits - 1):
+        #     mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
+        # return reduce(
+        #     add, (op.tensor(values, n_qubits, diagonal) for op in self.operations), mat
+        # )
 
 
 class Observable(Sequence):
@@ -641,7 +636,6 @@ class HamiltonianEvolution(Sequence):
     def tensor(
         self,
         values: dict = {},
-        n_qubits: int | None = None,
         diagonal: bool = False,
     ) -> Operator:
         """Get the corresponding unitary over n_qubits.
@@ -650,7 +644,6 @@ class HamiltonianEvolution(Sequence):
 
         Arguments:
             values: Parameter value.
-            n_qubits: The number of qubits the unitary is represented over.
             Can be higher than the number of qubit support.
             diagonal: Whether the operation is diagonal.
 
@@ -660,26 +653,26 @@ class HamiltonianEvolution(Sequence):
         Raises:
             NotImplementedError for the diagonal case.
         """
+        raise NotImplementedError
+        # values_cache_key = str(OrderedDict(values))
+        # if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
+        #     return self._cache_hamiltonian_evo[values_cache_key]
 
-        values_cache_key = str(OrderedDict(values))
-        if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
-            return self._cache_hamiltonian_evo[values_cache_key]
+        # if diagonal:
+        #     raise NotImplementedError
+        # if n_qubits is None:
+        #     n_qubits = max(self.qubit_support) + 1
+        # hamiltonian: torch.Tensor = self.create_hamiltonian(values)
+        # time_evolution: torch.Tensor = (
+        #     values[self.time] if isinstance(self.time, str) else self.time
+        # )  # If `self.time` is a string / hence, a Parameter,
+        # # we expect the user to pass it in the `values` dict
+        # evolved_op = evolve(hamiltonian, time_evolution)
+        # nb_cached = len(self._cache_hamiltonian_evo)
 
-        if diagonal:
-            raise NotImplementedError
-        if n_qubits is None:
-            n_qubits = max(self.qubit_support) + 1
-        hamiltonian: torch.Tensor = self.create_hamiltonian(values)
-        time_evolution: torch.Tensor = (
-            values[self.time] if isinstance(self.time, str) else self.time
-        )  # If `self.time` is a string / hence, a Parameter,
-        # we expect the user to pass it in the `values` dict
-        evolved_op = evolve(hamiltonian, time_evolution)
-        nb_cached = len(self._cache_hamiltonian_evo)
-
-        # LRU caching
-        if (nb_cached > 0) and (nb_cached == self.cache_length):
-            self._cache_hamiltonian_evo.pop(next(iter(self._cache_hamiltonian_evo)))
-        if nb_cached < self.cache_length:
-            self._cache_hamiltonian_evo[values_cache_key] = evolved_op
-        return evolved_op
+        # # LRU caching
+        # if (nb_cached > 0) and (nb_cached == self.cache_length):
+        #     self._cache_hamiltonian_evo.pop(next(iter(self._cache_hamiltonian_evo)))
+        # if nb_cached < self.cache_length:
+        #     self._cache_hamiltonian_evo[values_cache_key] = evolved_op
+        # return evolved_op

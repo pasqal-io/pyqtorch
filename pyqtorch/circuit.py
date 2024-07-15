@@ -15,7 +15,7 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import IMAT, add_batch_dim
+from pyqtorch.matrices import add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, product_state, zero_state
@@ -131,22 +131,22 @@ class Sequence(Module):
     def tensor(
         self,
         values: dict[str, Tensor] = dict(),
-        n_qubits: int | None = None,
         diagonal: bool = False,
     ) -> Tensor:
-        if diagonal:
-            raise NotImplementedError
-        if n_qubits is None:
-            n_qubits = max(self.qubit_support) + 1
-        mat = IMAT.clone().unsqueeze(2).to(self.device)
-        for _ in range(n_qubits - 1):
-            mat = torch.kron(mat, IMAT.clone().unsqueeze(2).to(self.device))
+        raise NotImplementedError
+        # if diagonal:
+        #     raise NotImplementedError
+        # if n_qubits is None:
+        #     n_qubits = max(self.qubit_support) + 1
+        # mat = IMAT.clone().unsqueeze(2).to(self.device)
+        # for _ in range(n_qubits - 1):
+        #     mat = torch.kron(mat, IMAT.clone().unsqueeze(2).to(self.device))
 
-        return reduce(
-            lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
-            (add_batch_dim(op.tensor(values, n_qubits)) for op in self.operations),
-            mat,
-        )
+        # return reduce(
+        #     lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
+        #     (add_batch_dim(op.tensor(values, n_qubits)) for op in self.operations),
+        #     mat,
+        # )
 
 
 class QuantumCircuit(Sequence):

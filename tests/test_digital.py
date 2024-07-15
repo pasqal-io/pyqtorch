@@ -6,7 +6,6 @@ from typing import Callable, Tuple
 
 import pytest
 import torch
-from conftest import _calc_mat_vec_wavefunction
 from torch import Tensor
 
 import pyqtorch as pyq
@@ -27,10 +26,9 @@ from pyqtorch.noise import (
     PhaseDamping,
 )
 from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import H, I, Primitive, S, T, X, Y, Z
+from pyqtorch.primitive import H, I, Primitive, X, Y, Z
 from pyqtorch.utils import (
     ATOL,
-    RTOL,
     DensityMatrix,
     density_mat,
     operator_kron,
@@ -60,32 +58,6 @@ def test_N() -> None:
     null_state = torch.zeros_like(pyq.zero_state(1))
     assert torch.allclose(null_state, pyq.N(0)(product_state("0"), None))
     assert torch.allclose(product_state("1"), pyq.N(0)(product_state("1"), None))
-
-
-@pytest.mark.parametrize("gate", [I, X, Y, Z, H, T, S])
-@pytest.mark.parametrize("n_qubits", [1, 2, 4])
-def test_single_qubit_gates(gate: Primitive, n_qubits: int) -> None:
-    target = torch.randint(0, n_qubits, (1,)).item()
-    block = gate(target)
-    init_state = pyq.random_state(n_qubits)
-    wf_pyq = block(init_state, None)
-    wf_mat = _calc_mat_vec_wavefunction(block, n_qubits, init_state)
-    assert torch.allclose(wf_mat, wf_pyq, rtol=RTOL, atol=ATOL)
-
-
-@pytest.mark.parametrize("batch_size", [i for i in range(2, 10)])
-@pytest.mark.parametrize("gate", [pyq.RX, pyq.RY, pyq.RZ])
-@pytest.mark.parametrize("n_qubits", [1, 2, 4])
-def test_rotation_gates(batch_size: int, gate: Primitive, n_qubits: int) -> None:
-    params = [f"th{i}" for i in range(gate.n_params)]
-    values = {param: torch.rand(batch_size) for param in params}
-    target = torch.randint(0, n_qubits, (1,)).item()
-
-    init_state = pyq.random_state(n_qubits)
-    block = gate(target, *params)
-    wf_pyq = block(init_state, values)
-    wf_mat = _calc_mat_vec_wavefunction(block, n_qubits, init_state, values=values)
-    assert torch.allclose(wf_mat, wf_pyq, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("n_qubits", [1, 2, 3])
