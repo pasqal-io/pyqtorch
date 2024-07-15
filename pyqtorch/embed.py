@@ -221,9 +221,9 @@ class Embedding:
         self.tparam_name = tparam_name
         self.var_to_call: dict[str, ConcretizedCallable] = var_to_call
         self._dtype: DTypeLike = None
-        self.time_dependent_vars: list[str] = []
+        self.tracked_vars: list[str] = []
         self._device = device
-        self._time_vars_identified = False
+        self._tracked_vars_identified = False
         self.engine_name = engine_name
 
     @property
@@ -240,37 +240,37 @@ class Embedding:
         """
         for intermediate_or_leaf_var, engine_callable in self.var_to_call.items():
             # We mutate the original inputs dict and include intermediates and leaves.
-            if not self._time_vars_identified:
+            if not self._tracked_vars_identified:
                 # we do this only on the first embedding call
                 if self.tparam_name and any(
                     [
-                        p in [self.tparam_name] + self.time_dependent_vars
+                        p in [self.tparam_name] + self.tracked_vars
                         for p in engine_callable.abstract_args
                     ]  # we check if any parameter in the callables args is time
                     # or depends on an intermediate variable which itself depends on time
                 ):
-                    self.time_dependent_vars.append(intermediate_or_leaf_var)
+                    self.tracked_vars.append(intermediate_or_leaf_var)
                     # we remember which parameters depend on time
             inputs[intermediate_or_leaf_var] = engine_callable(inputs)
-        self._time_vars_identified = True
+        self._tracked_vars_identified = True
         return inputs
 
-    def reembed_time(
+    def reembed_tparam(
         self,
         embedded_params: dict[str, ArrayLike],
         tparam_value: ArrayLike,
     ) -> dict[str, ArrayLike]:
         """Receive already embedded params containing intermediate and leaf parameters
-        and recalculate the those which are dependent on the time parameter using the new value
+        and recalculate the those which are dependent on `tparam_name` using the new value
         `tparam_value`.
         """
         if self.tparam_name is None:
             raise ValueError(
-                "`reembed_time` requires a `tparam_name` to be passed\
+                "`reembed_param` requires a `tparam_name` to be passed\
                               when initializing the `Embedding` class"
             )
         embedded_params[self.tparam_name] = tparam_value
-        for time_dependent_param in self.time_dependent_vars:
+        for time_dependent_param in self.tracked_vars:
             embedded_params[time_dependent_param] = self.var_to_call[
                 time_dependent_param
             ](embedded_params)

@@ -113,11 +113,11 @@ def test_reembedding() -> None:
         new_tparam_val = (
             torch.tensor(t_reembed) if engine_name == "torch" else t_reembed
         )
-        reembedded_params = embedding.reembed_time(all_params, new_tparam_val)
+        reembedded_params = embedding.reembed_tparam(all_params, new_tparam_val)
         results.append(all_params["%2"].item())
         reembedded_results.append(reembedded_params["%2"].item())
-    assert all([p in ["%1", "%2"] for p in embedding.time_dependent_vars])
-    assert "%0" not in embedding.time_dependent_vars
+    assert all([p in ["%1", "%2"] for p in embedding.tracked_vars])
+    assert "%0" not in embedding.tracked_vars
     assert np.allclose(results[0], results[1], atol=ATOL) and np.allclose(
         results[0], results[2], atol=ATOL
     )
@@ -198,7 +198,7 @@ def test_reembedding_forward() -> None:
             return reduce(
                 add,
                 [
-                    self.run(state, values, embedding.reembed_time(values, val))  # type: ignore[union-attr, arg-type]
+                    self.run(state, values, embedding.reembed_tparam(values, val))  # type: ignore[union-attr, arg-type]
                     for val in torch.linspace(0.0, 10, 10)
                 ],
             )

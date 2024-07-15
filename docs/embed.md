@@ -34,6 +34,40 @@ expval = pyq.expectation(circuit=circ, state=state, values=values, observable= p
 print(torch.autograd.grad(expval, (x, y), torch.ones_like(expval)))
 ```
 
+### Tracking and Reembedding a tracked parameter
+For specific usecases, a `tparam` argument can be passed to the `Embedding` which tells the class to track the
+computations depending on it which enables for their efficient recomputation given different
+values for `tparam`.
+
+```python exec="on" source="material-block" html="1" session="expr"
+v_params = ["theta"]
+f_params = ["x"]
+tparam = "t"
+leaf0, native_call0 = "%0", pyq.ConcretizedCallable(
+    "mul", ["x", "theta"], {}
+)
+leaf1, native_call1 = "%1", pyq.ConcretizedCallable(
+    "mul", ["t", "%0"], {}
+)
+
+leaf2, native_call2 = "%2", pyq.ConcretizedCallable("sin", ["%1"], {})
+embedding = pyq.Embedding(
+    v_params,
+    f_params,
+    var_to_call={leaf0: native_call0, leaf1: native_call1, leaf2: native_call2},
+    tparam_name=tparam,
+)
+inputs = {
+    "x": torch.rand(1),
+    "theta": torch.rand(1),
+    tparam: torch.rand(1),
+}
+all_params = embedding.embed_all(inputs)
+print(f'{leaf2} value before reembedding: {all_params[leaf2]}')
+new_tparam_val = torch.rand(1)
+reembedded_params = embedding.reembed_tparam(all_params, new_tparam_val)
+print(f'{leaf2} value after reembedding: {reembedded_params[leaf2]}')
+```
 ### See the docstrings for more details and examples:
 #### ConcretizedCallable
 ::: pyqtorch.embed.ConcretizedCallable
