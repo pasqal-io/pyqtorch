@@ -15,12 +15,8 @@ from torch import dtype as torch_dtype
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-<<<<<<< HEAD
-from pyqtorch.matrices import add_batch_dim
-=======
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import IMAT, add_batch_dim
->>>>>>> main
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import State, product_state, zero_state
@@ -139,22 +135,25 @@ class Sequence(Module):
     def tensor(
         self,
         values: dict[str, Tensor] = dict(),
+        full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Tensor:
-        raise NotImplementedError
-        # if diagonal:
-        #     raise NotImplementedError
-        # if n_qubits is None:
-        #     n_qubits = max(self.qubit_support) + 1
-        # mat = IMAT.clone().unsqueeze(2).to(self.device)
-        # for _ in range(n_qubits - 1):
-        #     mat = torch.kron(mat, IMAT.clone().unsqueeze(2).to(self.device))
-
-        # return reduce(
-        #     lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
-        #     (add_batch_dim(op.tensor(values, n_qubits)) for op in self.operations),
-        #     mat,
-        # )
+        if diagonal:
+            raise NotImplementedError
+        if full_support is None:
+            full_support = self.qubit_support
+        elif not set(self.qubit_support).issubset(set(full_support)):
+            raise ValueError(
+                "Expanding tensor operation requires a qubit support larger than original support."
+            )
+        mat = IMAT.clone().unsqueeze(2).to(self.device)
+        for _ in range(len(full_support) - 1):
+            mat = torch.kron(mat, IMAT.clone().unsqueeze(2).to(self.device))
+        return reduce(
+            lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
+            (add_batch_dim(op.tensor(values, full_support)) for op in self.operations),
+            mat,
+        )
 
 
 class QuantumCircuit(Sequence):

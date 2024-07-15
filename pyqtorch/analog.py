@@ -192,6 +192,7 @@ class Scale(Sequence):
     def tensor(
         self,
         values: dict[str, Tensor] = dict(),
+        full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Operator:
         """
@@ -199,7 +200,7 @@ class Scale(Sequence):
 
         Arguments:
             values: Parameter value.
-            Can be higher than the number of qubit support.
+            full_support: Can be higher than the number of qubit support.
             diagonal: Whether the operation is diagonal.
 
 
@@ -208,13 +209,12 @@ class Scale(Sequence):
         Raises:
             NotImplementedError for the diagonal case.
         """
-        raise NotImplementedError
-        # thetas = (
-        #     values[self.param_name]
-        #     if isinstance(self.param_name, str)
-        #     else self.param_name
-        # )
-        # return thetas * self.operations[0].tensor(values, n_qubits, diagonal)
+        thetas = (
+            values[self.param_name]
+            if isinstance(self.param_name, str)
+            else self.param_name
+        )
+        return thetas * self.operations[0].tensor(values, full_support, diagonal)
 
     def flatten(self) -> list[Scale]:
         """This method should only be called in the AdjointExpectation,
@@ -269,7 +269,12 @@ class Add(Sequence):
         """
         return reduce(add, (op(state, values) for op in self.operations))
 
-    def tensor(self, values: dict = {}, diagonal: bool = False) -> Tensor:
+    def tensor(
+        self,
+        values: dict = {},
+        full_support: tuple[int, ...] | None = None,
+        diagonal: bool = False,
+    ) -> Tensor:
         """
         Get the corresponding sum of unitaries over n_qubits.
 
@@ -284,15 +289,20 @@ class Add(Sequence):
         Raises:
             NotImplementedError for the diagonal case.
         """
-        raise NotImplementedError
-        # if n_qubits is None:
-        #     n_qubits = max(self.qubit_support) + 1
-        # mat = torch.zeros((2, 2, 1), device=self.device)
-        # for _ in range(n_qubits - 1):
-        #     mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
-        # return reduce(
-        #     add, (op.tensor(values, n_qubits, diagonal) for op in self.operations), mat
-        # )
+        if full_support is None:
+            full_support = self.qubit_support
+        elif not set(self.qubit_support).issubset(set(full_support)):
+            raise ValueError(
+                "Expanding tensor operation requires a qubit support larger than original support."
+            )
+        mat = torch.zeros(
+            (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
+        )
+        return reduce(
+            add,
+            (op.tensor(values, full_support, diagonal) for op in self.operations),
+            mat,
+        )
 
 
 class Observable(Sequence):
@@ -356,83 +366,83 @@ class Observable(Sequence):
         return inner_prod(state, self.run(state, values)).real
 
 
-class DiagonalObservable(Primitive):
-    """
-    Special case of diagonal observables where computation is simpler.
-    We simply do a element-wise vector-product instead of a tensordot.
+# class DiagonalObservable(Primitive):
+#     """
+#     Special case of diagonal observables where computation is simpler.
+#     We simply do a element-wise vector-product instead of a tensordot.
 
-    Attributes:
-        pauli: The tensor representation from Primitive.
-        qubit_support: Qubits the operator acts on.
-        n_qubits: Number of qubits the operator is defined on.
-    """
+#     Attributes:
+#         pauli: The tensor representation from Primitive.
+#         qubit_support: Qubits the operator acts on.
+#         n_qubits: Number of qubits the operator is defined on.
+#     """
 
-    def __init__(
-        self,
-        n_qubits: int | None,
-        operations: list[Module] | Primitive | Sequence,
-        to_sparse: bool = False,
-    ):
-        """Initializes the DiagonalObservable.
+#     def __init__(
+#         self,
+#         n_qubits: int | None,
+#         operations: list[Module] | Primitive | Sequence,
+#         to_sparse: bool = False,
+#     ):
+#         """Initializes the DiagonalObservable.
 
-        Arguments:
-            n_qubits: Number of qubits the operator is defined on.
-            operations: Operations defining the observable.
-            to_sparse: Whether to convert the operator to its sparse representation or not.
-        """
-        if isinstance(operations, list):
-            operations = Sequence(operations)
-        if n_qubits is None:
-            n_qubits = max(operations.qubit_support) + 1
-        hamiltonian = operations.tensor({}, n_qubits).squeeze(2)
-        if to_sparse:
-            operator = operator_to_sparse_diagonal(hamiltonian)
-        else:
-            operator = torch.diag(hamiltonian).reshape(-1, 1)
-        super().__init__(operator, operations.qubit_support[0])
-        self.qubit_support = operations.qubit_support
-        self.n_qubits = n_qubits
+#         Arguments:
+#             n_qubits: Number of qubits the operator is defined on.
+#             operations: Operations defining the observable.
+#             to_sparse: Whether to convert the operator to its sparse representation or not.
+#         """
+#         if isinstance(operations, list):
+#             operations = Sequence(operations)
+#         if n_qubits is None:
+#             n_qubits = max(operations.qubit_support) + 1
+#         hamiltonian = operations.tensor({}, n_qubits).squeeze(2)
+#         if to_sparse:
+#             operator = operator_to_sparse_diagonal(hamiltonian)
+#         else:
+#             operator = torch.diag(hamiltonian).reshape(-1, 1)
+#         super().__init__(operator, operations.qubit_support[0])
+#         self.qubit_support = operations.qubit_support
+#         self.n_qubits = n_qubits
 
-    def run(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor],
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        """
-        Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
+#     def run(
+#         self,
+#         state: Tensor,
+#         values: dict[str, Tensor],
+#         embedding: Embedding | None = None,
+#     ) -> Tensor:
+#         """
+#         Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
 
-        We flatten the state, do a element-wise multiplication with the diagonal hamiltonian
-        and reshape it back to pyq-shape.
+#         We flatten the state, do a element-wise multiplication with the diagonal hamiltonian
+#         and reshape it back to pyq-shape.
 
 
-        Arguments:
-            state: Input state.
-            values: Values of parameters. Unused here.
+#         Arguments:
+#             state: Input state.
+#             values: Values of parameters. Unused here.
 
-        Returns:
-            The transformed state.
-        """
-        return torch.einsum(
-            "ij,ib->ib", self.pauli, state.flatten(start_dim=0, end_dim=-2)
-        ).reshape([2] * self.n_qubits + [state.shape[-1]])
+#         Returns:
+#             The transformed state.
+#         """
+#         return torch.einsum(
+#             "ij,ib->ib", self.pauli, state.flatten(start_dim=0, end_dim=-2)
+#         ).reshape([2] * self.n_qubits + [state.shape[-1]])
 
-    def forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | ParameterDict = dict(),
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
+#     def forward(
+#         self,
+#         state: Tensor,
+#         values: dict[str, Tensor] | ParameterDict = dict(),
+#         embedding: Embedding | None = None,
+#     ) -> Tensor:
+#         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
 
-        Arguments:
-            state: Input state.
-            values: Values of parameters.
+#         Arguments:
+#             state: Input state.
+#             values: Values of parameters.
 
-        Returns:
-            The expectation value.
-        """
-        return inner_prod(state, self.run(state, values)).real
+#         Returns:
+#             The expectation value.
+#         """
+#         return inner_prod(state, self.run(state, values)).real
 
 
 def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:
@@ -549,7 +559,7 @@ class HamiltonianEvolution(Sequence):
             else:
                 generator = [
                     Primitive(
-                        generator.tensor({}, len(qubit_support)),
+                        generator.tensor({}, qubit_support),
                         target=generator.qubit_support[0],
                     )
                 ]
@@ -633,7 +643,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        return self.generator[0].tensor(values, len(self.qubit_support))
+        return self.generator[0].tensor(values, self.qubit_support)
 
     @property
     def create_hamiltonian(self) -> Callable[[dict], Operator]:
@@ -673,6 +683,7 @@ class HamiltonianEvolution(Sequence):
     def tensor(
         self,
         values: dict = {},
+        full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Operator:
         """Get the corresponding unitary over n_qubits.
@@ -697,8 +708,6 @@ class HamiltonianEvolution(Sequence):
 
         # if diagonal:
         #     raise NotImplementedError
-        # if n_qubits is None:
-        #     n_qubits = max(self.qubit_support) + 1
         # hamiltonian: torch.Tensor = self.create_hamiltonian(values)
         # time_evolution: torch.Tensor = (
         #     values[self.time] if isinstance(self.time, str) else self.time

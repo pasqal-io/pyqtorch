@@ -12,11 +12,7 @@ from torch import Tensor
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.bitstrings import permute_basis
 from pyqtorch.embed import Embedding
-from pyqtorch.matrices import (
-    OPERATIONS_DICT,
-    _controlled,
-    _dagger,
-)
+from pyqtorch.matrices import IMAT, OPERATIONS_DICT, _controlled, _dagger
 from pyqtorch.utils import DensityMatrix, product_state
 
 logger = getLogger(__name__)
@@ -131,6 +127,7 @@ class Primitive(torch.nn.Module):
     def tensor(
         self,
         values: dict[str, Tensor] = {},
+        full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
         permute: bool = False,
     ) -> Tensor:
@@ -139,22 +136,28 @@ class Primitive(torch.nn.Module):
         blockmat = self.unitary(values)
         if permute and self.qubit_support != sorted(self.qubit_support):
             blockmat = permute_basis(blockmat, self.qubit_support)
-        return blockmat
-        # full_sup = tuple(i for i in range(n_qubits))
-        # support = tuple(sorted(self.qubit_support))
-        # mat = (
-        #     IMAT.clone().to(self.device).unsqueeze(2)
-        #     if support[0] != full_sup[0]
-        #     else blockmat
-        # )
-        # for i in full_sup[1:]:
-        #     if i == support[0]:
-        #         other = blockmat
-        #         mat = torch.kron(mat.contiguous(), other.contiguous())
-        #     elif i not in support:
-        #         other = IMAT.clone().to(self.device).unsqueeze(2)
-        #         mat = torch.kron(mat.contiguous(), other.contiguous())
-        # return mat
+        if full_support is None:
+            return blockmat
+        elif not set(self.qubit_support).issubset(set(full_support)):
+            raise ValueError(
+                "Expanding tensor operation requires a qubit support larger than original support."
+            )
+        else:
+            support = tuple(sorted(self.qubit_support))
+            full_support = tuple(sorted(full_support))
+            mat = (
+                IMAT.clone().to(self.device).unsqueeze(2)
+                if support[0] != full_support[0]
+                else blockmat
+            )
+            for i in full_support[1:]:
+                if i == support[0]:
+                    other = blockmat
+                    mat = torch.kron(mat.contiguous(), other.contiguous())
+                elif i not in support:
+                    other = IMAT.clone().to(self.device).unsqueeze(2)
+                    mat = torch.kron(mat.contiguous(), other.contiguous())
+            return mat
 
 
 class X(Primitive):
