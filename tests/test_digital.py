@@ -408,6 +408,7 @@ def test_U() -> None:
         u(state, values),
         pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values),
     )
+    assert u.spectral_gap == 2.0
 
 
 def test_dm(n_qubits: int, batch_size: int) -> None:
