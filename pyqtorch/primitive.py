@@ -38,7 +38,12 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 
 
 class Primitive(torch.nn.Module):
-    def __init__(self, pauli: Tensor, target: int | tuple[int, ...]) -> None:
+    def __init__(
+        self,
+        pauli: Tensor,
+        target: int | tuple[int, ...],
+        pauli_generator: Tensor | None = None,
+    ) -> None:
         super().__init__()
         self.target: int | tuple[int, ...] = target
 
@@ -48,6 +53,7 @@ class Primitive(torch.nn.Module):
         if isinstance(target, np.integer):
             self.qubit_support = (target.item(),)
         self.register_buffer("pauli", pauli)
+        self.register_buffer("pauli_generator", pauli_generator)
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
 
@@ -116,6 +122,8 @@ class Primitive(torch.nn.Module):
         Returns:
             Eigenvalues of the generator operator.
         """
+        if self.pauli_generator is not None:
+            return torch.linalg.eigvalsh(self.pauli_generator).reshape(-1, 1)
         pass
 
     @cached_property
@@ -189,12 +197,14 @@ class T(Primitive):
 
 class S(Primitive):
     def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["S"], target)
+        super().__init__(OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"])
 
 
 class SDagger(Primitive):
     def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["SDAGGER"], target)
+        super().__init__(
+            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"]
+        )
 
 
 class Projector(Primitive):
