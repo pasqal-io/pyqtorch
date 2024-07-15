@@ -232,7 +232,7 @@ class Embedding:
 
     def embed_all(
         self,
-        inputs: dict[str, ArrayLike],
+        inputs: dict[str, ArrayLike] = dict(),
     ) -> dict[str, ArrayLike]:
         """The standard embedding of all intermediate and leaf parameters.
         Include the root_params, i.e., the vparams and fparams original values
@@ -276,7 +276,7 @@ class Embedding:
             ](embedded_params)
         return embedded_params
 
-    def __call__(self, inputs: dict[str, ArrayLike]) -> dict[str, ArrayLike]:
+    def __call__(self, inputs: dict[str, ArrayLike] = dict()) -> dict[str, ArrayLike]:
         """Functional version of legacy embedding: Return a new dictionary\
         with all embedded parameters."""
         return self.embed_all(inputs)
