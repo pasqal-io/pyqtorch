@@ -13,7 +13,6 @@ from torch.nn import Module, ModuleList, ParameterDict
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.embed import Embedding
-from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
     ATOL,
@@ -69,26 +68,27 @@ class GeneratorType(StrEnum):
 
 class Scale(Sequence):
     """
-    Generic container for multiplying a 'Primitive' or 'Sequence' instance by a parameter.
+    Generic container for multiplying a 'Primitive', 'Sequence' or 'Add' instance by a parameter.
 
     Attributes:
-        operations: Operations making the Sequence.
+        operations: Operations as a Sequence, Add, or a single Primitive operation.
         param_name: Name of the parameter to multiply operations with.
     """
 
-    def __init__(self, operations: Union[Sequence, Module], param_name: str | Tensor):
+    def __init__(
+        self, operations: Union[Primitive, Sequence, Add], param_name: str | Tensor
+    ):
         """
         Initializes a Scale object.
 
         Arguments:
-            operations: Operations making the Sequence.
+            operations: Operations as a Sequence, Add, or a single Primitive operation.
             param_name: Name of the parameter to multiply operations with.
         """
-        super().__init__(
-            operations.operations if isinstance(operations, Sequence) else [operations]
-        )
+        if not isinstance(operations, (Primitive, Sequence, Add)):
+            raise ValueError("Scale only supports a single operation, Sequence or Add.")
+        super().__init__([operations])
         self.param_name = param_name
-        assert len(self.operations) == 1
 
     def forward(
         self,
@@ -106,88 +106,13 @@ class Scale(Sequence):
         Returns:
             The transformed state.
         """
-        return (
-            values[self.param_name] * super().forward(state, values)
-            if isinstance(self.operations, Sequence)
-            else self._forward(state, values)
-        )
 
-    def _forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor],
-        embedding: Embedding | None = None,
-    ) -> State:
-        """
-        Apply the single operation of Scale multiplied by the parameter value.
-
-        Arguments:
-            state: Input state.
-            values: Parameter value.
-
-        Returns:
-            The transformed state.
-        """
-        return apply_operator(
-            state, self.unitary(values), self.operations[0].qubit_support
-        )
-
-    def unitary(
-        self, values: dict[str, Tensor], embedding: Embedding | None = None
-    ) -> Operator:
-        """
-        Get the corresponding unitary.
-
-        Arguments:
-            values: Parameter value.
-
-        Returns:
-            The unitary representation.
-        """
-        thetas = (
+        scale = (
             values[self.param_name]
             if isinstance(self.param_name, str)
             else self.param_name
         )
-        return thetas * self.operations[0].unitary(values, embedding)
-
-    def dagger(
-        self, values: dict[str, Tensor], embedding: Embedding | None = None
-    ) -> Operator:
-        """
-        Get the corresponding unitary of the dagger.
-
-        Arguments:
-            values: Parameter value.
-
-        Returns:
-            The unitary representation of the dagger.
-        """
-        return _dagger(self.unitary(values, embedding))
-
-    def jacobian(
-        self, values: dict[str, Tensor], embedding: Embedding | None = None
-    ) -> Operator:
-        """
-        Get the corresponding unitary of the jacobian.
-
-        Arguments:
-            values: Parameter value.
-
-        Returns:
-            The unitary representation of the jacobian.
-
-        Raises:
-            NotImplementedError
-        """
-        raise NotImplementedError(
-            "The Jacobian of `Scale` is done via decomposing it into the gradient w.r.t\
-                                  the scale parameter and the gradient w.r.t to the scaled block."
-        )
-        # TODO make scale a primitive block with an additional parameter
-        # So you can do the following:
-        # thetas = values[self.param] if isinstance(self.param, str) else self.param_name
-        # return thetas * ones_like(self.unitary(values))
+        return scale * self.operations[0].forward(state, values, embedding)
 
     def tensor(
         self,
@@ -209,12 +134,12 @@ class Scale(Sequence):
         Raises:
             NotImplementedError for the diagonal case.
         """
-        thetas = (
+        scale = (
             values[self.param_name]
             if isinstance(self.param_name, str)
             else self.param_name
         )
-        return thetas * self.operations[0].tensor(values, full_support, diagonal)
+        return scale * self.operations[0].tensor(values, full_support, diagonal)
 
     def flatten(self) -> list[Scale]:
         """This method should only be called in the AdjointExpectation,
@@ -305,7 +230,7 @@ class Add(Sequence):
         )
 
 
-class Observable(Sequence):
+class Observable(Add):
     """
     The Observable :math:`O` represents an operator from which
     we can extract expectation values from quantum states.
@@ -320,35 +245,11 @@ class Observable(Sequence):
 
     def __init__(
         self,
-        n_qubits: int | None,
         operations: list[Module] | Primitive | Sequence,
     ):
-        super().__init__(operations)
-        if n_qubits is None:
-            n_qubits = max(self.qubit_support) + 1
-        self.n_qubits = n_qubits
+        super().__init__(operations if isinstance(operations, list) else [operations])
 
-    def run(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor],
-        embedding: Embedding | None = None,
-    ) -> State:
-        """
-        Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
-
-        Arguments:
-            state: Input state.
-            values: Values of parameters.
-
-        Returns:
-            The transformed state.
-        """
-        for op in self.operations:
-            state = op(state, values)
-        return state
-
-    def forward(
+    def expectation(
         self,
         state: Tensor,
         values: dict[str, Tensor] | ParameterDict = dict(),
@@ -363,9 +264,10 @@ class Observable(Sequence):
         Returns:
             The expectation value.
         """
-        return inner_prod(state, self.run(state, values)).real
+        return inner_prod(state, self.forward(state, values, embedding)).real
 
 
+# TODO: The DiagonalObservable is currently very innefficient and should be removed.
 # class DiagonalObservable(Primitive):
 #     """
 #     Special case of diagonal observables where computation is simpler.

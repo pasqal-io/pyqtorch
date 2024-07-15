@@ -10,7 +10,7 @@ from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.embed import Embedding
 from pyqtorch.gpsr import PSRExpectation, check_support_psr
-from pyqtorch.utils import DiffMode, inner_prod
+from pyqtorch.utils import DiffMode
 
 logger = getLogger(__name__)
 
@@ -102,9 +102,7 @@ def expectation(
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
         state = run(circuit, state, values, embedding=embedding)
-        return inner_prod(
-            state, run(observable, state, values, embedding=embedding)
-        ).real
+        return observable.expectation(state, values, embedding=embedding)
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit,
