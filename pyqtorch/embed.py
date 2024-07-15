@@ -106,8 +106,8 @@ class ConcretizedCallable:
                 self.engine_call = getattr(import_module(mod), fn)
         except (ImportError, KeyError) as e:
             logger.error(
-                f"Requested function {call_name} can not be imported from {engine_name} and is\
-                        not in instruction_mapping {instruction_mapping} due to {e}."
+                f"Requested function {call_name} can not be imported from {engine_name} and is"
+                + f" not in instruction_mapping {instruction_mapping} due to {e}."
             )
 
     def evaluate(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
