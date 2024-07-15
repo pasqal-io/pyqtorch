@@ -78,20 +78,17 @@ class StrEnum(str, Enum):
 class DiffMode(StrEnum):
     """
     Which Differentiation method to use.
-
-    Options: Automatic Differentiation -  .
-             Adjoint Differentiation   -
     """
 
     AD = "ad"
-    """torch.autograd"""
+    """Use torch.autograd to perform differentiation."""
     ADJOINT = "adjoint"
     """An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
                                        Jones & Gacon, 2020"""
 
     GPSR = "gpsr"
-    """To be added."""
+    """The generalized parameter-shift rule"""
 
 
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
