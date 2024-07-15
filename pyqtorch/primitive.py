@@ -10,8 +10,8 @@ import torch
 from torch import Tensor
 
 from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.bitstrings import permute_basis
 from pyqtorch.matrices import (
-    IMAT,
     OPERATIONS_DICT,
     _controlled,
     _dagger,
@@ -114,28 +114,32 @@ class Primitive(torch.nn.Module):
         return spectral_gap[spectral_gap.nonzero()]
 
     def tensor(
-        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+        self,
+        values: dict[str, Tensor] = {},
+        diagonal: bool = False,
+        permute: bool = False,
     ) -> Tensor:
         if diagonal:
             raise NotImplementedError
         blockmat = self.unitary(values)
-        if n_qubits == 1:
-            return blockmat
-        full_sup = tuple(i for i in range(n_qubits))
-        support = tuple(sorted(self.qubit_support))
-        mat = (
-            IMAT.clone().to(self.device).unsqueeze(2)
-            if support[0] != full_sup[0]
-            else blockmat
-        )
-        for i in full_sup[1:]:
-            if i == support[0]:
-                other = blockmat
-                mat = torch.kron(mat.contiguous(), other.contiguous())
-            elif i not in support:
-                other = IMAT.clone().to(self.device).unsqueeze(2)
-                mat = torch.kron(mat.contiguous(), other.contiguous())
-        return mat
+        if permute and self.qubit_support != sorted(self.qubit_support):
+            blockmat = permute_basis(blockmat, self.qubit_support)
+        return blockmat
+        # full_sup = tuple(i for i in range(n_qubits))
+        # support = tuple(sorted(self.qubit_support))
+        # mat = (
+        #     IMAT.clone().to(self.device).unsqueeze(2)
+        #     if support[0] != full_sup[0]
+        #     else blockmat
+        # )
+        # for i in full_sup[1:]:
+        #     if i == support[0]:
+        #         other = blockmat
+        #         mat = torch.kron(mat.contiguous(), other.contiguous())
+        #     elif i not in support:
+        #         other = IMAT.clone().to(self.device).unsqueeze(2)
+        #         mat = torch.kron(mat.contiguous(), other.contiguous())
+        # return mat
 
 
 class X(Primitive):
