@@ -91,7 +91,6 @@ class ConcretizedCallable:
         self._device = device
         self._dtype = dtype
         self.engine_call = None
-        engine_call = None
         engine = None
         try:
             engine_name, fn_name = ARRAYLIKE_FN_MAP[engine_name]
@@ -158,7 +157,7 @@ class Embedding:
     Arguments:
         vparam_names: A list of variational parameters.
         fparam_names: A list of feature parameters.
-        var_to_call: A dict mapping from gate parameters to instances of ConcretizedCallables.
+        var_to_call: A dict mapping from <`parameter_name`: ConcretizedCallable> pairs,.
         tparam_name: Optional name for a time parameter.
         engine_name: The name of the linear algebra engine.
         device: The device to use
@@ -225,6 +224,7 @@ class Embedding:
         self.time_dependent_vars: list[str] = []
         self._device = device
         self._time_vars_identified = False
+        self.engine_name = engine_name
 
     @property
     def root_param_names(self) -> list[str]:
@@ -289,8 +289,14 @@ class Embedding:
     def device(self) -> str:
         return self._device
 
-    def to(self, *args: Any, **kwargs: Any) -> None:
-        self.vparams = {p: t.to(*args, **kwargs) for p, t in self.vparams.items()}
-        self.var_to_call = {
-            p: call.to(*args, **kwargs) for p, call in self.var_to_call.items()
-        }
+    def to(self, *args: Any, **kwargs: Any) -> Embedding:
+        if self.engine_name == "torch":
+            # we only support this for torch for now
+            self.vparams = {p: t.to(*args, **kwargs) for p, t in self.vparams.items()}
+            self.var_to_call = {
+                p: call.to(*args, **kwargs) for p, call in self.var_to_call.items()
+            }
+            # Dtype and device have to be passes as kwargs
+            self._dtype = kwargs.get("dtype", self._dtype)
+            self._device = kwargs.get("device", self._device)
+        return self

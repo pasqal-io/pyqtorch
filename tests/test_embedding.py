@@ -152,15 +152,17 @@ def test_sample_run_expectation_grads_with_embedding(diff_mode) -> None:
     )
 
 
-def test_move_embedding() -> None:
-    name0, fn0 = "fn0", ConcretizedCallable("sin", ["x"])
-    name1, fn1 = "fn1", ConcretizedCallable("mul", ["fn0", "y"])
-    name2, fn2 = "fn2", ConcretizedCallable("mul", ["fn1", 2.0])
-    name3, fn3 = "fn3", ConcretizedCallable("log", ["fn2"])
+@pytest.mark.parametrize("engine", ["torch", "jax", "numpy"])
+def test_move_embedding(engine: str) -> None:
+    name0, fn0 = "fn0", ConcretizedCallable("sin", ["x"], engine_name=engine)
+    name1, fn1 = "fn1", ConcretizedCallable("mul", ["fn0", "y"], engine_name=engine)
+    name2, fn2 = "fn2", ConcretizedCallable("mul", ["fn1", 2.0], engine_name=engine)
+    name3, fn3 = "fn3", ConcretizedCallable("log", ["fn2"], engine_name=engine)
     embedding = pyq.Embedding(
         vparam_names=["x"],
         fparam_names=["y"],
         var_to_call={name0: fn0, name1: fn1, name2: fn2, name3: fn3},
+        engine_name=engine,
     )
     embedding.to(device="cpu", dtype=torch.float32)
     embedding.to(device="cpu")
