@@ -49,7 +49,7 @@ def test_param_tensor(n_qubits: int, batch_size: int) -> None:
             supp: tuple = (random.randint(0, n_qubits - 1),)
         elif op in OPS_PARAM_2Q:
             supp = (random.randint(1, n_qubits - 1), 0)
-        params = [f"th{i}" for i in range(op.n_params)]
+        params = [f"th{i}" for i in range(op.n_params)]  # type: ignore [union-attr]
         values = {param: torch.rand(batch_size) for param in params}
         op_concrete = op(*supp, *params)
         psi_init = random_state(n_qubits)
@@ -140,3 +140,85 @@ def test_param_tensor(n_qubits: int, batch_size: int) -> None:
 #     psi_star = hamevo(psi, vals)
 #     psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
 #     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+# @pytest.mark.parametrize(
+#     "projector, exp_projector_mat",
+#     [
+#         (
+#             pyq.Projector(0, bra="1", ket="1"),
+#             torch.tensor(
+#                 [[0.0 + 0.0j, 0.0 + 0.0j], [0.0 + 0.0j, 1.0 + 0.0j]],
+#                 dtype=torch.complex128,
+#             ),
+#         ),
+#         (
+#             pyq.N(0),
+#             (IMAT - ZMAT) / 2.0,
+#         ),
+#         (
+#             pyq.CNOT(0, 1),
+#             torch.tensor(
+#                 [
+#                     [
+#                         [1.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+#                         [0.0 + 0.0j, 1.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
+#                         [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j, 1.0 + 0.0j],
+#                         [0.0 + 0.0j, 0.0 + 0.0j, 1.0 + 0.0j, 0.0 + 0.0j],
+#                     ]
+#                 ],
+#                 dtype=torch.complex128,
+#             ),
+#         ),
+#     ],
+# )
+# def test_projector_tensor(
+#     projector: Primitive, exp_projector_mat: torch.Tensor
+# ) -> None:
+
+#     nbqubits = int(log2(exp_projector_mat.shape[-1]))
+#     projector_mat = projector.tensor(
+#         n_qubits=nbqubits, values={"theta": torch.Tensor([1.0])}
+#     ).squeeze(-1)
+#     assert torch.allclose(projector_mat, exp_projector_mat, atol=1.0e-4)
+
+
+# def test_circuit_tensor() -> None:
+#     ops = [pyq.RX(0, "theta_0"), pyq.RY(0, "theta_1"), pyq.RX(1, "theta_2")]
+#     circ = pyq.QuantumCircuit(2, ops)
+#     values = {f"theta_{i}": torch.Tensor([float(i)]) for i in range(3)}
+#     tensorcirc = circ.tensor(values)
+#     assert tensorcirc.size() == (4, 4, 1)
+#     assert torch.allclose(
+#         tensorcirc,
+#         torch.tensor(
+#             [
+#                 [
+#                     [0.4742 + 0.0000j],
+#                     [0.0000 - 0.7385j],
+#                     [-0.2590 + 0.0000j],
+#                     [0.0000 + 0.4034j],
+#                 ],
+#                 [
+#                     [0.0000 - 0.7385j],
+#                     [0.4742 + 0.0000j],
+#                     [0.0000 + 0.4034j],
+#                     [-0.2590 + 0.0000j],
+#                 ],
+#                 [
+#                     [0.2590 + 0.0000j],
+#                     [0.0000 - 0.4034j],
+#                     [0.4742 + 0.0000j],
+#                     [0.0000 - 0.7385j],
+#                 ],
+#                 [
+#                     [0.0000 - 0.4034j],
+#                     [0.2590 + 0.0000j],
+#                     [0.0000 - 0.7385j],
+#                     [0.4742 + 0.0000j],
+#                 ],
+#             ],
+#             dtype=torch.complex128,
+#         ),
+#         atol=1.0e-4,
+#     )
