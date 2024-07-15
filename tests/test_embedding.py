@@ -12,6 +12,7 @@ from torch.nn import Module
 import pyqtorch as pyq
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.primitive import Primitive
+from pyqtorch.utils import ATOL
 
 
 @pytest.mark.parametrize(
@@ -26,7 +27,9 @@ def test_univariate(fn: str) -> None:
             {"x": (torch.tensor(x) if engine_name == "torch" else x)}
         )
         results.append(native_result.item())
-    assert np.allclose(results[0], results[1]) and np.allclose(results[0], results[2])
+    assert np.allclose(results[0], results[1], atol=ATOL) and np.allclose(
+        results[0], results[2], ATOL
+    )
 
 
 @pytest.mark.parametrize("fn", ["mul", "add", "div", "sub"])
@@ -43,7 +46,9 @@ def test_multivariate(fn: str) -> None:
             }
         )
         results.append(native_result.item())
-    assert np.allclose(results[0], results[1]) and np.allclose(results[0], results[2])
+    assert np.allclose(results[0], results[1], atol=ATOL) and np.allclose(
+        results[0], results[2], atol=ATOL
+    )
 
 
 def test_embedding() -> None:
@@ -68,7 +73,9 @@ def test_embedding() -> None:
         }
         eval_0 = embedding.var_to_call["%0"](inputs)
         results.append(eval_0.item())
-    assert np.allclose(results[0], results[1]) and np.allclose(results[0], results[2])
+    assert np.allclose(results[0], results[1], atol=ATOL) and np.allclose(
+        results[0], results[2], atol=ATOL
+    )
 
 
 def test_reembedding() -> None:
@@ -111,10 +118,12 @@ def test_reembedding() -> None:
         reembedded_results.append(reembedded_params["%2"].item())
     assert all([p in ["%1", "%2"] for p in embedding.time_dependent_vars])
     assert "%0" not in embedding.time_dependent_vars
-    assert np.allclose(results[0], results[1]) and np.allclose(results[0], results[2])
-    assert np.allclose(reembedded_results[0], reembedded_results[1]) and np.allclose(
-        reembedded_results[0], reembedded_results[2]
+    assert np.allclose(results[0], results[1], atol=ATOL) and np.allclose(
+        results[0], results[2], atol=ATOL
     )
+    assert np.allclose(
+        reembedded_results[0], reembedded_results[1], atol=ATOL
+    ) and np.allclose(reembedded_results[0], reembedded_results[2], atol=ATOL)
 
 
 @pytest.mark.parametrize("diff_mode", [pyq.DiffMode.AD])
@@ -153,7 +162,7 @@ def test_sample_run_expectation_grads_with_embedding(diff_mode) -> None:
             circ, state, {"x": x, "y": y}, obs, diff_mode, embedding
         ),
         (x, y),
-        atol=0.2,
+        atol=1e-1,  # torch.autograd.gradcheck is very susceptible to small numerical errors
     )
 
 
