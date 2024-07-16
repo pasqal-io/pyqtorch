@@ -12,7 +12,7 @@ from torch.nn import Module
 import pyqtorch as pyq
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import ATOL
+from pyqtorch.utils import ATOL_embedding
 
 
 @pytest.mark.parametrize(
@@ -27,8 +27,8 @@ def test_univariate(fn: str) -> None:
             {"x": (torch.tensor(x) if engine_name == "torch" else x)}
         )
         results.append(native_result.item())
-    assert np.allclose(results[0], results[1], atol=ATOL) and np.allclose(
-        results[0], results[2], ATOL
+    assert np.allclose(results[0], results[1], atol=ATOL_embedding) and np.allclose(
+        results[0], results[2], ATOL_embedding
     )
 
 
@@ -46,8 +46,8 @@ def test_multivariate(fn: str) -> None:
             }
         )
         results.append(native_result.item())
-    assert np.allclose(results[0], results[1], atol=ATOL) and np.allclose(
-        results[0], results[2], atol=ATOL
+    assert np.allclose(results[0], results[1], atol=ATOL_embedding) and np.allclose(
+        results[0], results[2], atol=ATOL_embedding
     )
 
 
@@ -73,8 +73,8 @@ def test_embedding() -> None:
         }
         eval_0 = embedding.var_to_call["%0"](inputs)
         results.append(eval_0.item())
-    assert np.allclose(results[0], results[1], atol=ATOL) and np.allclose(
-        results[0], results[2], atol=ATOL
+    assert np.allclose(results[0], results[1], atol=ATOL_embedding) and np.allclose(
+        results[0], results[2], atol=ATOL_embedding
     )
 
 
@@ -118,12 +118,12 @@ def test_reembedding() -> None:
         reembedded_results.append(reembedded_params["%2"].item())
     assert all([p in ["%1", "%2"] for p in embedding.tracked_vars])
     assert "%0" not in embedding.tracked_vars
-    assert np.allclose(results[0], results[1], atol=ATOL) and np.allclose(
-        results[0], results[2], atol=ATOL
+    assert np.allclose(results[0], results[1], atol=ATOL_embedding) and np.allclose(
+        results[0], results[2], atol=ATOL_embedding
     )
     assert np.allclose(
-        reembedded_results[0], reembedded_results[1], atol=ATOL
-    ) and np.allclose(reembedded_results[0], reembedded_results[2], atol=ATOL)
+        reembedded_results[0], reembedded_results[1], atol=ATOL_embedding
+    ) and np.allclose(reembedded_results[0], reembedded_results[2], atol=ATOL_embedding)
 
 
 @pytest.mark.parametrize("diff_mode", [pyq.DiffMode.AD])

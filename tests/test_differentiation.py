@@ -7,6 +7,7 @@ import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.parametric import Parametric
+from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
     GRADCHECK_ATOL,
 )
@@ -21,7 +22,7 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     cnot = pyq.CNOT(1, 2)
     ops = [rx, cry, rz, cnot] * n_layers
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)])
 
     theta_0_value = torch.pi / 2
     theta_1_value = torch.pi
@@ -177,7 +178,7 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
         }
     ).to(COMPLEX_TO_REAL_DTYPES[dtype])
 
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)]).to(dtype)
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)]).to(dtype)
     exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 
@@ -192,3 +193,136 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
     assert len(grad_ad) == len(grad_adjoint)
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
+
+
+# Note pyq does not support using multiple times the same angle
+@pytest.mark.parametrize("n_qubits", [3, 4, 5])
+@pytest.mark.parametrize("batch_size", [1, 10])
+@pytest.mark.parametrize("op_obs", [pyq.Z, pyq.X, pyq.Y])
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+def test_all_diff_singlegap(
+    n_qubits: int, batch_size: int, op_obs: Primitive, dtype: torch.dtype
+) -> None:
+    name_angles = "theta"
+
+    ops_rx = pyq.Sequence(
+        [pyq.RX(i, param_name=name_angles + "_x_" + str(i)) for i in range(n_qubits)]
+    )
+    ops_rz = pyq.Sequence(
+        [pyq.RZ(i, param_name=name_angles + "_z_" + str(i)) for i in range(n_qubits)]
+    )
+    cnot = pyq.CNOT(1, 2)
+    ops = [ops_rx, ops_rz, cnot]
+
+    circ = pyq.QuantumCircuit(n_qubits, ops).to(dtype)
+    obs = pyq.Observable(n_qubits, [op_obs(i) for i in range(n_qubits)]).to(dtype)
+    state = pyq.random_state(n_qubits, batch_size, dtype=dtype)
+
+    dtype_val = COMPLEX_TO_REAL_DTYPES[dtype]
+    values = {
+        name_angles + "_x_" + str(i): torch.rand(1, dtype=dtype_val, requires_grad=True)
+        for i in range(n_qubits)
+    }
+    values.update(
+        {
+            name_angles
+            + "_z_"
+            + str(i): torch.rand(1, dtype=dtype_val, requires_grad=True)
+            for i in range(n_qubits)
+        }
+    )
+
+    exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
+    exp_adjoint = expectation(circ, state, values, obs, DiffMode.ADJOINT)
+    exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+
+    assert torch.allclose(exp_ad, exp_adjoint)
+    assert torch.allclose(exp_ad, exp_gpsr)
+
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values.values()), torch.ones_like(exp_ad), create_graph=True
+    )
+
+    grad_adjoint = torch.autograd.grad(
+        exp_adjoint,
+        tuple(values.values()),
+        torch.ones_like(exp_adjoint),
+        create_graph=True,
+    )
+
+    grad_gpsr = torch.autograd.grad(
+        exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
+    )
+
+    # check first order gradients
+    assert len(grad_ad) == len(grad_adjoint) == len(grad_gpsr)
+    for i in range(len(grad_ad)):
+        assert torch.allclose(
+            grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL
+        ) and torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
+
+    # TODO higher order adjoint is not yet supported.
+    # gradgrad_adjoint = torch.autograd.grad(
+    #     grad_adjoint, tuple(values.values()), torch.ones_like(grad_adjoint)
+    # )
+
+    for i in range(len(grad_ad)):
+        gradgrad_ad = torch.autograd.grad(
+            grad_ad[i],
+            tuple(values.values()),
+            torch.ones_like(grad_ad[i]),
+            create_graph=True,
+        )
+
+        gradgrad_gpsr = torch.autograd.grad(
+            grad_gpsr[i],
+            tuple(values.values()),
+            torch.ones_like(grad_gpsr[i]),
+            create_graph=True,
+        )
+
+        assert len(gradgrad_ad) == len(gradgrad_gpsr)
+
+        # check second order gradients
+        for j in range(len(gradgrad_ad)):
+            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=GRADCHECK_ATOL)
+
+
+@pytest.mark.parametrize("gate_type", ["scale", "hamevo", "same", ""])
+def test_compatibility_gpsr(gate_type: str) -> None:
+
+    pname = "theta_0"
+    if gate_type == "scale":
+        seq_gate = pyq.Sequence([pyq.X(0)])
+        scale = pyq.Scale(seq_gate, pname)
+        ops = [scale]
+    elif gate_type == "hamevo":
+        hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), pname, (0,))
+        ops = [hamevo]
+    elif gate_type == "same":
+        ops = [pyq.RY(0, pname), pyq.RZ(0, pname)]
+    else:
+        # check that CNOT is not tested on spectral gap call
+        ops = [pyq.RY(0, pname), pyq.CNOT(0, 1)]
+
+    circ = pyq.QuantumCircuit(2, ops)
+    obs = pyq.Observable(2, [pyq.Z(0)])
+    state = pyq.zero_state(2)
+
+    param_value = torch.pi / 2
+    values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
+
+    if gate_type != "":
+        with pytest.raises(ValueError):
+            exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+
+            grad_gpsr = torch.autograd.grad(
+                exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
+            )
+    else:
+        exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+
+        grad_gpsr = torch.autograd.grad(
+            exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
+        )
+        assert len(grad_gpsr) > 0

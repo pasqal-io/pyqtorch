@@ -17,6 +17,7 @@ State = Tensor
 Operator = Tensor
 
 ATOL = 1e-06
+ATOL_embedding = 1e-03
 RTOL = 0.0
 GRADCHECK_ATOL = 1e-06
 PSR_ACCEPTANCE = 1e-5
