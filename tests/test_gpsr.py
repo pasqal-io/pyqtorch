@@ -120,7 +120,7 @@ def test_expectation_psr(
     #     assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=atol)
 
 
-@pytest.mark.parametrize("gate_type", ["scale", "hamevo", ""])
+@pytest.mark.parametrize("gate_type", ["scale", "hamevo", "same", ""])
 def test_compatibility_gpsr(gate_type: str) -> None:
 
     pname = "theta_0"
@@ -131,18 +131,30 @@ def test_compatibility_gpsr(gate_type: str) -> None:
     elif gate_type == "hamevo":
         hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), pname, (0,))
         ops = [hamevo]
-    else:
+    elif gate_type == "same":
         ops = [pyq.RY(0, pname), pyq.RZ(0, pname)]
+    else:
+        # check that CNOT is not tested on spectral gap call
+        ops = [pyq.RY(0, pname), pyq.CNOT(0, 1)]
 
-    circ = pyq.QuantumCircuit(1, ops)
-    obs = pyq.QuantumCircuit(1, [pyq.Z(0)])
-    state = pyq.zero_state(1)
+    circ = pyq.QuantumCircuit(2, ops)
+    obs = pyq.Observable(2, [pyq.Z(0)])
+    state = pyq.zero_state(2)
 
     param_value = torch.pi / 2
     values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
-    with pytest.raises(ValueError):
+
+    if gate_type != "":
+        with pytest.raises(ValueError):
+            exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+
+            grad_gpsr = torch.autograd.grad(
+                exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
+            )
+    else:
         exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
 
         grad_gpsr = torch.autograd.grad(
             exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
         )
+        assert len(grad_gpsr) > 0

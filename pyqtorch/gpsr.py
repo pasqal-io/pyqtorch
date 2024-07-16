@@ -240,11 +240,9 @@ class PSRExpectation(Function):
                     n_obs = F[0].shape[1]
 
             F = torch.cat(F).reshape(n_eqs, -1)
-            M = M.to(dtype = F.dtype)
+            M = M.to(dtype=F.dtype)  # type: ignore
             R = torch.linalg.solve(M, F)
-            dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(
-                batch_size, n_obs
-            )
+            dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(batch_size, n_obs)
             return dfdx
 
         def vjp(operation: Parametric, values: dict[str, Tensor]) -> Tensor:
