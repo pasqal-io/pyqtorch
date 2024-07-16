@@ -538,7 +538,9 @@ class CRX(ControlledRotationGate):
                     device=self.device,
                     dtype=self.dtype,
                 ),
-                torch.linalg.eigvalsh(self.pauli),
+                pauli_singleq_eigenvalues.flatten().to(
+                    device=self.device, dtype=self.dtype
+                ),
             )
         ).reshape(-1, 1)
 

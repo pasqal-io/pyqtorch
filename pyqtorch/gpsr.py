@@ -121,7 +121,7 @@ class PSRExpectation(Function):
 
         values = param_dict(ctx.param_names, ctx.saved_tensors)
         shift_pi2 = torch.tensor(torch.pi) / 2.0
-        shift_multi = torch.tensor(0.5)
+        shift_multi = 0.5
 
         def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
@@ -217,7 +217,7 @@ class PSRExpectation(Function):
             # calculate F vector and M matrix
             # (see: https://arxiv.org/pdf/2108.01218.pdf on p. 4 for definitions)
             F = []
-            M = torch.empty((n_eqs, n_eqs), dtype=DEFAULT_REAL_DTYPE).to(device=device)
+            M = torch.empty((n_eqs, n_eqs)).to(device=device)
             n_obs = 1
             batch_size = 1
             for i in range(n_eqs):
