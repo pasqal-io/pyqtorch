@@ -10,6 +10,7 @@ from torch.autograd import Function
 from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
 from pyqtorch.circuit import QuantumCircuit, Sequence
 from pyqtorch.embed import Embedding
+from pyqtorch.matrices import DEFAULT_REAL_DTYPE
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import inner_prod, param_dict
 
@@ -183,7 +184,7 @@ class PSRExpectation(Function):
             param_name: str,
             values: dict[str, Tensor],
             spectral_gaps: Tensor,
-            shift_prefac: Tensor = torch.tensor(0.5),
+            shift_prefac: float = 0.5,
         ) -> Tensor:
             """Implement multi gap PSR rule.
 
@@ -201,31 +202,31 @@ class PSRExpectation(Function):
                 Gradient evaluation for param_name.
             """
             n_eqs = len(spectral_gaps)
-            PI = torch.tensor(torch.pi)
-            shifts = shift_prefac * torch.linspace(
-                PI / 2 - PI / 5, PI / 2 + PI / 5, n_eqs
-            )
-
             device = torch.device("cpu")
             try:
                 device = [v.device for v in values.values()][0]
             except Exception:
                 pass
             spectral_gaps = spectral_gaps.to(device=device)
+            PI = torch.tensor(torch.pi, dtype=DEFAULT_REAL_DTYPE)
+            shifts = shift_prefac * torch.linspace(
+                PI / 2 - PI / 5, PI / 2 + PI / 5, n_eqs
+            )
             shifts = shifts.to(device=device)
 
             # calculate F vector and M matrix
             # (see: https://arxiv.org/pdf/2108.01218.pdf on p. 4 for definitions)
             F = []
-            M = torch.empty((n_eqs, n_eqs)).to(device=device)
+            M = torch.empty((n_eqs, n_eqs), dtype=DEFAULT_REAL_DTYPE).to(device=device)
             n_obs = 1
+            batch_size = 1
             for i in range(n_eqs):
                 shifted_values = values.copy()
                 shifted_values[param_name] = shifted_values[param_name] + shifts[i]
                 f_plus = expectation_fn(shifted_values)
-                shifted_values[param_name] = shifted_values[param_name] - 2 * shifts[i]
+                shifted_values = values.copy()
+                shifted_values[param_name] = shifted_values[param_name] - shifts[i]
                 f_minus = expectation_fn(shifted_values)
-                shifted_values[param_name] = shifted_values[param_name] + shifts[i]
                 F.append((f_plus - f_minus))
 
                 # calculate M matrix
@@ -235,15 +236,15 @@ class PSRExpectation(Function):
             # get number of observables from expectation value tensor
             if f_plus.numel() > 1:
                 batch_size = F[0].shape[0]
-                n_obs = F[0].shape[1]
+                if len(F[0].shape) > 1:
+                    n_obs = F[0].shape[1]
 
-            F = torch.stack(F).reshape(n_eqs, -1)
+            F = torch.cat(F).reshape(n_eqs, -1)
+            M = M.to(dtype = F.dtype)
             R = torch.linalg.solve(M, F)
-
-            dfdx = torch.sum(spectral_gaps[:, None] * R, dim=0).reshape(
+            dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(
                 batch_size, n_obs
             )
-
             return dfdx
 
         def vjp(operation: Parametric, values: dict[str, Tensor]) -> Tensor:

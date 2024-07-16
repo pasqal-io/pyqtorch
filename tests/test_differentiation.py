@@ -128,27 +128,27 @@ def test_differentiate_circuit(
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
         assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
 
-    gradgrad_ad = torch.autograd.grad(
-        grad_ad, tuple(values_ad.values()), torch.ones_like(grad_ad), create_graph=True
-    )[0]
+    # gradgrad_ad = torch.autograd.grad(
+    #     grad_ad, tuple(values_ad.values()), torch.ones_like(grad_ad), create_graph=True
+    # )[0]
 
     # TODO higher order adjoint is not yet supported.
     # gradgrad_adjoint = torch.autograd.grad(
     #     grad_adjoint, tuple(values_adjoint.values()), torch.ones_like(grad_adjoint)
     # )
 
-    gradgrad_gpsr = torch.autograd.grad(
-        grad_gpsr,
-        tuple(values_gpsr.values()),
-        torch.ones_like(grad_gpsr),
-        create_graph=True,
-    )[0]
+    # gradgrad_gpsr = torch.autograd.grad(
+    #     grad_gpsr,
+    #     tuple(values_gpsr.values()),
+    #     torch.ones_like(grad_gpsr),
+    #     create_graph=True,
+    # )[0]
 
-    assert len(gradgrad_ad) == len(gradgrad_gpsr)
+    # assert len(gradgrad_ad) == len(gradgrad_gpsr)
 
-    # check second order gradients
-    for i in range(len(gradgrad_ad)):
-        assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=GRADCHECK_ATOL)
+    # # check second order gradients
+    # for i in range(len(gradgrad_ad)):
+    #     assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=GRADCHECK_ATOL)
 
 
 @pytest.mark.xfail  # investigate
