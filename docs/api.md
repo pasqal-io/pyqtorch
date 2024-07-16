@@ -1,10 +1,11 @@
-`pyqtorch` exposes three API endpoints called `run`, `sample` and `expectation` which
-can then be queried as follows:
-
+`pyqtorch` exposes three API endpoints called `run`, `sample` and `expectation`.
 Please note that all endpoints expect a `QuantumCircuit` object.
 
+# run
 ::: pyqtorch.api.run
 
+# sample
 ::: pyqtorch.api.sample
 
+# expectation
 ::: pyqtorch.api.expectation
