@@ -22,7 +22,7 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     cnot = pyq.CNOT(1, 2)
     ops = [rx, cry, rz, cnot] * n_layers
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)])
 
     theta_0_value = torch.pi / 2
     theta_1_value = torch.pi
@@ -156,7 +156,7 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
         }
     ).to(COMPLEX_TO_REAL_DTYPES[dtype])
 
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)]).to(dtype)
+    obs = pyq.Observable(n_qubits, [pyq.Z(0)]).to(dtype)
     exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 
@@ -193,7 +193,7 @@ def test_all_diff_singlegap(
     ops = [ops_rx, ops_rz, cnot]
 
     circ = pyq.QuantumCircuit(n_qubits, ops).to(dtype)
-    obs = pyq.QuantumCircuit(n_qubits, [op_obs(i) for i in range(n_qubits)]).to(dtype)
+    obs = pyq.Observable(n_qubits, [op_obs(i) for i in range(n_qubits)]).to(dtype)
     state = pyq.random_state(n_qubits, batch_size, dtype=dtype)
 
     dtype_val = COMPLEX_TO_REAL_DTYPES[dtype]
@@ -281,7 +281,7 @@ def test_compatibility_gpsr(gate_type: str) -> None:
         ops = [pyq.RY(0, pname), pyq.RZ(0, pname)]
 
     circ = pyq.QuantumCircuit(1, ops)
-    obs = pyq.QuantumCircuit(1, [pyq.Z(0)])
+    obs = pyq.Observable(1, [pyq.Z(0)])
     state = pyq.zero_state(1)
 
     param_value = torch.pi / 2
