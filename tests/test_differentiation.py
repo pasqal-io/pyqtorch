@@ -6,6 +6,7 @@ import torch
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
+from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
     GRADCHECK_ATOL,
 )
@@ -174,7 +175,12 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
 
 # Note pyq does not support using multiple times the same angle
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
-def test_all_diff_singlegap(n_qubits: int) -> None:
+@pytest.mark.parametrize("batch_size", [1, 10])
+@pytest.mark.parametrize("op_obs", [pyq.Z, pyq.X, pyq.Y])
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+def test_all_diff_singlegap(
+    n_qubits: int, batch_size: int, op_obs: Primitive, dtype: torch.dtype
+) -> None:
     name_angles = "theta"
 
     ops_rx = pyq.Sequence(
@@ -186,17 +192,20 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
     cnot = pyq.CNOT(1, 2)
     ops = [ops_rx, ops_rz, cnot]
 
-    circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
-    state = pyq.random_state(n_qubits)
+    circ = pyq.QuantumCircuit(n_qubits, ops).to(dtype)
+    obs = pyq.QuantumCircuit(n_qubits, [op_obs(i) for i in range(n_qubits)]).to(dtype)
+    state = pyq.random_state(n_qubits, batch_size, dtype=dtype)
 
+    dtype_val = COMPLEX_TO_REAL_DTYPES[dtype]
     values = {
-        name_angles + "_x_" + str(i): torch.rand(1, requires_grad=True)
+        name_angles + "_x_" + str(i): torch.rand(1, dtype=dtype_val, requires_grad=True)
         for i in range(n_qubits)
     }
     values.update(
         {
-            name_angles + "_z_" + str(i): torch.rand(1, requires_grad=True)
+            name_angles
+            + "_z_"
+            + str(i): torch.rand(1, dtype=dtype_val, requires_grad=True)
             for i in range(n_qubits)
         }
     )
@@ -210,30 +219,17 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
 
     grad_ad = torch.autograd.grad(
         exp_ad, tuple(values.values()), torch.ones_like(exp_ad), create_graph=True
-    )[0]
+    )
 
     grad_adjoint = torch.autograd.grad(
         exp_adjoint,
         tuple(values.values()),
         torch.ones_like(exp_adjoint),
         create_graph=True,
-    )[0]
+    )
 
     grad_gpsr = torch.autograd.grad(
         exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
-    )[0]
-
-    gradgrad_ad = torch.autograd.grad(
-        grad_ad, tuple(values.values()), torch.ones_like(grad_ad)
-    )
-
-    # TODO higher order adjoint is not yet supported.
-    # gradgrad_adjoint = torch.autograd.grad(
-    #     grad_adjoint, tuple(values.values()), torch.ones_like(grad_adjoint)
-    # )
-
-    gradgrad_gpsr = torch.autograd.grad(
-        grad_gpsr, tuple(values.values()), torch.ones_like(grad_gpsr)
     )
 
     # check first order gradients
@@ -243,11 +239,31 @@ def test_all_diff_singlegap(n_qubits: int) -> None:
             grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL
         ) and torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
 
-    assert len(gradgrad_ad) == len(gradgrad_gpsr)
+    # TODO higher order adjoint is not yet supported.
+    # gradgrad_adjoint = torch.autograd.grad(
+    #     grad_adjoint, tuple(values.values()), torch.ones_like(grad_adjoint)
+    # )
 
-    # check second order gradients
-    for i in range(len(gradgrad_ad)):
-        assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=GRADCHECK_ATOL)
+    for i in range(len(grad_ad)):
+        gradgrad_ad = torch.autograd.grad(
+            grad_ad[i],
+            tuple(values.values()),
+            torch.ones_like(grad_ad[i]),
+            create_graph=True,
+        )
+
+        gradgrad_gpsr = torch.autograd.grad(
+            grad_gpsr[i],
+            tuple(values.values()),
+            torch.ones_like(grad_gpsr[i]),
+            create_graph=True,
+        )
+
+        assert len(gradgrad_ad) == len(gradgrad_gpsr)
+
+        # check second order gradients
+        for j in range(len(gradgrad_ad)):
+            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=GRADCHECK_ATOL)
 
 
 @pytest.mark.parametrize("gate_type", ["scale", "hamevo", ""])
