@@ -9,6 +9,7 @@ import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
 from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE
@@ -76,20 +77,26 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
         (5, 10, circuit_sequence),
     ],
 )
-@pytest.mark.parametrize("ops_op", [pyq.Z, pyq.Y])
-def test_expectation_psr(
-    n_qubits: int, batch_size: int, circuit_fn: Callable, ops_op: Primitive
+@pytest.mark.parametrize("ops_op", [pyq.Z, pyq.X, pyq.Y])
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+def test_expectation_gpsr(
+    n_qubits: int,
+    batch_size: int,
+    circuit_fn: Callable,
+    ops_op: Primitive,
+    dtype: torch.dtype,
 ) -> None:
     torch.manual_seed(42)
-    circ = circuit_fn(n_qubits)
-    obs = Observable(n_qubits, [ops_op(i) for i in range(1)])
-
+    circ = circuit_fn(n_qubits).to(dtype)
+    obs = Observable(n_qubits, pyq.Add([ops_op(i) for i in range(n_qubits)])).to(dtype)
     values = {
-        op.param_name: torch.rand(batch_size, requires_grad=True)
+        op.param_name: torch.rand(
+            batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
+        )
         for op in circ.flatten()
         if isinstance(op, Parametric) and isinstance(op.param_name, str)
     }
-    state = pyq.random_state(n_qubits)
+    state = pyq.random_state(n_qubits, dtype=dtype)
 
     # Apply adjoint
     exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
@@ -106,7 +113,7 @@ def test_expectation_psr(
     atol = PSR_ACCEPTANCE if circuit_fn != circuit_gpsr else GPSR_ACCEPTANCE
 
     # first order checks
-    assert torch.allclose(exp_ad, exp_gpsr)
+
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
 

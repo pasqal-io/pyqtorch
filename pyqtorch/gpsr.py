@@ -124,8 +124,11 @@ class PSRExpectation(Function):
         shift_multi = 0.5
 
         dtype_values = DEFAULT_REAL_DTYPE
-        for v in values.values():
-            dtype_values = torch.promote_types(dtype_values, v.dtype)
+        device = torch.device("cpu")
+        try:
+            dtype_values, device = [(v.dtype, v.device) for v in values.values()][0]
+        except Exception:
+            pass
 
         def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
@@ -164,11 +167,6 @@ class PSRExpectation(Function):
             """
 
             # device conversions
-            device = torch.device("cpu")
-            try:
-                device = [v.device for v in values.values()][0]
-            except Exception:
-                pass
             spectral_gap = spectral_gap.to(device=device)
             shift = shift.to(device=device)
 
@@ -206,13 +204,7 @@ class PSRExpectation(Function):
                 Gradient evaluation for param_name.
             """
             n_eqs = len(spectral_gaps)
-            device = torch.device("cpu")
             dtype = torch.promote_types(dtype_values, spectral_gaps.dtype)
-
-            try:
-                device = [v.device for v in values.values()][0]
-            except Exception:
-                pass
             spectral_gaps = spectral_gaps.to(device=device)
             PI = torch.tensor(torch.pi, dtype=dtype)
             shifts = shift_prefac * torch.linspace(
@@ -224,7 +216,6 @@ class PSRExpectation(Function):
             # (see: https://arxiv.org/pdf/2108.01218.pdf on p. 4 for definitions)
             F = []
             M = torch.empty((n_eqs, n_eqs), dtype=dtype).to(device=device)
-            n_obs = 1
             batch_size = 1
             shifted_params = values.copy()
             for i in range(n_eqs):
@@ -245,12 +236,10 @@ class PSRExpectation(Function):
             # get number of observables from expectation value tensor
             if f_plus.numel() > 1:
                 batch_size = F[0].shape[0]
-                if len(F[0].shape) > 1:
-                    n_obs = F[0].shape[1]
 
             F = torch.stack(F).reshape(n_eqs, -1)
             R = torch.linalg.solve(M, F)
-            dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(batch_size, n_obs)
+            dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(batch_size)
             return dfdx
 
         def vjp(operation: Parametric, values: dict[str, Tensor]) -> Tensor:
@@ -268,7 +257,6 @@ class PSRExpectation(Function):
                 if len(operation.spectral_gap) > 1
                 else (single_gap_shift, shift_pi2)
             )
-
             return grad_out * psr_fn(  # type: ignore[operator]
                 operation.param_name,  # type: ignore
                 values,
