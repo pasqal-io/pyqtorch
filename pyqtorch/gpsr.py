@@ -123,6 +123,10 @@ class PSRExpectation(Function):
         shift_pi2 = torch.tensor(torch.pi) / 2.0
         shift_multi = 0.5
 
+        dtype_values = DEFAULT_REAL_DTYPE
+        for v in values.values():
+            dtype_values = torch.promote_types(dtype_values, v.dtype)
+
         def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
 
@@ -203,35 +207,40 @@ class PSRExpectation(Function):
             """
             n_eqs = len(spectral_gaps)
             device = torch.device("cpu")
+            dtype = torch.promote_types(dtype_values, spectral_gaps.dtype)
+
             try:
                 device = [v.device for v in values.values()][0]
             except Exception:
                 pass
             spectral_gaps = spectral_gaps.to(device=device)
-            PI = torch.tensor(torch.pi, dtype=DEFAULT_REAL_DTYPE)
+            PI = torch.tensor(torch.pi, dtype=dtype)
             shifts = shift_prefac * torch.linspace(
-                PI / 2 - PI / 5, PI / 2 + PI / 5, n_eqs
+                PI / 2.0 - PI / 5.0, PI / 2.0 + PI / 5.0, n_eqs, dtype=dtype
             )
             shifts = shifts.to(device=device)
 
             # calculate F vector and M matrix
             # (see: https://arxiv.org/pdf/2108.01218.pdf on p. 4 for definitions)
             F = []
-            M = torch.empty((n_eqs, n_eqs)).to(device=device)
+            M = torch.empty((n_eqs, n_eqs), dtype=dtype).to(device=device)
             n_obs = 1
             batch_size = 1
+            shifted_params = values.copy()
             for i in range(n_eqs):
-                shifted_values = values.copy()
-                shifted_values[param_name] = shifted_values[param_name] + shifts[i]
-                f_plus = expectation_fn(shifted_values)
-                shifted_values = values.copy()
-                shifted_values[param_name] = shifted_values[param_name] - shifts[i]
-                f_minus = expectation_fn(shifted_values)
+                # + shift
+                shifted_params[param_name] = shifted_params[param_name] + shifts[i]
+                f_plus = expectation_fn(shifted_params)
+
+                # - shift
+                shifted_params[param_name] = shifted_params[param_name] - 2 * shifts[i]
+                f_minus = expectation_fn(shifted_params)
+                shifted_params[param_name] = shifted_params[param_name] + shifts[i]
                 F.append((f_plus - f_minus))
 
                 # calculate M matrix
                 for j in range(n_eqs):
-                    M[i, j] = 4.0 * torch.sin(shifts[i] * spectral_gaps[j] / 2)
+                    M[i, j] = 4 * torch.sin(shifts[i] * spectral_gaps[j] / 2)
 
             # get number of observables from expectation value tensor
             if f_plus.numel() > 1:
@@ -239,8 +248,7 @@ class PSRExpectation(Function):
                 if len(F[0].shape) > 1:
                     n_obs = F[0].shape[1]
 
-            F = torch.cat(F).reshape(n_eqs, -1)
-            M = M.to(dtype=F.dtype)  # type: ignore
+            F = torch.stack(F).reshape(n_eqs, -1)
             R = torch.linalg.solve(M, F)
             dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(batch_size, n_obs)
             return dfdx

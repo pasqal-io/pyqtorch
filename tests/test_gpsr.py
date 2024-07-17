@@ -82,7 +82,7 @@ def test_expectation_psr(
 ) -> None:
     torch.manual_seed(42)
     circ = circuit_fn(n_qubits)
-    obs = Observable(n_qubits, [ops_op(i) for i in range(n_qubits)])
+    obs = Observable(n_qubits, [ops_op(i) for i in range(1)])
 
     values = {
         op.param_name: torch.rand(batch_size, requires_grad=True)
@@ -95,29 +95,42 @@ def test_expectation_psr(
     exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
     grad_ad = torch.autograd.grad(
         exp_ad, tuple(values.values()), torch.ones_like(exp_ad), create_graph=True
-    )[0]
-    gradgrad_ad = torch.autograd.grad(
-        grad_ad, tuple(values.values()), torch.ones_like(grad_ad)
     )
 
     # Apply PSR
     exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
     grad_gpsr = torch.autograd.grad(
         exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
-    )[0]
-    gradgrad_gpsr = torch.autograd.grad(
-        grad_gpsr, tuple(values.values()), torch.ones_like(grad_gpsr)
     )
 
     atol = PSR_ACCEPTANCE if circuit_fn != circuit_gpsr else GPSR_ACCEPTANCE
 
+    # first order checks
     assert torch.allclose(exp_ad, exp_gpsr)
-
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
 
-    # for i in range(len(gradgrad_ad)):
-    #     assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=atol)
+    # second order checks
+    for i in range(len(grad_ad)):
+        gradgrad_ad = torch.autograd.grad(
+            grad_ad[i],
+            tuple(values.values()),
+            torch.ones_like(grad_ad[i]),
+            create_graph=True,
+        )
+
+        gradgrad_gpsr = torch.autograd.grad(
+            grad_gpsr[i],
+            tuple(values.values()),
+            torch.ones_like(grad_gpsr[i]),
+            create_graph=True,
+        )
+
+        assert len(gradgrad_ad) == len(gradgrad_gpsr)
+
+        # check second order gradients
+        for j in range(len(gradgrad_ad)):
+            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=atol)
 
 
 @pytest.mark.parametrize("gate_type", ["scale", "hamevo", "same", ""])

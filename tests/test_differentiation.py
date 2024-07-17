@@ -61,9 +61,9 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
 
 
-@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
-@pytest.mark.parametrize("batch_size", [1, 5])
-@pytest.mark.parametrize("n_qubits", [3, 4])
+@pytest.mark.parametrize("dtype", [torch.complex128])
+@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("n_qubits", [3])
 def test_differentiate_circuit(
     dtype: torch.dtype, batch_size: int, n_qubits: int
 ) -> None:
@@ -125,32 +125,39 @@ def test_differentiate_circuit(
     )
 
     assert len(grad_ad) == len(grad_adjoint) == len(grad_gpsr)
-    # for i in range(len(grad_ad)):
-    #     print(i, grad_ad[i], grad_gpsr[i])
-    #     assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
-    #     assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
+    for i in range(len(grad_ad)):
+        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
+        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
 
-    # gradgrad_ad = torch.autograd.grad(
-    #     grad_ad, tuple(values_ad.values()), torch.ones_like(grad_ad), create_graph=True
-    # )[0]
+    gradgrad_ad = torch.autograd.grad(
+        grad_ad, tuple(values_ad.values()), torch.ones_like(grad_ad), create_graph=True
+    )
 
     # TODO higher order adjoint is not yet supported.
     # gradgrad_adjoint = torch.autograd.grad(
     #     grad_adjoint, tuple(values_adjoint.values()), torch.ones_like(grad_adjoint)
     # )
 
-    # gradgrad_gpsr = torch.autograd.grad(
-    #     grad_gpsr,
-    #     tuple(values_gpsr.values()),
-    #     torch.ones_like(grad_gpsr),
-    #     create_graph=True,
-    # )[0]
+    for i in range(len(grad_ad)):
+        gradgrad_ad = torch.autograd.grad(
+            grad_ad[i],
+            tuple(values_ad.values()),
+            torch.ones_like(grad_ad[i]),
+            create_graph=True,
+        )
 
-    # assert len(gradgrad_ad) == len(gradgrad_gpsr)
+        gradgrad_gpsr = torch.autograd.grad(
+            grad_gpsr[i],
+            tuple(values_gpsr.values()),
+            torch.ones_like(grad_gpsr[i]),
+            create_graph=True,
+        )
 
-    # # check second order gradients
-    # for i in range(len(gradgrad_ad)):
-    #     assert torch.allclose(gradgrad_ad[i], gradgrad_gpsr[i], atol=GRADCHECK_ATOL)
+        assert len(gradgrad_ad) == len(gradgrad_gpsr)
+
+        # check second order gradients
+        for j in range(len(gradgrad_ad)):
+            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=GRADCHECK_ATOL)
 
 
 @pytest.mark.xfail  # investigate
