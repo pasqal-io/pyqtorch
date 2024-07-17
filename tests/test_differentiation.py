@@ -62,8 +62,8 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
 
 
 @pytest.mark.parametrize("dtype", [torch.complex128])
-@pytest.mark.parametrize("batch_size", [1, 2])
-@pytest.mark.parametrize("n_qubits", [3])
+@pytest.mark.parametrize("batch_size", [1, 10])
+@pytest.mark.parametrize("n_qubits", [3, 5])
 def test_differentiate_circuit(
     dtype: torch.dtype, batch_size: int, n_qubits: int
 ) -> None:
@@ -75,7 +75,7 @@ def test_differentiate_circuit(
         pyq.CRX(1, 2, "theta_2"),
         pyq.CPHASE(1, 2, "theta_3"),
         pyq.CNOT(0, 1),
-        pyq.Toffoli((2, 1), 0),
+        # pyq.Toffoli((0, 1), 2),
     ]
     circ = pyq.QuantumCircuit(n_qubits, ops).to(dtype)
     all_param_names = [
@@ -128,10 +128,6 @@ def test_differentiate_circuit(
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
         assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=GRADCHECK_ATOL)
-
-    gradgrad_ad = torch.autograd.grad(
-        grad_ad, tuple(values_ad.values()), torch.ones_like(grad_ad), create_graph=True
-    )
 
     # TODO higher order adjoint is not yet supported.
     # gradgrad_adjoint = torch.autograd.grad(

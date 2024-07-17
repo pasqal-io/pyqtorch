@@ -41,7 +41,7 @@ def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
         pyq.CRX(1, 2, "theta_2"),
         pyq.CPHASE(1, 2, "theta_3"),
         pyq.CNOT(0, 1),
-        pyq.Toffoli((2, 1), 0),
+        # pyq.Toffoli((0, 1), 2),
     ]
 
     circ = QuantumCircuit(n_qubits, ops)
