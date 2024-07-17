@@ -21,18 +21,31 @@ def run(
     values: dict[str, Tensor] = dict(),
     embedding: Embedding | None = None,
 ) -> Tensor:
-    """Sequentially apply each operation in `circuit.operations` to an input state `state`
-    given current parameter values `values`, perform an optional `embedding` on `values`
+    """Sequentially apply each operation in `circuit` to an input state `state`
+    given parameter values `values`, perform an optional `embedding` on `values`
     and return an output state.
 
     Arguments:
-    circuit: A pyqtorch.QuantumCircuit instance.
-    state: A torch.Tensor of shape [2, 2, ..., batch_size].
-    values: A dictionary containing <'parameter_name': torch.Tensor> pairs denoting
-            the current parameter values for each parameter in `circuit`.
-    embedding: An optional instance of `Embedding`.
+        circuit: A pyqtorch.QuantumCircuit instance.
+        state: A torch.Tensor of shape [2, 2, ..., batch_size].
+        values: A dictionary containing <'parameter_name': torch.Tensor> pairs denoting
+                the current parameter values for each parameter in `circuit`.
+        embedding: An optional instance of `Embedding`.
+
     Returns:
-         A torch.Tensor of shape [2, 2, ..., batch_size]
+         A torch.Tensor of shape [2, 2, ..., batch_size].
+
+    Example:
+
+    ```python exec="on" source="material-block" html="1"
+    from torch import rand
+    from pyqtorch import QuantumCircuit, RY, random_state, run
+
+    n_qubits = 2
+    circ = QuantumCircuit(n_qubits, [RY(0, 'theta')])
+    state = random_state(n_qubits)
+    run(circ, state, {'theta': rand(1)})
+    ```
     """
     if embedding is not None:
         values = embedding(values)
@@ -47,19 +60,33 @@ def sample(
     n_shots: int = 1000,
     embedding: Embedding | None = None,
 ) -> list[Counter]:
-    """Sample from `circuit` given an input state `state` given current parameter values `values`,
-       perform an optional `embedding` on `values` and return a list Counter objects mapping from
-       bitstring: num_samples.
+    """Sample from `circuit` given an input state `state` given
+    current parameter values `values`, perform an optional `embedding`
+    on `values` and return a list Counter objects mapping from
+    <bitstring: num_samples>.
 
     Arguments:
-    circuit: A pyqtorch.QuantumCircuit instance.
-    state: A torch.Tensor of shape [2, 2, ..., batch_size].
-    values: A dictionary containing <'parameter_name': torch.Tensor> pairs
-            denoting the current parameter values for each parameter in `circuit`.
-    n_shots: A positive int denoting the number of requested samples.
-    embedding: An optional instance of `Embedding`.
+        circuit: A pyqtorch.QuantumCircuit instance.
+        state: A torch.Tensor of shape [2, 2, ..., batch_size].
+        values: A dictionary containing <'parameter_name': torch.Tensor> pairs
+                denoting the current parameter values for each parameter in `circuit`.
+        n_shots: A positive int denoting the number of requested samples.
+        embedding: An optional instance of `Embedding`.
+
     Returns:
-         A list of Counter objects containing bitstring:num_samples pairs.
+         A list of Counter objects containing <bitstring: num_samples> pairs.
+
+    Example:
+
+    ```python exec="on" source="material-block" html="1"
+    from torch import rand
+    from pyqtorch import random_state, sample, QuantumCircuit, RY
+
+    n_qubits = 2
+    circ = QuantumCircuit(n_qubits, [RY(0, 'theta')])
+    state = random_state(n_qubits)
+    sample(circ, state, {'theta': rand(1)}, n_shots=1000)[0]
+    ```
     """
     logger.debug(
         f"Sampling circuit {circuit} on state {state} and values {values} with n_shots {n_shots}."
@@ -71,14 +98,16 @@ def sample(
 
 def expectation(
     circuit: QuantumCircuit,
-    state: Tensor,
-    values: dict[str, Tensor],
-    observable: Observable,
+    state: Tensor = None,
+    values: dict[str, Tensor] = dict(),
+    observable: Observable = None,  # type: ignore[assignment]
     diff_mode: DiffMode = DiffMode.AD,
     embedding: Embedding | None = None,
 ) -> Tensor:
-    """Compute the expectation value of `circuit` given a `state`, parameter values `values`
-        given an `observable` and optionally compute gradients using diff_mode.
+    """Compute the expectation value of `circuit` given a `state`,
+    parameter values `values` and an `observable`
+    and optionally compute gradients using diff_mode.
+
     Arguments:
         circuit: A pyqtorch.QuantumCircuit instance.
         state: A torch.Tensor of shape [2, 2, ..., batch_size].
@@ -87,8 +116,25 @@ def expectation(
         observable: A pyq.Observable instance.
         diff_mode: The differentiation mode.
         embedding: An optional instance of `Embedding`.
+
     Returns:
         An expectation value.
+
+    Example:
+
+    ```python exec="on" source="material-block" html="1"
+    from torch import pi, ones_like, tensor
+    from pyqtorch import random_state, RY, expectation, DiffMode, Observable, Add, Z, QuantumCircuit
+    from torch.autograd import grad
+
+    n_qubits = 2
+    circ = QuantumCircuit(n_qubits, [RY(0, 'theta')])
+    state = random_state(n_qubits)
+    theta = tensor(pi, requires_grad=True)
+    observable = Observable(n_qubits, Add([Z(i) for i in range(n_qubits)]))
+    expval = expectation(circ, state, {'theta': theta}, observable, diff_mode = DiffMode.ADJOINT)
+    dfdtheta= grad(expval, theta, ones_like(expval))[0]
+    ```
     """
     if embedding is not None and diff_mode != DiffMode.AD:
         raise NotImplementedError("Only diff_mode AD supports embedding")
