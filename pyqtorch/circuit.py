@@ -19,7 +19,7 @@ from pyqtorch.embed import Embedding
 from pyqtorch.matrices import IMAT, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import State, product_state, zero_state
+from pyqtorch.utils import State, product_state, sample_from_state, zero_state
 
 logger = getLogger(__name__)
 
@@ -192,33 +192,10 @@ class QuantumCircuit(Sequence):
         n_shots: int = 1000,
         embedding: Embedding | None = None,
     ) -> list[Counter]:
-        if n_shots < 1:
-            raise ValueError("You can only call sample with n_shots>0.")
-
-        def sample(probs: Tensor) -> Counter:
-            return Counter(
-                {
-                    format(k, "0{}b".format(self.n_qubits)): count.item()
-                    for k, count in enumerate(
-                        torch.bincount(
-                            torch.multinomial(
-                                input=probs, num_samples=n_shots, replacement=True
-                            )
-                        )
-                    )
-                    if count > 0
-                }
-            )
-
-        with torch.no_grad():
-            state = torch.flatten(
-                self.run(state=state, values=values, embedding=embedding),
-                start_dim=0,
-                end_dim=-2,
-            ).t()
-
-            probs = torch.abs(torch.pow(state, 2))
-            return list(map(lambda p: sample(p), probs))
+        return sample_from_state(
+            state=self.run(state=state, values=values, embedding=embedding),
+            n_shots=n_shots,
+        )
 
 
 class Merge(Sequence):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache, partial, wraps
@@ -458,3 +459,34 @@ class SolverType(StrEnum):
 
     KRYLOV_SE = "krylov_se"
     """Uses Krylov Schrodinger equation solver"""
+
+
+def sample_from_state(state: torch.Tensor, n_shots: int = 1) -> list[Counter]:
+    """Functional version of sample which accepts a `state` and samples from it `n_shots` times."""
+    if n_shots < 1:
+        raise ValueError("You can only call sample with n_shots>0.")
+    n_qubits = len(state.shape) - 1
+
+    def sample(probs: Tensor) -> Counter:
+        return Counter(
+            {
+                format(k, "0{}b".format(n_qubits)): count.item()
+                for k, count in enumerate(
+                    torch.bincount(
+                        torch.multinomial(
+                            input=probs, num_samples=n_shots, replacement=True
+                        )
+                    )
+                )
+                if count > 0
+            }
+        )
+
+    with torch.no_grad():
+        state = torch.flatten(
+            state,
+            start_dim=0,
+            end_dim=-2,
+        ).t()
+        probs = torch.abs(torch.pow(state, 2))
+        return list(map(lambda p: sample(p), probs))
