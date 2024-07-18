@@ -3,7 +3,7 @@
 An analog operation is one whose unitary is best described by the evolution of some hermitian generator, or Hamiltonian, acting on an arbitrary number of qubits. For a time-independent generator $\mathcal{H}$ and some time variable $t$, the evolution operator is $\exp(-i\mathcal{H}t)$. `pyqtorch` provides the HamiltonianEvolution class to initialize analog operations. There exists several ways to pass a generator, and we present them next.
 
 !!! warning "Dimensionless units"
-    The quantity $\mathcal{H}t$ is considered **dimensionless** for exponentiation in PyQTorch.
+    The quantity $\mathcal{H}t$ has to be **dimensionless** for exponentiation in PyQTorch.
 
 ### Tensor generator
 
