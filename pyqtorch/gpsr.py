@@ -7,7 +7,7 @@ import torch
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
+from pyqtorch.analog import HamiltonianEvolution, Observable, Scale, GeneratorType
 from pyqtorch.circuit import QuantumCircuit, Sequence
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
@@ -289,9 +289,13 @@ def check_support_psr(circuit: QuantumCircuit):
 
     param_names = list()
     for op in circuit.operations:
-        if isinstance(op, Scale) or isinstance(op, HamiltonianEvolution):
+        if isinstance(op, Scale):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
+            )
+        if isinstance(op, HamiltonianEvolution) and op.generator_type == GeneratorType.SYMBOL:
+            raise ValueError(
+                f"PSR is not applicable as circuit contains an operation of type: {type(op)} whose generator type is {op.generator_type}."
             )
         if isinstance(op, Sequence):
             for subop in op.flatten():
