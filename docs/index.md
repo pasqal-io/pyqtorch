@@ -94,7 +94,7 @@ assert is_normalized(psi_end, atol=1e-05)
 ```
 
 !!! warning "Dimensionless units"
-    The quantity $\mathcal{H}t$ is considered **dimensionless** for exponentiation in `pyqtorch`.
+    The quantity $\mathcal{H}t$ has to be considered **dimensionless** for exponentiation in `pyqtorch`.
 
 ## Circuits
 
