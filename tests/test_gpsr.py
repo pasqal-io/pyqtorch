@@ -141,7 +141,8 @@ def test_expectation_gpsr(
 
 
 @pytest.mark.parametrize("gate_type", ["scale", "hamevo", "same", ""])
-def test_compatibility_gpsr(gate_type: str) -> None:
+@pytest.mark.parametrize("sequence_circuit", [True, False])
+def test_compatibility_gpsr(gate_type: str, sequence_circuit: bool) -> None:
 
     pname = "theta_0"
     if gate_type == "scale":
@@ -157,7 +158,10 @@ def test_compatibility_gpsr(gate_type: str) -> None:
         # check that CNOT is not tested on spectral gap call
         ops = [pyq.RY(0, pname), pyq.CNOT(0, 1)]
 
-    circ = pyq.QuantumCircuit(2, ops)
+    if sequence_circuit:
+        circ = pyq.QuantumCircuit(2, pyq.Sequence(ops))
+    else:
+        circ = pyq.QuantumCircuit(2, ops)
     obs = pyq.Observable(2, [pyq.Z(0)])
     state = pyq.zero_state(2)
 
