@@ -297,7 +297,8 @@ def check_support_psr(circuit: QuantumCircuit):
             for subop in op.flatten():
                 if isinstance(subop, Scale) or isinstance(subop, HamiltonianEvolution):
                     raise ValueError(
-                        f"PSR is not applicable as circuit contains an operation of type: {type(subop)}."
+                        f"PSR is not applicable as circuit contains \
+                        an operation of type: {type(subop)}."
                     )
                 if isinstance(subop, Parametric):
                     if isinstance(subop.param_name, str):
