@@ -295,13 +295,13 @@ def check_support_psr(circuit: QuantumCircuit):
             )
         if isinstance(op, Sequence):
             for subop in op.flatten():
+                if isinstance(subop, Scale) or isinstance(subop, HamiltonianEvolution):
+                    raise ValueError(
+                        f"PSR is not applicable as circuit contains an operation of type: {type(subop)}."
+                    )
                 if isinstance(subop, Parametric):
                     if isinstance(subop.param_name, str):
-                        if len(subop.spectral_gap) > 1:
-                            raise NotImplementedError("Multi-gap is not yet supported.")
                         param_names.append(subop.param_name)
-                if len(subop.spectral_gap) > 1:
-                    raise NotImplementedError("Multi-gap is not yet supported.")
         elif isinstance(op, Parametric):
             if isinstance(op.param_name, str):
                 param_names.append(op.param_name)
