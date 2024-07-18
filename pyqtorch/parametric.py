@@ -211,7 +211,7 @@ class RX(Parametric):
     def __init__(
         self,
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes RX.
 
@@ -250,7 +250,7 @@ class RY(Parametric):
     def __init__(
         self,
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes RY.
 
@@ -289,7 +289,7 @@ class RZ(Parametric):
     def __init__(
         self,
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes RZ.
 
@@ -328,7 +328,7 @@ class PHASE(Parametric):
     def __init__(
         self,
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes PHASE.
 
@@ -407,7 +407,7 @@ class ControlledRotationGate(Parametric):
         gate: str,
         control: int | Tuple[int, ...],
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes a ControlledRotationGate.
 
@@ -510,7 +510,7 @@ class CRX(ControlledRotationGate):
         self,
         control: int | Tuple[int, ...],
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes controlled RX.
 
@@ -538,7 +538,9 @@ class CRX(ControlledRotationGate):
                     device=self.device,
                     dtype=self.dtype,
                 ),
-                torch.linalg.eigvalsh(self.pauli),
+                pauli_singleq_eigenvalues.flatten().to(
+                    device=self.device, dtype=self.dtype
+                ),
             )
         ).reshape(-1, 1)
 
@@ -552,7 +554,7 @@ class CRY(ControlledRotationGate):
         self,
         control: int | Tuple[int, ...],
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes controlled RY.
 
@@ -596,7 +598,7 @@ class CRZ(ControlledRotationGate):
         self,
         control: int | Tuple[int, ...],
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes controlled RZ.
 
@@ -642,7 +644,7 @@ class CPHASE(ControlledRotationGate):
         self,
         control: int | Tuple[int, ...],
         target: int,
-        param_name: str = "",
+        param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes controlled PHASE.
 

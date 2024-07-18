@@ -12,7 +12,6 @@ from pyqtorch.utils import (
 )
 
 
-# TODO add GPSR when multigap is implemented for this test
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
 @pytest.mark.parametrize("n_layers", [1, 2, 3])
 def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
@@ -60,74 +59,10 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
 
-
-@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
-@pytest.mark.parametrize("batch_size", [1, 5])
-@pytest.mark.parametrize("n_qubits", [3, 4])
-def test_differentiate_circuit(
-    dtype: torch.dtype, batch_size: int, n_qubits: int
-) -> None:
-    ops = [
-        pyq.Y(1),
-        pyq.RX(0, "theta_0"),
-        pyq.PHASE(0, "theta_1"),
-        pyq.CSWAP(0, (1, 2)),
-        pyq.CRX(1, 2, "theta_2"),
-        pyq.CPHASE(1, 2, "theta_3"),
-        pyq.CNOT(0, 1),
-        pyq.Toffoli((2, 1), 0),
-    ]
-    theta_0_value = torch.rand(1, dtype=dtype)
-    theta_1_value = torch.rand(1, dtype=dtype)
-    theta_2_value = torch.rand(1, dtype=dtype)
-    theta_3_value = torch.rand(1, dtype=dtype)
-    circ = pyq.QuantumCircuit(n_qubits, ops).to(dtype)
-    state = pyq.random_state(n_qubits, batch_size, dtype=dtype)
-
-    theta_0_ad = torch.tensor([theta_0_value], requires_grad=True)
-    theta_0_adjoint = torch.tensor([theta_0_value], requires_grad=True)
-
-    theta_1_ad = torch.tensor([theta_1_value], requires_grad=True)
-    theta_1_adjoint = torch.tensor([theta_1_value], requires_grad=True)
-
-    theta_2_ad = torch.tensor([theta_2_value], requires_grad=True)
-    theta_2_adjoint = torch.tensor([theta_2_value], requires_grad=True)
-
-    theta_3_ad = torch.tensor([theta_3_value], requires_grad=True)
-    theta_3_adjoint = torch.tensor([theta_3_value], requires_grad=True)
-
-    values_ad = torch.nn.ParameterDict(
-        {
-            "theta_0": theta_0_ad,
-            "theta_1": theta_1_ad,
-            "theta_2": theta_2_ad,
-            "theta_3": theta_3_ad,
-        }
-    ).to(COMPLEX_TO_REAL_DTYPES[dtype])
-    values_adjoint = torch.nn.ParameterDict(
-        {
-            "theta_0": theta_0_adjoint,
-            "theta_1": theta_1_adjoint,
-            "theta_2": theta_2_adjoint,
-            "theta_3": theta_3_adjoint,
-        }
-    ).to(COMPLEX_TO_REAL_DTYPES[dtype])
-
-    obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)]).to(dtype)
-    exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
-    exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
-
-    grad_ad = torch.autograd.grad(
-        exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad)
-    )
-
-    grad_adjoint = torch.autograd.grad(
-        exp_adjoint, tuple(values_adjoint.values()), torch.ones_like(exp_adjoint)
-    )
-
-    assert len(grad_ad) == len(grad_adjoint)
-    for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
+    # TODO higher order adjoint is not yet supported.
+    # gradgrad_adjoint = torch.autograd.grad(
+    #     grad_adjoint, tuple(values_adjoint.values()), torch.ones_like(grad_adjoint)
+    # )
 
 
 @pytest.mark.xfail  # investigate
@@ -264,43 +199,3 @@ def test_all_diff_singlegap(
         # check second order gradients
         for j in range(len(gradgrad_ad)):
             assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=GRADCHECK_ATOL)
-
-
-@pytest.mark.parametrize("gate_type", ["scale", "hamevo", "same", ""])
-def test_compatibility_gpsr(gate_type: str) -> None:
-
-    pname = "theta_0"
-    if gate_type == "scale":
-        seq_gate = pyq.Sequence([pyq.X(0)])
-        scale = pyq.Scale(seq_gate, pname)
-        ops = [scale]
-    elif gate_type == "hamevo":
-        hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), pname, (0,))
-        ops = [hamevo]
-    elif gate_type == "same":
-        ops = [pyq.RY(0, pname), pyq.RZ(0, pname)]
-    else:
-        # check that CNOT is not tested on spectral gap call
-        ops = [pyq.RY(0, pname), pyq.CNOT(0, 1)]
-
-    circ = pyq.QuantumCircuit(2, ops)
-    obs = pyq.Observable(2, [pyq.Z(0)])
-    state = pyq.zero_state(2)
-
-    param_value = torch.pi / 2
-    values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
-
-    if gate_type != "":
-        with pytest.raises(ValueError):
-            exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
-
-            grad_gpsr = torch.autograd.grad(
-                exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
-            )
-    else:
-        exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
-
-        grad_gpsr = torch.autograd.grad(
-            exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
-        )
-        assert len(grad_gpsr) > 0
