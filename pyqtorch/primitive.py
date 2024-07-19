@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from functools import cached_property
 from logging import getLogger
 from typing import Any
 
@@ -9,6 +10,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     IMAT,
     OPERATIONS_DICT,
@@ -37,7 +39,12 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 
 
 class Primitive(torch.nn.Module):
-    def __init__(self, pauli: Tensor, target: int | tuple[int, ...]) -> None:
+    def __init__(
+        self,
+        pauli: Tensor,
+        target: int | tuple[int, ...],
+        pauli_generator: Tensor | None = None,
+    ) -> None:
         super().__init__()
         self.target: int | tuple[int, ...] = target
 
@@ -47,6 +54,7 @@ class Primitive(torch.nn.Module):
         if isinstance(target, np.integer):
             self.qubit_support = (target.item(),)
         self.register_buffer("pauli", pauli)
+        self.pauli_generator = pauli_generator
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
 
@@ -64,29 +72,43 @@ class Primitive(torch.nn.Module):
     def extra_repr(self) -> str:
         return f"{self.qubit_support}"
 
-    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+    def unitary(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
     ) -> Tensor:
         if isinstance(state, DensityMatrix):
             # TODO: fix error type int | tuple[int, ...] expected "int"
             # Only supports single-qubit gates
             return DensityMatrix(
                 operator_product(
-                    self.unitary(values),
+                    self.unitary(values, embedding),
                     operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
                     self.target,  # type: ignore [arg-type]
                 )
             )
         else:
             return apply_operator(
-                state, self.unitary(values), self.qubit_support, len(state.size()) - 1
+                state,
+                self.unitary(values, embedding),
+                self.qubit_support,
+                len(state.size()) - 1,
             )
 
-    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return _dagger(self.unitary(values))
+    def dagger(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        return _dagger(self.unitary(values, embedding))
 
     @property
     def device(self) -> torch.device:
@@ -101,6 +123,34 @@ class Primitive(torch.nn.Module):
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
         return self
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Note that for a primitive, the generator is unclear
+        so we execute pass.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        if self.pauli_generator is not None:
+            return torch.linalg.eigvalsh(self.pauli_generator).reshape(-1, 1)
+        pass
+
+    @cached_property
+    def spectral_gap(self) -> Tensor:
+        """Difference between the moduli of the two largest eigenvalues of the generator.
+
+        Returns:
+            Tensor: Spectral gap value.
+        """
+        spectrum = self.eigenvals_generator
+        spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
+        return spectral_gap[spectral_gap.nonzero()]
 
     def tensor(
         self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
@@ -146,7 +196,12 @@ class I(Primitive):  # noqa: E742
     def __init__(self, target: int):
         super().__init__(OPERATIONS_DICT["I"], target)
 
-    def forward(self, state: Tensor, values: dict[str, Tensor] = dict()) -> Tensor:
+    def forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         return state
 
 
@@ -162,12 +217,14 @@ class T(Primitive):
 
 class S(Primitive):
     def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["S"], target)
+        super().__init__(OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"])
 
 
 class SDagger(Primitive):
     def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["SDAGGER"], target)
+        super().__init__(
+            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"]
+        )
 
 
 class Projector(Primitive):

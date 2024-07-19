@@ -13,6 +13,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
@@ -92,7 +93,10 @@ class Scale(Sequence):
         assert len(self.operations) == 1
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> State:
         """
         Apply the operation(s) multiplying by the parameter value.
@@ -110,7 +114,12 @@ class Scale(Sequence):
             else self._forward(state, values)
         )
 
-    def _forward(self, state: Tensor, values: dict[str, Tensor]) -> State:
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor],
+        embedding: Embedding | None = None,
+    ) -> State:
         """
         Apply the single operation of Scale multiplied by the parameter value.
 
@@ -125,7 +134,9 @@ class Scale(Sequence):
             state, self.unitary(values), self.operations[0].qubit_support
         )
 
-    def unitary(self, values: dict[str, Tensor]) -> Operator:
+    def unitary(
+        self, values: dict[str, Tensor], embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary.
 
@@ -140,9 +151,11 @@ class Scale(Sequence):
             if isinstance(self.param_name, str)
             else self.param_name
         )
-        return thetas * self.operations[0].unitary(values)
+        return thetas * self.operations[0].unitary(values, embedding)
 
-    def dagger(self, values: dict[str, Tensor]) -> Operator:
+    def dagger(
+        self, values: dict[str, Tensor], embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary of the dagger.
 
@@ -152,9 +165,11 @@ class Scale(Sequence):
         Returns:
             The unitary representation of the dagger.
         """
-        return _dagger(self.unitary(values))
+        return _dagger(self.unitary(values, embedding))
 
-    def jacobian(self, values: dict[str, Tensor]) -> Operator:
+    def jacobian(
+        self, values: dict[str, Tensor], embedding: Embedding | None = None
+    ) -> Operator:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -240,7 +255,10 @@ class Add(Sequence):
         super().__init__(operations=operations)
 
     def forward(
-        self, state: State, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: State,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> State:
         """
         Apply the operations multiplying by the parameter values.
@@ -305,7 +323,12 @@ class Observable(Sequence):
             n_qubits = max(self.qubit_support) + 1
         self.n_qubits = n_qubits
 
-    def run(self, state: Tensor, values: dict[str, Tensor]) -> State:
+    def run(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor],
+        embedding: Embedding | None = None,
+    ) -> State:
         """
         Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
 
@@ -321,7 +344,10 @@ class Observable(Sequence):
         return state
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
 
@@ -372,7 +398,12 @@ class DiagonalObservable(Primitive):
         self.qubit_support = operations.qubit_support
         self.n_qubits = n_qubits
 
-    def run(self, state: Tensor, values: dict[str, Tensor]) -> Tensor:
+    def run(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor],
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         """
         Apply the observable onto a state to obtain :math:`\\|O\\ket\\rangle`.
 
@@ -392,7 +423,10 @@ class DiagonalObservable(Primitive):
         ).reshape([2] * self.n_qubits + [state.shape[-1]])
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
 
@@ -456,6 +490,8 @@ class HamiltonianEvolution(Sequence):
     """
     The HamiltonianEvolution corresponds to :math:`t`, returns :math:`exp(-i H, t)` where
     a hamiltonian/generator :math:`H` and a time evolution :math:`t` are given.
+
+    Note that the quantity :math:`H.t` is considered dimensionless.
 
     We can create such operation by passing different generator types:
         - A tensor representation of the generator,
@@ -616,7 +652,10 @@ class HamiltonianEvolution(Sequence):
         return self._generator_map[self.generator_type]
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> State:
         """
         Apply the hamiltonian evolution with input parameter values.

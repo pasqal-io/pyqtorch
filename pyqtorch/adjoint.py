@@ -9,6 +9,7 @@ from torch.autograd import Function
 from pyqtorch.analog import Observable, Scale
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.embed import Embedding
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import inner_prod, param_dict
@@ -48,16 +49,22 @@ class AdjointExpectation(Function):
     def forward(
         ctx: Any,
         circuit: QuantumCircuit,
-        observable: Observable,
         state: Tensor,
+        observable: Observable,
+        embedding: Embedding | None,
         param_names: list[str],
         *param_values: Tensor,
     ) -> Tensor:
         ctx.circuit = circuit
         ctx.observable = observable
+        ctx.embedding = embedding
         ctx.param_names = param_names
         values = param_dict(param_names, param_values)
-        ctx.out_state = circuit.run(state, values)
+        if embedding is not None:
+            msg = "AdjointExpectation does not support Embedding."
+            logger.error(msg)
+            raise NotImplementedError(msg)
+        ctx.out_state = circuit.run(state, values, embedding)
         ctx.projected_state = observable.run(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
         return inner_prod(ctx.out_state, ctx.projected_state).real
@@ -71,12 +78,14 @@ class AdjointExpectation(Function):
         for op in ctx.circuit.flatten()[::-1]:
             if isinstance(op, Primitive):
                 ctx.out_state = apply_operator(
-                    ctx.out_state, op.dagger(values), op.qubit_support
+                    ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
                 )
                 if isinstance(op, Parametric) and isinstance(op.param_name, str):
                     if values[op.param_name].requires_grad:
                         mu = apply_operator(
-                            ctx.out_state, op.jacobian(values), op.qubit_support
+                            ctx.out_state,
+                            op.jacobian(values, ctx.embedding),
+                            op.qubit_support,
                         )
                         grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
                     if grads_dict[op.param_name] is not None:
@@ -85,7 +94,9 @@ class AdjointExpectation(Function):
                         grads_dict[op.param_name] = grad
 
                 ctx.projected_state = apply_operator(
-                    ctx.projected_state, op.dagger(values), op.qubit_support
+                    ctx.projected_state,
+                    op.dagger(values, ctx.embedding),
+                    op.qubit_support,
                 )
             elif isinstance(op, Scale):
                 if not len(op.operations) == 1 and isinstance(
@@ -95,7 +106,7 @@ class AdjointExpectation(Function):
                         "Adjoint can only be used on Scale with Primitive blocks."
                     )
                 ctx.out_state = apply_operator(
-                    ctx.out_state, op.dagger(values), op.qubit_support
+                    ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
                 )
                 scaled_pyq_op = op.operations[0]
                 if (
@@ -105,7 +116,7 @@ class AdjointExpectation(Function):
                 ):
                     mu = apply_operator(
                         ctx.out_state,
-                        scaled_pyq_op.jacobian(values),
+                        scaled_pyq_op.jacobian(values, ctx.embedding),
                         scaled_pyq_op.qubit_support,
                     )
                     grads_dict[scaled_pyq_op.param_name] = (
@@ -115,10 +126,12 @@ class AdjointExpectation(Function):
                 if values[op.param_name].requires_grad:
                     grads_dict[op.param_name] = grad_out * 2 * -values[op.param_name]
                 ctx.projected_state = apply_operator(
-                    ctx.projected_state, op.dagger(values), op.qubit_support
+                    ctx.projected_state,
+                    op.dagger(values, ctx.embedding),
+                    op.qubit_support,
                 )
             else:
                 logger.error(
                     f"AdjointExpectation does not support operation: {type(op)}."
                 )
-        return (None, None, None, None, *grads_dict.values())
+        return (None, None, None, None, None, *grads_dict.values())
