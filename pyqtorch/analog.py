@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
-from functools import reduce
+from functools import cached_property, reduce
 from logging import getLogger
 from operator import add
 from typing import Any, Callable, Tuple, Union
@@ -598,6 +598,37 @@ class HamiltonianEvolution(Sequence):
             The generator as a ModuleList.
         """
         return self.operations
+
+    def is_generator_fixed(self) -> bool:
+        """Helper for GPSR.
+
+        Returns:
+            bool: True if GeneratorType is TENSOR
+                 or OPERATION
+        """
+        return (self.generator_type == GeneratorType.TENSOR) or (
+            self.generator_type == GeneratorType.OPERATION
+        )
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.linalg.eigvalsh(self._tensor_generator()).reshape(-1, 1)
+
+    @cached_property
+    def spectral_gap(self) -> Tensor:
+        """Difference between the moduli of the two largest eigenvalues of the generator.
+
+        Returns:
+            Tensor: Spectral gap value.
+        """
+        spectrum = self.eigenvals_generator
+        spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
+        return spectral_gap[spectral_gap.nonzero()]
 
     def _symbolic_generator(self, values: dict) -> Operator:
         """Returns the generator for the SYMBOL case.

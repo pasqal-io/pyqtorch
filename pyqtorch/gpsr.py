@@ -276,12 +276,30 @@ class PSRExpectation(Function):
         for op in ctx.circuit.flatten():
             if isinstance(op, Parametric) and isinstance(op.param_name, str):
                 update_grad(op, op.param_name)
-            elif isinstance(op, HamiltonianEvolution) and isinstance(op.time, str):
+            elif is_supported_hamevo_op(op):
                 update_grad(op, op.time)
             else:
                 continue
 
         return (None, None, None, None, None, *[grads[p] for p in ctx.param_names])
+
+
+def is_supported_hamevo_op(op: torch.nn.Module) -> bool:
+    """Check if op is a supported HamiltonianEvolution by GPSR.
+
+    Args:
+        op (torch.nn.Module): Operation.
+
+    Returns:
+        bool: True if op HamiltonianEvolution
+        and generator is fixed
+        and time is str.
+    """
+    return (
+        isinstance(op, HamiltonianEvolution)
+        and op.is_generator_fixed()
+        and isinstance(op.time, str)
+    )
 
 
 def check_support_psr(circuit: QuantumCircuit):
@@ -303,9 +321,8 @@ def check_support_psr(circuit: QuantumCircuit):
             )
         elif isinstance(op, Parametric) and isinstance(op.param_name, str):
             param_names.append(op.param_name)
-        elif isinstance(op, HamiltonianEvolution):
-            if isinstance(op.time, str):
-                param_names.append(op.time)
+        elif is_supported_hamevo_op(op):
+            param_names.append(op.time)
         else:
             continue
 

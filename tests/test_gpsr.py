@@ -15,6 +15,8 @@ from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import GPSR_ACCEPTANCE
 
+atol = GPSR_ACCEPTANCE
+
 
 def circuit_psr(n_qubits: int) -> QuantumCircuit:
     """Helper function to make an example circuit using single gap PSR."""
@@ -105,8 +107,6 @@ def apply_gpsr_and_compare_to_autograd(
     grad_gpsr = torch.autograd.grad(
         exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
     )
-
-    atol = GPSR_ACCEPTANCE
 
     # first order checks
 
