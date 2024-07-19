@@ -103,7 +103,7 @@ def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) ->
 #             *[op(q) for op, q in zip(ops, qubit_targets)],
 #         ],
 #     )
-#     generator = generator.tensor(n_qubits=n_qubits)
+#     generator = generator.tensor()
 #     generator = generator + torch.conj(torch.transpose(generator, 0, 1))
 #     hamevo = pyq.HamiltonianEvolution(
 #         generator, vparam, tuple(range(n_qubits)), parametric
@@ -112,7 +112,7 @@ def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) ->
 #     vals = {vparam: torch.tensor([0.5])}
 #     psi = random_state(n_qubits)
 #     psi_star = hamevo(psi, vals)
-#     psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
+#     psi_expected = _calc_mat_vec_wavefunction(hamevo, psi, vals)
 #     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
@@ -149,7 +149,7 @@ def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) ->
 #     vals = {tparam: torch.tensor([0.5])}
 #     psi = random_state(n_qubits)
 #     psi_star = hamevo(psi, vals)
-#     psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
+#     psi_expected = _calc_mat_vec_wavefunction(hamevo, psi, vals)
 #     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 

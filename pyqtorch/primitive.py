@@ -216,7 +216,7 @@ class Projector(Primitive):
         bra_state = product_state(bra).flatten()
         super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), support[-1])
         # Override the attribute in AbstractOperator.
-        self.qubit_support = support
+        self.qubit_support = tuple(sorted(support))
 
 
 class N(Primitive):
