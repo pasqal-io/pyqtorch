@@ -23,38 +23,49 @@ from pyqtorch.utils import (
 pi = torch.tensor(torch.pi)
 
 
+@pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("n_qubits", [4, 5])
-@pytest.mark.parametrize("batch_size", [1, 3, 5])
-def test_digital_tensor(n_qubits: int, batch_size: int) -> None:
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_digital_tensor(n_qubits: int, batch_size: int, use_full_support: bool) -> None:
     for op in OPS_DIGITAL:
         if op in OPS_1Q:
             supp: tuple = (random.randint(0, n_qubits - 1),)
         elif op in OPS_2Q:
             supp = (0, random.randint(1, n_qubits - 1))
+            supp = tuple(random.sample(supp, 2))
         elif op in OPS_3Q:
-            i, j, k = 0, 1, random.randint(2, n_qubits - 1)
+            supp = (0, 1, random.randint(2, n_qubits - 1))
+            i, j, k = tuple(random.sample(supp, 3))
             supp = ((i, j), k) if op == Toffoli else (i, (j, k))
         op_concrete = op(*supp)
         psi_init = random_state(n_qubits, batch_size)
         psi_star = op_concrete(psi_init)
-        psi_expected = _calc_mat_vec_wavefunction(op_concrete, psi_init)
+        full_support = tuple(range(n_qubits)) if use_full_support else None
+        psi_expected = _calc_mat_vec_wavefunction(
+            op_concrete, psi_init, full_support=full_support
+        )
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("batch_size", [1, 3, 5])
+@pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("n_qubits", [4, 5])
-def test_param_tensor(n_qubits: int, batch_size: int) -> None:
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) -> None:
     for op in OPS_PARAM:
         if op in OPS_PARAM_1Q:
             supp: tuple = (random.randint(0, n_qubits - 1),)
         elif op in OPS_PARAM_2Q:
-            supp = (random.randint(1, n_qubits - 1), 0)
+            supp = (0, random.randint(1, n_qubits - 1))
+            supp = tuple(random.sample(supp, 2))
         params = [f"th{i}" for i in range(op.n_params)]  # type: ignore [union-attr]
         values = {param: torch.rand(batch_size) for param in params}
         op_concrete = op(*supp, *params)
         psi_init = random_state(n_qubits)
         psi_star = op_concrete(psi_init, values)
-        psi_expected = _calc_mat_vec_wavefunction(op_concrete, psi_init, values=values)
+        full_support = tuple(range(n_qubits)) if use_full_support else None
+        psi_expected = _calc_mat_vec_wavefunction(
+            op_concrete, psi_init, values=values, full_support=full_support
+        )
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 

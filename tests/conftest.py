@@ -32,7 +32,10 @@ from pyqtorch.utils import (
 
 
 def _calc_mat_vec_wavefunction(
-    block: Primitive, init_state: torch.Tensor, values: dict = {}
+    block: Primitive,
+    init_state: torch.Tensor,
+    values: dict = {},
+    full_support: tuple | None = None,
 ) -> torch.Tensor:
     """Get the result of applying the matrix representation of a block to an initial state.
 
@@ -45,11 +48,12 @@ def _calc_mat_vec_wavefunction(
         Tensor: The new wavefunction after applying the block.
 
     """
-    mat = block.tensor(values=values)
+    mat = block.tensor(values=values, full_support=full_support)
+    qubits = block.qubit_support if full_support is None else full_support
     return apply_operator(
         init_state,
         mat,
-        qubits=block.qubit_support,
+        qubits=qubits,
     )
 
 

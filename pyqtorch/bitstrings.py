@@ -13,9 +13,10 @@ def _basis_order(qs: tuple[int]) -> list[int]:
     """
     n_qubits = len(qs)
     qs_ordered = np.argsort(qs)
+    qs_ranked = np.argsort(qs_ordered)
     basis_strings = [format(k, "0{}b".format(n_qubits)) for k in range(2**n_qubits)]
     basis_list = np.array([list(map(int, tuple(basis))) for basis in basis_strings])
-    basis_ordered = [basis[qs_ordered] for basis in basis_list]
+    basis_ordered = [basis[qs_ranked] for basis in basis_list]
     return [
         sum(basis[i] * (2 ** (n_qubits - (i + 1))) for i in range(n_qubits)).item()
         for basis in basis_ordered
