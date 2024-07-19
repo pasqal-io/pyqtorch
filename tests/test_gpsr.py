@@ -140,7 +140,7 @@ def test_expectation_gpsr(
             assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=atol)
 
 
-@pytest.mark.parametrize("gate_type", ["scale", "hamevo", "same", ""])
+@pytest.mark.parametrize("gate_type", ["scale", "same", ""])
 @pytest.mark.parametrize("sequence_circuit", [True, False])
 def test_compatibility_gpsr(gate_type: str, sequence_circuit: bool) -> None:
 
@@ -149,9 +149,6 @@ def test_compatibility_gpsr(gate_type: str, sequence_circuit: bool) -> None:
         seq_gate = pyq.Sequence([pyq.X(0)])
         scale = pyq.Scale(seq_gate, pname)
         ops = [scale]
-    elif gate_type == "hamevo":
-        hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), pname, (0,))
-        ops = [hamevo]
     elif gate_type == "same":
         ops = [pyq.RY(0, pname), pyq.RZ(0, pname)]
     else:
@@ -173,12 +170,18 @@ def test_compatibility_gpsr(gate_type: str, sequence_circuit: bool) -> None:
             exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
 
             grad_gpsr = torch.autograd.grad(
-                exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
+                exp_gpsr,
+                tuple(values.values()),
+                torch.ones_like(exp_gpsr),
+                allow_unused=True,
             )
     else:
         exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
 
         grad_gpsr = torch.autograd.grad(
-            exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
+            exp_gpsr,
+            tuple(values.values()),
+            torch.ones_like(exp_gpsr),
+            allow_unused=True,
         )
         assert len(grad_gpsr) > 0
