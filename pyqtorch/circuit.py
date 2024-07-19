@@ -242,7 +242,10 @@ class DropoutQuantumCircuit(QuantumCircuit):
         self.dropout_fn = getattr(self, dropout_mode)
 
     def forward(
-        self, state: State, values: dict[str, Tensor] | ParameterDict = {}
+        self,
+        state: State,
+        values: dict[str, Tensor] | ParameterDict = {},
+        embedding: Embedding | None = None,
     ) -> State:
         if self.training:
             state = self.dropout_fn(state, values)

@@ -25,7 +25,7 @@ np.random.seed(seed)
 # choose device and hyperparameters
 
 device = torch.device("cpu")
-n_qubits = 5
+n_qubits = 2 # a greater performance difference is observed with 5 or more qubits
 depth = 5 # a greater performance difference is observed at depth 10
 lr = 0.01
 n_points = 20
