@@ -8,7 +8,7 @@ from torch import Tensor, no_grad
 from torch.autograd import Function
 
 from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
-from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.circuit import QuantumCircuit, Sequence
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
 from pyqtorch.parametric import Parametric
@@ -314,7 +314,7 @@ def check_support_psr(circuit: QuantumCircuit):
     """
 
     param_names = list()
-    for op in circuit.flatten():
+    for op in circuit.operations:
         if isinstance(op, Scale):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
@@ -323,6 +323,8 @@ def check_support_psr(circuit: QuantumCircuit):
             param_names.append(op.param_name)
         elif is_supported_hamevo_op(op):
             param_names.append(op.time)
+        elif isinstance(op, Sequence):
+            param_names += check_support_psr(op)
         else:
             continue
 
@@ -330,3 +332,4 @@ def check_support_psr(circuit: QuantumCircuit):
         raise ValueError(
             "PSR is not supported when using a same param_name in different operations."
         )
+    return param_names

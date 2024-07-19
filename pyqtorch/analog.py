@@ -599,6 +599,25 @@ class HamiltonianEvolution(Sequence):
         """
         return self.operations
 
+    @property
+    def param_name(self):
+        """Returns the time.
+
+        Returns:
+            The generator as a ModuleList.
+        """
+        return self.time
+
+    def flatten(self) -> ModuleList:
+        """Overload the flatten of sequence to return
+        only the hamiltonian evolution operation.
+
+        Returns:
+            ModuleList: List with one
+            hamiltonian evolution operation.
+        """
+        return ModuleList([self])
+
     def is_generator_fixed(self) -> bool:
         """Helper for GPSR.
 
@@ -609,26 +628,6 @@ class HamiltonianEvolution(Sequence):
         return (self.generator_type == GeneratorType.TENSOR) or (
             self.generator_type == GeneratorType.OPERATION
         )
-
-    @cached_property
-    def eigenvals_generator(self) -> Tensor:
-        """Get eigenvalues of the underlying generator.
-
-        Returns:
-            Eigenvalues of the generator operator.
-        """
-        return torch.linalg.eigvalsh(self._tensor_generator()).reshape(-1, 1)
-
-    @cached_property
-    def spectral_gap(self) -> Tensor:
-        """Difference between the moduli of the two largest eigenvalues of the generator.
-
-        Returns:
-            Tensor: Spectral gap value.
-        """
-        spectrum = self.eigenvals_generator
-        spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
-        return spectral_gap[spectral_gap.nonzero()]
 
     def _symbolic_generator(self, values: dict) -> Operator:
         """Returns the generator for the SYMBOL case.
@@ -681,6 +680,28 @@ class HamiltonianEvolution(Sequence):
             The right generator getter.
         """
         return self._generator_map[self.generator_type]
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.linalg.eigvalsh(
+            torch.permute(self._tensor_generator(), (2, 0, 1))
+        ).reshape(-1, 1)
+
+    @cached_property
+    def spectral_gap(self) -> Tensor:
+        """Difference between the moduli of the two largest eigenvalues of the generator.
+
+        Returns:
+            Tensor: Spectral gap value.
+        """
+        spectrum = self.eigenvals_generator
+        spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
+        return spectral_gap[spectral_gap.nonzero()]
 
     def forward(
         self,
