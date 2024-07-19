@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Tuple
+from typing import Any, Tuple, Union
 
 import torch
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-from pyqtorch.analog import Observable, Scale
+from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
@@ -265,13 +265,21 @@ class PSRExpectation(Function):
             )
 
         grads = {p: None for p in ctx.param_names}
+
+        def update_grad(op: Union[Parametric, HamiltonianEvolution], key: str):
+            if values[key].requires_grad:
+                if grads[key] is not None:
+                    grads[key] += vjp(op, values)
+                else:
+                    grads[key] = vjp(op, values)
+
         for op in ctx.circuit.flatten():
             if isinstance(op, Parametric) and isinstance(op.param_name, str):
-                if values[op.param_name].requires_grad:
-                    if grads[op.param_name] is not None:
-                        grads[op.param_name] += vjp(op, values)
-                    else:
-                        grads[op.param_name] = vjp(op, values)
+                update_grad(op, op.param_name)
+            elif isinstance(op, HamiltonianEvolution) and isinstance(op.time, str):
+                update_grad(op, op.time)
+            else:
+                continue
 
         return (None, None, None, None, None, *[grads[p] for p in ctx.param_names])
 
@@ -293,9 +301,11 @@ def check_support_psr(circuit: QuantumCircuit):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
             )
-        elif isinstance(op, Parametric):
-            if isinstance(op.param_name, str):
-                param_names.append(op.param_name)
+        elif isinstance(op, Parametric) and isinstance(op.param_name, str):
+            param_names.append(op.param_name)
+        elif isinstance(op, HamiltonianEvolution):
+            if isinstance(op.time, str):
+                param_names.append(op.time)
         else:
             continue
 

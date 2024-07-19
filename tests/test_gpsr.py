@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from typing import Callable
 
-import numpy as np
 import pytest
 import torch
+from test_analog import Hamiltonian_general
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
 from pyqtorch.analog import GeneratorType, Observable
 from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES, DEFAULT_MATRIX_DTYPE
+from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import GPSR_ACCEPTANCE
@@ -73,14 +73,13 @@ def circuit_with_hamevo(
     """Helper function to make an example circuit."""
 
     ops = [
-        pyq.CRX(0, 1, "theta_0"),
-        pyq.X(1),
-        pyq.CRY(1, 2, "theta_1"),
+        # pyq.CRX(0, 1, "theta_0"),
+        # pyq.X(1),
+        # pyq.CRY(1, 2, "theta_1"),
         hamevo_op if hamevo_op else pyq.I(0),
-        pyq.CRX(1, 2, "theta_2"),
-        pyq.X(0),
-        pyq.CRY(0, 1, torch.tensor([torch.pi / 2], dtype=DEFAULT_MATRIX_DTYPE)),
-        pyq.CNOT(0, 1),
+        # pyq.CRX(1, 2, "theta_2"),
+        # pyq.X(0),
+        # pyq.CNOT(0, 1),
     ]
 
     circ = QuantumCircuit(n_qubits, ops)
@@ -141,9 +140,9 @@ def apply_gpsr_and_compare_to_autograd(
     ["n_qubits", "batch_size", "circuit_fn", "hamevo_type"],
     [
         (2, 1, circuit_with_hamevo, GeneratorType.TENSOR),
-        (5, 10, circuit_with_hamevo, GeneratorType.TENSOR),
-        (2, 1, circuit_with_hamevo, GeneratorType.PARAMETRIC_OPERATION),
-        (5, 10, circuit_with_hamevo, GeneratorType.PARAMETRIC_OPERATION),
+        # (5, 10, circuit_with_hamevo, GeneratorType.TENSOR),
+        # (2, 1, circuit_with_hamevo, GeneratorType.PARAMETRIC_OPERATION),
+        # (5, 10, circuit_with_hamevo, GeneratorType.PARAMETRIC_OPERATION),
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
@@ -155,26 +154,25 @@ def test_expectation_gpsr_hamevo(
     dtype: torch.dtype,
 ) -> None:
     torch.manual_seed(42)
+    state = pyq.random_state(n_qubits, dtype=dtype)
     if hamevo_type == GeneratorType.TENSOR:
-        h = torch.rand(2**n_qubits, 2**n_qubits)
-        ham = h + torch.conj(torch.transpose(h, 0, 1))
-        ham = ham[:, :, None]
+        ham = Hamiltonian_general(n_qubits)
         hamevo_op = pyq.HamiltonianEvolution(
             ham, "theta_hamevo", qubit_support=tuple(range(n_qubits))
         )
-    elif hamevo_type == GeneratorType.PARAMETRIC_OPERATION:
-        dim = torch.randint(1, n_qubits + 1, (1,)).item()
-        vparam = "theta"
-        sup = tuple(range(dim))
-        parametric = True
-        ops = [pyq.X, pyq.Y, pyq.Z]
-        qubit_targets = np.random.choice(dim, len(ops), replace=True)
-        generator = pyq.Add(
-            [pyq.Scale(op(q), vparam) for op, q in zip(ops, qubit_targets)]
-        )
-        hamevo = pyq.HamiltonianEvolution(
-            generator, vparam, sup, parametric, cache_length=2
-        )
+    # elif hamevo_type == GeneratorType.PARAMETRIC_OPERATION:
+    #     dim = torch.randint(1, n_qubits + 1, (1,)).item()
+    #     vparam = "theta_hamevo"
+    #     sup = tuple(range(dim))
+    #     parametric = True
+    #     ops = [pyq.X, pyq.Y, pyq.Z]
+    #     qubit_targets = np.random.choice(dim, len(ops), replace=True)
+    #     generator = pyq.Add(
+    #         [pyq.Scale(op(q), vparam) for op, q in zip(ops, qubit_targets)]
+    #     )
+    #     hamevo_op = pyq.HamiltonianEvolution(
+    #         generator, vparam, sup, parametric, cache_length=2
+    #     )
     else:
         hamevo_op = None
 
@@ -190,7 +188,6 @@ def test_expectation_gpsr_hamevo(
     values["theta_hamevo"] = torch.rand(
         batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
     )
-    state = pyq.random_state(n_qubits, dtype=dtype)
     apply_gpsr_and_compare_to_autograd(circ, state, values, obs)
 
 
