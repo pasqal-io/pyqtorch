@@ -274,10 +274,10 @@ def train(model, opt, x_train, y_train, x_test, y_test, epochs, device):
         # no dropout is performed during evaluation of the model.
         model.eval()
         train_preds = model(x_train)
-        train_loss = cost_fn(train_preds, y_train.flatten()).detach().numpy()
+        train_loss = cost_fn(train_preds, y_train.flatten()).detach().cpu().numpy()
 
         test_preds = model(x_test)
-        test_loss = cost_fn(test_preds, y_test.flatten()).detach().numpy()
+        test_loss = cost_fn(test_preds, y_test.flatten()).detach().cpu().numpy()
 
         train_loss_history.append(train_loss)
         validation_loss_history.append(test_loss)
