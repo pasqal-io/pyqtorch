@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Callable
 
+import numpy as np
 import pytest
 import torch
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
-from pyqtorch.analog import Observable
+from pyqtorch.analog import GeneratorType, Observable
 from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
+from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES, DEFAULT_MATRIX_DTYPE
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE
+from pyqtorch.utils import GPSR_ACCEPTANCE
 
 
 def circuit_psr(n_qubits: int) -> QuantumCircuit:
@@ -66,6 +67,133 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
+def circuit_with_hamevo(
+    n_qubits: int, hamevo_op: pyq.HamiltonianEvolution | None = None
+) -> QuantumCircuit:
+    """Helper function to make an example circuit."""
+
+    ops = [
+        pyq.CRX(0, 1, "theta_0"),
+        pyq.X(1),
+        pyq.CRY(1, 2, "theta_1"),
+        hamevo_op if hamevo_op else pyq.I(0),
+        pyq.CRX(1, 2, "theta_2"),
+        pyq.X(0),
+        pyq.CRY(0, 1, torch.tensor([torch.pi / 2], dtype=DEFAULT_MATRIX_DTYPE)),
+        pyq.CNOT(0, 1),
+    ]
+
+    circ = QuantumCircuit(n_qubits, ops)
+
+    return circ
+
+
+def apply_gpsr_and_compare_to_autograd(
+    circuit: QuantumCircuit,
+    state: torch.Tensor,
+    values: dict[str, torch.Tensor],
+    observable: Observable,
+):
+
+    # Apply adjoint
+    exp_ad = expectation(circuit, state, values, observable, DiffMode.AD)
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values.values()), torch.ones_like(exp_ad), create_graph=True
+    )
+
+    # Apply PSR
+    exp_gpsr = expectation(circuit, state, values, observable, DiffMode.GPSR)
+    grad_gpsr = torch.autograd.grad(
+        exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
+    )
+
+    atol = GPSR_ACCEPTANCE
+
+    # first order checks
+
+    for i in range(len(grad_ad)):
+        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
+
+    # second order checks
+    for i in range(len(grad_ad)):
+        gradgrad_ad = torch.autograd.grad(
+            grad_ad[i],
+            tuple(values.values()),
+            torch.ones_like(grad_ad[i]),
+            create_graph=True,
+        )
+
+        gradgrad_gpsr = torch.autograd.grad(
+            grad_gpsr[i],
+            tuple(values.values()),
+            torch.ones_like(grad_gpsr[i]),
+            create_graph=True,
+        )
+
+        assert len(gradgrad_ad) == len(gradgrad_gpsr)
+
+        # check second order gradients
+        for j in range(len(gradgrad_ad)):
+            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=atol)
+
+
+@pytest.mark.parametrize(
+    ["n_qubits", "batch_size", "circuit_fn", "hamevo_type"],
+    [
+        (2, 1, circuit_with_hamevo, GeneratorType.TENSOR),
+        (5, 10, circuit_with_hamevo, GeneratorType.TENSOR),
+        (2, 1, circuit_with_hamevo, GeneratorType.PARAMETRIC_OPERATION),
+        (5, 10, circuit_with_hamevo, GeneratorType.PARAMETRIC_OPERATION),
+    ],
+)
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+def test_expectation_gpsr_hamevo(
+    n_qubits: int,
+    batch_size: int,
+    circuit_fn: Callable,
+    hamevo_type: GeneratorType,
+    dtype: torch.dtype,
+) -> None:
+    torch.manual_seed(42)
+    if hamevo_type == GeneratorType.TENSOR:
+        h = torch.rand(2**n_qubits, 2**n_qubits)
+        ham = h + torch.conj(torch.transpose(h, 0, 1))
+        ham = ham[:, :, None]
+        hamevo_op = pyq.HamiltonianEvolution(
+            ham, "theta_hamevo", qubit_support=tuple(range(n_qubits))
+        )
+    elif hamevo_type == GeneratorType.PARAMETRIC_OPERATION:
+        dim = torch.randint(1, n_qubits + 1, (1,)).item()
+        vparam = "theta"
+        sup = tuple(range(dim))
+        parametric = True
+        ops = [pyq.X, pyq.Y, pyq.Z]
+        qubit_targets = np.random.choice(dim, len(ops), replace=True)
+        generator = pyq.Add(
+            [pyq.Scale(op(q), vparam) for op, q in zip(ops, qubit_targets)]
+        )
+        hamevo = pyq.HamiltonianEvolution(
+            generator, vparam, sup, parametric, cache_length=2
+        )
+    else:
+        hamevo_op = None
+
+    circ = circuit_fn(n_qubits, hamevo_op).to(dtype)
+    obs = Observable(n_qubits, pyq.Add([pyq.Z(i) for i in range(n_qubits)])).to(dtype)
+    values = {
+        op.param_name: torch.rand(
+            batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
+        )
+        for op in circ.flatten()
+        if isinstance(op, Parametric) and isinstance(op.param_name, str)
+    }
+    values["theta_hamevo"] = torch.rand(
+        batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
+    )
+    state = pyq.random_state(n_qubits, dtype=dtype)
+    apply_gpsr_and_compare_to_autograd(circ, state, values, obs)
+
+
 @pytest.mark.parametrize(
     ["n_qubits", "batch_size", "circuit_fn"],
     [
@@ -97,47 +225,7 @@ def test_expectation_gpsr(
         if isinstance(op, Parametric) and isinstance(op.param_name, str)
     }
     state = pyq.random_state(n_qubits, dtype=dtype)
-
-    # Apply adjoint
-    exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
-    grad_ad = torch.autograd.grad(
-        exp_ad, tuple(values.values()), torch.ones_like(exp_ad), create_graph=True
-    )
-
-    # Apply PSR
-    exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
-    grad_gpsr = torch.autograd.grad(
-        exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
-    )
-
-    atol = PSR_ACCEPTANCE if circuit_fn != circuit_gpsr else GPSR_ACCEPTANCE
-
-    # first order checks
-
-    for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
-
-    # second order checks
-    for i in range(len(grad_ad)):
-        gradgrad_ad = torch.autograd.grad(
-            grad_ad[i],
-            tuple(values.values()),
-            torch.ones_like(grad_ad[i]),
-            create_graph=True,
-        )
-
-        gradgrad_gpsr = torch.autograd.grad(
-            grad_gpsr[i],
-            tuple(values.values()),
-            torch.ones_like(grad_gpsr[i]),
-            create_graph=True,
-        )
-
-        assert len(gradgrad_ad) == len(gradgrad_gpsr)
-
-        # check second order gradients
-        for j in range(len(gradgrad_ad)):
-            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=atol)
+    apply_gpsr_and_compare_to_autograd(circ, state, values, obs)
 
 
 @pytest.mark.parametrize("gate_type", ["scale", "same", ""])
