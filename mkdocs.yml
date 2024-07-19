@@ -4,12 +4,13 @@ repo_name: "pyqtorch"
 
 nav:
 
-  - Pyqtorch in a Nutshell: index.md
+  - pyqtorch in a Nutshell: index.md
+  - API: api.md
   - How to Contribute: CONTRIBUTING.md
   - Code of Conduct: CODE_OF_CONDUCT.md
-  - API: api.md
   - Advanced Features:
     - Differentiation: differentiation.md
+    - Use Arbitrary Expressions as Gate Parameters via Embedding: embed.md
     - Analog Operations: analog.md
     - Digital noisy simulation: noise.md
     - Quantum Dropout: dropout.md

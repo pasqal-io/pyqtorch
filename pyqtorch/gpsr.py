@@ -9,6 +9,8 @@ from torch.autograd import Function
 
 from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
 from pyqtorch.circuit import QuantumCircuit, Sequence
+from pyqtorch.embed import Embedding
+from pyqtorch.matrices import DEFAULT_REAL_DTYPE
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import inner_prod, param_dict
 
@@ -85,13 +87,17 @@ class PSRExpectation(Function):
         circuit: QuantumCircuit,
         state: Tensor,
         observable: Observable,
+        embedding: Embedding,
         param_names: list[str],
         *param_values: Tensor,
     ) -> Tensor:
+        if embedding is not None:
+            logger.error("GPSR does not support Embedding.")
         ctx.circuit = circuit
         ctx.observable = observable
         ctx.param_names = param_names
         ctx.state = state
+        ctx.embedding = embedding
         values = param_dict(param_names, param_values)
         ctx.out_state = circuit.run(state, values)
         ctx.projected_state = observable.run(ctx.out_state, values)
@@ -101,10 +107,6 @@ class PSRExpectation(Function):
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
         """The PSRExpectation backward call.
-
-        Note that only operations with two distinct eigenvalues
-        from their generator (i.e., compatible with single_gap_shift)
-        are supported at the moment.
 
         Arguments:
             ctx (Any): Context object for accessing stored information.
@@ -118,7 +120,15 @@ class PSRExpectation(Function):
         """
 
         values = param_dict(ctx.param_names, ctx.saved_tensors)
-        shift = torch.tensor(torch.pi) / 2.0
+        shift_pi2 = torch.tensor(torch.pi) / 2.0
+        shift_multi = 0.5
+
+        dtype_values = DEFAULT_REAL_DTYPE
+        device = torch.device("cpu")
+        try:
+            dtype_values, device = [(v.dtype, v.device) for v in values.values()][0]
+        except Exception:
+            pass
 
         def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
@@ -130,15 +140,20 @@ class PSRExpectation(Function):
                 Expectation evaluation.
             """
             return PSRExpectation.apply(
-                ctx.circuit, ctx.state, ctx.observable, values.keys(), *values.values()
+                ctx.circuit,
+                ctx.state,
+                ctx.observable,
+                ctx.embedding,
+                values.keys(),
+                *values.values(),
             )
 
         def single_gap_shift(
             param_name: str,
-            values: dict[str, torch.Tensor],
-            spectral_gap: torch.Tensor,
-            shift: torch.Tensor = torch.tensor(torch.pi) / 2.0,
-        ) -> torch.Tensor:
+            values: dict[str, Tensor],
+            spectral_gap: Tensor,
+            shift: Tensor = torch.tensor(torch.pi) / 2.0,
+        ) -> Tensor:
             """Implements single gap PSR rule.
 
             Args:
@@ -150,6 +165,12 @@ class PSRExpectation(Function):
             Returns:
                 Gradient evaluation for param_name.
             """
+
+            # device conversions
+            spectral_gap = spectral_gap.to(device=device)
+            shift = shift.to(device=device)
+
+            # apply shift rule
             shifted_values = values.copy()
             shifted_values[param_name] = shifted_values[param_name] + shift
             f_plus = expectation_fn(shifted_values)
@@ -161,9 +182,65 @@ class PSRExpectation(Function):
                 / (4 * torch.sin(spectral_gap * shift / 2))
             )
 
-        def multi_gap_shift(*args, **kwargs) -> Tensor:
-            """Implements multi gap PSR rule."""
-            raise NotImplementedError("Multi-gap is not yet supported.")
+        def multi_gap_shift(
+            param_name: str,
+            values: dict[str, Tensor],
+            spectral_gaps: Tensor,
+            shift_prefac: float = 0.5,
+        ) -> Tensor:
+            """Implement multi gap PSR rule.
+
+            See Kyriienko1 and Elfving, 2021 for details:
+            https://arxiv.org/pdf/2108.01218.pdf
+
+            Args:
+                param_name: Name of the parameter to apply PSR.
+                values: Dictionary with parameter values.
+                spectral_gaps: Spectral gaps value for PSR.
+                shift_prefac: Shift prefactor value for PSR shifts.
+                Defaults to torch.tensor(0.5).
+
+            Returns:
+                Gradient evaluation for param_name.
+            """
+            n_eqs = len(spectral_gaps)
+            dtype = torch.promote_types(dtype_values, spectral_gaps.dtype)
+            spectral_gaps = spectral_gaps.to(device=device)
+            PI = torch.tensor(torch.pi, dtype=dtype)
+            shifts = shift_prefac * torch.linspace(
+                PI / 2.0 - PI / 5.0, PI / 2.0 + PI / 5.0, n_eqs, dtype=dtype
+            )
+            shifts = shifts.to(device=device)
+
+            # calculate F vector and M matrix
+            # (see: https://arxiv.org/pdf/2108.01218.pdf on p. 4 for definitions)
+            F = []
+            M = torch.empty((n_eqs, n_eqs), dtype=dtype).to(device=device)
+            batch_size = 1
+            shifted_params = values.copy()
+            for i in range(n_eqs):
+                # + shift
+                shifted_params[param_name] = shifted_params[param_name] + shifts[i]
+                f_plus = expectation_fn(shifted_params)
+
+                # - shift
+                shifted_params[param_name] = shifted_params[param_name] - 2 * shifts[i]
+                f_minus = expectation_fn(shifted_params)
+                shifted_params[param_name] = shifted_params[param_name] + shifts[i]
+                F.append((f_plus - f_minus))
+
+                # calculate M matrix
+                for j in range(n_eqs):
+                    M[i, j] = 4 * torch.sin(shifts[i] * spectral_gaps[j] / 2)
+
+            # get number of observables from expectation value tensor
+            if f_plus.numel() > 1:
+                batch_size = F[0].shape[0]
+
+            F = torch.stack(F).reshape(n_eqs, -1)
+            R = torch.linalg.solve(M, F)
+            dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(batch_size)
+            return dfdx
 
         def vjp(operation: Parametric, values: dict[str, Tensor]) -> Tensor:
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
@@ -175,23 +252,28 @@ class PSRExpectation(Function):
             Returns:
                 Updated jacobian by PSR.
             """
-            psr_fn = (
-                multi_gap_shift if len(operation.spectral_gap) > 1 else single_gap_shift
+            psr_fn, shift = (
+                (multi_gap_shift, shift_multi)
+                if len(operation.spectral_gap) > 1
+                else (single_gap_shift, shift_pi2)
             )
-
             return grad_out * psr_fn(  # type: ignore[operator]
-                operation.param_name, values, operation.spectral_gap, shift
+                operation.param_name,  # type: ignore
+                values,
+                operation.spectral_gap,
+                shift,
             )
 
         grads = {p: None for p in ctx.param_names}
         for op in ctx.circuit.flatten():
-            if isinstance(op, Parametric) and values[op.param_name].requires_grad:  # type: ignore[index]
-                if grads[op.param_name] is not None:
-                    grads[op.param_name] += vjp(op, values)
-                else:
-                    grads[op.param_name] = vjp(op, values)
+            if isinstance(op, Parametric) and isinstance(op.param_name, str):
+                if values[op.param_name].requires_grad:
+                    if grads[op.param_name] is not None:
+                        grads[op.param_name] += vjp(op, values)
+                    else:
+                        grads[op.param_name] = vjp(op, values)
 
-        return (None, None, None, None, *[grads[p] for p in ctx.param_names])
+        return (None, None, None, None, None, *[grads[p] for p in ctx.param_names])
 
 
 def check_support_psr(circuit: QuantumCircuit):
@@ -202,7 +284,6 @@ def check_support_psr(circuit: QuantumCircuit):
 
     Raises:
         ValueError: When circuit contains Scale, HamiltonianEvolution,
-                    or one operation has more than two eigenvalues (multi-gap),
                     or a param_name is used multiple times in the circuit.
     """
 
@@ -214,14 +295,15 @@ def check_support_psr(circuit: QuantumCircuit):
             )
         if isinstance(op, Sequence):
             for subop in op.flatten():
+                if isinstance(subop, Scale) or isinstance(subop, HamiltonianEvolution):
+                    raise ValueError(
+                        f"PSR is not applicable as circuit contains \
+                        an operation of type: {type(subop)}."
+                    )
                 if isinstance(subop, Parametric):
                     if isinstance(subop.param_name, str):
                         param_names.append(subop.param_name)
-                if len(subop.spectral_gap) > 1:
-                    raise NotImplementedError("Multi-gap is not yet supported.")
         elif isinstance(op, Parametric):
-            if len(op.spectral_gap) > 1:
-                raise NotImplementedError("Multi-gap is not yet supported.")
             if isinstance(op.param_name, str):
                 param_names.append(op.param_name)
         else:
