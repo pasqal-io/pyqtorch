@@ -186,10 +186,9 @@ class QuantumModelBase(torch.nn.Module):
         self.params = torch.nn.ParameterDict()
         operations = self.build_operations()
         self.circuit = self.build_circuit(operations)
-        self.observable = pyq.QuantumCircuit(n_qubits, [pyq.Z(i) for i in range(n_qubits)]).to(
-            device=device, dtype=torch.complex64
+        self.observable = pyq.Observable(n_qubits, [pyq.Z(i) for i in range(n_qubits)]).to(
+            device, dtype=torch.complex64
         )
-
         self.params = self.params.to(device=device, dtype=torch.float32)
 
     def build_operations(self):

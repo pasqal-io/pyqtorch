@@ -14,7 +14,7 @@ from pyqtorch.utils import ATOL, DropoutMode
 def test_dropout(
     dropout_mode: DropoutMode, n_qubits: int = 4, theta: float = 0.6
 ) -> None:
-
+    """Test when dropout prob = 1.0 if all gates the dropout method affects are dropped."""
     circ_ops_1 = [pyq.RY(i, f"theta_{str(i)}") for i in range(n_qubits)]
     circ_ops_2 = [pyq.CNOT(i, i + 1) for i in range(n_qubits - 1)]
 
