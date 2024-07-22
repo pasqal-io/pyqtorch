@@ -96,6 +96,29 @@ def sample(
     )
 
 
+def analytical_expectation(
+    state: Tensor,
+    observable: Observable,
+    values: dict[str, Tensor] = dict(),
+    embedding: Embedding | None = None,
+) -> Tensor:
+    """Non sampled expectation value.
+
+    Given an input state :math:`\\ket\\rangle`, the expectation value with :math:`O` is defined as
+    :math:`\\langle\\bra|O\\ket\\rangle`
+
+    Args:
+        state (Tensor): Input state :math:`\\ket\\rangle`.
+        observable (Observable): Observable O.
+        values (dict[str, Tensor], optional): Parameter values for the observable if any.
+        embedding (Embedding | None, optional): An optional instance of `Embedding`.
+
+    Returns:
+        Tensor: Expectation value.
+    """
+    return inner_prod(state, run(observable, state, values, embedding=embedding)).real
+
+
 def expectation(
     circuit: QuantumCircuit,
     state: Tensor = None,
@@ -148,9 +171,7 @@ def expectation(
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
         state = run(circuit, state, values, embedding=embedding)
-        return inner_prod(
-            state, run(observable, state, values, embedding=embedding)
-        ).real
+        return analytical_expectation(state, observable, values, embedding)
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit,
