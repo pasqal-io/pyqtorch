@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache, partial, wraps
 from logging import getLogger
 from math import sqrt
 from string import ascii_uppercase as ABC
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Sequence, Union
 
 import torch
 from numpy import arange, array, delete, log2
@@ -67,6 +68,47 @@ def overlap(bra: Tensor, ket: Tensor) -> Tensor:
         The overlap.
     """
     return torch.pow(inner_prod(bra, ket).real, 2)
+
+
+def sample_multinomial(
+    probs: Tensor,
+    length_bitstring: int,
+    n_samples: int,
+    normalize: bool = False,
+    return_counter: bool = True,
+) -> Union[Counter, Tensor]:
+    """Sample bitstrings from a probability distribution.
+
+    Args:
+        probs (Tensor): Probability distribution
+        length_bitstring (int): Maximal length of bitstring.
+        n_samples (int): Number of samples to extract.
+        normalize (bool): If False, returns frequencies
+        instead of ratios.
+        return_counter (bool): If True, return Counter object.
+            Otherwise, the result of torch.bincount is returned.
+
+    Returns:
+        Counter: Sampled bitstrings with their frequencies or probabilities.
+    """
+    divider = 1
+    if normalize:
+        divider = n_samples
+    bincount_output = (
+        torch.bincount(
+            torch.multinomial(input=probs, num_samples=n_samples, replacement=True)
+        )
+        / divider
+    )
+    if return_counter:
+        return Counter(
+            {
+                format(k, "0{}b".format(length_bitstring)): count.item()
+                for k, count in enumerate(bincount_output)
+                if count > 0
+            }
+        )
+    return bincount_output
 
 
 class StrEnum(str, Enum):

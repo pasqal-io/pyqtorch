@@ -4,6 +4,7 @@ from collections import Counter
 from functools import partial
 from logging import getLogger
 
+import torch
 from torch import Tensor
 
 from pyqtorch.adjoint import AdjointExpectation
@@ -11,7 +12,7 @@ from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.embed import Embedding
 from pyqtorch.gpsr import PSRExpectation, check_support_psr
-from pyqtorch.utils import DiffMode, inner_prod
+from pyqtorch.utils import DiffMode, inner_prod, sample_multinomial
 
 logger = getLogger(__name__)
 
@@ -108,7 +109,7 @@ def analytical_expectation(
 
     Given an initial state :math:`\\ket\\rangle`,
     a quantum circuit :math:`U(\\theta)`,
-    the expectation value with :math:`O` is defined as
+    the analytical expectation value with :math:`O` is defined as
     :math:`\\langle\\bra U_{\\dag}(\\theta) |O| U(\\theta) \\ket\\rangle`
 
     Args:
@@ -133,9 +134,10 @@ def sampled_expectation(
     n_shots: int = 1,
     embedding: Embedding | None = None,
 ) -> Tensor:
-    """Sampled expectation value.
+    """Expectation value approximated via sampling.
 
-    Given an input state :math:`\\ket\\rangle`, the expectation value with :math:`O` is defined as
+    Given an input state :math:`\\ket\\rangle`,
+    the expectation analytical value with :math:`O` is defined as
     :math:`\\langle\\bra|O\\ket\\rangle`
 
     Args:
@@ -148,8 +150,17 @@ def sampled_expectation(
     Returns:
         Tensor: Expectation value.
     """
-    samples = sample(circuit, state, values, n_shots, embedding=embedding)
-    raise NotImplementedError("Sampling not yet supported.")
+    state = run(circuit, state, values, embedding=embedding)
+    eigvals, eigvecs = torch.linalg.eig(observable.tensor())
+    eigvec_state_prod = torch.multiply(eigvecs.flatten(), torch.conj(state.T).flatten())
+    probs = torch.abs(torch.pow(eigvec_state_prod, 2))
+    n_qubits = len(state.shape)
+    normalized_samples = sample_multinomial(
+        probs, n_qubits, n_shots, normalize=True, return_counter=False
+    )
+    return torch.einsum(
+        "i,ji ->", eigvals, normalized_samples.reshape([2] * n_qubits)  # type: ignore[union-attr]
+    ).real
 
 
 def expectation(
