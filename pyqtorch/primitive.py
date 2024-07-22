@@ -212,11 +212,13 @@ class Projector(Primitive):
         support = (qubit_support,) if isinstance(qubit_support, int) else qubit_support
         if len(ket) != len(bra):
             raise ValueError("Input ket and bra bitstrings must be of same length.")
+        if len(support) != len(ket):
+            raise ValueError(
+                "Qubit support must have the same number of qubits of ket and bra states."
+            )
         ket_state = product_state(ket).flatten()
         bra_state = product_state(bra).flatten()
-        super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), support[-1])
-        # Override the attribute in AbstractOperator.
-        self.qubit_support = tuple(sorted(support))
+        super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), support)
 
 
 class N(Primitive):

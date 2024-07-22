@@ -15,6 +15,7 @@ from pyqtorch.primitive import (
     OPS_3Q,
     OPS_DIGITAL,
     Primitive,
+    Projector,
     Toffoli,
 )
 from pyqtorch.utils import (
@@ -31,11 +32,9 @@ def _get_op_support(op: type[Primitive] | type[Parametric], n_qubits: int) -> tu
     if op in OPS_1Q.union(OPS_PARAM_1Q):
         supp: tuple = (random.randint(0, n_qubits - 1),)
     elif op in OPS_2Q.union(OPS_PARAM_2Q):
-        supp = (0, random.randint(1, n_qubits - 1))
-        supp = tuple(random.sample(supp, 2))
+        supp = tuple(random.sample(range(n_qubits), 2))
     elif op in OPS_3Q:
-        supp = (0, 1, random.randint(2, n_qubits - 1))
-        i, j, k = tuple(random.sample(supp, 3))
+        i, j, k = tuple(random.sample(range(n_qubits), 3))
         supp = ((i, j), k) if op == Toffoli else (i, (j, k))
     return supp
 
@@ -124,6 +123,34 @@ def test_sequence_tensor(
         op_composite, psi_init, values=values, full_support=full_support
     )
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("n_proj", [1, 3])
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_projector_tensor(
+    n_qubits: int, n_proj: int, batch_size: int, use_full_support: bool
+) -> None:
+    """
+    Instantiates various random projectors on arbitrary qubit support
+    and compares the forward method with directly applying the tensor.
+    """
+    iterations = 5
+    for _ in range(iterations):
+        rand_int_1 = random.randint(0, 2**n_proj - 1)
+        rand_int_2 = random.randint(0, 2**n_proj - 1)
+        bitstring1 = "{0:b}".format(rand_int_1).zfill(n_proj)
+        bitstring2 = "{0:b}".format(rand_int_2).zfill(n_proj)
+        supp = tuple(random.sample(range(n_qubits), n_proj))
+        op = Projector(supp, bitstring1, bitstring2)
+        psi_init = random_state(n_qubits, batch_size)
+        psi_star = op(psi_init)
+        full_support = tuple(range(n_qubits)) if use_full_support else None
+        psi_expected = _calc_mat_vec_wavefunction(
+            op, psi_init, full_support=full_support
+        )
+        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 # def test_hevo_constant_gen() -> None:
