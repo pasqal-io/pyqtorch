@@ -79,7 +79,7 @@ def test_sampled_diff(n_qubits: int) -> None:
     theta_1_value = torch.pi
     theta_2_value = torch.pi / 4
 
-    state = pyq.zero_state(n_qubits)
+    state = pyq.zero_state(n_qubits, batch_size=1)
     theta_0_ad = torch.tensor([theta_0_value], requires_grad=True)
     theta_1_ad = torch.tensor([theta_1_value], requires_grad=True)
     theta_2_ad = torch.tensor([theta_2_value], requires_grad=True)
@@ -94,6 +94,7 @@ def test_sampled_diff(n_qubits: int) -> None:
         DiffMode.AD,
         options={"n_shots": 10000},
     )
+    print(exp_ad, exp_ad_sampled)
     assert torch.allclose(exp_ad, exp_ad_sampled, atol=1e-02)
 
 

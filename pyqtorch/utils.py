@@ -74,8 +74,8 @@ def sample_multinomial(
     probs: Tensor,
     length_bitstring: int,
     n_samples: int,
-    normalize: bool = False,
     return_counter: bool = True,
+    minlength: int = 0,
 ) -> Union[Counter, Tensor]:
     """Sample bitstrings from a probability distribution.
 
@@ -83,23 +83,22 @@ def sample_multinomial(
         probs (Tensor): Probability distribution
         length_bitstring (int): Maximal length of bitstring.
         n_samples (int): Number of samples to extract.
-        normalize (bool): If False, returns frequencies
         instead of ratios.
         return_counter (bool): If True, return Counter object.
             Otherwise, the result of torch.bincount is returned.
+        minlength (int): minimum number of bins. Should be non-negative.
 
     Returns:
         Counter: Sampled bitstrings with their frequencies or probabilities.
     """
-    divider = 1
-    if normalize:
-        divider = n_samples
+
     bincount_output = (
         torch.bincount(
-            torch.multinomial(input=probs, num_samples=n_samples, replacement=True)
+            torch.multinomial(input=probs, num_samples=n_samples, replacement=True),
+            minlength = minlength
         )
-        / divider
     )
+
     if return_counter:
         return Counter(
             {
