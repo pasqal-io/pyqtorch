@@ -689,7 +689,7 @@ class HamiltonianEvolution(Sequence):
             Eigenvalues of the generator operator.
         """
         return torch.linalg.eigvalsh(
-            torch.permute(self._tensor_generator(), (2, 0, 1))
+            torch.permute(2.0 * self._tensor_generator(), (2, 0, 1))
         ).reshape(-1, 1)
 
     @cached_property

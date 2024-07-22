@@ -16,6 +16,7 @@ from pyqtorch.primitive import Primitive
 from pyqtorch.utils import GPSR_ACCEPTANCE
 
 atol = GPSR_ACCEPTANCE
+atol_hamevo = 1e-03
 
 
 def circuit_psr(n_qubits: int) -> QuantumCircuit:
@@ -75,8 +76,8 @@ def circuit_with_hamevo(
     """Helper function to make an example circuit."""
 
     ops = [
-        # pyq.CRX(0, 1, "theta_0"),
-        # pyq.X(1),
+        pyq.CRX(0, 1, "theta_0"),
+        pyq.X(1),
         # pyq.CRY(1, 2, "theta_1"),
         hamevo_op if hamevo_op else pyq.I(0),
         # pyq.CRX(1, 2, "theta_2"),
@@ -94,6 +95,7 @@ def apply_gpsr_and_compare_to_autograd(
     state: torch.Tensor,
     values: dict[str, torch.Tensor],
     observable: Observable,
+    atol: float,
 ):
 
     # Apply adjoint
@@ -188,7 +190,7 @@ def test_expectation_gpsr_hamevo(
     values["theta_hamevo"] = torch.rand(
         batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
     )
-    apply_gpsr_and_compare_to_autograd(circ, state, values, obs)
+    apply_gpsr_and_compare_to_autograd(circ, state, values, obs, atol_hamevo)
 
 
 @pytest.mark.parametrize(
@@ -222,7 +224,7 @@ def test_expectation_gpsr(
         if isinstance(op, Parametric) and isinstance(op.param_name, str)
     }
     state = pyq.random_state(n_qubits, dtype=dtype)
-    apply_gpsr_and_compare_to_autograd(circ, state, values, obs)
+    apply_gpsr_and_compare_to_autograd(circ, state, values, obs, atol)
 
 
 @pytest.mark.parametrize("gate_type", ["scale", "same", ""])
