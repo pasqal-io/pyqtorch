@@ -131,8 +131,8 @@ def sampled_expectation(
     state: Tensor,
     observable: Observable,
     values: dict[str, Tensor] = dict(),
-    n_shots: int = 1,
     embedding: Embedding | None = None,
+    n_shots: int = 1,
 ) -> Tensor:
     """Expectation value approximated via sampling.
 
@@ -144,17 +144,19 @@ def sampled_expectation(
         state (Tensor): Input state :math:`\\ket\\rangle`.
         observable (Observable): Observable O.
         values (dict[str, Tensor], optional): Parameter values for the observable if any.
-        n_shots: (int, optional): Number of samples to compute expectation on.
         embedding (Embedding | None, optional): An optional instance of `Embedding`.
+        n_shots: (int, optional): Number of samples to compute expectation on.
 
     Returns:
         Tensor: Expectation value.
     """
     state = run(circuit, state, values, embedding=embedding)
-    eigvals, eigvecs = torch.linalg.eig(observable.tensor())
+    n_qubits = len(state.shape)
+    eigvals, eigvecs = torch.linalg.eig(
+        observable.tensor(n_qubits=n_qubits, values=values).permute((2, 0, 1))
+    )
     eigvec_state_prod = torch.multiply(eigvecs.flatten(), torch.conj(state.T).flatten())
     probs = torch.abs(torch.pow(eigvec_state_prod, 2))
-    n_qubits = len(state.shape)
     normalized_samples = sample_multinomial(
         probs, n_qubits, n_shots, normalize=True, return_counter=False
     )
