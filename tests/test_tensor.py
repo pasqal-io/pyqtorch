@@ -10,10 +10,13 @@ from pyqtorch.analog import Add, Scale
 from pyqtorch.circuit import Sequence
 from pyqtorch.parametric import OPS_PARAM, OPS_PARAM_1Q, OPS_PARAM_2Q, Parametric
 from pyqtorch.primitive import (
+    CNOT,
     OPS_1Q,
     OPS_2Q,
     OPS_3Q,
     OPS_DIGITAL,
+    SWAP,
+    N,
     Primitive,
     Projector,
     Toffoli,
@@ -151,6 +154,46 @@ def test_projector_tensor(
             op, psi_init, full_support=full_support
         )
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("operator", [N, CNOT, SWAP])
+@pytest.mark.parametrize("use_full_support", [True, False])
+def test_projector_vs_operator(
+    n_qubits: int,
+    operator: type[Primitive],
+    use_full_support: bool,
+) -> None:
+    if operator == N:
+        supp: tuple = (random.randint(0, n_qubits - 1),)
+        op_concrete = N(*supp)
+        projector = Projector(supp, "1", "1")
+    if operator == CNOT:
+        supp = tuple(random.sample(range(n_qubits), 2))
+        op_concrete = CNOT(*supp)
+        projector = Add(
+            [
+                Projector(supp, "00", "00"),
+                Projector(supp, "01", "01"),
+                Projector(supp, "10", "11"),
+                Projector(supp, "11", "10"),
+            ]
+        )
+    if operator == SWAP:
+        supp = tuple(random.sample(range(n_qubits), 2))
+        op_concrete = SWAP(*supp)
+        projector = Add(
+            [
+                Projector(supp, "00", "00"),
+                Projector(supp, "01", "10"),
+                Projector(supp, "10", "01"),
+                Projector(supp, "11", "11"),
+            ]
+        )
+    full_support = tuple(range(n_qubits)) if use_full_support else None
+    projector_mat = projector.tensor(full_support=full_support)
+    operator_mat = op_concrete.tensor(full_support=full_support)
+    assert torch.allclose(projector_mat, operator_mat, rtol=RTOL, atol=ATOL)
 
 
 # def test_hevo_constant_gen() -> None:
