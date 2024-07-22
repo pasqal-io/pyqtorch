@@ -6,7 +6,7 @@ import pytest
 import torch
 from conftest import _calc_mat_vec_wavefunction
 
-from pyqtorch.analog import Add
+from pyqtorch.analog import Add, Scale
 from pyqtorch.circuit import Sequence
 from pyqtorch.parametric import OPS_PARAM, OPS_PARAM_1Q, OPS_PARAM_2Q, Parametric
 from pyqtorch.primitive import (
@@ -27,6 +27,7 @@ pi = torch.tensor(torch.pi)
 
 
 def _get_op_support(op: type[Primitive] | type[Parametric], n_qubits: int) -> tuple:
+    """Decides a random qubit support for any gate, up to a some max n_qubits."""
     if op in OPS_1Q.union(OPS_PARAM_1Q):
         supp: tuple = (random.randint(0, n_qubits - 1),)
     elif op in OPS_2Q.union(OPS_PARAM_2Q):
@@ -43,6 +44,11 @@ def _get_op_support(op: type[Primitive] | type[Parametric], n_qubits: int) -> tu
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
 def test_digital_tensor(n_qubits: int, batch_size: int, use_full_support: bool) -> None:
+    """
+    Goes through all non-parametric gates and tests their application to a random state
+    in comparison with the `tensor` method, either using just the qubit support of the gate
+    or expanding its matrix to the maximum qubit support of the full circuit.
+    """
     op: type[Primitive]
     for op in OPS_DIGITAL:
         supp = _get_op_support(op, n_qubits)
@@ -60,6 +66,11 @@ def test_digital_tensor(n_qubits: int, batch_size: int, use_full_support: bool) 
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
 def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) -> None:
+    """
+    Goes through all parametric gates and tests their application to a random state
+    in comparison with the `tensor` method, either using just the qubit support of the gate
+    or expanding its matrix to the maximum qubit support of the full circuit.
+    """
     op: type[Parametric]
     for op in OPS_PARAM:
         supp = _get_op_support(op, n_qubits)
@@ -88,9 +99,15 @@ def test_sequence_tensor(
     op_list = []
     values = {}
     op: type[Primitive] | type[Parametric]
+    """
+    Builds a Sequence or Add composition of all possible gates on random qubit
+    supports. Also assigns a Scale of a random value to the non-parametric gates.
+    Tests the forward method (which goes through each gate individually) to the
+    `tensor` method, which builds the full operator matrix and applies it.
+    """
     for op in OPS_DIGITAL:
         supp = _get_op_support(op, n_qubits)
-        op_concrete = op(*supp)
+        op_concrete = Scale(op(*supp), torch.rand(1))
         op_list.append(op_concrete)
     for op in OPS_PARAM:
         supp = _get_op_support(op, n_qubits)
