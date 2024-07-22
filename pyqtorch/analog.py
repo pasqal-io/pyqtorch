@@ -20,6 +20,7 @@ from pyqtorch.utils import (
     Operator,
     State,
     StrEnum,
+    expand_operator,
     inner_prod,
     is_diag,
 )
@@ -354,30 +355,29 @@ class HamiltonianEvolution(Sequence):
         """
 
         if isinstance(generator, Tensor):
-            assert (
-                qubit_support is not None
-            ), "When using a Tensor generator, please pass a qubit_support."
+            if qubit_support is None:
+                raise ValueError(
+                    "When using a Tensor generator, please pass a qubit_support."
+                )
             if len(generator.shape) < 3:
                 generator = generator.unsqueeze(2)
-            generator = [Primitive(generator, target=-1)]
+            generator = [Primitive(generator, qubit_support)]
             self.generator_type = GeneratorType.TENSOR
 
         elif isinstance(generator, str):
-            assert (
-                qubit_support is not None
-            ), "When using a symbolic generator, please pass a qubit_support."
+            if qubit_support is None:
+                raise ValueError(
+                    "When using a symbolic generator, please pass a qubit_support."
+                )
             self.generator_type = GeneratorType.SYMBOL
             self.generator_symbol = generator
             generator = []
         elif isinstance(generator, (Primitive, Sequence)):
-            qubit_support = (
-                generator.qubit_support
-                if (
-                    not qubit_support
-                    or len(qubit_support) <= len(generator.qubit_support)
+            if qubit_support is not None:
+                logger.warning(
+                    "Taking support from generator and ignoring qubit_support input."
                 )
-                else qubit_support
-            )
+            qubit_support = generator.qubit_support
             if generator_parametric:
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
@@ -385,7 +385,7 @@ class HamiltonianEvolution(Sequence):
                 generator = [
                     Primitive(
                         generator.tensor(),
-                        target=generator.qubit_support[0],
+                        generator.qubit_support,
                     )
                 ]
 
@@ -411,7 +411,7 @@ class HamiltonianEvolution(Sequence):
             GeneratorType.SYMBOL: self._symbolic_generator,
             GeneratorType.TENSOR: self._tensor_generator,
             GeneratorType.OPERATION: self._tensor_generator,
-            GeneratorType.PARAMETRIC_OPERATION: self._parametric_generator,
+            GeneratorType.PARAMETRIC_OPERATION: self._tensor_generator,
         }
 
         # to avoid recomputing hamiltonians and evolution
@@ -427,8 +427,13 @@ class HamiltonianEvolution(Sequence):
         """
         return self.operations
 
-    def _symbolic_generator(self, values: dict) -> Operator:
+    def _symbolic_generator(
+        self, values: dict, full_support: tuple[int, ...] | None = None
+    ) -> Operator:
         """Returns the generator for the SYMBOL case.
+
+        Arguments:
+            values:
 
         Returns:
             The generator as a tensor.
@@ -449,21 +454,10 @@ class HamiltonianEvolution(Sequence):
         return hamiltonian
 
     def _tensor_generator(self, values: dict = {}) -> Operator:
-        """Returns the generator for the TENSOR and OPERATION cases.
+        """Returns the generator for the TENSOR, OPERATION and PARAMETRIC_OPERATION cases.
 
         Arguments:
-            values: Non-used argument for consistency with other generator getters.
-
-        Returns:
-            The generator as a tensor.
-        """
-        return self.generator[0].pauli
-
-    def _parametric_generator(self, values: dict) -> Operator:
-        """Returns the generator for the PARAMETRIC_OPERATION case.
-
-        Arguments:
-            values: Values of parameters.
+            values: Values dict with any needed parameters.
 
         Returns:
             The generator as a tensor.
@@ -526,23 +520,27 @@ class HamiltonianEvolution(Sequence):
         Raises:
             NotImplementedError for the diagonal case.
         """
-        values_cache_key = str(OrderedDict(values))
-        if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
-            return self._cache_hamiltonian_evo[values_cache_key]
-
         if diagonal:
             raise NotImplementedError
-        hamiltonian: torch.Tensor = self.create_hamiltonian(values)
-        time_evolution: torch.Tensor = (
-            values[self.time] if isinstance(self.time, str) else self.time
-        )  # If `self.time` is a string / hence, a Parameter,
-        # we expect the user to pass it in the `values` dict
-        evolved_op = evolve(hamiltonian, time_evolution)
-        nb_cached = len(self._cache_hamiltonian_evo)
+        values_cache_key = str(OrderedDict(values))
+        if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
+            evolved_op = self._cache_hamiltonian_evo[values_cache_key]
+        else:
+            hamiltonian: torch.Tensor = self.create_hamiltonian(values)
+            time_evolution: torch.Tensor = (
+                values[self.time] if isinstance(self.time, str) else self.time
+            )  # If `self.time` is a string / hence, a Parameter,
+            # we expect the user to pass it in the `values` dict
+            evolved_op = evolve(hamiltonian, time_evolution)
+            nb_cached = len(self._cache_hamiltonian_evo)
 
-        # LRU caching
-        if (nb_cached > 0) and (nb_cached == self.cache_length):
-            self._cache_hamiltonian_evo.pop(next(iter(self._cache_hamiltonian_evo)))
-        if nb_cached < self.cache_length:
-            self._cache_hamiltonian_evo[values_cache_key] = evolved_op
-        return evolved_op
+            # LRU caching
+            if (nb_cached > 0) and (nb_cached == self.cache_length):
+                self._cache_hamiltonian_evo.pop(next(iter(self._cache_hamiltonian_evo)))
+            if nb_cached < self.cache_length:
+                self._cache_hamiltonian_evo[values_cache_key] = evolved_op
+
+        if full_support is None:
+            return evolved_op
+        else:
+            return expand_operator(evolved_op, self.qubit_support, full_support)

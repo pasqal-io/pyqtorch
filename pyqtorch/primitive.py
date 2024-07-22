@@ -12,8 +12,8 @@ from torch import Tensor
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.bitstrings import permute_basis
 from pyqtorch.embed import Embedding
-from pyqtorch.matrices import IMAT, OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import DensityMatrix, product_state
+from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
+from pyqtorch.utils import DensityMatrix, expand_operator, product_state
 
 logger = getLogger(__name__)
 
@@ -163,24 +163,10 @@ class Primitive(torch.nn.Module):
         if diagonal:
             raise NotImplementedError
         blockmat = self.unitary(values)
-        if full_support is not None:
-            full_support = tuple(sorted(full_support))
         if full_support is None:
             return blockmat
-        elif not set(self.qubit_support).issubset(set(full_support)):
-            raise ValueError(
-                "Expanding tensor operation requires a qubit support larger than original support."
-            )
         else:
-            temp_support = self.qubit_support
-            mat = blockmat
-            for i in full_support:
-                if i not in self.qubit_support:
-                    temp_support += (i,)
-                    other = IMAT.clone().to(self.device).unsqueeze(2)
-                    mat = torch.kron(mat.contiguous(), other)
-            blockmat = permute_basis(mat, temp_support)
-            return blockmat
+            return expand_operator(blockmat, self.qubit_support, full_support)
 
 
 class X(Primitive):

@@ -14,7 +14,8 @@ from numpy import arange, array, delete, log2
 from numpy import ndarray as NDArray
 from torch import Tensor, moveaxis
 
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
+from pyqtorch.bitstrings import permute_basis
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT
 
 State = Tensor
 Operator = Tensor
@@ -315,10 +316,36 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
     )
 
 
+def expand_operator(
+    operator: Tensor, qubit_support: tuple, full_support: tuple
+) -> Tensor:
+    """
+    Expands an operator acting on a certain qubit-support to act on a larger full_support
+    by explicitly filling in identity matrices on all remaining qubits.
+    """
+    if not set(qubit_support).issubset(set(full_support)):
+        raise ValueError(
+            "Expanding tensor operation requires a qubit support larger than original support."
+        )
+    device = operator.device
+    full_support = tuple(sorted(full_support))
+    temp_support = qubit_support
+    mat = operator
+    for i in full_support:
+        if i not in qubit_support:
+            temp_support += (i,)
+            other = IMAT.clone().to(device).unsqueeze(2)
+            mat = torch.kron(mat.contiguous(), other)
+    blockmat = permute_basis(mat, temp_support)
+    return blockmat
+
+
 def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     from pyqtorch.primitive import I
 
     """
+    FIXME: Remove and replace usage with the `expand_operator` above.
+
     Promotes `operator` to the size of the circuit (number of qubits and batch).
     Targeting the first qubit implies target = 0, so target > n_qubits - 1.
 

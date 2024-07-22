@@ -197,11 +197,10 @@ def test_projector_vs_operator(
 
 
 # def test_hevo_constant_gen() -> None:
-#     sup = (0, 1)
 #     generator = pyq.Add(
 #         [pyq.Scale(pyq.Z(0), torch.rand(1)), pyq.Scale(pyq.Z(1), torch.rand(1))]
 #     )
-#     hamevo = pyq.HamiltonianEvolution(generator, torch.rand(1), sup)
+#     hamevo = pyq.HamiltonianEvolution(generator, torch.rand(1))
 #     assert hamevo.generator_type == GeneratorType.OPERATION
 #     psi = pyq.zero_state(2)
 #     psi_star = hamevo(psi)
@@ -265,9 +264,7 @@ def test_projector_vs_operator(
 #             *[op(q, vparam) for op, q in zip(ops, qubit_targets)],
 #         ],
 #     )
-#     generator = generator.tensor(
-#         n_qubits=n_qubits, values={vparam: torch.tensor([0.5])}
-#     )
+#     generator = generator.tensor(values={vparam: torch.tensor([0.5])})
 #     generator = generator + torch.conj(torch.transpose(generator, 0, 1))
 #     hamevo = pyq.HamiltonianEvolution(
 #         generator, tparam, tuple(range(n_qubits)), parametric
@@ -278,47 +275,6 @@ def test_projector_vs_operator(
 #     psi_star = hamevo(psi, vals)
 #     psi_expected = _calc_mat_vec_wavefunction(hamevo, psi, vals)
 #     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-
-
-# @pytest.mark.parametrize(
-#     "projector, exp_projector_mat",
-#     [
-#         (
-#             pyq.Projector(0, bra="1", ket="1"),
-#             torch.tensor(
-#                 [[0.0 + 0.0j, 0.0 + 0.0j], [0.0 + 0.0j, 1.0 + 0.0j]],
-#                 dtype=torch.complex128,
-#             ),
-#         ),
-#         (
-#             pyq.N(0),
-#             (IMAT - ZMAT) / 2.0,
-#         ),
-#         (
-#             pyq.CNOT(0, 1),
-#             torch.tensor(
-#                 [
-#                     [
-#                         [1.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-#                         [0.0 + 0.0j, 1.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-#                         [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j, 1.0 + 0.0j],
-#                         [0.0 + 0.0j, 0.0 + 0.0j, 1.0 + 0.0j, 0.0 + 0.0j],
-#                     ]
-#                 ],
-#                 dtype=torch.complex128,
-#             ),
-#         ),
-#     ],
-# )
-# def test_projector_tensor(
-#     projector: Primitive, exp_projector_mat: torch.Tensor
-# ) -> None:
-
-#     nbqubits = int(log2(exp_projector_mat.shape[-1]))
-#     projector_mat = projector.tensor(
-#         n_qubits=nbqubits, values={"theta": torch.Tensor([1.0])}
-#     ).squeeze(-1)
-#     assert torch.allclose(projector_mat, exp_projector_mat, atol=1.0e-4)
 
 
 # def test_circuit_tensor() -> None:
