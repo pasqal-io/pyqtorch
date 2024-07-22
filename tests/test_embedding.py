@@ -156,10 +156,12 @@ def test_sample_run_expectation_grads_with_embedding(diff_mode) -> None:
     embedded_params = embedding(values_ad)
     wf = pyq.run(circ, state, embedded_params, embedding)
     samples = pyq.sample(circ, state, embedded_params, 100, embedding)
-    exp_ad = pyq.expectation(circ, state, embedded_params, obs, diff_mode, embedding)
+    exp_ad = pyq.expectation(
+        circ, state, embedded_params, obs, diff_mode, embedding=embedding
+    )
     assert torch.autograd.gradcheck(
         lambda x, y: pyq.expectation(
-            circ, state, {"x": x, "y": y}, obs, diff_mode, embedding
+            circ, state, {"x": x, "y": y}, obs, diff_mode, embedding=embedding
         ),
         (x, y),
         atol=1e-1,  # torch.autograd.gradcheck is very susceptible to small numerical errors

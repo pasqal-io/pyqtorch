@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from functools import partial
 from logging import getLogger
 
 from torch import Tensor
@@ -97,6 +98,7 @@ def sample(
 
 
 def analytical_expectation(
+    circuit: QuantumCircuit,
     state: Tensor,
     observable: Observable,
     values: dict[str, Tensor] = dict(),
@@ -104,10 +106,13 @@ def analytical_expectation(
 ) -> Tensor:
     """Non sampled expectation value.
 
-    Given an input state :math:`\\ket\\rangle`, the expectation value with :math:`O` is defined as
-    :math:`\\langle\\bra|O\\ket\\rangle`
+    Given an initial state :math:`\\ket\\rangle`,
+    a quantum circuit :math:`U(\\theta)`,
+    the expectation value with :math:`O` is defined as
+    :math:`\\langle\\bra U_{\\dag}(\\theta) |O| U(\\theta) \\ket\\rangle`
 
     Args:
+        circuit (QuantumCircuit): Quantum circuit :math:`U(\\theta)`.
         state (Tensor): Input state :math:`\\ket\\rangle`.
         observable (Observable): Observable O.
         values (dict[str, Tensor], optional): Parameter values for the observable if any.
@@ -116,7 +121,35 @@ def analytical_expectation(
     Returns:
         Tensor: Expectation value.
     """
+    state = run(circuit, state, values, embedding=embedding)
     return inner_prod(state, run(observable, state, values, embedding=embedding)).real
+
+
+def sampled_expectation(
+    circuit: QuantumCircuit,
+    state: Tensor,
+    observable: Observable,
+    values: dict[str, Tensor] = dict(),
+    n_shots: int = 1,
+    embedding: Embedding | None = None,
+) -> Tensor:
+    """Sampled expectation value.
+
+    Given an input state :math:`\\ket\\rangle`, the expectation value with :math:`O` is defined as
+    :math:`\\langle\\bra|O\\ket\\rangle`
+
+    Args:
+        state (Tensor): Input state :math:`\\ket\\rangle`.
+        observable (Observable): Observable O.
+        values (dict[str, Tensor], optional): Parameter values for the observable if any.
+        n_shots: (int, optional): Number of samples to compute expectation on.
+        embedding (Embedding | None, optional): An optional instance of `Embedding`.
+
+    Returns:
+        Tensor: Expectation value.
+    """
+    samples = sample(circuit, state, values, n_shots, embedding=embedding)
+    raise NotImplementedError("Sampling not yet supported.")
 
 
 def expectation(
@@ -125,6 +158,7 @@ def expectation(
     values: dict[str, Tensor] = dict(),
     observable: Observable = None,  # type: ignore[assignment]
     diff_mode: DiffMode = DiffMode.AD,
+    options: dict[str, int] = dict(),
     embedding: Embedding | None = None,
 ) -> Tensor:
     """Compute the expectation value of `circuit` given a `state`,
@@ -138,6 +172,9 @@ def expectation(
                 denoting the current parameter values for each parameter in `circuit`.
         observable: A pyq.Observable instance.
         diff_mode: The differentiation mode.
+        options (dict): a dict of options infer the expectation function.
+        If contains `n_shots`, expectations are computed after sampling `n_shots`.
+        Only used with DiffMode.GPSR or DiffMode.AD.
         embedding: An optional instance of `Embedding`.
 
     Returns:
@@ -159,6 +196,7 @@ def expectation(
     dfdtheta= grad(expval, theta, ones_like(expval))[0]
     ```
     """
+
     if embedding is not None and diff_mode != DiffMode.AD:
         raise NotImplementedError("Only diff_mode AD supports embedding")
     logger.debug(
@@ -167,11 +205,20 @@ def expectation(
     )
     if observable is None:
         logger.error("Please provide an observable to compute expectation.")
+
     if state is None:
         state = circuit.init_state(batch_size=1)
+
+    expectation_fn = analytical_expectation
+    n_shots = options.get("n_shots")
+    if n_shots is not None:
+        if isinstance(n_shots, int) and n_shots > 0:
+            expectation_fn = partial(sampled_expectation, n_shots=n_shots)
+        else:
+            logger.error("Please provide a 'n_shots' in options of type 'int'.")
+
     if diff_mode == DiffMode.AD:
-        state = run(circuit, state, values, embedding=embedding)
-        return analytical_expectation(state, observable, values, embedding)
+        return expectation_fn(circuit, state, observable, values, embedding)
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit,
