@@ -93,6 +93,9 @@ psi_end = hamiltonian_evolution(
 assert is_normalized(psi_end, atol=1e-05)
 ```
 
+!!! warning "Dimensionless units"
+    The quantity $\mathcal{H}t$ has to be considered **dimensionless** for exponentiation in `pyqtorch`.
+
 ## Circuits
 
 Using digital and analog operations, you can can build fully differentiable quantum circuits using the `QuantumCircuit` class; note that the default differentiation mode in pyqtorch is using torch.autograd.

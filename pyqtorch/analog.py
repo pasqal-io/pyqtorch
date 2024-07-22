@@ -319,6 +319,8 @@ class HamiltonianEvolution(Sequence):
     The HamiltonianEvolution corresponds to :math:`t`, returns :math:`exp(-i H, t)` where
     a hamiltonian/generator :math:`H` and a time evolution :math:`t` are given.
 
+    Note that the quantity :math:`H.t` is considered dimensionless.
+
     We can create such operation by passing different generator types:
         - A tensor representation of the generator,
         - A string when we consider the generator as a symbol.

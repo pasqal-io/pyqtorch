@@ -6,7 +6,9 @@ from typing import Callable, Tuple
 
 import pytest
 import torch
-from torch import Tensor
+from numpy import array, rollaxis, sort
+from qutip import Qobj
+from torch import Tensor, moveaxis
 
 import pyqtorch as pyq
 from pyqtorch.apply import apply_operator, operator_product
@@ -31,6 +33,8 @@ from pyqtorch.utils import (
     ATOL,
     DensityMatrix,
     density_mat,
+    dm_partial_trace,
+    generate_dm,
     operator_kron,
     product_state,
     promote_operator,
@@ -47,6 +51,8 @@ state_111 = product_state("111")
 state_0000 = product_state("0000")
 state_1110 = product_state("1110")
 state_1111 = product_state("1111")
+
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
 def test_identity() -> None:
@@ -137,8 +143,6 @@ def test_multicontrol_rotation(
 
     val_param = {"theta": torch.Tensor([1.0])}
     projector_apply_res = projector(initial_state, val_param)
-    print(final_state, projector_apply_res)
-
     assert torch.allclose(final_state, projector_apply_res, atol=1.0e-4)
 
 
@@ -217,23 +221,40 @@ def test_Toffoli_controlqubits0(initial_state: Tensor, expected_state: Tensor) -
 )
 @pytest.mark.parametrize("gate", ["RX", "RY", "RZ", "PHASE"])
 @pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 def test_multi_controlled_gates(
-    initial_state: Tensor, expects_rotation: bool, batch_size: int, gate: str
+    initial_state: Tensor,
+    expects_rotation: bool,
+    batch_size: int,
+    gate: str,
+    dtype: torch.dtype,
 ) -> None:
     phi = "phi"
+
+    initial_state = initial_state.to(device=device, dtype=dtype)
     rot_gate = getattr(pyq, gate)
     controlled_rot_gate = getattr(pyq, "C" + gate)
     phi = torch.rand(batch_size)
     n_qubits = int(log2(torch.numel(initial_state)))
     qubits = tuple([i for i in range(n_qubits)])
-    op = controlled_rot_gate(qubits[:-1], qubits[-1], "phi")
+    op = controlled_rot_gate(qubits[:-1], qubits[-1], "phi").to(
+        device=device, dtype=dtype
+    )
     out = op(initial_state, {"phi": phi})
     expected_state = (
-        rot_gate(qubits[-1], "phi")(initial_state, {"phi": phi})
+        rot_gate(qubits[-1], "phi").to(device=device, dtype=dtype)(
+            initial_state, {"phi": phi}
+        )
         if expects_rotation
         else initial_state
     )
     assert torch.allclose(out, expected_state)
+    if gate != "PHASE":
+        assert len(op.spectral_gap) == 2
+    else:
+        assert op.spectral_gap == 2.0
+
+    assert op.eigenvals_generator.dtype == dtype
 
 
 @pytest.mark.parametrize(
@@ -250,6 +271,8 @@ def test_parametrized_phase_gate(
     phase = pyq.PHASE(target, "phi")
     constant_phase = pyq.S(target)
     assert torch.allclose(phase(state, {"phi": phi}), constant_phase(state, None))
+    assert phase.spectral_gap == 2.0
+    assert constant_phase.spectral_gap == 1.0
 
 
 def test_dagger_single_qubit() -> None:
@@ -325,6 +348,7 @@ def test_U() -> None:
         u(state, values),
         pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values),
     )
+    assert u.spectral_gap == 2.0
 
 
 def test_dm(n_qubits: int, batch_size: int) -> None:
@@ -498,3 +522,39 @@ def test_parametric_constantparam(gate: pyq.parametric.Parametric) -> None:
         gate(target, "theta")(state, {"theta": param_val}),
         gate(target, param_val)(state),
     )
+
+
+def test_dm_partial_trace() -> None:
+    n_qubits = torch.randint(low=1, high=7, size=(1,)).item()
+    batch_size = torch.randint(low=1, high=5, size=(1,)).item()
+    state_str = "".join(random.choice("01") for _ in range(n_qubits))
+
+    # testing swaps
+    rho = density_mat(product_state(state_str, batch_size=batch_size))
+    keep_indices = random.sample(range(n_qubits), k=random.randint(1, n_qubits))
+    n_keep = len(keep_indices)
+    state_reduce_str = "".join([state_str[i] for i in keep_indices])
+    rho_reduce = dm_partial_trace(rho, keep_indices)
+
+    assert rho_reduce.shape == torch.Size([2**n_keep, 2**n_keep, batch_size])
+    assert torch.allclose(
+        rho_reduce,
+        density_mat(product_state(state_reduce_str, batch_size=batch_size)),
+    )
+
+    # testing reduced density matrix
+    rho_list = generate_dm(n_qubits, batch_size)
+
+    rho_sub = torch.from_numpy(
+        array(
+            [
+                Qobj(
+                    rollaxis(rho_list.numpy(), 2, 0)[i], dims=[[2] * n_qubits] * 2
+                ).ptrace(sort(keep_indices))
+                for i in range(batch_size)
+            ]
+        )
+    )
+    rho_sub = moveaxis(rho_sub, 0, 2).type(torch.cfloat)
+
+    assert torch.allclose(dm_partial_trace(rho_list, sort(keep_indices)), rho_sub)
