@@ -155,7 +155,11 @@ class Sequence(Module):
             mat,
         )
 
-    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
+    def dagger(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
         return _dagger(self.tensor(values))
 
 

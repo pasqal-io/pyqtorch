@@ -6,7 +6,7 @@ from typing import Any, Tuple
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-from pyqtorch.analog import Observable
+from pyqtorch.analog import Observable, Scale
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.embed import Embedding
@@ -98,39 +98,43 @@ class AdjointExpectation(Function):
                     op.dagger(values, ctx.embedding),
                     op.qubit_support,
                 )
-            # TODO: Properly fix or not support Scale in adjoint at all
-            # elif isinstance(op, Scale):
-            #     if not len(op.operations) == 1 and isinstance(
-            #         op.operations[0], Primitive
-            #     ):
-            #         logger.error(
-            #             "Adjoint can only be used on Scale with Primitive blocks."
-            #         )
-            #     ctx.out_state = apply_operator(
-            #         ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
-            #     )
-            #     scaled_pyq_op = op.operations[0]
-            #     if (
-            #         isinstance(scaled_pyq_op, Parametric)
-            #         and isinstance(scaled_pyq_op.param_name, str)
-            #         and values[scaled_pyq_op.param_name].requires_grad
-            #     ):
-            #         mu = apply_operator(
-            #             ctx.out_state,
-            #             scaled_pyq_op.jacobian(values, ctx.embedding),
-            #             scaled_pyq_op.qubit_support,
-            #         )
-            #         grads_dict[scaled_pyq_op.param_name] = (
-            #             grad_out * 2 * inner_prod(ctx.projected_state, mu).real
-            #         )
 
-            #     if values[op.param_name].requires_grad:
-            #         grads_dict[op.param_name] = grad_out * 2 * -values[op.param_name]
-            #     ctx.projected_state = apply_operator(
-            #         ctx.projected_state,
-            #         op.dagger(values, ctx.embedding),
-            #         op.qubit_support,
-            #     )
+            elif isinstance(op, Scale):
+                # TODO: Properly fix or not support Scale in adjoint at all
+                logger.error(
+                    f"AdjointExpectation does not support operation: {type(op)}."
+                )
+                if not len(op.operations) == 1 and isinstance(
+                    op.operations[0], Primitive
+                ):
+                    logger.error(
+                        "Adjoint can only be used on Scale with Primitive blocks."
+                    )
+                ctx.out_state = apply_operator(
+                    ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
+                )
+                scaled_pyq_op = op.operations[0]
+                if (
+                    isinstance(scaled_pyq_op, Parametric)
+                    and isinstance(scaled_pyq_op.param_name, str)
+                    and values[scaled_pyq_op.param_name].requires_grad
+                ):
+                    mu = apply_operator(
+                        ctx.out_state,
+                        scaled_pyq_op.jacobian(values, ctx.embedding),
+                        scaled_pyq_op.qubit_support,
+                    )
+                    grads_dict[scaled_pyq_op.param_name] = (
+                        grad_out * 2 * inner_prod(ctx.projected_state, mu).real
+                    )
+
+                if values[op.param_name].requires_grad:
+                    grads_dict[op.param_name] = grad_out * 2 * -values[op.param_name]
+                ctx.projected_state = apply_operator(
+                    ctx.projected_state,
+                    op.dagger(values, ctx.embedding),
+                    op.qubit_support,
+                )
             else:
                 logger.error(
                     f"AdjointExpectation does not support operation: {type(op)}."
