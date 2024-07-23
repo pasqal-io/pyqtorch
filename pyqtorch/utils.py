@@ -77,7 +77,7 @@ def sample_multinomial(
     n_samples: int,
     return_counter: bool = True,
     minlength: int = 0,
-) -> Union[Counter, Tensor]:
+) -> Counter | Tensor:
     """Sample bitstrings from a probability distribution.
 
     Args:
