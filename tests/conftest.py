@@ -9,7 +9,9 @@ import torch
 from pytest import FixtureRequest
 from torch import Tensor
 
+from pyqtorch.analog import Add, Scale
 from pyqtorch.apply import apply_operator
+from pyqtorch.circuit import Sequence
 from pyqtorch.noise import (
     AmplitudeDamping,
     BitFlip,
@@ -20,8 +22,30 @@ from pyqtorch.noise import (
     PhaseDamping,
     PhaseFlip,
 )
-from pyqtorch.parametric import PHASE, RX, RY, RZ
-from pyqtorch.primitive import H, I, Primitive, S, T, X, Y, Z
+from pyqtorch.parametric import (
+    OPS_PARAM_1Q,
+    OPS_PARAM_2Q,
+    PHASE,
+    RX,
+    RY,
+    RZ,
+    Parametric,
+)
+from pyqtorch.primitive import (
+    OPS_1Q,
+    OPS_2Q,
+    OPS_3Q,
+    OPS_PAULI,
+    H,
+    I,
+    Primitive,
+    S,
+    T,
+    Toffoli,
+    X,
+    Y,
+    Z,
+)
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -55,6 +79,34 @@ def _calc_mat_vec_wavefunction(
         mat,
         qubits=qubits,
     )
+
+
+def _get_op_support(op: type[Primitive] | type[Parametric], n_qubits: int) -> tuple:
+    """Decides a random qubit support for any gate, up to a some max n_qubits."""
+    if op in OPS_1Q.union(OPS_PARAM_1Q):
+        supp: tuple = (random.randint(0, n_qubits - 1),)
+    elif op in OPS_2Q.union(OPS_PARAM_2Q):
+        supp = tuple(random.sample(range(n_qubits), 2))
+    elif op in OPS_3Q:
+        i, j, k = tuple(random.sample(range(n_qubits), 3))
+        supp = ((i, j), k) if op == Toffoli else (i, (j, k))
+    return supp
+
+
+def _random_pauli_hamiltonian(
+    n_qubits: int, k_1q: int = 5, k_2q: int = 10
+) -> type[Add]:
+    one_q_terms: list = random.choices(list(OPS_PAULI), k=k_1q)
+    two_q_terms: list = [random.choices(list(OPS_PAULI), k=2) for _ in range(k_2q)]
+    terms: list = []
+    for term in one_q_terms:
+        supp = random.sample(range(n_qubits), 1)
+        terms.append(term(supp))
+    for term in two_q_terms:
+        supp = random.sample(range(n_qubits), 2)
+        terms.append(Sequence([term[0](supp[0]), term[1](supp[1])]))
+    terms = [Scale(t, torch.rand(1)) if random.random() > 0.5 else t for t in terms]  # type: ignore [misc]
+    return Add(terms)
 
 
 @pytest.fixture(params=[I, X, Y, Z, H, T, S])

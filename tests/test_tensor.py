@@ -4,22 +4,18 @@ import random
 
 import pytest
 import torch
-from conftest import _calc_mat_vec_wavefunction
+from conftest import _calc_mat_vec_wavefunction, _get_op_support
 
 from pyqtorch.analog import Add, Scale
 from pyqtorch.circuit import Sequence
-from pyqtorch.parametric import OPS_PARAM, OPS_PARAM_1Q, OPS_PARAM_2Q, Parametric
+from pyqtorch.parametric import OPS_PARAM, Parametric
 from pyqtorch.primitive import (
     CNOT,
-    OPS_1Q,
-    OPS_2Q,
-    OPS_3Q,
     OPS_DIGITAL,
     SWAP,
     N,
     Primitive,
     Projector,
-    Toffoli,
 )
 from pyqtorch.utils import (
     ATOL,
@@ -28,18 +24,6 @@ from pyqtorch.utils import (
 )
 
 pi = torch.tensor(torch.pi)
-
-
-def _get_op_support(op: type[Primitive] | type[Parametric], n_qubits: int) -> tuple:
-    """Decides a random qubit support for any gate, up to a some max n_qubits."""
-    if op in OPS_1Q.union(OPS_PARAM_1Q):
-        supp: tuple = (random.randint(0, n_qubits - 1),)
-    elif op in OPS_2Q.union(OPS_PARAM_2Q):
-        supp = tuple(random.sample(range(n_qubits), 2))
-    elif op in OPS_3Q:
-        i, j, k = tuple(random.sample(range(n_qubits), 3))
-        supp = ((i, j), k) if op == Toffoli else (i, (j, k))
-    return supp
 
 
 @pytest.mark.parametrize("use_full_support", [True, False])
@@ -207,7 +191,6 @@ def test_projector_vs_operator(
 #     psi_expected = _calc_mat_vec_wavefunction(hamevo, psi)
 #     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
-
 # @pytest.mark.parametrize("n_qubits", [2, 4, 6])
 # @pytest.mark.parametrize("dim", [1, 2, 3, 4, 5, 6])
 # @pytest.mark.parametrize("same_qubit_case", [True, False])
@@ -229,7 +212,7 @@ def test_projector_vs_operator(
 #             *[op(q) for op, q in zip(ops, qubit_targets)],
 #         ],
 #     )
-#     generator = generator.tensor()
+#     generator = generator.tensor(full_support=tuple(range(n_qubits)))
 #     generator = generator + torch.conj(torch.transpose(generator, 0, 1))
 #     hamevo = pyq.HamiltonianEvolution(
 #         generator, vparam, tuple(range(n_qubits)), parametric
