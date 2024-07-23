@@ -136,6 +136,21 @@ class DiffMode(StrEnum):
     """The generalized parameter-shift rule"""
 
 
+class DropoutMode(StrEnum):
+    """
+    Which Dropout mode to use, using the methods stated in https://arxiv.org/abs/2310.04120.
+
+    Options: rotational    - Randomly drops entangling rotational gates.
+             entangling    - Randomly drops entangling gates.
+             canonical_fwd - Randomly drops rotational gates and next immediate entangling
+                            gates whose target bit is located on dropped rotational gates.
+    """
+
+    ROTATIONAL = "rotational_dropout"
+    ENTANGLING = "entangling_dropout"
+    CANONICAL_FWD = "canonical_fwd_dropout"
+
+
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
     """
     Function to test if the probabilities from the state sum up to 1.
