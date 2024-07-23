@@ -56,7 +56,7 @@ from pyqtorch.utils import (
 
 
 def _calc_mat_vec_wavefunction(
-    block: Primitive,
+    block: Primitive | Sequence,
     init_state: torch.Tensor,
     values: dict = {},
     full_support: tuple | None = None,
@@ -94,8 +94,12 @@ def _get_op_support(op: type[Primitive] | type[Parametric], n_qubits: int) -> tu
 
 
 def _random_pauli_hamiltonian(
-    n_qubits: int, k_1q: int = 5, k_2q: int = 10
-) -> type[Add]:
+    n_qubits: int,
+    k_1q: int = 5,
+    k_2q: int = 10,
+    make_param=False,
+) -> tuple[Sequence, list]:
+    """Creates a random Pauli Hamiltonian as a sum of k_1q + k_2q terms."""
     one_q_terms: list = random.choices(list(OPS_PAULI), k=k_1q)
     two_q_terms: list = [random.choices(list(OPS_PAULI), k=2) for _ in range(k_2q)]
     terms: list = []
@@ -105,8 +109,15 @@ def _random_pauli_hamiltonian(
     for term in two_q_terms:
         supp = random.sample(range(n_qubits), 2)
         terms.append(Sequence([term[0](supp[0]), term[1](supp[1])]))
-    terms = [Scale(t, torch.rand(1)) if random.random() > 0.5 else t for t in terms]  # type: ignore [misc]
-    return Add(terms)
+    param_list = []
+    for i, t in enumerate(terms):
+        if random.random() > 0.5:
+            if make_param:
+                terms[i] = Scale(t, f"p_{i}")
+                param_list.append(f"p_{i}")
+            else:
+                terms[i] = Scale(t, torch.rand(1))
+    return Add(terms), param_list
 
 
 @pytest.fixture(params=[I, X, Y, Z, H, T, S])

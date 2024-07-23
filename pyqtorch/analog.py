@@ -194,7 +194,7 @@ class Add(Sequence):
         Returns:
             The transformed state.
         """
-        return reduce(add, (op(state, values) for op in self.operations))
+        return reduce(add, (op(state, values, embedding) for op in self.operations))
 
     def tensor(
         self,
