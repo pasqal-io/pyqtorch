@@ -10,6 +10,9 @@ def _basis_order(qs: tuple[int]) -> list[int]:
     basis states depending on the order of the qubit support.
 
     Helper function to permute the rows and columns of any operator.
+
+    TODO: There is probably a smarter way to write this function that
+    avoids the exponential overhead of explicitly writing down the basis states.
     """
     n_qubits = len(qs)
     qs_ordered = np.argsort(qs)
