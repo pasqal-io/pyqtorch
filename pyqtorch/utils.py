@@ -8,7 +8,7 @@ from functools import lru_cache, partial, wraps
 from logging import getLogger
 from math import sqrt
 from string import ascii_uppercase as ABC
-from typing import Any, Callable, Sequence, Union
+from typing import Any, Callable, Sequence
 
 import torch
 from numpy import arange, array, delete, log2
