@@ -205,8 +205,8 @@ def expectation(
         observable: A pyq.Observable instance.
         diff_mode: The differentiation mode.
         options (dict): a dict of options infer the expectation function.
-        If contains `n_shots`, expectations are computed after sampling `n_shots`.
-        Only used with DiffMode.GPSR or DiffMode.AD.
+                    If contains `n_shots`, expectations are computed after sampling `n_shots`.
+                    Only used with DiffMode.GPSR or DiffMode.AD.
         embedding: An optional instance of `Embedding`.
 
     Returns:
