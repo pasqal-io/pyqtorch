@@ -163,7 +163,7 @@ class Primitive(torch.nn.Module):
         full_sup = tuple(i for i in range(n_qubits))
         support = tuple(sorted(self.qubit_support))
         mat = (
-            IMAT.clone().to(self.device).unsqueeze(2)
+            IMAT.clone().to(device=self.device, dtype=self.dtype).unsqueeze(2)
             if support[0] != full_sup[0]
             else blockmat
         )
@@ -172,7 +172,9 @@ class Primitive(torch.nn.Module):
                 other = blockmat
                 mat = torch.kron(mat.contiguous(), other.contiguous())
             elif i not in support:
-                other = IMAT.clone().to(self.device).unsqueeze(2)
+                other = (
+                    IMAT.clone().to(device=self.device, dtype=self.dtype).unsqueeze(2)
+                )
                 mat = torch.kron(mat.contiguous(), other.contiguous())
         return mat
 

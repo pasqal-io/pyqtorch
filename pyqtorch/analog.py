@@ -292,9 +292,11 @@ class Add(Sequence):
         """
         if n_qubits is None:
             n_qubits = max(self.qubit_support) + 1
-        mat = torch.zeros((2, 2, 1), device=self.device)
+        mat = torch.zeros((2, 2, 1), device=self.device, dtype=self.dtype)
         for _ in range(n_qubits - 1):
-            mat = torch.kron(mat, torch.zeros((2, 2, 1), device=self.device))
+            mat = torch.kron(
+                mat, torch.zeros((2, 2, 1), device=self.device, dtype=self.dtype)
+            )
         return reduce(
             add, (op.tensor(values, n_qubits, diagonal) for op in self.operations), mat
         )

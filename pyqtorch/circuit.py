@@ -142,10 +142,11 @@ class Sequence(Module):
             raise NotImplementedError
         if n_qubits is None:
             n_qubits = max(self.qubit_support) + 1
-        mat = IMAT.clone().unsqueeze(2).to(self.device)
+        mat = IMAT.clone().unsqueeze(2).to(device=self.device, dtype=self.dtype)
         for _ in range(n_qubits - 1):
-            mat = torch.kron(mat, IMAT.clone().unsqueeze(2).to(self.device))
-
+            mat = torch.kron(
+                mat, IMAT.clone().unsqueeze(2).to(device=self.device, dtype=self.dtype)
+            )
         return reduce(
             lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
             (add_batch_dim(op.tensor(values, n_qubits)) for op in self.operations),
