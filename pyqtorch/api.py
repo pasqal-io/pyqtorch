@@ -259,7 +259,7 @@ def expectation(
     elif diff_mode == DiffMode.GPSR:
         check_support_psr(circuit)
         return PSRExpectation.apply(
-            circuit, state, observable, embedding, values.keys(), *values.values()
+            circuit, state, observable, embedding, expectation_fn, values.keys(), *values.values()
         )
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")
