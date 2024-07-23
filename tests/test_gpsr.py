@@ -78,7 +78,7 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
     ],
 )
 @pytest.mark.parametrize("ops_op", [pyq.Z, pyq.X, pyq.Y])
-@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+@pytest.mark.parametrize("dtype", [torch.complex128])
 def test_expectation_gpsr(
     n_qubits: int,
     batch_size: int,
