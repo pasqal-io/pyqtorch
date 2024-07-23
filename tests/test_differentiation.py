@@ -65,7 +65,7 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     # )
 
 
-@pytest.mark.xfail  # investigate
+@pytest.mark.xfail  # Adjoing Scale is currently not supported
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 @pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize("n_qubits", [2])
