@@ -106,7 +106,7 @@ def analytical_expectation(
     values: dict[str, Tensor] = dict(),
     embedding: Embedding | None = None,
 ) -> Tensor:
-    """Non sampled expectation value.
+    """Compute the analytical expectation value.
 
     Given an initial state :math:`\\ket\\rangle`,
     a quantum circuit :math:`U(\\theta)`,
