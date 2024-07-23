@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Tuple, Callable
+from typing import Any, Callable, Tuple
 
 import torch
 from torch import Tensor, no_grad
@@ -12,7 +12,7 @@ from pyqtorch.circuit import QuantumCircuit, Sequence
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import inner_prod, param_dict
+from pyqtorch.utils import param_dict
 
 logger = getLogger(__name__)
 
@@ -276,7 +276,15 @@ class PSRExpectation(Function):
                     else:
                         grads[op.param_name] = vjp(op, values)
 
-        return (None, None, None, None, None, None, *[grads[p] for p in ctx.param_names])
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            *[grads[p] for p in ctx.param_names],
+        )
 
 
 def check_support_psr(circuit: QuantumCircuit):

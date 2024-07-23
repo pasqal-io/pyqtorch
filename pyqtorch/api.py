@@ -165,19 +165,24 @@ def sampled_expectation(
         tuple(range(n_qubits)),
         n_qubits=circuit.n_qubits,
     )
-    eigvec_state_prod = torch.flatten(eigvec_state_prod, start_dim=0, end_dim=-2).t()
-    probs = torch.abs(torch.pow(eigvec_state_prod, 2))
-    batch_sample_multinomial = torch.func.vmap(
-        lambda p: sample_multinomial(
-            p, n_qubits, n_shots, return_counter=False, minlength=probs.shape[-1]
-        ),
-        randomness="different",
-    )
-    batch_samples = batch_sample_multinomial(probs)
-    normalized_samples = torch.div(batch_samples, n_shots)
-    return torch.einsum(
+    with torch.no_grad():
+        eigvec_state_prod = torch.flatten(
+            eigvec_state_prod, start_dim=0, end_dim=-2
+        ).t()
+        probs = torch.abs(torch.pow(eigvec_state_prod, 2))
+        batch_sample_multinomial = torch.func.vmap(
+            lambda p: sample_multinomial(
+                p, n_qubits, n_shots, return_counter=False, minlength=probs.shape[-1]
+            ),
+            randomness="different",
+        )
+        batch_samples = batch_sample_multinomial(probs)
+        normalized_samples = torch.div(batch_samples, n_shots)
+    expectations = torch.einsum(
         "i,ji ->j", eigvals.to(dtype=normalized_samples.dtype), normalized_samples  # type: ignore[union-attr]
     ).real
+    expectations.requires_grad = True
+    return expectations
 
 
 def expectation(
@@ -259,7 +264,13 @@ def expectation(
     elif diff_mode == DiffMode.GPSR:
         check_support_psr(circuit)
         return PSRExpectation.apply(
-            circuit, state, observable, embedding, expectation_fn, values.keys(), *values.values()
+            circuit,
+            state,
+            observable,
+            embedding,
+            expectation_fn,
+            values.keys(),
+            *values.values(),
         )
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")
