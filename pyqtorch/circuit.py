@@ -19,7 +19,13 @@ from pyqtorch.embed import Embedding
 from pyqtorch.matrices import IMAT, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import DropoutMode, State, product_state, sample_multinomial, zero_state
+from pyqtorch.utils import (
+    DropoutMode,
+    State,
+    product_state,
+    sample_multinomial,
+    zero_state,
+)
 
 logger = getLogger(__name__)
 
@@ -205,114 +211,6 @@ class QuantumCircuit(Sequence):
             return list(
                 map(lambda p: sample_multinomial(p, self.n_qubits, n_shots), probs)
             )
-
-
-class DropoutQuantumCircuit(QuantumCircuit):
-    """Creates a quantum circuit able to perform quantum dropout, based on the work of https://arxiv.org/abs/2310.04120.
-    Args:
-        dropout_mode (DropoutMode): type of dropout to perform. Defaults to DropoutMode.ROTATIONAL
-        dropout_prob (float): dropout probability. Defaults to 0.06.
-    """
-
-    def __init__(
-        self,
-        n_qubits: int,
-        operations: list[Module],
-        dropout_mode: DropoutMode = DropoutMode.ROTATIONAL,
-        dropout_prob: float = 0.06,
-    ):
-        super().__init__(n_qubits, operations)
-        self.dropout_mode = dropout_mode
-        self.dropout_prob = dropout_prob
-
-        self.dropout_fn = getattr(self, dropout_mode)
-
-    def forward(
-        self,
-        state: State,
-        values: dict[str, Tensor] | ParameterDict = {},
-        embedding: Embedding | None = None,
-    ) -> State:
-        if self.training:
-            state = self.dropout_fn(state, values)
-        else:
-            for op in self.operations:
-                state = op(state, values)
-        return state
-
-    def rotational_dropout(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
-    ) -> State:
-        """Randomly drops entangling rotational gates.
-
-        Args:
-            state (State, optional): pure state vector . Defaults to None.
-            values (dict[str, Tensor] | ParameterDict, optional): gate parameters. Defaults to {}.
-
-        Returns:
-            State: pure state vector
-        """
-        for op in self.operations:
-            if not (
-                (hasattr(op, "param_name"))
-                and (values[op.param_name].requires_grad)
-                and not (int(1 - bernoulli(tensor(self.dropout_prob))))
-            ):
-                state = op(state, values)
-
-        return state
-
-    def entangling_dropout(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
-    ) -> State:
-        """Randomly drops entangling gates.
-
-        Args:
-            state (State, optional): pure state vector. Defaults to None.
-            values (dict[str, Tensor] | ParameterDict, optional): gate parameters. Defaults to {}.
-
-        Returns:
-            State: pure state vector
-        """
-        for op in self.operations:
-            has_param = hasattr(op, "param_name")
-            keep = int(1 - bernoulli(tensor(self.dropout_prob)))
-
-            if has_param or keep:
-                state = op(state, values)
-
-        return state
-
-    def canonical_fwd_dropout(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
-    ) -> State:
-        """Randomly drops rotational gates and next immediate entangling
-        gates whose target bit is located on dropped rotational gates.
-
-        Args:
-            state (State, optional): pure state vector. Defaults to None.
-            values (dict[str, Tensor] | ParameterDict, optional): gate parameters. Defaults to {}.
-
-        Returns:
-            State: pure state vector
-        """
-        entanglers_to_drop = dict.fromkeys(range(state.ndim - 1), 0)  # type: ignore
-        for op in self.operations:
-            if (
-                hasattr(op, "param_name")
-                and (values[op.param_name].requires_grad)
-                and not (int(1 - bernoulli(tensor(self.dropout_prob))))
-            ):
-                entanglers_to_drop[op.target] = 1
-            else:
-                if not hasattr(op, "param_name") and (
-                    entanglers_to_drop[op.control[0]] == 1
-                ):
-                    entanglers_to_drop[op.control[0]] = 0
-                else:
-                    state = op(state, values)
-
-        return state
 
 
 class DropoutQuantumCircuit(QuantumCircuit):
