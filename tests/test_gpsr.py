@@ -12,7 +12,7 @@ from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.parametric import Parametric
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE
+from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL
 
 
 def circuit_psr(n_qubits: int) -> QuantumCircuit:
@@ -110,12 +110,31 @@ def test_expectation_gpsr(
         exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
     )
 
+    exp_gpsr_sampled = expectation(
+        circ,
+        state,
+        values,
+        obs,
+        DiffMode.GPSR,
+        options={"n_shots": 10000},
+    )
+    grad_gpsr_sampled = torch.autograd.grad(
+        exp_gpsr_sampled,
+        tuple(values.values()),
+        torch.ones_like(exp_gpsr_sampled),
+        create_graph=True,
+    )
+    assert torch.allclose(exp_gpsr, exp_gpsr_sampled, atol=1e-01)
+
     atol = PSR_ACCEPTANCE if circuit_fn != circuit_gpsr else GPSR_ACCEPTANCE
 
     # first order checks
 
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
+        assert torch.allclose(
+            grad_gpsr[i], grad_gpsr_sampled[i], atol=GRADCHECK_sampling_ATOL
+        )
 
     # second order checks
     for i in range(len(grad_ad)):

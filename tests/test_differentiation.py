@@ -110,7 +110,6 @@ def test_sampled_diff(
         DiffMode.AD,
         options={"n_shots": 10000},
     )
-    exp_ad = exp_ad.to(exp_ad_sampled.dtype)
     assert torch.allclose(exp_ad, exp_ad_sampled, atol=1e-01)
 
 

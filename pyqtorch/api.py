@@ -174,11 +174,13 @@ def sampled_expectation(
         randomness="different",
     )
     batch_samples = batch_sample_multinomial(probs)
-    normalized_samples = torch.div(batch_samples, n_shots)
+    normalized_samples = torch.div(
+        batch_samples, torch.tensor(n_shots, dtype=probs.dtype)
+    )
     normalized_samples.requires_grad = True
     expectations = torch.einsum(
         "i,ji ->j", eigvals.to(dtype=normalized_samples.dtype), normalized_samples  # type: ignore[union-attr]
-    ).real
+    )
     return expectations
 
 
