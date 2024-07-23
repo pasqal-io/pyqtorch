@@ -166,7 +166,7 @@ def sampled_expectation(
         n_qubits=circuit.n_qubits,
     )
     eigvec_state_prod = torch.flatten(eigvec_state_prod, start_dim=0, end_dim=-2).t()
-    probs = torch.abs(torch.pow(eigvec_state_prod, 2))
+    probs = torch.pow(torch.abs(eigvec_state_prod), 2)
     batch_sample_multinomial = torch.func.vmap(
         lambda p: sample_multinomial(
             p, n_qubits, n_shots, return_counter=False, minlength=probs.shape[-1]

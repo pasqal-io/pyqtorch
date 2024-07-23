@@ -207,7 +207,7 @@ class QuantumCircuit(Sequence):
                 end_dim=-2,
             ).t()
 
-            probs = torch.abs(torch.pow(state, 2))
+            probs = torch.pow(torch.abs(state), 2)
             return list(
                 map(lambda p: sample_multinomial(p, self.n_qubits, n_shots), probs)
             )
