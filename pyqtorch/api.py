@@ -153,13 +153,15 @@ def sampled_expectation(
     """
     state = run(circuit, state, values, embedding=embedding)
     n_qubits = circuit.n_qubits
+
+    # batchsize needs to be first dim for eigh
     eigvals, eigvecs = torch.linalg.eigh(
         observable.tensor(n_qubits=n_qubits, values=values).permute((2, 0, 1))
     )
     eigvals = eigvals.squeeze()
     eigvec_state_prod = apply_operator(
         state,
-        eigvecs.permute((1, 2, 0)),
+        eigvecs.T.conj(),
         tuple(range(n_qubits)),
         n_qubits=circuit.n_qubits,
     )
@@ -173,7 +175,6 @@ def sampled_expectation(
     )
     batch_samples = batch_sample_multinomial(probs)
     normalized_samples = torch.div(batch_samples, n_shots)
-    print(eigvals.shape, normalized_samples.shape)
     return torch.einsum(
         "i,ji ->j", eigvals.to(dtype=normalized_samples.dtype), normalized_samples  # type: ignore[union-attr]
     ).real

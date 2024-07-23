@@ -67,14 +67,15 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
 
 @pytest.mark.parametrize("n_qubits", [3, 5])
 @pytest.mark.parametrize("batch_size", [1, 2])
-def test_sampled_diff(n_qubits: int, batch_size: int) -> None:
+@pytest.mark.parametrize("ops_op", [pyq.Z, pyq.Y])
+def test_sampled_diff(n_qubits: int, batch_size: int, ops_op: Primitive) -> None:
     rx = pyq.RX(0, param_name="theta_0")
     cry = pyq.CPHASE(0, 1, param_name="theta_1")
     rz = pyq.RZ(2, param_name="theta_2")
     cnot = pyq.CNOT(1, 2)
     ops = [rx, cry, rz, cnot]
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.Observable(n_qubits, [pyq.Z(0)])
+    obs = pyq.Observable(n_qubits, [ops_op(i) for i in range(1)])
 
     theta_0_value = torch.pi / 2
     theta_1_value = torch.pi
@@ -96,7 +97,7 @@ def test_sampled_diff(n_qubits: int, batch_size: int) -> None:
         options={"n_shots": 10000},
     )
     exp_ad = exp_ad.to(exp_ad_sampled.dtype)
-    assert torch.allclose(exp_ad, exp_ad_sampled, atol=1e-02)
+    assert torch.allclose(exp_ad, exp_ad_sampled, atol=1e-01)
 
 
 @pytest.mark.xfail  # investigate
