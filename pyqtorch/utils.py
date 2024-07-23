@@ -92,11 +92,9 @@ def sample_multinomial(
         Counter: Sampled bitstrings with their frequencies or probabilities.
     """
 
-    bincount_output = (
-        torch.bincount(
-            torch.multinomial(input=probs, num_samples=n_samples, replacement=True),
-            minlength = minlength
-        )
+    bincount_output = torch.bincount(
+        torch.multinomial(input=probs, num_samples=n_samples, replacement=True),
+        minlength=minlength,
     )
 
     if return_counter:

@@ -7,9 +7,9 @@ from logging import getLogger
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator
 from pyqtorch.adjoint import AdjointExpectation
 from pyqtorch.analog import Observable
+from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.embed import Embedding
 from pyqtorch.gpsr import PSRExpectation, check_support_psr
@@ -157,12 +157,23 @@ def sampled_expectation(
         observable.tensor(n_qubits=n_qubits, values=values).permute((2, 0, 1))
     )
     eigvals = eigvals.squeeze()
-    eigvec_state_prod = apply_operator(state, eigvecs.permute((1, 2, 0)), circuit.qubit_support, n_qubits=circuit.n_qubits)
+    eigvec_state_prod = apply_operator(
+        state,
+        eigvecs.permute((1, 2, 0)),
+        tuple(range(n_qubits)),
+        n_qubits=circuit.n_qubits,
+    )
     eigvec_state_prod = torch.flatten(eigvec_state_prod, start_dim=0, end_dim=-2).t()
     probs = torch.abs(torch.pow(eigvec_state_prod, 2))
-    batch_sample_multinomial = torch.func.vmap(lambda p: sample_multinomial(p, n_qubits, n_shots, return_counter=False, minlength=probs.shape[-1]), randomness="different")
+    batch_sample_multinomial = torch.func.vmap(
+        lambda p: sample_multinomial(
+            p, n_qubits, n_shots, return_counter=False, minlength=probs.shape[-1]
+        ),
+        randomness="different",
+    )
     batch_samples = batch_sample_multinomial(probs)
     normalized_samples = torch.div(batch_samples, n_shots)
+    print(eigvals.shape, normalized_samples.shape)
     return torch.einsum(
         "i,ji ->j", eigvals.to(dtype=normalized_samples.dtype), normalized_samples  # type: ignore[union-attr]
     ).real
