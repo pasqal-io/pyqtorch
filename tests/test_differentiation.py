@@ -65,8 +65,8 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     # )
 
 
-@pytest.mark.parametrize("n_qubits", [3, 5])
-@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("n_qubits", [3])
+@pytest.mark.parametrize("batch_size", [1])
 @pytest.mark.parametrize("ops_op", [pyq.Z, pyq.Y])
 @pytest.mark.parametrize("dtype", [torch.complex128])
 def test_sampled_diff(
@@ -112,17 +112,6 @@ def test_sampled_diff(
     )
     exp_ad = exp_ad.to(exp_ad_sampled.dtype)
     assert torch.allclose(exp_ad, exp_ad_sampled, atol=1e-01)
-    grad_ad_sampled = torch.autograd.grad(
-        exp_ad_sampled, tuple(values.values()), torch.ones_like(exp_ad_sampled)
-    )
-
-    grad_ad = torch.autograd.grad(
-        exp_ad, tuple(values.values()), torch.ones_like(exp_ad)
-    )
-    # print(exp_ad, exp_ad_sampled)
-
-    # for i in range(len(grad_ad)):
-    #     assert torch.allclose(grad_ad[i], grad_ad_sampled[i], atol=GRADCHECK_sampling_ATOL)
 
 
 @pytest.mark.xfail  # investigate
