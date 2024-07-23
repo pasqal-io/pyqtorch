@@ -242,7 +242,7 @@ def expectation(
         state = circuit.init_state(batch_size=1)
 
     expectation_fn = analytical_expectation
-    n_shots = options.get("n_shots")
+    n_shots = options.get("n_shots", None)
     if n_shots is not None:
         if isinstance(n_shots, int) and n_shots > 0:
             expectation_fn = partial(sampled_expectation, n_shots=n_shots)
