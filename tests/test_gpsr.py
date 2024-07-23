@@ -116,7 +116,7 @@ def test_expectation_gpsr(
         values,
         obs,
         DiffMode.GPSR,
-        options={"n_shots": 10000},
+        n_shots=10000,
     )
     grad_gpsr_sampled = torch.autograd.grad(
         exp_gpsr_sampled,

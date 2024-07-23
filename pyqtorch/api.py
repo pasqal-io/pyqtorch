@@ -190,7 +190,7 @@ def expectation(
     values: dict[str, Tensor] = dict(),
     observable: Observable = None,  # type: ignore[assignment]
     diff_mode: DiffMode = DiffMode.AD,
-    options: dict[str, int] = dict(),
+    n_shots: int | None = None,
     embedding: Embedding | None = None,
 ) -> Tensor:
     """Compute the expectation value of `circuit` given a `state`,
@@ -204,8 +204,7 @@ def expectation(
                 denoting the current parameter values for each parameter in `circuit`.
         observable: A pyq.Observable instance.
         diff_mode: The differentiation mode.
-        options (dict): a dict of options infer the expectation function.
-                    If contains `n_shots`, expectations are computed after sampling `n_shots`.
+        n_shots: Number of shots for estimating expectation values.
                     Only used with DiffMode.GPSR or DiffMode.AD.
         embedding: An optional instance of `Embedding`.
 
@@ -242,7 +241,6 @@ def expectation(
         state = circuit.init_state(batch_size=1)
 
     expectation_fn = analytical_expectation
-    n_shots = options.get("n_shots", None)
     if n_shots is not None:
         if isinstance(n_shots, int) and n_shots > 0:
             expectation_fn = partial(sampled_expectation, n_shots=n_shots)

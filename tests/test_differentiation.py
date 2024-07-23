@@ -108,7 +108,7 @@ def test_sampled_diff(
         values,
         obs,
         DiffMode.AD,
-        options={"n_shots": 10000},
+        n_shots=10000,
     )
     assert torch.allclose(exp_ad, exp_ad_sampled, atol=1e-01)
 
