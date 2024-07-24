@@ -72,7 +72,7 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
 def test_sampled_diff(
     n_qubits: int,
     batch_size: int,
-    ops_op: Primitive,
+    ops_op: type[Primitive],
     dtype: torch.dtype,
 ) -> None:
     rx = pyq.RX(0, param_name="theta_0")
