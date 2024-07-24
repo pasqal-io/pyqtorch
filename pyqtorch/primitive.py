@@ -160,7 +160,7 @@ class Primitive(torch.nn.Module):
         blockmat = self.unitary(values)
         if n_qubits == 1:
             return blockmat
-        full_sup = tuple(i for i in range(n_qubits))
+        full_support = tuple(i for i in range(n_qubits))
         support = tuple(sorted(self.qubit_support))
         mat = (
             IMAT.clone().to(device=self.device).unsqueeze(2)
