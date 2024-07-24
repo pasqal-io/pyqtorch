@@ -198,7 +198,7 @@ class QuantumCircuit(Sequence):
         embedding: Embedding | None = None,
     ) -> list[Counter]:
         if n_shots < 1:
-            raise ValueError("You can only call sample with n_shots>0.")
+            raise ValueError(f"You can only call sample with a non-negative value for `n_shots`. Got {n_shots}.")
 
         with torch.no_grad():
             state = torch.flatten(
