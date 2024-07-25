@@ -30,7 +30,8 @@ circ = pyq.QuantumCircuit(1, [pyq.RX(0, mul_sinx_y)])
 state= pyq.zero_state(1)
 y = torch.rand(1, requires_grad=True)
 values = {'x': x, 'y': y}
-expval = pyq.expectation(circuit=circ, state=state, values=values, observable= pyq.Observable([pyq.Z(0)]),diff_mode=pyq.DiffMode.AD,embedding=embedding)
+obs = pyq.Observable([pyq.Z(0)])
+expval = pyq.expectation(circuit=circ, state=state, values=values, observable=obs, diff_mode=pyq.DiffMode.AD, embedding=embedding)
 print(torch.autograd.grad(expval, (x, y), torch.ones_like(expval)))
 ```
 

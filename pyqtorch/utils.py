@@ -317,27 +317,25 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
 
 
 def expand_operator(
-    operator: Tensor, qubit_support: tuple, full_support: tuple
+    operator: Tensor, qubit_support: tuple[int, ...], full_support: tuple[int, ...]
 ) -> Tensor:
     """
-    Expands an operator acting on a certain qubit-support to act on a larger full_support
+    Expands an operator acting on a given qubit_support to act on a larger full_support
     by explicitly filling in identity matrices on all remaining qubits.
     """
+    full_support = tuple(sorted(full_support))
     if not set(qubit_support).issubset(set(full_support)):
         raise ValueError(
-            "Expanding tensor operation requires a qubit support larger than original support."
+            "Expanding tensor operation requires a `full_support` argument "
+            "larger than or equal to the `qubit_support`."
         )
-    device = operator.device
-    full_support = tuple(sorted(full_support))
-    temp_support = qubit_support
-    mat = operator
-    for i in full_support:
-        if i not in qubit_support:
-            temp_support += (i,)
-            other = IMAT.clone().to(device).unsqueeze(2)
-            mat = torch.kron(mat.contiguous(), other)
-    blockmat = permute_basis(mat, temp_support)
-    return blockmat
+    device, dtype = operator.device, operator.dtype
+    for i in set(full_support) - set(qubit_support):
+        qubit_support += (i,)
+        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
+        operator = torch.kron(operator.contiguous(), other)
+    operator = permute_basis(operator, qubit_support)
+    return operator
 
 
 def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:

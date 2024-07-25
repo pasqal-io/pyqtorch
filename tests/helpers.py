@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+import random
+from typing import Any, Callable
+
+import pytest
+import qutip
+import torch
+from pytest import FixtureRequest
+from torch import Tensor
+
+from pyqtorch.analog import Add, Scale
+from pyqtorch.apply import apply_operator
+from pyqtorch.circuit import Sequence
+from pyqtorch.noise import (
+    AmplitudeDamping,
+    BitFlip,
+    Depolarizing,
+    GeneralizedAmplitudeDamping,
+    Noise,
+    PauliChannel,
+    PhaseDamping,
+    PhaseFlip,
+)
+from pyqtorch.parametric import (
+    OPS_PARAM_1Q,
+    OPS_PARAM_2Q,
+    PHASE,
+    RX,
+    RY,
+    RZ,
+    Parametric,
+)
+from pyqtorch.primitive import (
+    OPS_1Q,
+    OPS_2Q,
+    OPS_3Q,
+    OPS_PAULI,
+    H,
+    I,
+    Primitive,
+    S,
+    T,
+    Toffoli,
+    X,
+    Y,
+    Z,
+)
+from pyqtorch.utils import (
+    DensityMatrix,
+    density_mat,
+    product_state,
+    random_dm_promotion,
+    random_state,
+)
+
+def calc_mat_vec_wavefunction(
+    block: Primitive | Sequence,
+    init_state: torch.Tensor,
+    values: dict = dict(),
+    full_support: tuple | None = None,
+) -> torch.Tensor:
+    """Get the result of applying the matrix representation of a block to an initial state.
+
+    Args:
+        block: The black operator to apply.
+        init_state: Initial state to apply block on.
+        values: Values of parameter if block is parametric.
+
+    Returns:
+        Tensor: The new wavefunction after applying the block.
+
+    """
+    mat = block.tensor(values=values, full_support=full_support)
+    qubit_support = block.qubit_support if full_support is None else full_support
+    return apply_operator(
+        init_state,
+        mat,
+        qubits=qubit_support,
+    )
+
+
+def get_op_support(op: type[Primitive] | type[Parametric], n_qubits: int) -> tuple:
+    """Decides a random qubit support for any gate, up to a some max n_qubits."""
+    if op in OPS_1Q.union(OPS_PARAM_1Q):
+        supp: tuple = (random.randint(0, n_qubits - 1),)
+    elif op in OPS_2Q.union(OPS_PARAM_2Q):
+        supp = tuple(random.sample(range(n_qubits), 2))
+    elif op in OPS_3Q:
+        i, j, k = tuple(random.sample(range(n_qubits), 3))
+        supp = ((i, j), k) if op == Toffoli else (i, (j, k))
+    return supp
+
+
+def random_pauli_hamiltonian(
+    n_qubits: int,
+    k_1q: int = 5,
+    k_2q: int = 10,
+    make_param=False,
+) -> tuple[Sequence, list]:
+    """Creates a random Pauli Hamiltonian as a sum of k_1q + k_2q terms."""
+    one_q_terms: list = random.choices(list(OPS_PAULI), k=k_1q)
+    two_q_terms: list = [random.choices(list(OPS_PAULI), k=2) for _ in range(k_2q)]
+    terms: list = []
+    for term in one_q_terms:
+        supp = random.sample(range(n_qubits), 1)
+        terms.append(term(supp))
+    for term in two_q_terms:
+        supp = random.sample(range(n_qubits), 2)
+        terms.append(Sequence([term[0](supp[0]), term[1](supp[1])]))
+    param_list = []
+    for i, t in enumerate(terms):
+        if random.random() > 0.5:
+            if make_param:
+                terms[i] = Scale(t, f"p_{i}")
+                param_list.append(f"p_{i}")
+            else:
+                terms[i] = Scale(t, torch.rand(1))
+    return Add(terms), param_list

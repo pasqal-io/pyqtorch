@@ -119,6 +119,7 @@ class Scale(Sequence):
     def tensor(
         self,
         values: dict[str, Tensor] = dict(),
+        embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Operator:
@@ -141,7 +142,9 @@ class Scale(Sequence):
             if isinstance(self.param_name, str)
             else self.param_name
         )
-        return scale * self.operations[0].tensor(values, full_support, diagonal)
+        return scale * self.operations[0].tensor(
+            values, embedding, full_support, diagonal
+        )
 
     def flatten(self) -> list[Scale]:
         """This method should only be called in the AdjointExpectation,
@@ -198,7 +201,8 @@ class Add(Sequence):
 
     def tensor(
         self,
-        values: dict = {},
+        values: dict = dict(),
+        embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Tensor:
@@ -220,14 +224,18 @@ class Add(Sequence):
             full_support = self.qubit_support
         elif not set(self.qubit_support).issubset(set(full_support)):
             raise ValueError(
-                "Expanding tensor operation requires a qubit support larger than original support."
+                "Expanding tensor operation requires a `full_support` argument "
+                "larger than or equal to the `qubit_support`."
             )
         mat = torch.zeros(
             (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
         )
         return reduce(
             add,
-            (op.tensor(values, full_support, diagonal) for op in self.operations),
+            (
+                op.tensor(values, embedding, full_support, diagonal)
+                for op in self.operations
+            ),
             mat,
         )
 
@@ -407,7 +415,7 @@ class HamiltonianEvolution(Sequence):
             self.register_forward_pre_hook(pre_forward_hook)
             self.register_full_backward_pre_hook(pre_backward_hook)
 
-        self._generator_map: dict[GeneratorType, Callable[[dict], Tensor]] = {
+        self._generator_map: dict[GeneratorType, Callable] = {
             GeneratorType.SYMBOL: self._symbolic_generator,
             GeneratorType.TENSOR: self._tensor_generator,
             GeneratorType.OPERATION: self._tensor_generator,
@@ -428,7 +436,9 @@ class HamiltonianEvolution(Sequence):
         return self.operations
 
     def _symbolic_generator(
-        self, values: dict, full_support: tuple[int, ...] | None = None
+        self,
+        values: dict,
+        embedding: Embedding | None = None,
     ) -> Operator:
         """Returns the generator for the SYMBOL case.
 
@@ -453,7 +463,9 @@ class HamiltonianEvolution(Sequence):
             return torch.permute(hamiltonian.squeeze(3), (1, 2, 0))
         return hamiltonian
 
-    def _tensor_generator(self, values: dict = {}) -> Operator:
+    def _tensor_generator(
+        self, values: dict = dict(), embedding: Embedding | None = None
+    ) -> Operator:
         """Returns the generator for the TENSOR, OPERATION and PARAMETRIC_OPERATION cases.
 
         Arguments:
@@ -462,7 +474,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        return self.generator[0].tensor(values)
+        return self.generator[0].tensor(values, embedding)
 
     @property
     def create_hamiltonian(self) -> Callable[[dict], Operator]:
@@ -490,7 +502,7 @@ class HamiltonianEvolution(Sequence):
             The transformed state.
         """
 
-        evolved_op = self.tensor(values)
+        evolved_op = self.tensor(values, embedding)
         return apply_operator(
             state=state,
             operator=evolved_op,
@@ -501,7 +513,8 @@ class HamiltonianEvolution(Sequence):
 
     def tensor(
         self,
-        values: dict = {},
+        values: dict = dict(),
+        embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Operator:
@@ -526,7 +539,7 @@ class HamiltonianEvolution(Sequence):
         if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
             evolved_op = self._cache_hamiltonian_evo[values_cache_key]
         else:
-            hamiltonian: torch.Tensor = self.create_hamiltonian(values)
+            hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
             time_evolution: torch.Tensor = (
                 values[self.time] if isinstance(self.time, str) else self.time
             )  # If `self.time` is a string / hence, a Parameter,

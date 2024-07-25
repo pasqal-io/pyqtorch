@@ -4,11 +4,7 @@ import random
 
 import pytest
 import torch
-from conftest import (
-    _calc_mat_vec_wavefunction,
-    _get_op_support,
-    _random_pauli_hamiltonian,
-)
+from helpers import calc_mat_vec_wavefunction, get_op_support, random_pauli_hamiltonian
 
 from pyqtorch.analog import Add, GeneratorType, HamiltonianEvolution, Scale
 from pyqtorch.circuit import Sequence
@@ -41,12 +37,12 @@ def test_digital_tensor(n_qubits: int, batch_size: int, use_full_support: bool) 
     """
     op: type[Primitive]
     for op in OPS_DIGITAL:
-        supp = _get_op_support(op, n_qubits)
+        supp = get_op_support(op, n_qubits)
         op_concrete = op(*supp)
         psi_init = random_state(n_qubits, batch_size)
         psi_star = op_concrete(psi_init)
         full_support = tuple(range(n_qubits)) if use_full_support else None
-        psi_expected = _calc_mat_vec_wavefunction(
+        psi_expected = calc_mat_vec_wavefunction(
             op_concrete, psi_init, full_support=full_support
         )
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
@@ -63,14 +59,14 @@ def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) ->
     """
     op: type[Parametric]
     for op in OPS_PARAM:
-        supp = _get_op_support(op, n_qubits)
+        supp = get_op_support(op, n_qubits)
         params = [f"th{i}" for i in range(op.n_params)]
         op_concrete = op(*supp, *params)
         psi_init = random_state(n_qubits)
         values = {param: torch.rand(batch_size) for param in params}
         psi_star = op_concrete(psi_init, values)
         full_support = tuple(range(n_qubits)) if use_full_support else None
-        psi_expected = _calc_mat_vec_wavefunction(
+        psi_expected = calc_mat_vec_wavefunction(
             op_concrete, psi_init, values=values, full_support=full_support
         )
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
@@ -96,11 +92,11 @@ def test_sequence_tensor(
     `tensor` method, which builds the full operator matrix and applies it.
     """
     for op in OPS_DIGITAL:
-        supp = _get_op_support(op, n_qubits)
+        supp = get_op_support(op, n_qubits)
         op_concrete = Scale(op(*supp), torch.rand(1))
         op_list.append(op_concrete)
     for op in OPS_PARAM:
-        supp = _get_op_support(op, n_qubits)
+        supp = get_op_support(op, n_qubits)
         params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
         values.update({param: torch.rand(batch_size) for param in params})
         op_concrete = op(*supp, *params)
@@ -110,7 +106,7 @@ def test_sequence_tensor(
     psi_init = random_state(n_qubits, batch_size)
     psi_star = op_composite(psi_init, values)
     full_support = tuple(range(n_qubits)) if use_full_support else None
-    psi_expected = _calc_mat_vec_wavefunction(
+    psi_expected = calc_mat_vec_wavefunction(
         op_composite, psi_init, values=values, full_support=full_support
     )
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
@@ -138,7 +134,7 @@ def test_projector_tensor(
         psi_init = random_state(n_qubits, batch_size)
         psi_star = op(psi_init)
         full_support = tuple(range(n_qubits)) if use_full_support else None
-        psi_expected = _calc_mat_vec_wavefunction(
+        psi_expected = calc_mat_vec_wavefunction(
             op, psi_init, full_support=full_support
         )
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
@@ -193,13 +189,13 @@ def test_hevo_pauli_tensor(
 ) -> None:
     k_1q = 2 * n_qubits  # Number of 1-qubit terms
     k_2q = n_qubits**2  # Number of 2-qubit terms
-    generator, param_list = _random_pauli_hamiltonian(n_qubits, k_1q, k_2q, make_param)
+    generator, param_list = random_pauli_hamiltonian(n_qubits, k_1q, k_2q, make_param)
     values = {param: torch.rand(batch_size) for param in param_list}
     psi_init = random_state(n_qubits, batch_size)
     full_support = tuple(range(n_qubits)) if use_full_support else None
     # Test the generator itself
     psi_star = generator(psi_init, values)
-    psi_expected = _calc_mat_vec_wavefunction(generator, psi_init, values, full_support)
+    psi_expected = calc_mat_vec_wavefunction(generator, psi_init, values, full_support)
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
     # Test the hamiltonian evolution
     tparam = "t"
@@ -210,7 +206,7 @@ def test_hevo_pauli_tensor(
         assert operator.generator_type == GeneratorType.OPERATION
     values[tparam] = torch.rand(batch_size)
     psi_star = operator(psi_init, values)
-    psi_expected = _calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
+    psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
@@ -223,7 +219,7 @@ def test_hevo_tensor_tensor(
 ) -> None:
     k_1q = 2 * gen_qubits  # Number of 1-qubit terms
     k_2q = gen_qubits**2  # Number of 2-qubit terms
-    generator, _ = _random_pauli_hamiltonian(gen_qubits, k_1q, k_2q)
+    generator, _ = random_pauli_hamiltonian(gen_qubits, k_1q, k_2q)
     psi_init = random_state(n_qubits, batch_size)
     full_support = tuple(range(n_qubits)) if use_full_support else None
     # Test the hamiltonian evolution
@@ -234,5 +230,5 @@ def test_hevo_tensor_tensor(
     assert operator.generator_type == GeneratorType.TENSOR
     values = {tparam: torch.rand(batch_size)}
     psi_star = operator(psi_init, values)
-    psi_expected = _calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
+    psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)

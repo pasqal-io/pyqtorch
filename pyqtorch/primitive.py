@@ -54,7 +54,7 @@ class Primitive(torch.nn.Module):
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
 
-        self.orig_support = qubit_support
+        self._qubit_support = qubit_support
         self.qubit_support = tuple(sorted(qubit_support))
 
         if logger.isEnabledFor(logging.DEBUG):
@@ -77,8 +77,8 @@ class Primitive(torch.nn.Module):
         embedding: Embedding | None = None,
     ) -> Tensor:
         mat = self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
-        if self.orig_support != self.qubit_support:
-            mat = permute_basis(mat, self.orig_support)
+        if self._qubit_support != self.qubit_support:
+            mat = permute_basis(mat, self._qubit_support)
         return mat
 
     def forward(
@@ -93,7 +93,7 @@ class Primitive(torch.nn.Module):
             return DensityMatrix(
                 operator_product(
                     self.unitary(values, embedding),
-                    operator_product(state, self.dagger(values), self.target),  # type: ignore [arg-type]
+                    operator_product(state, self.dagger(values, embedding), self.target),  # type: ignore [arg-type]
                     self.target,  # type: ignore [arg-type]
                 )
             )
@@ -157,12 +157,13 @@ class Primitive(torch.nn.Module):
     def tensor(
         self,
         values: dict[str, Tensor] = {},
+        embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Tensor:
         if diagonal:
             raise NotImplementedError
-        blockmat = self.unitary(values)
+        blockmat = self.unitary(values, embedding)
         if full_support is None:
             return blockmat
         else:
@@ -242,8 +243,8 @@ class SWAP(Primitive):
     def __init__(self, control: int, target: int):
         super().__init__(OPERATIONS_DICT["SWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
-        self.orig_support = self.control + (target,)
-        self.qubit_support = tuple(sorted(self.orig_support))
+        self._qubit_support = self.control + (target,)
+        self.qubit_support = tuple(sorted(self._qubit_support))
 
 
 class CSWAP(Primitive):
@@ -253,8 +254,8 @@ class CSWAP(Primitive):
         super().__init__(OPERATIONS_DICT["CSWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.target = target
-        self.orig_support = self.control + self.target
-        self.qubit_support = tuple(sorted(self.orig_support))
+        self._qubit_support = self.control + self.target
+        self.qubit_support = tuple(sorted(self._qubit_support))
 
     def extra_repr(self) -> str:
         return f"control:{self.control}, target:{self.target}"
@@ -270,8 +271,8 @@ class ControlledOperationGate(Primitive):
             n_control_qubits=len(self.control),
         ).squeeze(2)
         super().__init__(mat, target)
-        self.orig_support = self.control + (self.target,)  # type: ignore [operator]
-        self.qubit_support = tuple(sorted(self.orig_support))
+        self._qubit_support = self.control + (self.target,)  # type: ignore [operator]
+        self.qubit_support = tuple(sorted(self._qubit_support))
 
     def extra_repr(self) -> str:
         return f"control:{self.control}, target:{(self.target,)}"

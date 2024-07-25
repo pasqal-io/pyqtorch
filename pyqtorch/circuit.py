@@ -16,7 +16,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.embed import Embedding
-from pyqtorch.matrices import IMAT, _dagger, add_batch_dim
+from pyqtorch.matrices import _dagger, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import DropoutMode, State, product_state, zero_state
@@ -135,6 +135,7 @@ class Sequence(Module):
     def tensor(
         self,
         values: dict[str, Tensor] = dict(),
+        embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Tensor:
@@ -144,14 +145,18 @@ class Sequence(Module):
             full_support = self.qubit_support
         elif not set(self.qubit_support).issubset(set(full_support)):
             raise ValueError(
-                "Expanding tensor operation requires a qubit support larger than original support."
+                "Expanding tensor operation requires a `full_support` argument "
+                "larger than or equal to the `qubit_support`."
             )
-        mat = IMAT.clone().unsqueeze(2).to(self.device)
-        for _ in range(len(full_support) - 1):
-            mat = torch.kron(mat, IMAT.clone().unsqueeze(2).to(self.device))
+        mat = torch.eye(
+            2 ** len(full_support), dtype=self.dtype, device=self.device
+        ).unsqueeze(2)
         return reduce(
             lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
-            (add_batch_dim(op.tensor(values, full_support)) for op in self.operations),
+            (
+                add_batch_dim(op.tensor(values, embedding, full_support))
+                for op in self.operations
+            ),
             mat,
         )
 
@@ -160,7 +165,7 @@ class Sequence(Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
-        return _dagger(self.tensor(values))
+        return _dagger(self.tensor(values, embedding))
 
 
 class QuantumCircuit(Sequence):
