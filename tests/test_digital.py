@@ -52,7 +52,7 @@ state_1111 = product_state("1111")
 
 def test_identity() -> None:
     assert torch.allclose(product_state("0"), pyq.I(0)(product_state("0"), None))
-    assert torch.allclose(product_state("1"), pyq.I(1)(product_state("1")))
+    assert torch.allclose(product_state("1"), pyq.I(0)(product_state("1")))
 
 
 def test_N() -> None:
