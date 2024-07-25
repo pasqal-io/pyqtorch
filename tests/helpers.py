@@ -1,34 +1,15 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Callable
 
-import pytest
-import qutip
 import torch
-from pytest import FixtureRequest
-from torch import Tensor
 
 from pyqtorch.analog import Add, Scale
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
-from pyqtorch.noise import (
-    AmplitudeDamping,
-    BitFlip,
-    Depolarizing,
-    GeneralizedAmplitudeDamping,
-    Noise,
-    PauliChannel,
-    PhaseDamping,
-    PhaseFlip,
-)
 from pyqtorch.parametric import (
     OPS_PARAM_1Q,
     OPS_PARAM_2Q,
-    PHASE,
-    RX,
-    RY,
-    RZ,
     Parametric,
 )
 from pyqtorch.primitive import (
@@ -36,23 +17,10 @@ from pyqtorch.primitive import (
     OPS_2Q,
     OPS_3Q,
     OPS_PAULI,
-    H,
-    I,
     Primitive,
-    S,
-    T,
     Toffoli,
-    X,
-    Y,
-    Z,
 )
-from pyqtorch.utils import (
-    DensityMatrix,
-    density_mat,
-    product_state,
-    random_dm_promotion,
-    random_state,
-)
+
 
 def calc_mat_vec_wavefunction(
     block: Primitive | Sequence,
