@@ -87,7 +87,6 @@ def test_expectation_gpsr(
     torch.manual_seed(42)
     circ = circuit_fn(n_qubits).to(dtype)
     obs = Observable(random_pauli_hamiltonian(n_qubits)[0]).to(dtype)
-    print(obs)
     values = {
         op.param_name: torch.rand(
             batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
@@ -115,7 +114,7 @@ def test_expectation_gpsr(
         values,
         obs,
         DiffMode.GPSR,
-        n_shots=10000,
+        n_shots=100000,
     )
     grad_gpsr_sampled = torch.autograd.grad(
         exp_gpsr_sampled,
@@ -132,7 +131,7 @@ def test_expectation_gpsr(
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
         assert torch.allclose(
-            grad_gpsr[i], grad_gpsr_sampled[i], atol=GRADCHECK_sampling_ATOL
+            grad_ad[i], grad_gpsr_sampled[i], atol=GRADCHECK_sampling_ATOL
         )
 
     # second order checks
