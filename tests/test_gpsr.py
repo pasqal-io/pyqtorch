@@ -42,7 +42,7 @@ def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
         pyq.CRX(1, 2, "theta_2"),
         pyq.CPHASE(1, 2, "theta_3"),
         pyq.CNOT(0, 1),
-        # pyq.Toffoli((0, 1), 2),
+        pyq.Toffoli((0, 1), 2),
     ]
 
     circ = QuantumCircuit(n_qubits, ops)
@@ -78,7 +78,7 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
     ],
 )
 @pytest.mark.parametrize("ops_op", [pyq.Z, pyq.X, pyq.Y])
-@pytest.mark.parametrize("dtype", [torch.complex128])
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 def test_expectation_gpsr(
     n_qubits: int,
     batch_size: int,
