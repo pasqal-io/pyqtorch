@@ -222,7 +222,7 @@ def expectation(
     circ = QuantumCircuit(n_qubits, [RY(0, 'theta')])
     state = random_state(n_qubits)
     theta = tensor(pi, requires_grad=True)
-    observable = Observable(n_qubits, Add([Z(i) for i in range(n_qubits)]))
+    observable = Observable(Add([Z(i) for i in range(n_qubits)]))
     expval = expectation(circ, state, {'theta': theta}, observable, diff_mode = DiffMode.ADJOINT)
     dfdtheta= grad(expval, theta, ones_like(expval))[0]
     ```

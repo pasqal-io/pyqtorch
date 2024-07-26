@@ -65,7 +65,7 @@ class AdjointExpectation(Function):
             logger.error(msg)
             raise NotImplementedError(msg)
         ctx.out_state = circuit.run(state, values, embedding)
-        ctx.projected_state = observable.run(ctx.out_state, values)
+        ctx.projected_state = observable(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
         return inner_prod(ctx.out_state, ctx.projected_state).real
 
@@ -98,7 +98,12 @@ class AdjointExpectation(Function):
                     op.dagger(values, ctx.embedding),
                     op.qubit_support,
                 )
+
             elif isinstance(op, Scale):
+                # TODO: Properly fix or not support Scale in adjoint at all
+                logger.error(
+                    f"AdjointExpectation does not support operation: {type(op)}."
+                )
                 if not len(op.operations) == 1 and isinstance(
                     op.operations[0], Primitive
                 ):
