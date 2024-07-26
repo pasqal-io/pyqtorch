@@ -156,7 +156,9 @@ def sampled_expectation(
 
     # batchsize needs to be first dim for eigh
     eigvals, eigvecs = torch.linalg.eigh(
-        observable.tensor(values=values, embedding=embedding).permute((2, 0, 1))
+        observable.tensor(
+            values=values, embedding=embedding, full_support=tuple(range(n_qubits))
+        ).permute((2, 0, 1))
     )
     eigvals = eigvals.squeeze()
     eigvec_state_prod = apply_operator(
