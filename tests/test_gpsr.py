@@ -4,7 +4,6 @@ from typing import Callable
 
 import pytest
 import torch
-from helpers import random_pauli_hamiltonian
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
@@ -12,6 +11,7 @@ from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.parametric import Parametric
+from pyqtorch.primitive import Primitive
 from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL
 
 
@@ -77,16 +77,19 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
         (5, 10, circuit_sequence),
     ],
 )
+@pytest.mark.parametrize("ops_op", [pyq.Z, pyq.X, pyq.Y])
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 def test_expectation_gpsr(
     n_qubits: int,
     batch_size: int,
     circuit_fn: Callable,
+    ops_op: Primitive,
     dtype: torch.dtype,
 ) -> None:
     torch.manual_seed(42)
     circ = circuit_fn(n_qubits).to(dtype)
-    obs = Observable(random_pauli_hamiltonian(n_qubits)[0]).to(dtype)
+    # obs = Observable(random_pauli_hamiltonian(n_qubits)[0]).to(dtype)
+    obs = Observable(pyq.Add([ops_op(i) for i in range(n_qubits)])).to(dtype)
     values = {
         op.param_name: torch.rand(
             batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
