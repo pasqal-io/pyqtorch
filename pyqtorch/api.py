@@ -124,7 +124,7 @@ def analytical_expectation(
         Tensor: Expectation value.
     """
     state = run(circuit, state, values, embedding=embedding)
-    return inner_prod(state, run(observable, state, values, embedding=embedding)).real
+    return observable.expectation(state, values, embedding=embedding)
 
 
 def sampled_expectation(
