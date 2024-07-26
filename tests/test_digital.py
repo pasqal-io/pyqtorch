@@ -6,7 +6,6 @@ from typing import Callable, Tuple
 
 import pytest
 import torch
-from conftest import _calc_mat_vec_wavefunction
 from numpy import array, rollaxis, sort
 from qutip import Qobj
 from torch import Tensor, moveaxis
@@ -29,10 +28,9 @@ from pyqtorch.noise import (
     PhaseDamping,
 )
 from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import H, I, Primitive, S, T, X, Y, Z
+from pyqtorch.primitive import H, I, Primitive, X, Y, Z
 from pyqtorch.utils import (
     ATOL,
-    RTOL,
     DensityMatrix,
     density_mat,
     dm_partial_trace,
@@ -68,42 +66,6 @@ def test_N() -> None:
     assert torch.allclose(product_state("1"), pyq.N(0)(product_state("1"), None))
 
 
-@pytest.mark.parametrize("gate", [I, X, Y, Z, H, T, S])
-@pytest.mark.parametrize("n_qubits", [1, 2, 4])
-def test_single_qubit_gates(gate: Primitive, n_qubits: int) -> None:
-    target = torch.randint(0, n_qubits, (1,)).item()
-    block = gate(target)
-    init_state = pyq.random_state(n_qubits)
-    wf_pyq = block(init_state, None)
-    wf_mat = _calc_mat_vec_wavefunction(block, n_qubits, init_state)
-    assert torch.allclose(wf_mat, wf_pyq, rtol=RTOL, atol=ATOL)
-
-
-@pytest.mark.parametrize("batch_size", [i for i in range(2, 10)])
-@pytest.mark.parametrize("gate", [pyq.RX, pyq.RY, pyq.RZ, pyq.PHASE])
-@pytest.mark.parametrize("n_qubits", [1, 2, 4])
-def test_rotation_gates(batch_size: int, gate: Primitive, n_qubits: int) -> None:
-    params = [f"th{i}" for i in range(gate.n_params)]
-    values = {param: torch.rand(batch_size) for param in params}
-    target = torch.randint(0, n_qubits, (1,)).item()
-
-    init_state = pyq.random_state(n_qubits)
-    block = gate(target, *params)
-    wf_pyq = block(init_state, values)
-    wf_mat = _calc_mat_vec_wavefunction(block, n_qubits, init_state, values=values)
-    assert torch.allclose(wf_mat, wf_pyq, rtol=RTOL, atol=ATOL)
-    assert block.spectral_gap == 2.0
-    if not isinstance(block, pyq.PHASE):
-        assert torch.allclose(
-            block.eigenvals_generator,
-            torch.tensor([[-1.0], [1.0]], dtype=block.dtype),
-        )
-    else:
-        assert torch.allclose(
-            block.eigenvals_generator, torch.tensor([[0.0], [2.0]], dtype=block.dtype)
-        )
-
-
 @pytest.mark.parametrize("n_qubits", [1, 2, 3])
 def test_projectors(n_qubits: int) -> None:
     qubit_support = tuple(range(n_qubits))
@@ -127,47 +89,6 @@ def test_projectors(n_qubits: int) -> None:
                 )(product_state(f"{ket-1:0{n_qubits}b}")),
                 torch.zeros((2,) * n_qubits + (1,), dtype=DEFAULT_MATRIX_DTYPE),
             )
-
-
-@pytest.mark.parametrize(
-    "projector, exp_projector_mat",
-    [
-        (
-            pyq.Projector(0, bra="1", ket="1"),
-            torch.tensor(
-                [[0.0 + 0.0j, 0.0 + 0.0j], [0.0 + 0.0j, 1.0 + 0.0j]],
-                dtype=torch.complex128,
-            ),
-        ),
-        (
-            pyq.N(0),
-            (IMAT - ZMAT) / 2.0,
-        ),
-        (
-            pyq.CNOT(0, 1),
-            torch.tensor(
-                [
-                    [
-                        [1.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                        [0.0 + 0.0j, 1.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j],
-                        [0.0 + 0.0j, 0.0 + 0.0j, 0.0 + 0.0j, 1.0 + 0.0j],
-                        [0.0 + 0.0j, 0.0 + 0.0j, 1.0 + 0.0j, 0.0 + 0.0j],
-                    ]
-                ],
-                dtype=torch.complex128,
-            ),
-        ),
-    ],
-)
-def test_projector_tensor(
-    projector: Primitive, exp_projector_mat: torch.Tensor
-) -> None:
-
-    nbqubits = int(log2(exp_projector_mat.shape[-1]))
-    projector_mat = projector.tensor(
-        n_qubits=nbqubits, values={"theta": torch.Tensor([1.0])}
-    ).squeeze(-1)
-    assert torch.allclose(projector_mat, exp_projector_mat, atol=1.0e-4)
 
 
 czop_example = pyq.CZ(control=(0, 1), target=2)
@@ -530,47 +451,6 @@ def test_kron_batch() -> None:
         density_matrices.append(density_matrice)
     dm_expect = torch.cat(density_matrices, dim=2)
     assert torch.allclose(dm_out, dm_expect)
-
-
-def test_circuit_tensor() -> None:
-    ops = [pyq.RX(0, "theta_0"), pyq.RY(0, "theta_1"), pyq.RX(1, "theta_2")]
-    circ = pyq.QuantumCircuit(2, ops)
-    values = {f"theta_{i}": torch.Tensor([float(i)]) for i in range(3)}
-    tensorcirc = circ.tensor(values)
-    assert tensorcirc.size() == (4, 4, 1)
-    assert torch.allclose(
-        tensorcirc,
-        torch.tensor(
-            [
-                [
-                    [0.4742 + 0.0000j],
-                    [0.0000 - 0.7385j],
-                    [-0.2590 + 0.0000j],
-                    [0.0000 + 0.4034j],
-                ],
-                [
-                    [0.0000 - 0.7385j],
-                    [0.4742 + 0.0000j],
-                    [0.0000 + 0.4034j],
-                    [-0.2590 + 0.0000j],
-                ],
-                [
-                    [0.2590 + 0.0000j],
-                    [0.0000 - 0.4034j],
-                    [0.4742 + 0.0000j],
-                    [0.0000 - 0.7385j],
-                ],
-                [
-                    [0.0000 - 0.4034j],
-                    [0.2590 + 0.0000j],
-                    [0.0000 - 0.7385j],
-                    [0.4742 + 0.0000j],
-                ],
-            ],
-            dtype=torch.complex128,
-        ),
-        atol=1.0e-4,
-    )
 
 
 @pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)

@@ -10,7 +10,7 @@ from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.embed import Embedding
 from pyqtorch.gpsr import PSRExpectation, check_support_psr
-from pyqtorch.utils import DiffMode, inner_prod
+from pyqtorch.utils import DiffMode
 
 logger = getLogger(__name__)
 
@@ -131,7 +131,7 @@ def expectation(
     circ = QuantumCircuit(n_qubits, [RY(0, 'theta')])
     state = random_state(n_qubits)
     theta = tensor(pi, requires_grad=True)
-    observable = Observable(n_qubits, Add([Z(i) for i in range(n_qubits)]))
+    observable = Observable(Add([Z(i) for i in range(n_qubits)]))
     expval = expectation(circ, state, {'theta': theta}, observable, diff_mode = DiffMode.ADJOINT)
     dfdtheta= grad(expval, theta, ones_like(expval))[0]
     ```
@@ -148,9 +148,7 @@ def expectation(
         state = circuit.init_state(batch_size=1)
     if diff_mode == DiffMode.AD:
         state = run(circuit, state, values, embedding=embedding)
-        return inner_prod(
-            state, run(observable, state, values, embedding=embedding)
-        ).real
+        return observable.expectation(state, values, embedding=embedding)
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit,

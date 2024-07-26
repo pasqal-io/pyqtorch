@@ -145,7 +145,7 @@ def test_sample_run_expectation_grads_with_embedding(diff_mode) -> None:
     ops = [rx, cry, phase, ry, cnot]
     n_qubits = 3
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.Observable(n_qubits, [pyq.Z(0)])
+    obs = pyq.Observable(pyq.Z(0))
 
     state = pyq.zero_state(n_qubits)
 

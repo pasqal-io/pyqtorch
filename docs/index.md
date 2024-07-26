@@ -112,7 +112,7 @@ n_qubits = 2
 circ = pyq.QuantumCircuit(n_qubits, ops)
 state = pyq.random_state(n_qubits)
 theta = torch.rand(1, requires_grad=True)
-obs = pyq.QuantumCircuit(n_qubits, [pyq.Z(0)])
+obs = pyq.Observable(pyq.Z(0))
 expval = pyq.expectation(circ, state, {"theta": theta}, obs)
 dfdtheta = torch.autograd.grad(expval, theta, torch.ones_like(expval))
 ```

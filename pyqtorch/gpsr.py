@@ -100,7 +100,7 @@ class PSRExpectation(Function):
         ctx.embedding = embedding
         values = param_dict(param_names, param_values)
         ctx.out_state = circuit.run(state, values)
-        ctx.projected_state = observable.run(ctx.out_state, values)
+        ctx.projected_state = observable(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
         return inner_prod(ctx.out_state, ctx.projected_state).real
 

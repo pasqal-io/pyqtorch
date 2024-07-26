@@ -88,7 +88,7 @@ def test_expectation_gpsr(
 ) -> None:
     torch.manual_seed(42)
     circ = circuit_fn(n_qubits).to(dtype)
-    obs = Observable(n_qubits, pyq.Add([ops_op(i) for i in range(n_qubits)])).to(dtype)
+    obs = Observable(pyq.Add([ops_op(i) for i in range(n_qubits)])).to(dtype)
     values = {
         op.param_name: torch.rand(
             batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
@@ -162,7 +162,7 @@ def test_compatibility_gpsr(gate_type: str, sequence_circuit: bool) -> None:
         circ = pyq.QuantumCircuit(2, pyq.Sequence(ops))
     else:
         circ = pyq.QuantumCircuit(2, ops)
-    obs = pyq.Observable(2, [pyq.Z(0)])
+    obs = pyq.Observable([pyq.Z(0)])
     state = pyq.zero_state(2)
 
     param_value = torch.pi / 2

@@ -39,7 +39,7 @@ def test_dropout(
         dropout_mode=dropout_mode,
         dropout_prob=1.0,
     )
-    obs = pyq.QuantumCircuit(n_qubits=n_qubits, operations=[pyq.Z(1)])
+    obs = pyq.Observable([pyq.Z(1)])
 
     exp_circ = pyq.expectation(circuit=circ, state=state, values=values, observable=obs)
     exp_dropout_circ = pyq.expectation(

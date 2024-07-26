@@ -9,7 +9,6 @@ import torch
 from pytest import FixtureRequest
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator
 from pyqtorch.noise import (
     AmplitudeDamping,
     BitFlip,
@@ -20,8 +19,22 @@ from pyqtorch.noise import (
     PhaseDamping,
     PhaseFlip,
 )
-from pyqtorch.parametric import PHASE, RX, RY, RZ
-from pyqtorch.primitive import H, I, Primitive, S, T, X, Y, Z
+from pyqtorch.parametric import (
+    PHASE,
+    RX,
+    RY,
+    RZ,
+)
+from pyqtorch.primitive import (
+    H,
+    I,
+    Primitive,
+    S,
+    T,
+    X,
+    Y,
+    Z,
+)
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -29,27 +42,6 @@ from pyqtorch.utils import (
     random_dm_promotion,
     random_state,
 )
-
-
-def _calc_mat_vec_wavefunction(
-    block: Primitive, n_qubits: int, init_state: torch.Tensor, values: dict = {}
-) -> torch.Tensor:
-    """Get the result of applying the matrix representation of a block to an initial state.
-
-    Args:
-        block: The black operator to apply.
-        n_qubits: Number of qubits in the circuit.
-        init_state: Initial state to apply block on.
-        values: Values of parameter if block is parametric.
-
-    Returns:
-        Tensor: The new wavefunction after applying the block.
-
-    """
-    mat = block.tensor(n_qubits=len(block.qubit_support), values=values)
-    return apply_operator(
-        init_state, mat, qubits=block.qubit_support, n_qubits=n_qubits
-    )
 
 
 @pytest.fixture(params=[I, X, Y, Z, H, T, S])
