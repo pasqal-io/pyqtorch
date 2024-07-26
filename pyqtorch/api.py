@@ -13,7 +13,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.embed import Embedding
 from pyqtorch.gpsr import PSRExpectation, check_support_psr
-from pyqtorch.utils import DiffMode, inner_prod, sample_multinomial
+from pyqtorch.utils import DiffMode, sample_multinomial
 
 logger = getLogger(__name__)
 
@@ -156,7 +156,7 @@ def sampled_expectation(
 
     # batchsize needs to be first dim for eigh
     eigvals, eigvecs = torch.linalg.eigh(
-        observable.tensor(n_qubits=n_qubits, values=values).permute((2, 0, 1))
+        observable.tensor(values=values, embedding=embedding).permute((2, 0, 1))
     )
     eigvals = eigvals.squeeze()
     eigvec_state_prod = apply_operator(
