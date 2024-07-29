@@ -81,7 +81,7 @@ def random_pauli_hamiltonian(
             of Scale operations. Defaults to None.
 
     Returns:
-        tuple[Sequence, list]: _description_
+        tuple[Sequence, list]: Hamiltonian and list of parameters.
     """
     OPS_PAULI_choice = list(OPS_PAULI)
     if exclude_N:
