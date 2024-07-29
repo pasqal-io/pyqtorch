@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Tuple
+from typing import Any, Callable, Tuple
 
 import torch
 from torch import Tensor, no_grad
@@ -12,7 +12,7 @@ from pyqtorch.circuit import QuantumCircuit, Sequence
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
 from pyqtorch.parametric import Parametric
-from pyqtorch.utils import inner_prod, param_dict
+from pyqtorch.utils import param_dict
 
 logger = getLogger(__name__)
 
@@ -69,8 +69,10 @@ class PSRExpectation(Function):
 
     Arguments:
         circuit: A QuantumCircuit instance
-        observable: A hamiltonian.
         state: A state in the form of [2 * n_qubits + [batch_size]]
+        observable: An hermitian operator.
+        embedding: An optional instance of `Embedding`.
+        expectation_method: Callable for computing expectations.
         param_names: A list of parameter names.
         *param_values: A unpacked tensor of values for each parameter.
 
@@ -88,6 +90,7 @@ class PSRExpectation(Function):
         state: Tensor,
         observable: Observable,
         embedding: Embedding,
+        expectation_method: Callable,
         param_names: list[str],
         *param_values: Tensor,
     ) -> Tensor:
@@ -99,10 +102,9 @@ class PSRExpectation(Function):
         ctx.state = state
         ctx.embedding = embedding
         values = param_dict(param_names, param_values)
-        ctx.out_state = circuit.run(state, values)
-        ctx.projected_state = observable(ctx.out_state, values)
         ctx.save_for_backward(*param_values)
-        return inner_prod(ctx.out_state, ctx.projected_state).real
+        ctx.expectation_method = expectation_method
+        return expectation_method(circuit, state, observable, values, embedding)
 
     @staticmethod
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
@@ -144,6 +146,7 @@ class PSRExpectation(Function):
                 ctx.state,
                 ctx.observable,
                 ctx.embedding,
+                ctx.expectation_method,
                 values.keys(),
                 *values.values(),
             )
@@ -273,7 +276,15 @@ class PSRExpectation(Function):
                     else:
                         grads[op.param_name] = vjp(op, values)
 
-        return (None, None, None, None, None, *[grads[p] for p in ctx.param_names])
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            *[grads[p] for p in ctx.param_names],
+        )
 
 
 def check_support_psr(circuit: QuantumCircuit):
