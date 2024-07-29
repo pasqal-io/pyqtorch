@@ -88,7 +88,7 @@ def test_expectation_gpsr(
     circ = circuit_fn(n_qubits).to(dtype)
     obs = Observable(
         random_pauli_hamiltonian(
-            n_qubits, k_1q=n_qubits, k_2q=0, exclude_N=True, default_scale_coeffs=1.0
+            n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
         )[0]
     ).to(dtype)
     values = {

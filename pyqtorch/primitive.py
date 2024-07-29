@@ -301,8 +301,7 @@ class Toffoli(ControlledOperationGate):
         super().__init__("X", control, target)
 
 
-OPS_PAULI = {X, Y, Z, I, N}
-OPS_PAULI_with_generator = {X, Y, Z, I}
+OPS_PAULI = {X, Y, Z, I}
 OPS_1Q = OPS_PAULI.union({H, S, T})
 OPS_2Q = {CNOT, CY, CZ, SWAP}
 OPS_3Q = {Toffoli, CSWAP}
