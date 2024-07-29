@@ -11,11 +11,10 @@ from string import ascii_uppercase as ABC
 from typing import Any, Callable, Sequence
 
 import torch
-from numpy import arange, array, delete, log2
+from numpy import arange, argsort, array, delete, log2
 from numpy import ndarray as NDArray
 from torch import Tensor, moveaxis
 
-from pyqtorch.bitstrings import permute_basis
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT
 
 State = Tensor
@@ -412,6 +411,27 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
             operator_kron(operator, I(target).unitary()),
         )
     return operator
+
+
+def permute_basis(operator: Tensor, qubit_support: tuple) -> Tensor:
+    """Takes an operator tensor and permutes the rows and
+    columns according to the order of the qubit support.
+
+    Args:
+        operator (Tensor): Operator to permute over.
+        qubit_support (tuple): Qubit support.
+
+    Returns:
+        Tensor: Permuted operator.
+    """
+    n_qubits = len(qubit_support)
+    batch_size = operator.size(-1)
+    operator = operator.view([2] * 2 * n_qubits + [batch_size])
+    ordered_support = argsort(qubit_support)
+    perm = list(
+        tuple(ordered_support) + tuple(ordered_support + n_qubits) + (2 * n_qubits,)
+    )
+    return operator.permute(perm).reshape([2**n_qubits, 2**n_qubits, batch_size])
 
 
 def random_dm_promotion(
