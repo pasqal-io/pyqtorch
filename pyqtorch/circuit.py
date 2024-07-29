@@ -18,7 +18,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import IMAT, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import product_state, zero_state, DensityMatrix
+from pyqtorch.utils import DensityMatrix, product_state, zero_state
 
 logger = getLogger(__name__)
 
@@ -206,7 +206,7 @@ class QuantumCircuit(Sequence):
 
         with torch.no_grad():
             state = self.run(values=values, state=state)
-            if isinstance(state,DensityMatrix):
+            if isinstance(state, DensityMatrix):
                 probs = torch.diagonal(state, dim1=0, dim2=1).real
             else:
                 state = torch.flatten(
