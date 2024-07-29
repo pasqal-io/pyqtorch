@@ -19,7 +19,13 @@ from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
-from pyqtorch.utils import DropoutMode, State, product_state, zero_state
+from pyqtorch.utils import (
+    DropoutMode,
+    State,
+    product_state,
+    sample_multinomial,
+    zero_state,
+)
 
 logger = getLogger(__name__)
 
@@ -208,21 +214,8 @@ class QuantumCircuit(Sequence):
         embedding: Embedding | None = None,
     ) -> list[Counter]:
         if n_shots < 1:
-            raise ValueError("You can only call sample with n_shots>0.")
-
-        def sample(probs: Tensor) -> Counter:
-            return Counter(
-                {
-                    format(k, "0{}b".format(self.n_qubits)): count.item()
-                    for k, count in enumerate(
-                        torch.bincount(
-                            torch.multinomial(
-                                input=probs, num_samples=n_shots, replacement=True
-                            )
-                        )
-                    )
-                    if count > 0
-                }
+            raise ValueError(
+                f"You can only call sample with a non-negative value for `n_shots`. Got {n_shots}."
             )
 
         with torch.no_grad():
@@ -232,8 +225,10 @@ class QuantumCircuit(Sequence):
                 end_dim=-2,
             ).t()
 
-            probs = torch.abs(torch.pow(state, 2))
-            return list(map(lambda p: sample(p), probs))
+            probs = torch.pow(torch.abs(state), 2)
+            return list(
+                map(lambda p: sample_multinomial(p, self.n_qubits, n_shots), probs)
+            )
 
 
 class DropoutQuantumCircuit(QuantumCircuit):

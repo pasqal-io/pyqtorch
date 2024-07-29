@@ -65,6 +65,52 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     # )
 
 
+@pytest.mark.parametrize("n_qubits", [3, 5])
+@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("ops_op", [pyq.Z, pyq.Y])
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+def test_sampled_diff(
+    n_qubits: int,
+    batch_size: int,
+    ops_op: Primitive,
+    dtype: torch.dtype,
+) -> None:
+    rx = pyq.RX(0, param_name="theta_0")
+    cry = pyq.CPHASE(0, 1, param_name="theta_1")
+    rz = pyq.RZ(2, param_name="theta_2")
+    cnot = pyq.CNOT(1, 2)
+    ops = [rx, cry, rz, cnot]
+    circ = pyq.QuantumCircuit(n_qubits, ops).to(dtype)
+    obs = pyq.Observable(pyq.Add([ops_op(i) for i in range(n_qubits)])).to(dtype)
+
+    theta_0_value = torch.pi / 2
+    theta_1_value = torch.pi
+    theta_2_value = torch.pi / 4
+
+    state = pyq.random_state(n_qubits, batch_size=batch_size, dtype=dtype)
+    theta_0_ad = torch.tensor(
+        [theta_0_value], requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
+    )
+    theta_1_ad = torch.tensor(
+        [theta_1_value], requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
+    )
+    theta_2_ad = torch.tensor(
+        [theta_2_value], requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
+    )
+    values = {"theta_0": theta_0_ad, "theta_1": theta_1_ad, "theta_2": theta_2_ad}
+
+    exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
+    exp_ad_sampled = expectation(
+        circ,
+        state,
+        values,
+        obs,
+        DiffMode.AD,
+        n_shots=100000,
+    )
+    assert torch.allclose(exp_ad, exp_ad_sampled, atol=1e-01)
+
+
 @pytest.mark.xfail  # Adjoint Scale is currently not supported
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 @pytest.mark.parametrize("batch_size", [1, 5])
