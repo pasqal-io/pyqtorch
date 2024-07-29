@@ -424,10 +424,13 @@ def permute_basis(operator: Tensor, qubit_support: tuple) -> Tensor:
     Returns:
         Tensor: Permuted operator.
     """
+    ordered_support = argsort(qubit_support)
     n_qubits = len(qubit_support)
+    if all(a == b for a, b in zip(ordered_support, list(range(n_qubits)))):
+        return operator
     batch_size = operator.size(-1)
     operator = operator.view([2] * 2 * n_qubits + [batch_size])
-    ordered_support = argsort(qubit_support)
+
     perm = list(
         tuple(ordered_support) + tuple(ordered_support + n_qubits) + (2 * n_qubits,)
     )
