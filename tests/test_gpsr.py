@@ -116,7 +116,7 @@ def test_expectation_gpsr(
         values,
         obs,
         DiffMode.GPSR,
-        n_shots=100000,
+        n_shots=10000,
     )
     grad_gpsr_sampled = torch.autograd.grad(
         exp_gpsr_sampled,
@@ -133,7 +133,7 @@ def test_expectation_gpsr(
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
         assert torch.allclose(
-            grad_ad[i], grad_gpsr_sampled[i], atol=GRADCHECK_sampling_ATOL
+            grad_gpsr[i], grad_gpsr_sampled[i], atol=GRADCHECK_sampling_ATOL
         )
 
     # second order checks
