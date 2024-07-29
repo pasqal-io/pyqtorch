@@ -17,6 +17,7 @@ from pyqtorch.primitive import (
     OPS_2Q,
     OPS_3Q,
     OPS_PAULI,
+    OPS_PAULI_with_generator,
     Primitive,
     Toffoli,
 )
@@ -64,11 +65,15 @@ def random_pauli_hamiltonian(
     n_qubits: int,
     k_1q: int = 5,
     k_2q: int = 10,
-    make_param=False,
+    make_param: bool = False,
+    exclude_N: bool = False,
 ) -> tuple[Sequence, list]:
     """Creates a random Pauli Hamiltonian as a sum of k_1q + k_2q terms."""
-    one_q_terms: list = random.choices(list(OPS_PAULI), k=k_1q)
-    two_q_terms: list = [random.choices(list(OPS_PAULI), k=2) for _ in range(k_2q)]
+    OPS_PAULI_choice = list(OPS_PAULI)
+    if exclude_N:
+        OPS_PAULI_choice = list(OPS_PAULI_with_generator)
+    one_q_terms: list = random.choices(OPS_PAULI_choice, k=k_1q)
+    two_q_terms: list = [random.choices(OPS_PAULI_choice, k=2) for _ in range(k_2q)]
     terms: list = []
     for term in one_q_terms:
         supp = random.sample(range(n_qubits), 1)
