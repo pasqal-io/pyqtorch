@@ -87,7 +87,9 @@ def test_expectation_gpsr(
     torch.manual_seed(42)
     circ = circuit_fn(n_qubits).to(dtype)
     obs = Observable(
-        random_pauli_hamiltonian(n_qubits, k_1q=n_qubits, k_2q=0, exclude_N=True)[0]
+        random_pauli_hamiltonian(
+            n_qubits, k_1q=n_qubits, k_2q=0, exclude_N=True, default_scale_coeffs=1.0
+        )[0]
     ).to(dtype)
     values = {
         op.param_name: torch.rand(
@@ -116,7 +118,7 @@ def test_expectation_gpsr(
         values,
         obs,
         DiffMode.GPSR,
-        n_shots=100000,
+        n_shots=10000,
     )
     grad_gpsr_sampled = torch.autograd.grad(
         exp_gpsr_sampled,

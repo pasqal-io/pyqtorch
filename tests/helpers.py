@@ -67,8 +67,22 @@ def random_pauli_hamiltonian(
     k_2q: int = 10,
     make_param: bool = False,
     exclude_N: bool = False,
+    default_scale_coeffs: float | None = None,
 ) -> tuple[Sequence, list]:
-    """Creates a random Pauli Hamiltonian as a sum of k_1q + k_2q terms."""
+    """Creates a random Pauli Hamiltonian as a sum of k_1q + k_2q terms.
+
+    Args:
+        n_qubits (int): Number of qubits.
+        k_1q (int, optional): Number of one-qubit terms. Defaults to 5.
+        k_2q (int, optional): Number of two-qubit terms. Defaults to 10.
+        make_param (bool, optional): Coefficients as parameters. Defaults to False.
+        exclude_N (bool, optional): Exclude N from pauli choices. Defaults to False.
+        default_scale_coeffs (float | None, optional): Default value for the parameter
+            of Scale operations. Defaults to None.
+
+    Returns:
+        tuple[Sequence, list]: _description_
+    """
     OPS_PAULI_choice = list(OPS_PAULI)
     if exclude_N:
         OPS_PAULI_choice = list(OPS_PAULI_with_generator)
@@ -88,5 +102,12 @@ def random_pauli_hamiltonian(
                 terms[i] = Scale(t, f"p_{i}")
                 param_list.append(f"p_{i}")
             else:
-                terms[i] = Scale(t, torch.rand(1))
+                terms[i] = Scale(
+                    t,
+                    (
+                        torch.rand(1)
+                        if not default_scale_coeffs
+                        else torch.tensor([default_scale_coeffs])
+                    ),
+                )
     return Add(terms), param_list
