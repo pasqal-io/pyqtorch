@@ -10,10 +10,9 @@ import torch
 from torch import Tensor
 
 from pyqtorch.apply import apply_operator, operator_product
-from pyqtorch.bitstrings import permute_basis
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import DensityMatrix, expand_operator, product_state
+from pyqtorch.utils import DensityMatrix, expand_operator, permute_basis, product_state
 
 logger = getLogger(__name__)
 
