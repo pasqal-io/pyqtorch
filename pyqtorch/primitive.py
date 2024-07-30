@@ -1,129 +1,34 @@
 from __future__ import annotations
 
-import logging
 from functools import cached_property
-from logging import getLogger
-from typing import Any
 
-import numpy as np
 import torch
 from torch import Tensor
 
 from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.embed import Embedding
+from pyqtorch.generic_quantum_ops import QuantumOperation
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
 from pyqtorch.utils import DensityMatrix, expand_operator, permute_basis, product_state
 
-logger = getLogger(__name__)
+
+class Primitive(QuantumOperation):
+    """Primitive are fixed quantum operations with a defined 
 
 
-def forward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
-    torch.cuda.nvtx.range_pop()
-
-
-def pre_forward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
-    torch.cuda.nvtx.range_push("Primitive.forward")
-
-
-def backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
-    torch.cuda.nvtx.range_pop()
-
-
-def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
-    torch.cuda.nvtx.range_push("Primitive.backward")
-
-
-class Primitive(torch.nn.Module):
+    Attributes:
+        operation (Tensor): Unitary tensor U.
+        qubit_support: List of qubits the QuantumOperation acts on.
+        generator (Tensor): A tensor G s.t. U = exp(-iG).
+    """
     def __init__(
         self,
-        pauli: Tensor,
-        target: int | tuple[int, ...],
-        pauli_generator: Tensor | None = None,
+        operation: Tensor,
+        qubit_support: int | tuple[int, ...],
+        generator: Tensor | None = None,
     ) -> None:
-        super().__init__()
-        self.target: int | tuple[int, ...] = target
-
-        qubit_support: tuple[int, ...] = (
-            (target,) if isinstance(target, int) else target
-        )
-        if isinstance(target, np.integer):
-            qubit_support = (target.item(),)
-        self.register_buffer("pauli", pauli)
-        self.pauli_generator = pauli_generator
-        self._device = self.pauli.device
-        self._dtype = self.pauli.dtype
-
-        self._qubit_support = qubit_support
-        self.qubit_support = tuple(sorted(qubit_support))
-
-        if logger.isEnabledFor(logging.DEBUG):
-            # When Debugging let's add logging and NVTX markers
-            # WARNING: incurs performance penalty
-            self.register_forward_hook(forward_hook, always_call=True)
-            self.register_full_backward_hook(backward_hook)
-            self.register_forward_pre_hook(pre_forward_hook)
-            self.register_full_backward_pre_hook(pre_backward_hook)
-
-    def __hash__(self) -> int:
-        return hash(self.qubit_support)
-
-    def extra_repr(self) -> str:
-        return f"{self.qubit_support}"
-
-    def unitary(
-        self,
-        values: dict[str, Tensor] | Tensor = dict(),
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        mat = self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
-        if self._qubit_support != self.qubit_support:
-            mat = permute_basis(mat, self._qubit_support)
-        return mat
-
-    def forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | Tensor = dict(),
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        if isinstance(state, DensityMatrix):
-            # TODO: fix error type int | tuple[int, ...] expected "int"
-            # Only supports single-qubit gates
-            return DensityMatrix(
-                operator_product(
-                    self.unitary(values, embedding),
-                    operator_product(state, self.dagger(values, embedding), self.target),  # type: ignore [arg-type]
-                    self.target,  # type: ignore [arg-type]
-                )
-            )
-        else:
-            return apply_operator(
-                state,
-                self.unitary(values, embedding),
-                self.qubit_support,
-                len(state.size()) - 1,
-            )
-
-    def dagger(
-        self,
-        values: dict[str, Tensor] | Tensor = dict(),
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        return _dagger(self.unitary(values, embedding))
-
-    @property
-    def device(self) -> torch.device:
-        return self._device
-
-    @property
-    def dtype(self) -> torch.dtype:
-        return self._dtype
-
-    def to(self, *args: Any, **kwargs: Any) -> Primitive:
-        super().to(*args, **kwargs)
-        self._device = self.pauli.device
-        self._dtype = self.pauli.dtype
-        return self
+        super().__init__(operation, qubit_support)
+        self.generator = generator
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -138,20 +43,54 @@ class Primitive(torch.nn.Module):
         Returns:
             Eigenvalues of the generator operator.
         """
-        if self.pauli_generator is not None:
-            return torch.linalg.eigvalsh(self.pauli_generator).reshape(-1, 1)
+        if self.generator is not None:
+            return torch.linalg.eigvalsh(self.generator).reshape(-1, 1)
         pass
 
-    @cached_property
-    def spectral_gap(self) -> Tensor:
-        """Difference between the moduli of the two largest eigenvalues of the generator.
+    def forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        if isinstance(state, DensityMatrix):
+            # TODO: fix error type int | tuple[int, ...] expected "int"
+            # Only supports single-qubit gates
+            return DensityMatrix(
+                operator_product(
+                    self.unitary(values, embedding),
+                    operator_product(state, self.dagger(values, embedding), self.qubit_support),  # type: ignore [arg-type]
+                    self.qubit_support,  # type: ignore [arg-type]
+                )
+            )
+        else:
+            return apply_operator(
+                state,
+                self.unitary(values, embedding),
+                self.qubit_support,
+                len(state.size()) - 1,
+            )
 
-        Returns:
-            Tensor: Spectral gap value.
-        """
-        spectrum = self.eigenvals_generator
-        spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
-        return spectral_gap[spectral_gap.nonzero()]
+    def unitary(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        operation = (
+            self.operation.unsqueeze(2)
+            if len(self.operation.shape) == 2
+            else self.operation
+        )
+        if self._qubit_support != self.qubit_support:
+            operation = permute_basis(operation, self._qubit_support)
+        return operation
+
+    def dagger(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        return _dagger(self.unitary(values, embedding))
 
     def tensor(
         self,
@@ -170,23 +109,23 @@ class Primitive(torch.nn.Module):
 
 
 class X(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["X"], target)
+    def __init__(self, qubit_support: int):
+        super().__init__(OPERATIONS_DICT["X"], qubit_support)
 
 
 class Y(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["Y"], target)
+    def __init__(self, qubit_support: int):
+        super().__init__(OPERATIONS_DICT["Y"], qubit_support)
 
 
 class Z(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["Z"], target)
+    def __init__(self, qubit_support: int):
+        super().__init__(OPERATIONS_DICT["Z"], qubit_support)
 
 
 class I(Primitive):  # noqa: E742
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["I"], target)
+    def __init__(self, qubit_support: int):
+        super().__init__(OPERATIONS_DICT["I"], qubit_support)
 
     def forward(
         self,
@@ -198,44 +137,45 @@ class I(Primitive):  # noqa: E742
 
 
 class H(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["H"], target)
+    def __init__(self, qubit_support: int):
+        super().__init__(OPERATIONS_DICT["H"], qubit_support)
 
 
 class T(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["T"], target)
+    def __init__(self, qubit_support: int):
+        super().__init__(OPERATIONS_DICT["T"], qubit_support)
 
 
 class S(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"])
+    def __init__(self, qubit_support: int):
+        super().__init__(
+            OPERATIONS_DICT["S"], qubit_support, 0.5 * OPERATIONS_DICT["Z"]
+        )
 
 
 class SDagger(Primitive):
-    def __init__(self, target: int):
+    def __init__(self, qubit_support: int):
         super().__init__(
-            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"]
+            OPERATIONS_DICT["SDAGGER"], qubit_support, -0.5 * OPERATIONS_DICT["Z"]
         )
 
 
 class Projector(Primitive):
     def __init__(self, qubit_support: int | tuple[int, ...], ket: str, bra: str):
-        support = (qubit_support,) if isinstance(qubit_support, int) else qubit_support
         if len(ket) != len(bra):
             raise ValueError("Input ket and bra bitstrings must be of same length.")
-        if len(support) != len(ket):
+        if len(qubit_support) != len(ket):
             raise ValueError(
                 "Qubit support must have the same number of qubits of ket and bra states."
             )
         ket_state = product_state(ket).flatten()
         bra_state = product_state(bra).flatten()
-        super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), support)
+        super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), qubit_support)
 
 
 class N(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["N"], target)
+    def __init__(self, qubit_support: int):
+        super().__init__(OPERATIONS_DICT["N"], qubit_support)
 
 
 class SWAP(Primitive):
@@ -247,21 +187,21 @@ class SWAP(Primitive):
 
 
 class CSWAP(Primitive):
-    def __init__(self, control: int | tuple[int, ...], target: tuple[int, ...]):
-        if not isinstance(target, tuple) or len(target) != 2:
+    def __init__(self, control: int | tuple[int, ...], qubit_targets: tuple[int, ...]):
+        if not isinstance(qubit_targets, tuple) or len(qubit_targets) != 2:
             raise ValueError("Target qubits must be a tuple with two qubits")
-        super().__init__(OPERATIONS_DICT["CSWAP"], target)
+        super().__init__(OPERATIONS_DICT["CSWAP"], qubit_targets)
         self.control = (control,) if isinstance(control, int) else control
-        self.target = target
-        self._qubit_support = self.control + self.target
+        self.qubit_support = qubit_targets
+        self._qubit_support = self.control + self.qubit_support
         self.qubit_support = tuple(sorted(self._qubit_support))
 
     def extra_repr(self) -> str:
-        return f"control:{self.control}, target:{self.target}"
+        return f"control:{self.control}, qubit_support:{self.qubit_support}"
 
 
 class ControlledOperationGate(Primitive):
-    def __init__(self, gate: str, control: int | tuple[int, ...], target: int):
+    def __init__(self, gate: str, control: int | tuple[int, ...], qubit_target: int):
         self.control: tuple = (control,) if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
         mat = _controlled(
@@ -269,35 +209,35 @@ class ControlledOperationGate(Primitive):
             batch_size=1,
             n_control_qubits=len(self.control),
         ).squeeze(2)
-        super().__init__(mat, target)
-        self._qubit_support = self.control + (self.target,)  # type: ignore [operator]
+        super().__init__(mat, qubit_target)
+        self._qubit_support = self.control + (self.qubit_support,)  # type: ignore [operator]
         self.qubit_support = tuple(sorted(self._qubit_support))
 
     def extra_repr(self) -> str:
-        return f"control:{self.control}, target:{(self.target,)}"
+        return f"control:{self.control}, qubit_support:{(self.qubit_support,)}"
 
 
 class CNOT(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("X", control, target)
+    def __init__(self, control: int | tuple[int, ...], qubit_target: int):
+        super().__init__("X", control, qubit_target)
 
 
 CX = CNOT
 
 
 class CY(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("Y", control, target)
+    def __init__(self, control: int | tuple[int, ...], qubit_target: int):
+        super().__init__("Y", control, qubit_target)
 
 
 class CZ(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("Z", control, target)
+    def __init__(self, control: int | tuple[int, ...], qubit_target: int):
+        super().__init__("Z", control, qubit_target)
 
 
 class Toffoli(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("X", control, target)
+    def __init__(self, control: int | tuple[int, ...], qubit_target: int):
+        super().__init__("X", control, qubit_target)
 
 
 OPS_PAULI = {X, Y, Z, I}
