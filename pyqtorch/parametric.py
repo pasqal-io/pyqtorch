@@ -242,8 +242,11 @@ class ControlledParametric(Parametric):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = _unitary(thetas, self.operation, self.identity, batch_size)
-        return _controlled(mat, batch_size, len(self.control))
+        mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
+        mat = _controlled(mat, batch_size, len(self.control))
+        if self._qubit_support != self.qubit_support:
+            mat = permute_basis(mat, self._qubit_support)
+        return mat
 
     def jacobian(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
