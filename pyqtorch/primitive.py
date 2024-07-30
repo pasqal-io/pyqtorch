@@ -219,11 +219,13 @@ class SWAP(Primitive):
         super().__init__(OPERATIONS_DICT["SWAP"], (i, j))
 
 
-class CSWAP(ControlledPrimitive):
-    def __init__(self, control: int | tuple[int, ...], targets: tuple[int, ...]):
-        if not isinstance(targets, tuple) or len(targets) != 2:
+class CSWAP(Primitive):
+    def __init__(self, control: int, target: tuple[int, ...]):
+        if not isinstance(target, tuple) or len(target) != 2:
             raise ValueError("Target qubits must be a tuple with two qubits")
-        super().__init__(OPERATIONS_DICT["CSWAP"], control, targets)
+        self.control = get_tuple_qubit_support(control)
+        self.target = target
+        super().__init__(OPERATIONS_DICT["CSWAP"], self.control + self.target)
 
 
 class CNOT(ControlledPrimitive):
