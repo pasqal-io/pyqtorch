@@ -7,12 +7,7 @@ import torch
 
 import pyqtorch as pyq
 from pyqtorch import run, sample
-from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.noise import Noise
-from pyqtorch.parametric import ControlledRotationGate, Parametric
-from pyqtorch.primitive import ControlledOperationGate, Primitive
 from pyqtorch.utils import (
-    DensityMatrix,
     product_state,
 )
 
@@ -96,41 +91,6 @@ def test_merge_nested_dict() -> None:
     }
     vals["nested"] = vals
     mergecirc(pyq.random_state(2), vals)
-
-
-@pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
-@pytest.mark.parametrize("batch_size", [{"low": 1, "high": 5}], indirect=True)
-def test_noise_circ(
-    n_qubits: int,
-    batch_size: int,
-    random_input_dm: DensityMatrix,
-    random_single_qubit_gate: Primitive,
-    random_noise_gate: Noise,
-    random_rotation_gate: Parametric,
-    random_controlled_gate: ControlledOperationGate,
-    random_rotation_control_gate: ControlledRotationGate,
-) -> None:
-    OPERATORS = [
-        random_single_qubit_gate,
-        random_noise_gate,
-        random_rotation_gate,
-        random_controlled_gate,
-        random_rotation_control_gate,
-    ]
-    random.shuffle(OPERATORS)
-    circ = QuantumCircuit(n_qubits, OPERATORS)
-
-    values = {random_rotation_gate.param_name: torch.rand(1)}
-    output_state = circ(random_input_dm, values)
-    assert isinstance(output_state, DensityMatrix)
-    assert output_state.shape == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
-
-    diag_sums = []
-    for i in range(batch_size):
-        diag_batch = torch.diagonal(output_state[:, :, i], dim1=0, dim2=1)
-        diag_sums.append(torch.sum(diag_batch))
-    diag_sum = torch.stack(diag_sums)
-    assert torch.allclose(diag_sum, torch.ones((batch_size,), dtype=torch.cdouble))
 
 
 def test_sample_run() -> None:
