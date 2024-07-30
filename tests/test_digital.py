@@ -547,9 +547,9 @@ def test_dm_partial_trace() -> None:
     rho_sub = torch.from_numpy(
         array(
             [
-                Qobj(
-                    rollaxis(rho_list.numpy(), 2, 0)[i], dims=[[2] * n_qubits] * 2
-                ).ptrace(sort(keep_indices)).full()
+                Qobj(rollaxis(rho_list.numpy(), 2, 0)[i], dims=[[2] * n_qubits] * 2)
+                .ptrace(sort(keep_indices))
+                .full()
                 for i in range(batch_size)
             ]
         )
