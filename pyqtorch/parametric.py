@@ -14,7 +14,7 @@ from pyqtorch.matrices import (
     _jacobian,
     _unitary,
 )
-from pyqtorch.primitive import Noisy_protocols, Primitive
+from pyqtorch.primitive import NoiseProtocol, Primitive
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
@@ -35,7 +35,7 @@ class Parametric(Primitive):
         generator_name: str,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes Parametric.
 
@@ -116,7 +116,7 @@ class Parametric(Primitive):
         """
         if self.noise:
             noise_info = ""
-            if isinstance(self.noise, Noisy_protocols):
+            if isinstance(self.noise, NoiseProtocol):
                 noise_info = str(self.noise)
             elif isinstance(self.noise, dict):
                 noise_info = ", ".join(
@@ -223,7 +223,7 @@ class RX(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes RX.
 
@@ -264,7 +264,7 @@ class RY(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes RY.
 
@@ -305,7 +305,7 @@ class RZ(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes RZ.
 
@@ -346,7 +346,7 @@ class PHASE(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes PHASE.
 
@@ -427,7 +427,7 @@ class ControlledRotationGate(Parametric):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes a ControlledRotationGate.
 
@@ -453,7 +453,7 @@ class ControlledRotationGate(Parametric):
         """
         if self.noise:
             noise_info = ""
-            if isinstance(self.noise, Noisy_protocols):
+            if isinstance(self.noise, NoiseProtocol):
                 noise_info = str(self.noise)
             elif isinstance(self.noise, dict):
                 noise_info = ", ".join(
@@ -545,7 +545,7 @@ class CRX(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled RX.
 
@@ -591,7 +591,7 @@ class CRY(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled RY.
 
@@ -637,7 +637,7 @@ class CRZ(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled RZ.
 
@@ -685,7 +685,7 @@ class CPHASE(ControlledRotationGate):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled PHASE.
 
@@ -806,7 +806,7 @@ class U(Parametric):
         phi: str,
         theta: str,
         omega: str,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes U gate.
 

@@ -387,7 +387,7 @@ class GeneralizedAmplitudeDamping(Noise):
         super().__init__(kraus_generalized_amplitude_damping, target, error_probability)
 
 
-class Noisy_protocols:
+class NoiseProtocol:
     BITFLIP = "BitFlip"
     PHASEFLIP = "PhaseFlip"
     DEPOLARIZING = "Depolarizing"

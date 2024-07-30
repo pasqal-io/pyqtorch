@@ -15,7 +15,7 @@ from pyqtorch.noise import (
     Depolarizing,
     GeneralizedAmplitudeDamping,
     Noise,
-    Noisy_protocols,
+    NoiseProtocol,
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
@@ -186,25 +186,25 @@ def random_noise_gate(n_qubits: int) -> Any:
 @pytest.fixture
 def random_noisy_protocol() -> Any:
     NOISE_PROTOCOLS = [
-        Noisy_protocols.BITFLIP,
-        Noisy_protocols.PHASEFLIP,
-        Noisy_protocols.PAULI_CHANNEL,
-        Noisy_protocols.DEPOLARIZING,
-        Noisy_protocols.AMPLITUDE_DAMPING,
-        Noisy_protocols.PHASE_DAMPING,
-        Noisy_protocols.GENERALIZED_AMPLITUDE_DAMPING,
+        NoiseProtocol.BITFLIP,
+        NoiseProtocol.PHASEFLIP,
+        NoiseProtocol.PAULI_CHANNEL,
+        NoiseProtocol.DEPOLARIZING,
+        NoiseProtocol.AMPLITUDE_DAMPING,
+        NoiseProtocol.PHASE_DAMPING,
+        NoiseProtocol.GENERALIZED_AMPLITUDE_DAMPING,
     ]
     noise_protocol = random.choice(NOISE_PROTOCOLS)
-    if noise_protocol == Noisy_protocols.PAULI_CHANNEL:
+    if noise_protocol == NoiseProtocol.PAULI_CHANNEL:
         noise_prob = torch.rand(size=(3,))
         noise_prob = noise_prob / (
             noise_prob.sum(dim=0, keepdim=True) + torch.rand((1,)).item()
         )
-    elif noise_protocol == Noisy_protocols.GENERALIZED_AMPLITUDE_DAMPING:
+    elif noise_protocol == NoiseProtocol.GENERALIZED_AMPLITUDE_DAMPING:
         noise_prob = torch.rand(size=(2,))
     else:
         noise_prob = torch.rand(size=(1,)).item()
-    return Noisy_protocols(
+    return NoiseProtocol(
         protocol=noise_protocol,
         options={"error_probability": noise_prob},
     )
@@ -212,7 +212,7 @@ def random_noisy_protocol() -> Any:
 
 @pytest.fixture
 def random_noisy_unitary_gate(
-    n_qubits: int, target: int, random_noisy_protocol: Noisy_protocols
+    n_qubits: int, target: int, random_noisy_protocol: NoiseProtocol
 ) -> Any:
     if n_qubits < 2:
         raise ValueError("The controlled gates are defined on 2 qubits minimum")

@@ -18,7 +18,7 @@ from pyqtorch.matrices import (
     _controlled,
     _dagger,
 )
-from pyqtorch.noise import Noisy_protocols
+from pyqtorch.noise import NoiseProtocol
 from pyqtorch.utils import DensityMatrix, density_mat, expand_operator, product_state
 
 logger = getLogger(__name__)
@@ -46,7 +46,7 @@ class Primitive(torch.nn.Module):
         pauli: Tensor,
         target: int | tuple[int, ...],
         pauli_generator: Tensor | None = None,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ) -> None:
         super().__init__()
         self.target: int | tuple[int, ...] = target
@@ -64,7 +64,7 @@ class Primitive(torch.nn.Module):
         self._qubit_support = qubit_support
         self.qubit_support = tuple(sorted(qubit_support))
 
-        self.noise: Noisy_protocols | dict[str, Noisy_protocols] | None = noise
+        self.noise: NoiseProtocol | dict[str, NoiseProtocol] | None = noise
 
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
@@ -80,7 +80,7 @@ class Primitive(torch.nn.Module):
     def extra_repr(self) -> str:
         if self.noise:
             noise_info = ""
-            if isinstance(self.noise, Noisy_protocols):
+            if isinstance(self.noise, NoiseProtocol):
                 noise_info = str(self.noise)
             elif isinstance(self.noise, dict):
                 noise_info = ", ".join(
@@ -214,7 +214,7 @@ class X(Primitive):
     def __init__(
         self,
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(OPERATIONS_DICT["X"], target, noise=noise)
 
@@ -223,7 +223,7 @@ class Y(Primitive):
     def __init__(
         self,
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(OPERATIONS_DICT["Y"], target, noise=noise)
 
@@ -232,7 +232,7 @@ class Z(Primitive):
     def __init__(
         self,
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
 
@@ -241,7 +241,7 @@ class I(Primitive):  # noqa: E742
     def __init__(
         self,
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(OPERATIONS_DICT["I"], target, noise=noise)
 
@@ -250,7 +250,7 @@ class H(Primitive):
     def __init__(
         self,
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
 
@@ -259,7 +259,7 @@ class T(Primitive):
     def __init__(
         self,
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
 
@@ -268,7 +268,7 @@ class S(Primitive):
     def __init__(
         self,
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(
             OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"], noise=noise
@@ -279,7 +279,7 @@ class SDagger(Primitive):
     def __init__(
         self,
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(
             OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"], noise=noise
@@ -292,7 +292,7 @@ class Projector(Primitive):
         qubit_support: int | tuple[int, ...],
         ket: str,
         bra: str,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         support = (qubit_support,) if isinstance(qubit_support, int) else qubit_support
         if len(ket) != len(bra):
@@ -312,7 +312,7 @@ class N(Primitive):
     def __init__(
         self,
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(OPERATIONS_DICT["N"], target, noise=noise)
 
@@ -346,7 +346,7 @@ class ControlledOperationGate(Primitive):
         gate: str,
         control: int | tuple[int, ...],
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         self.control: tuple = (control,) if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
@@ -364,7 +364,7 @@ class ControlledOperationGate(Primitive):
     def extra_repr(self) -> str:
         if self.noise:
             noise_info = ""
-            if isinstance(self.noise, Noisy_protocols):
+            if isinstance(self.noise, NoiseProtocol):
                 noise_info = str(self.noise)
             elif isinstance(self.noise, dict):
                 noise_info = ", ".join(
@@ -381,7 +381,7 @@ class CNOT(ControlledOperationGate):
         self,
         control: int | tuple[int, ...],
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__("X", control, target, noise=noise)
 
@@ -394,7 +394,7 @@ class CY(ControlledOperationGate):
         self,
         control: int | tuple[int, ...],
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__("Y", control, target, noise=noise)
 
@@ -404,7 +404,7 @@ class CZ(ControlledOperationGate):
         self,
         control: int | tuple[int, ...],
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__("Z", control, target, noise=noise)
 
@@ -414,7 +414,7 @@ class Toffoli(ControlledOperationGate):
         self,
         control: int | tuple[int, ...],
         target: int,
-        noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__("X", control, target, noise=noise)
 
