@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from functools import cached_property
 from logging import getLogger
 from math import log2
@@ -72,6 +73,14 @@ class QuantumOperation(torch.nn.Module):
         self.register_buffer("operation", operation)
         self._device = self.operation.device
         self._dtype = self.operation.dtype
+
+        if logger.isEnabledFor(logging.DEBUG):
+            # When Debugging let's add logging and NVTX markers
+            # WARNING: incurs performance penalty
+            self.register_forward_hook(forward_hook, always_call=True)
+            self.register_full_backward_hook(backward_hook)
+            self.register_forward_pre_hook(pre_forward_hook)
+            self.register_full_backward_pre_hook(pre_backward_hook)
 
     def to(self, *args: Any, **kwargs: Any) -> QuantumOperation:
         super().to(*args, **kwargs)
