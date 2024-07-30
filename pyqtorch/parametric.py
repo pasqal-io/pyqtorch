@@ -12,10 +12,10 @@ from pyqtorch.matrices import (
     OPERATIONS_DICT,
     _controlled,
     _jacobian,
-    _unitary,
+    parametric_unitary,
 )
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import Operator
+from pyqtorch.utils import Operator, permute_basis
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
@@ -163,7 +163,10 @@ class Parametric(Primitive):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        return _unitary(thetas, self.pauli, self.identity, batch_size)
+        mat = parametric_unitary(thetas, self.pauli, self.identity, batch_size)
+        if self._qubit_support != self.qubit_support:
+            mat = permute_basis(mat, self._qubit_support)
+        return mat
 
     def jacobian(
         self,
@@ -471,7 +474,7 @@ class ControlledRotationGate(Parametric):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = _unitary(thetas, self.pauli, self.identity, batch_size)
+        mat = parametric_unitary(thetas, self.pauli, self.identity, batch_size)
         return _controlled(mat, batch_size, len(self.control))
 
     def jacobian(
