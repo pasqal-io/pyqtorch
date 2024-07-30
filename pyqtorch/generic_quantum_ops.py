@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from functools import cached_property
 from logging import getLogger
-from math import log2
 from typing import Any
 
 import torch
@@ -60,11 +59,6 @@ class QuantumOperation(torch.nn.Module):
         """
         super().__init__()
         qubit_support = get_tuple_qubit_support(qubit_support)
-
-        if len(qubit_support) != int(log2(operation.shape[0])):
-            raise ValueError(
-                "The operation shape should match the legth of the qubit_support."
-            )
 
         self._qubit_support = qubit_support
         self.qubit_support = tuple(sorted(qubit_support))

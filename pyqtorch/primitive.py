@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
+from math import log2
 
 import torch
 from torch import Tensor
@@ -36,6 +37,10 @@ class Primitive(QuantumOperation):
     ) -> None:
         super().__init__(operation, qubit_support)
         self.generator = generator
+        if len(self.qubit_support) != int(log2(operation.shape[0])):
+            raise ValueError(
+                "The operation shape should match the legth of the qubit_support."
+            )
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
