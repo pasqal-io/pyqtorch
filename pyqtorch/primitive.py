@@ -10,15 +10,16 @@ import torch
 from numpy import log2
 from torch import Tensor
 
-from pyqtorch.apply import apply_density_mat, apply_operator, operator_product
+from pyqtorch.apply import apply_density_mat, apply_operator
+from pyqtorch.bitstrings import permute_basis
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
-    IMAT,
     OPERATIONS_DICT,
     _controlled,
     _dagger,
 )
 from pyqtorch.noise import Noisy_protocols
-from pyqtorch.utils import DensityMatrix, density_mat, product_state
+from pyqtorch.utils import DensityMatrix, density_mat, expand_operator, product_state
 
 logger = getLogger(__name__)
 
@@ -44,19 +45,26 @@ class Primitive(torch.nn.Module):
         self,
         pauli: Tensor,
         target: int | tuple[int, ...],
+        pauli_generator: Tensor | None = None,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ) -> None:
         super().__init__()
         self.target: int | tuple[int, ...] = target
-        self.noise: Noisy_protocols | dict[str, Noisy_protocols] | None = noise
-        self.qubit_support: tuple[int, ...] = (
+
+        qubit_support: tuple[int, ...] = (
             (target,) if isinstance(target, int) else target
         )
         if isinstance(target, np.integer):
-            self.qubit_support = (target.item(),)
+            qubit_support = (target.item(),)
         self.register_buffer("pauli", pauli)
+        self.pauli_generator = pauli_generator
         self._device = self.pauli.device
         self._dtype = self.pauli.dtype
+
+        self._qubit_support = qubit_support
+        self.qubit_support = tuple(sorted(qubit_support))
+
+        self.noise: Noisy_protocols | dict[str, Noisy_protocols] | None = noise
 
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
@@ -81,17 +89,30 @@ class Primitive(torch.nn.Module):
             return f"target: {self.qubit_support}, Noise: {noise_info}"
         return f"target: {self.qubit_support}"
 
-    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
+    def unitary(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        mat = self.pauli.unsqueeze(2) if len(self.pauli.shape) == 2 else self.pauli
+        if self._qubit_support != self.qubit_support:
+            mat = permute_basis(mat, self._qubit_support)
+        return mat
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
     ) -> Tensor:
         if self.noise:
             if not isinstance(state, DensityMatrix):
                 state = density_mat(state)
             n_qubits = int(log2(state.size(1)))
-            state = apply_density_mat(self.tensor(values, n_qubits), state)
+            full_support = tuple(range(n_qubits))
+            state = apply_density_mat(
+                self.tensor(values, full_support=full_support), state
+            )
             if isinstance(self.noise, dict):
                 for noise_instance in self.noise.values():
                     protocol = noise_instance.protocol_to_gate()
@@ -117,20 +138,19 @@ class Primitive(torch.nn.Module):
                 )
                 return noise_gate(state, values)
         else:
-            if isinstance(state, DensityMatrix):
-                n_qubits = int(log2(state.size(1)))
-                return apply_density_mat(self.tensor(values, n_qubits), state)
-            else:
-                return apply_operator(
-                    state,
-                    self.unitary(values),
-                    self.qubit_support,
-                    len(state.size()) - 1,
-                )
+            return apply_operator(
+                state,
+                self.unitary(values, embedding),
+                self.qubit_support,
+                len(state.size()) - 1,
+            )
 
-    # ? Do we need to keep this method now ?
-    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> Tensor:
-        return _dagger(self.unitary(values))
+    def dagger(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        return _dagger(self.unitary(values, embedding))
 
     @property
     def device(self) -> torch.device:
@@ -148,37 +168,46 @@ class Primitive(torch.nn.Module):
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
-        return torch.linalg.eigvalsh(self.pauli).reshape(-1, 1)
+        """Get eigenvalues of the underlying generator.
+
+        Note that for a primitive, the generator is unclear
+        so we execute pass.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        if self.pauli_generator is not None:
+            return torch.linalg.eigvalsh(self.pauli_generator).reshape(-1, 1)
+        pass
 
     @cached_property
     def spectral_gap(self) -> Tensor:
+        """Difference between the moduli of the two largest eigenvalues of the generator.
+
+        Returns:
+            Tensor: Spectral gap value.
+        """
         spectrum = self.eigenvals_generator
         spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
         return spectral_gap[spectral_gap.nonzero()]
 
     def tensor(
-        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
+        self,
+        values: dict[str, Tensor] = {},
+        embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         if diagonal:
             raise NotImplementedError
-        blockmat = self.unitary(values)
-        if n_qubits == 1:
+        blockmat = self.unitary(values, embedding)
+        if full_support is None:
             return blockmat
-        full_sup = tuple(i for i in range(n_qubits))
-        support = tuple(sorted(self.qubit_support))
-        mat = (
-            IMAT.clone().to(self.device).unsqueeze(2)
-            if support[0] != full_sup[0]
-            else blockmat
-        )
-        for i in full_sup[1:]:
-            if i == support[0]:
-                other = blockmat
-                mat = torch.kron(mat.contiguous(), other.contiguous())
-            elif i not in support:
-                other = IMAT.clone().to(self.device).unsqueeze(2)
-                mat = torch.kron(mat.contiguous(), other.contiguous())
-        return mat
+        else:
+            return expand_operator(blockmat, self.qubit_support, full_support)
 
 
 class X(Primitive):
@@ -187,7 +216,7 @@ class X(Primitive):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["X"], target, noise)
+        super().__init__(OPERATIONS_DICT["X"], target, noise=noise)
 
 
 class Y(Primitive):
@@ -196,7 +225,7 @@ class Y(Primitive):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["Y"], target, noise)
+        super().__init__(OPERATIONS_DICT["Y"], target, noise=noise)
 
 
 class Z(Primitive):
@@ -205,7 +234,7 @@ class Z(Primitive):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["Z"], target, noise)
+        super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
 
 
 class I(Primitive):  # noqa: E742
@@ -214,7 +243,7 @@ class I(Primitive):  # noqa: E742
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["I"], target, noise)
+        super().__init__(OPERATIONS_DICT["I"], target, noise=noise)
 
 
 class H(Primitive):
@@ -223,7 +252,7 @@ class H(Primitive):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["H"], target, noise)
+        super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
 
 
 class T(Primitive):
@@ -232,7 +261,7 @@ class T(Primitive):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["T"], target, noise)
+        super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
 
 
 class S(Primitive):
@@ -241,7 +270,9 @@ class S(Primitive):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["S"], target, noise)
+        super().__init__(
+            OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"], noise=noise
+        )
 
 
 class SDagger(Primitive):
@@ -250,7 +281,9 @@ class SDagger(Primitive):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["SDAGGER"], target, noise)
+        super().__init__(
+            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"], noise=noise
+        )
 
 
 class Projector(Primitive):
@@ -264,13 +297,15 @@ class Projector(Primitive):
         support = (qubit_support,) if isinstance(qubit_support, int) else qubit_support
         if len(ket) != len(bra):
             raise ValueError("Input ket and bra bitstrings must be of same length.")
+        if len(support) != len(ket):
+            raise ValueError(
+                "Qubit support must have the same number of qubits of ket and bra states."
+            )
         ket_state = product_state(ket).flatten()
         bra_state = product_state(bra).flatten()
         super().__init__(
-            OPERATIONS_DICT["PROJ"](ket_state, bra_state), support[-1], noise
+            OPERATIONS_DICT["PROJ"](ket_state, bra_state), support, noise=noise
         )
-        # Override the attribute in AbstractOperator.
-        self.qubit_support = support
 
 
 class N(Primitive):
@@ -279,33 +314,16 @@ class N(Primitive):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["N"], target, noise)
+        super().__init__(OPERATIONS_DICT["N"], target, noise=noise)
 
 
 class SWAP(Primitive):
     def __init__(self, control: int, target: int):
         # TODO: Change the control param name
         super().__init__(OPERATIONS_DICT["SWAP"], target)
-        self.control = control
-        self.qubit_support = (self.control,) + (target,)
-
-    def tensor(
-        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
-    ) -> Tensor:
-        from pyqtorch.circuit import Sequence
-
-        if diagonal:
-            raise NotImplementedError
-        if n_qubits < max(self.qubit_support) + 1:
-            n_qubits = max(self.qubit_support) + 1
-        seq = Sequence(
-            [
-                CNOT(control=self.control, target=self.target),  # type: ignore[arg-type]
-                CNOT(control=self.target, target=self.control),  # type: ignore[arg-type]
-                CNOT(control=self.control, target=self.target),  # type: ignore[arg-type]
-            ]
-        )
-        return seq.tensor(values, n_qubits)
+        self.control = (control,) if isinstance(control, int) else control
+        self._qubit_support = self.control + (target,)
+        self.qubit_support = tuple(sorted(self._qubit_support))
 
 
 class CSWAP(Primitive):
@@ -315,34 +333,11 @@ class CSWAP(Primitive):
         super().__init__(OPERATIONS_DICT["CSWAP"], target)
         self.control = (control,) if isinstance(control, int) else control
         self.target = target
-        self.qubit_support = self.control + self.target
+        self._qubit_support = self.control + self.target
+        self.qubit_support = tuple(sorted(self._qubit_support))
 
     def extra_repr(self) -> str:
         return f"control:{self.control}, target:{self.target}"
-
-    def tensor(
-        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
-    ) -> Tensor:
-        from pyqtorch.circuit import Sequence
-
-        if diagonal:
-            raise NotImplementedError
-        if n_qubits < max(self.qubit_support) + 1:
-            n_qubits = max(self.qubit_support) + 1
-        seq = Sequence(
-            [
-                Toffoli(
-                    control=(self.control[0], self.target[1]), target=self.target[0]  # type: ignore[index]
-                ),
-                Toffoli(
-                    control=(self.control[0], self.target[0]), target=self.target[1]  # type: ignore[index]
-                ),
-                Toffoli(
-                    control=(self.control[0], self.target[1]), target=self.target[0]  # type: ignore[index]
-                ),
-            ]  #! Can't take more that 1 control in this logic
-        )
-        return seq.tensor(values, n_qubits)
 
 
 class ControlledOperationGate(Primitive):
@@ -353,16 +348,17 @@ class ControlledOperationGate(Primitive):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        self.control = (control,) if isinstance(control, int) else control
+        self.control: tuple = (control,) if isinstance(control, int) else control
         mat = OPERATIONS_DICT[gate]
         mat = _controlled(
             unitary=mat.unsqueeze(2),
             batch_size=1,
             n_control_qubits=len(self.control),
         ).squeeze(2)
-        super().__init__(mat, target, noise)
-        self.gate = globals()[gate]
-        self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
+        super().__init__(mat, target, noise=noise)
+        # self.gate = globals()[gate]
+        self._qubit_support = self.control + (self.target,)  # type: ignore [operator]
+        self.qubit_support = tuple(sorted(self._qubit_support))
         self.noise = noise
 
     def extra_repr(self) -> str:
@@ -379,28 +375,6 @@ class ControlledOperationGate(Primitive):
             )
         return f"control:{self.control}, target:{(self.target,)}"
 
-    def tensor(
-        self, values: dict[str, Tensor] = {}, n_qubits: int = 1, diagonal: bool = False
-    ) -> Tensor:
-        from pyqtorch.circuit import Sequence
-
-        if diagonal:
-            raise NotImplementedError
-        if n_qubits < max(self.qubit_support) + 1:
-            n_qubits = max(self.qubit_support) + 1
-        proj1 = Sequence(
-            [Projector(qubit_support=qubit, ket="1", bra="1") for qubit in self.control]
-        )
-        c_mat = (
-            I(target=self.control[0]).tensor(values, n_qubits)
-            - proj1.tensor(values, n_qubits)
-            + operator_product(
-                proj1.tensor(values, n_qubits),
-                self.gate(self.target).tensor(values, n_qubits),
-            )
-        )
-        return c_mat
-
 
 class CNOT(ControlledOperationGate):
     def __init__(
@@ -409,7 +383,7 @@ class CNOT(ControlledOperationGate):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__("X", control, target, noise)
+        super().__init__("X", control, target, noise=noise)
 
 
 CX = CNOT
@@ -422,7 +396,7 @@ class CY(ControlledOperationGate):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__("Y", control, target, noise)
+        super().__init__("Y", control, target, noise=noise)
 
 
 class CZ(ControlledOperationGate):
@@ -432,14 +406,21 @@ class CZ(ControlledOperationGate):
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__("Z", control, target, noise)
+        super().__init__("Z", control, target, noise=noise)
 
 
 class Toffoli(ControlledOperationGate):
     def __init__(
         self,
-        control: tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
         noise: Noisy_protocols | dict[str, Noisy_protocols] | None = None,
     ):
-        super().__init__("X", control, target, noise)
+        super().__init__("X", control, target, noise=noise)
+
+
+OPS_PAULI = {X, Y, Z, I, N}
+OPS_1Q = OPS_PAULI.union({H, S, T})
+OPS_2Q = {CNOT, CY, CZ, SWAP}
+OPS_3Q = {Toffoli, CSWAP}
+OPS_DIGITAL = OPS_1Q.union(OPS_2Q, OPS_3Q)

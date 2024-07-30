@@ -7,6 +7,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.apply import apply_density_mat
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
 
 
@@ -32,12 +33,19 @@ class Noise(torch.nn.Module):
     def kraus_operators(self) -> list[Tensor]:
         return [getattr(self, f"kraus_{i}") for i in range(len(self._buffers))]
 
-    def unitary(self, values: dict[str, Tensor] | Tensor = dict()) -> list[Tensor]:
+    def unitary(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> list[Tensor]:
         # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
         return [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
 
     def forward(
-        self, state: Tensor, values: dict[str, Tensor] | Tensor = dict()
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Applies a noisy quantum channel on the input state.

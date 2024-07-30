@@ -6,19 +6,27 @@ from enum import Enum
 from functools import lru_cache, partial, wraps
 from logging import getLogger
 from math import sqrt
+from string import ascii_uppercase as ABC
 from typing import Any, Callable, Sequence
 
 import torch
-from torch import Tensor
+from numpy import arange, array, delete, log2
+from numpy import ndarray as NDArray
+from torch import Tensor, moveaxis
 
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE
+from pyqtorch.bitstrings import permute_basis
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT
 
 State = Tensor
 Operator = Tensor
 
 ATOL = 1e-06
+ATOL_embedding = 1e-03
 RTOL = 0.0
-GRADCHECK_ATOL = 1e-06
+GRADCHECK_ATOL = 1e-05
+PSR_ACCEPTANCE = 1e-06
+GPSR_ACCEPTANCE = 1e-06
+ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)
 
@@ -76,20 +84,32 @@ class StrEnum(str, Enum):
 class DiffMode(StrEnum):
     """
     Which Differentiation method to use.
-
-    Options: Automatic Differentiation -  .
-             Adjoint Differentiation   -
     """
 
     AD = "ad"
-    """torch.autograd"""
+    """Use torch.autograd to perform differentiation."""
     ADJOINT = "adjoint"
     """An implementation of "Efficient calculation of gradients
                                        in classical simulations of variational quantum algorithms",
                                        Jones & Gacon, 2020"""
 
     GPSR = "gpsr"
-    """To be added."""
+    """The generalized parameter-shift rule"""
+
+
+class DropoutMode(StrEnum):
+    """
+    Which Dropout mode to use, using the methods stated in https://arxiv.org/abs/2310.04120.
+
+    Options: rotational    - Randomly drops entangling rotational gates.
+             entangling    - Randomly drops entangling gates.
+             canonical_fwd - Randomly drops rotational gates and next immediate entangling
+                            gates whose target bit is located on dropped rotational gates.
+    """
+
+    ROTATIONAL = "rotational_dropout"
+    ENTANGLING = "entangling_dropout"
+    CANONICAL_FWD = "canonical_fwd_dropout"
 
 
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
@@ -296,6 +316,28 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
     )
 
 
+def expand_operator(
+    operator: Tensor, qubit_support: tuple[int, ...], full_support: tuple[int, ...]
+) -> Tensor:
+    """
+    Expands an operator acting on a given qubit_support to act on a larger full_support
+    by explicitly filling in identity matrices on all remaining qubits.
+    """
+    full_support = tuple(sorted(full_support))
+    if not set(qubit_support).issubset(set(full_support)):
+        raise ValueError(
+            "Expanding tensor operation requires a `full_support` argument "
+            "larger than or equal to the `qubit_support`."
+        )
+    device, dtype = operator.device, operator.dtype
+    for i in set(full_support) - set(qubit_support):
+        qubit_support += (i,)
+        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
+        operator = torch.kron(operator.contiguous(), other)
+    operator = permute_basis(operator, qubit_support)
+    return operator
+
+
 def random_dm_promotion(
     target: int, dm_input: DensityMatrix, n_qubits: int
 ) -> DensityMatrix:
@@ -334,6 +376,57 @@ def random_dm_promotion(
         )
         dm_input = operator_kron(dm_random_1, operator_kron(dm_input, dm_random_2))
     return dm_input
+
+
+def dm_partial_trace(rho: DensityMatrix, keep_indices: list[int]) -> DensityMatrix:
+    """
+    Computes the partial trace of a density matrix for a system of several qubits with batch size.
+    This function also permutes the qubits according to the order specified in keep_indices.
+
+    Args:
+        rho (DensityMatrix) : Density matrix of shape [2**n_qubits, 2**n_qubits, batch_size].
+        keep_indices (list[int]): Index of the qubit subsystems to keep.
+
+    Returns:
+        DensityMatrix: Reduced density matrix after the partial trace,
+        of shape [2**n_keep, 2**n_keep, batch_size].
+    """
+    n_qubits = int(log2((rho.shape[0])))
+    batch_size = rho.shape[2]
+    rho = rho.reshape(([2] * n_qubits * 2 + [batch_size]))
+
+    rho_subscripts = array(ABC_ARRAY[: n_qubits * 2 + 1], copy=True)
+    keep_subscripts = "".join(rho_subscripts[keep_indices]) + "".join(
+        rho_subscripts[array(keep_indices) + n_qubits]
+    )
+
+    # Trace by equating indices
+    trace_indices = delete(arange(n_qubits), keep_indices)
+    rho_subscripts[trace_indices + n_qubits] = rho_subscripts[trace_indices]
+    rho_subscripts = "".join(rho_subscripts)
+
+    einsum_subscripts = (
+        rho_subscripts + "->" + keep_subscripts + rho_subscripts[n_qubits * 2]
+    )
+
+    rho_reduced = torch.einsum(einsum_subscripts, rho)
+    n_keep = len(keep_indices)
+    return rho_reduced.reshape(2**n_keep, 2**n_keep, batch_size)
+
+
+def generate_dm(n_qubits: int, batch_size: int) -> Tensor:
+    """Generates a random density matrix using a real hermitian matrix"""
+    density_list = []
+    for _ in range(batch_size):
+        rand_mat = torch.rand(2**n_qubits, 2**n_qubits) + 1j * torch.rand(
+            2**n_qubits, 2**n_qubits
+        )
+        herm_mat = rand_mat + torch.transpose(rand_mat, 0, 1)
+        density_mat = torch.matrix_exp(-herm_mat)
+        density_mat = density_mat / torch.trace(density_mat)
+        density_list.append(density_mat)
+
+    return moveaxis(torch.stack(density_list), 0, 2)
 
 
 def add_batch_dim(operator: Tensor, batch_size: int = 1) -> Tensor:

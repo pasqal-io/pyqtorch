@@ -15,11 +15,12 @@ authors = [
     { name = "Joao P. Moutinho", email = "joao.moutinho@pasqal.com"},
     { name = "Vytautas Abramavicius", email = "vytautas.abramavicius@pasqal.com" },
     { name = "Anton Quelle", email = "anton.quelle@pasqal.com" },
-    { name = "Charles Moussa", email = "charles.moussa@pasqal.com" }
+    { name = "Charles Moussa", email = "charles.moussa@pasqal.com" },
+    { name = "Callum Duffy", email = "callum.duffy@pasqal.com" },
 ]
 requires-python = ">=3.8,<3.13"
 license = {text = "Apache 2.0"}
-version = "1.2.5"
+version = "1.3.2"
 classifiers=[
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
@@ -35,12 +36,10 @@ classifiers=[
 dependencies = ["torch", "numpy"]
 
 [project.optional-dependencies]
-dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "nbconvert", "matplotlib", "qutip~=4.7.5"]
-
+dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "matplotlib"]
+testlibs = [ "jax", "qutip~=4.7.5", "jaxlib"]
 [tool.hatch.envs.tests]
-features = [
-  "dev",
-]
+features=["testlibs", "dev"]
 
 [tool.hatch.envs.tests.scripts]
 test = "pytest -n auto {args}"
