@@ -58,7 +58,7 @@ class QuantumOperation(torch.nn.Module):
         Raises:
             ValueError: _description_
         """
-
+        super().__init__()
         qubit_support = get_tuple_qubit_support(qubit_support)
 
         if len(qubit_support) != int(log2(operation.shape[0])):
@@ -69,7 +69,6 @@ class QuantumOperation(torch.nn.Module):
         self._qubit_support = qubit_support
         self.qubit_support = tuple(sorted(qubit_support))
 
-        self.operation = operation
         self.register_buffer("operation", operation)
         self._device = self.operation.device
         self._dtype = self.operation.dtype
