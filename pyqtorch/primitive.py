@@ -9,7 +9,13 @@ from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.embed import Embedding
 from pyqtorch.generic_quantum_ops import QuantumOperation
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
-from pyqtorch.utils import DensityMatrix, expand_operator, permute_basis, product_state
+from pyqtorch.utils import (
+    DensityMatrix,
+    expand_operator,
+    get_tuple_qubit_support,
+    permute_basis,
+    product_state,
+)
 
 
 class Primitive(QuantumOperation):
@@ -109,6 +115,28 @@ class Primitive(QuantumOperation):
             return expand_operator(blockmat, self.qubit_support, full_support)
 
 
+class ControlledPrimitive(Primitive):
+    def __init__(
+        self,
+        operation: str | Tensor,
+        control: int | tuple[int, ...],
+        target: int | tuple[int, ...],
+    ):
+        self.control = get_tuple_qubit_support(control)
+        self.target = get_tuple_qubit_support(target)
+        if isinstance(operation, str):
+            operation = OPERATIONS_DICT[operation]
+        operation = _controlled(
+            unitary=operation.unsqueeze(2),
+            batch_size=1,
+            n_control_qubits=len(self.control),
+        ).squeeze(2)
+        super().__init__(operation, self.control + self.target)
+
+    def extra_repr(self) -> str:
+        return f"control:{self.control}, targets:{(self.target,)}"
+
+
 class X(Primitive):
     def __init__(self, qubit_support: int):
         super().__init__(OPERATIONS_DICT["X"], qubit_support)
@@ -164,9 +192,7 @@ class SDagger(Primitive):
 class Projector(Primitive):
     def __init__(self, qubit_support: int | tuple[int, ...], ket: str, bra: str):
 
-        qubit_support = (
-            (qubit_support,) if isinstance(qubit_support, int) else qubit_support
-        )
+        qubit_support = get_tuple_qubit_support(qubit_support)
         if len(ket) != len(bra):
             raise ValueError("Input ket and bra bitstrings must be of same length.")
         if len(qubit_support) != len(ket):
@@ -184,45 +210,15 @@ class N(Primitive):
 
 
 class SWAP(Primitive):
-    def __init__(self, control: int, target: int):
-        super().__init__(OPERATIONS_DICT["SWAP"], target)
-        self.control = (control,) if isinstance(control, int) else control
-        self._qubit_support = self.control + (target,)
-        self.qubit_support = tuple(sorted(self._qubit_support))
+    def __init__(self, i: int, j: int):
+        super().__init__(OPERATIONS_DICT["SWAP"], (i, j))
 
 
-class CSWAP(Primitive):
+class CSWAP(ControlledPrimitive):
     def __init__(self, control: int | tuple[int, ...], targets: tuple[int, ...]):
         if not isinstance(targets, tuple) or len(targets) != 2:
             raise ValueError("Target qubits must be a tuple with two qubits")
-        super().__init__(OPERATIONS_DICT["CSWAP"], targets)
-        self.control = (control,) if isinstance(control, int) else control
-        self.qubit_support = targets
-        self._qubit_support = self.control + self.qubit_support
-        self.qubit_support = tuple(sorted(self._qubit_support))
-
-    def extra_repr(self) -> str:
-        return f"control:{self.control}, qubit_support:{self.qubit_support}"
-
-
-class ControlledPrimitive(Primitive):
-    def __init__(
-        self, operation: str | Tensor, control: int | tuple[int, ...], target: int
-    ):
-        self.control: tuple = (control,) if isinstance(control, int) else control
-        if isinstance(operation, str):
-            operation = OPERATIONS_DICT[operation]
-        operation = _controlled(
-            unitary=operation.unsqueeze(2),
-            batch_size=1,
-            n_control_qubits=len(self.control),
-        ).squeeze(2)
-        super().__init__(operation, target)
-        self._qubit_support = self.control + (self.qubit_support,)  # type: ignore [operator]
-        self.qubit_support = tuple(sorted(self._qubit_support))
-
-    def extra_repr(self) -> str:
-        return f"control:{self.control}, qubit_support:{(self.qubit_support,)}"
+        super().__init__(OPERATIONS_DICT["CSWAP"], control, targets)
 
 
 class CNOT(ControlledPrimitive):

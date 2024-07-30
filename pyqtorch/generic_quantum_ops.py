@@ -5,11 +5,11 @@ from logging import getLogger
 from math import log2
 from typing import Any
 
-import numpy as np
 import torch
 from torch import Tensor
 
 from pyqtorch.embed import Embedding
+from pyqtorch.utils import get_tuple_qubit_support
 
 logger = getLogger(__name__)
 
@@ -58,11 +58,7 @@ class QuantumOperation(torch.nn.Module):
             ValueError: _description_
         """
 
-        qubit_support = (
-            (qubit_support,) if isinstance(qubit_support, int) else qubit_support
-        )
-        if isinstance(qubit_support, np.integer):
-            qubit_support = (qubit_support.item(),)
+        qubit_support = get_tuple_qubit_support(qubit_support)
 
         if len(qubit_support) != int(log2(operation.shape[0])):
             raise ValueError(
