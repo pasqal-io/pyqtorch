@@ -13,9 +13,9 @@ from pyqtorch.matrices import (
     OPERATIONS_DICT,
     _controlled,
     _jacobian,
-    _unitary,
+    parametric_unitary,
 )
-from pyqtorch.utils import Operator, get_tuple_qubit_support
+from pyqtorch.utils import Operator, get_tuple_qubit_support, permute_basis
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
@@ -155,7 +155,10 @@ class Parametric(QuantumOperation):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        return _unitary(thetas, self.operation, self.identity, batch_size)
+        mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
+        if self._qubit_support != self.qubit_support:
+            mat = permute_basis(mat, self._qubit_support)
+        return mat
 
     def jacobian(
         self,
