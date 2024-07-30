@@ -569,17 +569,17 @@ class CRY(ControlledRotationGate):
     def __init__(
         self,
         control: int | Tuple[int, ...],
-        qubit_support: int,
+        target: int,
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes controlled RY.
 
         Arguments:
             control: Control qubit(s).
-            qubit_support: Target qubit.
+            target: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__("Y", control, qubit_support, param_name)
+        super().__init__("Y", control, target, param_name)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -613,17 +613,17 @@ class CRZ(ControlledRotationGate):
     def __init__(
         self,
         control: int | Tuple[int, ...],
-        qubit_support: int,
+        target: int,
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes controlled RZ.
 
         Arguments:
             control: Control qubit(s).
-            qubit_support: Target qubit.
+            target: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__("Z", control, qubit_support, param_name)
+        super().__init__("Z", control, target, param_name)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -659,17 +659,17 @@ class CPHASE(ControlledRotationGate):
     def __init__(
         self,
         control: int | Tuple[int, ...],
-        qubit_support: int,
+        target: int,
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes controlled PHASE.
 
         Arguments:
             control: Control qubit(s).
-            qubit_support: Target qubit.
+            target: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__("I", control, qubit_support, param_name)
+        super().__init__("I", control, target, param_name)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
