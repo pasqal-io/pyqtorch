@@ -327,7 +327,7 @@ class DropoutQuantumCircuit(QuantumCircuit):
                 and (values[op.param_name].requires_grad)
                 and not (int(1 - bernoulli(tensor(self.dropout_prob))))
             ):
-                entanglers_to_drop[op.target] = 1
+                entanglers_to_drop[op.qubit_support[-1]] = 1
             else:
                 if not hasattr(op, "param_name") and (
                     entanglers_to_drop[op.control[0]] == 1

@@ -173,8 +173,8 @@ class QuantumOperation(torch.nn.Module):
             return DensityMatrix(
                 operator_product(
                     self.unitary(values, embedding),
-                    operator_product(state, self.dagger(values, embedding), self.qubit_support),  # type: ignore [arg-type]
-                    self.qubit_support,  # type: ignore [arg-type]
+                    operator_product(state, self.dagger(values, embedding), self.qubit_support[-1]),  # type: ignore [arg-type]
+                    self.qubit_support[-1],  # type: ignore [arg-type]
                 )
             )
         else:
