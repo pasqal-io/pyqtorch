@@ -138,12 +138,19 @@ class Primitive(torch.nn.Module):
                 )
                 return noise_gate(state, values)
         else:
-            return apply_operator(
-                state,
-                self.unitary(values, embedding),
-                self.qubit_support,
-                len(state.size()) - 1,
-            )
+            if isinstance(state, DensityMatrix):
+                n_qubits = int(log2(state.size(1)))
+                full_support = tuple(range(n_qubits))
+                return apply_density_mat(
+                    self.tensor(values, full_support=full_support), state
+                )
+            else:
+                return apply_operator(
+                    state,
+                    self.unitary(values, embedding),
+                    self.qubit_support,
+                    len(state.size()) - 1,
+                )
 
     def dagger(
         self,

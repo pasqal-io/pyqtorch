@@ -209,7 +209,6 @@ def test_noisy_primitive(
     batch_size: int,
 ) -> None:
     noisy_primitive, primitve_gate, noise_gate = random_noisy_unitary_gate
-    breakpoint()
     state = random_input_dm
     values = {"theta": torch.rand(1)}
     rho_evol = noisy_primitive(state, values)

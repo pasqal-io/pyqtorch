@@ -9,6 +9,7 @@ from torch import Tensor
 from pyqtorch.apply import apply_density_mat
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
+from pyqtorch.utils import DensityMatrix, density_mat
 
 
 class Noise(torch.nn.Module):
@@ -65,6 +66,8 @@ class Noise(torch.nn.Module):
         Raises:
             TypeError: If the input `state` or `kraus_list` is not a Tensor.
         """
+        if not isinstance(state, DensityMatrix):
+            state = density_mat(state)
         n_qubits = int(log2(state.size(1)))
         rho_evols: list[Tensor] = []
         for kraus in self.tensor(values, n_qubits):
