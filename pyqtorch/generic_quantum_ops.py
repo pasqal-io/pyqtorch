@@ -8,8 +8,15 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.embed import Embedding
-from pyqtorch.utils import get_tuple_qubit_support
+from pyqtorch.matrices import _dagger
+from pyqtorch.utils import (
+    DensityMatrix,
+    expand_operator,
+    get_tuple_qubit_support,
+    permute_basis,
+)
 
 logger = getLogger(__name__)
 
@@ -118,6 +125,27 @@ class QuantumOperation(torch.nn.Module):
         spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
         return spectral_gap[spectral_gap.nonzero()]
 
+    def unitary(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        operation = (
+            self.operation.unsqueeze(2)
+            if len(self.operation.shape) == 2
+            else self.operation
+        )
+        if self._qubit_support != self.qubit_support:
+            operation = permute_basis(operation, self._qubit_support)
+        return operation
+
+    def dagger(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        return _dagger(self.unitary(values, embedding))
+
     def tensor(
         self,
         values: dict[str, Tensor] = {},
@@ -125,7 +153,34 @@ class QuantumOperation(torch.nn.Module):
         full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Tensor:
-        return self.operation
+        if diagonal:
+            raise NotImplementedError
+        blockmat = self.unitary(values, embedding)
+        if full_support is None:
+            return blockmat
+        else:
+            return expand_operator(blockmat, self.qubit_support, full_support)
 
-    def forward(self, state: Tensor):
-        raise NotImplementedError
+    def forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        if isinstance(state, DensityMatrix):
+            # TODO: fix error type int | tuple[int, ...] expected "int"
+            # Only supports single-qubit gates
+            return DensityMatrix(
+                operator_product(
+                    self.unitary(values, embedding),
+                    operator_product(state, self.dagger(values, embedding), self.qubit_support),  # type: ignore [arg-type]
+                    self.qubit_support,  # type: ignore [arg-type]
+                )
+            )
+        else:
+            return apply_operator(
+                state,
+                self.unitary(values, embedding),
+                self.qubit_support,
+                len(state.size()) - 1,
+            )

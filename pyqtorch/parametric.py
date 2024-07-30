@@ -239,7 +239,7 @@ class ControlledParametric(Parametric):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = _unitary(thetas, self.pauli, self.identity, batch_size)
+        mat = _unitary(thetas, self.operation, self.identity, batch_size)
         return _controlled(mat, batch_size, len(self.control))
 
     def jacobian(
@@ -257,7 +257,7 @@ class ControlledParametric(Parametric):
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         n_control = len(self.control)
-        jU = _jacobian(thetas, self.pauli, self.identity, batch_size)
+        jU = _jacobian(thetas, self.operation, self.identity, batch_size)
         n_dim = 2 ** (n_control + 1)
         jC = (
             torch.zeros((n_dim, n_dim), dtype=self.identity.dtype)

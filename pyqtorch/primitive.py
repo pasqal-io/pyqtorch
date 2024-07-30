@@ -6,15 +6,11 @@ from math import log2
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator, operator_product
 from pyqtorch.embed import Embedding
 from pyqtorch.generic_quantum_ops import QuantumOperation
-from pyqtorch.matrices import OPERATIONS_DICT, _controlled, _dagger
+from pyqtorch.matrices import OPERATIONS_DICT, _controlled
 from pyqtorch.utils import (
-    DensityMatrix,
-    expand_operator,
     get_tuple_qubit_support,
-    permute_basis,
     product_state,
 )
 
@@ -58,66 +54,6 @@ class Primitive(QuantumOperation):
         if self.generator is not None:
             return torch.linalg.eigvalsh(self.generator).reshape(-1, 1)
         pass
-
-    def forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | Tensor = dict(),
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        if isinstance(state, DensityMatrix):
-            # TODO: fix error type int | tuple[int, ...] expected "int"
-            # Only supports single-qubit gates
-            return DensityMatrix(
-                operator_product(
-                    self.unitary(values, embedding),
-                    operator_product(state, self.dagger(values, embedding), self.qubit_support),  # type: ignore [arg-type]
-                    self.qubit_support,  # type: ignore [arg-type]
-                )
-            )
-        else:
-            return apply_operator(
-                state,
-                self.unitary(values, embedding),
-                self.qubit_support,
-                len(state.size()) - 1,
-            )
-
-    def unitary(
-        self,
-        values: dict[str, Tensor] | Tensor = dict(),
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        operation = (
-            self.operation.unsqueeze(2)
-            if len(self.operation.shape) == 2
-            else self.operation
-        )
-        if self._qubit_support != self.qubit_support:
-            operation = permute_basis(operation, self._qubit_support)
-        return operation
-
-    def dagger(
-        self,
-        values: dict[str, Tensor] | Tensor = dict(),
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        return _dagger(self.unitary(values, embedding))
-
-    def tensor(
-        self,
-        values: dict[str, Tensor] = {},
-        embedding: Embedding | None = None,
-        full_support: tuple[int, ...] | None = None,
-        diagonal: bool = False,
-    ) -> Tensor:
-        if diagonal:
-            raise NotImplementedError
-        blockmat = self.unitary(values, embedding)
-        if full_support is None:
-            return blockmat
-        else:
-            return expand_operator(blockmat, self.qubit_support, full_support)
 
 
 class ControlledPrimitive(Primitive):
