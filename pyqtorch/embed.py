@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from importlib import import_module
 from logging import getLogger
-from typing import Any, Optional, Tuple
+from typing import Any, Tuple
 
 from numpy.typing import ArrayLike, DTypeLike
 
@@ -21,7 +21,7 @@ DEFAULT_JAX_MAPPING = {
     "sub": ("jax.numpy", "subtract"),
     "div": ("jax.numpy", "divide"),
 }
-DEFAULT_TORCH_MAPPING: dict = {}
+DEFAULT_TORCH_MAPPING: dict = dict()
 DEFAULT_NUMPY_MAPPING = {
     "mul": ("numpy", "multiply"),
     "sub": ("numpy", "subtract"),
@@ -208,7 +208,7 @@ class Embedding:
         vparam_names: list[str] = [],
         fparam_names: list[str] = [],
         var_to_call: dict[str, ConcretizedCallable] = dict(),
-        tparam_name: Optional[str] = None,
+        tparam_name: str | None = None,
         engine_name: str = "torch",
         device: str = "cpu",
     ) -> None:
