@@ -66,7 +66,7 @@ OPERATIONS_DICT = {
 }
 
 
-def _unitary(
+def parametric_unitary(
     theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
 ) -> torch.Tensor:
     cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)

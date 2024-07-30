@@ -12,10 +12,10 @@ from pyqtorch.matrices import (
     OPERATIONS_DICT,
     _controlled,
     _jacobian,
-    _unitary,
+    parametric_unitary,
 )
 from pyqtorch.primitive import Primitive
-from pyqtorch.utils import Operator
+from pyqtorch.utils import Operator, permute_basis
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
@@ -163,7 +163,10 @@ class Parametric(Primitive):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        return _unitary(thetas, self.pauli, self.identity, batch_size)
+        mat = parametric_unitary(thetas, self.pauli, self.identity, batch_size)
+        if self._qubit_support != self.qubit_support:
+            mat = permute_basis(mat, self._qubit_support)
+        return mat
 
     def jacobian(
         self,
@@ -405,7 +408,7 @@ class ControlledRotationGate(Parametric):
     def __init__(
         self,
         gate: str,
-        control: int | Tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
         param_name: str | int | float | torch.Tensor = "",
     ):
@@ -417,9 +420,10 @@ class ControlledRotationGate(Parametric):
             target: Target qubit.
             param_name: Name of parameters.
         """
-        self.control = control if isinstance(control, tuple) else (control,)
+        self.control: tuple = control if isinstance(control, tuple) else (control,)
         super().__init__(gate, target, param_name)
-        self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
+        self._qubit_support = self.control + (self.target,)  # type: ignore[operator]
+        self.qubit_support = tuple(sorted(self._qubit_support))
         # In this class, target is always an int but herit from Parametric and Primitive that:
         # target : int | tuple[int,...]
 
@@ -471,8 +475,12 @@ class ControlledRotationGate(Parametric):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = _unitary(thetas, self.pauli, self.identity, batch_size)
-        return _controlled(mat, batch_size, len(self.control))
+        mat = parametric_unitary(thetas, self.pauli, self.identity, batch_size)
+        mat = _controlled(mat, batch_size, len(self.control))
+        if self._qubit_support != self.qubit_support:
+            mat = permute_basis(mat, self._qubit_support)
+
+        return mat
 
     def jacobian(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
