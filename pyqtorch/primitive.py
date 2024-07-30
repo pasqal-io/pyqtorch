@@ -13,7 +13,7 @@ from pyqtorch.utils import DensityMatrix, expand_operator, permute_basis, produc
 
 
 class Primitive(QuantumOperation):
-    """Primitive are fixed quantum operations with a defined 
+    """Primitive are fixed quantum operations with a defined
 
 
     Attributes:
@@ -21,6 +21,7 @@ class Primitive(QuantumOperation):
         qubit_support: List of qubits the QuantumOperation acts on.
         generator (Tensor): A tensor G s.t. U = exp(-iG).
     """
+
     def __init__(
         self,
         operation: Tensor,
@@ -162,6 +163,10 @@ class SDagger(Primitive):
 
 class Projector(Primitive):
     def __init__(self, qubit_support: int | tuple[int, ...], ket: str, bra: str):
+
+        qubit_support = (
+            (qubit_support,) if isinstance(qubit_support, int) else qubit_support
+        )
         if len(ket) != len(bra):
             raise ValueError("Input ket and bra bitstrings must be of same length.")
         if len(qubit_support) != len(ket):
@@ -187,12 +192,12 @@ class SWAP(Primitive):
 
 
 class CSWAP(Primitive):
-    def __init__(self, control: int | tuple[int, ...], qubit_targets: tuple[int, ...]):
-        if not isinstance(qubit_targets, tuple) or len(qubit_targets) != 2:
+    def __init__(self, control: int | tuple[int, ...], targets: tuple[int, ...]):
+        if not isinstance(targets, tuple) or len(targets) != 2:
             raise ValueError("Target qubits must be a tuple with two qubits")
-        super().__init__(OPERATIONS_DICT["CSWAP"], qubit_targets)
+        super().__init__(OPERATIONS_DICT["CSWAP"], targets)
         self.control = (control,) if isinstance(control, int) else control
-        self.qubit_support = qubit_targets
+        self.qubit_support = targets
         self._qubit_support = self.control + self.qubit_support
         self.qubit_support = tuple(sorted(self._qubit_support))
 
@@ -200,16 +205,19 @@ class CSWAP(Primitive):
         return f"control:{self.control}, qubit_support:{self.qubit_support}"
 
 
-class ControlledOperationGate(Primitive):
-    def __init__(self, gate: str, control: int | tuple[int, ...], qubit_target: int):
+class ControlledPrimitive(Primitive):
+    def __init__(
+        self, operation: str | Tensor, control: int | tuple[int, ...], target: int
+    ):
         self.control: tuple = (control,) if isinstance(control, int) else control
-        mat = OPERATIONS_DICT[gate]
-        mat = _controlled(
-            unitary=mat.unsqueeze(2),
+        if isinstance(operation, str):
+            operation = OPERATIONS_DICT[operation]
+        operation = _controlled(
+            unitary=operation.unsqueeze(2),
             batch_size=1,
             n_control_qubits=len(self.control),
         ).squeeze(2)
-        super().__init__(mat, qubit_target)
+        super().__init__(operation, target)
         self._qubit_support = self.control + (self.qubit_support,)  # type: ignore [operator]
         self.qubit_support = tuple(sorted(self._qubit_support))
 
@@ -217,27 +225,27 @@ class ControlledOperationGate(Primitive):
         return f"control:{self.control}, qubit_support:{(self.qubit_support,)}"
 
 
-class CNOT(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], qubit_target: int):
-        super().__init__("X", control, qubit_target)
+class CNOT(ControlledPrimitive):
+    def __init__(self, control: int | tuple[int, ...], target: int):
+        super().__init__("X", control, target)
 
 
 CX = CNOT
 
 
-class CY(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], qubit_target: int):
-        super().__init__("Y", control, qubit_target)
+class CY(ControlledPrimitive):
+    def __init__(self, control: int | tuple[int, ...], target: int):
+        super().__init__("Y", control, target)
 
 
-class CZ(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], qubit_target: int):
-        super().__init__("Z", control, qubit_target)
+class CZ(ControlledPrimitive):
+    def __init__(self, control: int | tuple[int, ...], target: int):
+        super().__init__("Z", control, target)
 
 
-class Toffoli(ControlledOperationGate):
-    def __init__(self, control: int | tuple[int, ...], qubit_target: int):
-        super().__init__("X", control, qubit_target)
+class Toffoli(ControlledPrimitive):
+    def __init__(self, control: int | tuple[int, ...], target: int):
+        super().__init__("X", control, target)
 
 
 OPS_PAULI = {X, Y, Z, I}

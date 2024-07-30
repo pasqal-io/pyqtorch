@@ -7,6 +7,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.embed import Embedding
+from pyqtorch.generic_quantum_ops import QuantumOperation
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
@@ -14,15 +15,14 @@ from pyqtorch.matrices import (
     _jacobian,
     _unitary,
 )
-from pyqtorch.primitive import Primitive
 from pyqtorch.utils import Operator
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
 
-class Parametric(Primitive):
+class Parametric(QuantumOperation):
     """
-    Primitives taking parameters as input.
+    QuantumOperation taking parameters as input.
 
     Attributes:
         param_name: Name of parameters.
@@ -33,8 +33,8 @@ class Parametric(Primitive):
 
     def __init__(
         self,
-        generator_name: str,
-        target: int,
+        generator: str | Tensor,
+        qubit_support: int | tuple[int, ...],
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes Parametric.
@@ -44,7 +44,11 @@ class Parametric(Primitive):
             target: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__(OPERATIONS_DICT[generator_name], target)
+
+        generator_operation = (
+            OPERATIONS_DICT[generator] if isinstance(generator, str) else generator
+        )
+        super().__init__(generator_operation, qubit_support)
         self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
 
@@ -163,7 +167,7 @@ class Parametric(Primitive):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        return _unitary(thetas, self.pauli, self.identity, batch_size)
+        return _unitary(thetas, self.operation, self.identity, batch_size)
 
     def jacobian(
         self,
@@ -181,17 +185,17 @@ class Parametric(Primitive):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        return _jacobian(thetas, self.pauli, self.identity, batch_size)
+        return _jacobian(thetas, self.operation, self.identity, batch_size)
 
-    def to(self, *args: Any, **kwargs: Any) -> Primitive:
+    def to(self, *args: Any, **kwargs: Any) -> Parametric:
         super().to(*args, **kwargs)
-        self._device = self.pauli.device
+        self._device = self.operation.device
         self.param_name = (
             self.param_name.to(*args, **kwargs)
             if isinstance(self.param_name, torch.Tensor)
             else self.param_name
         )
-        self._dtype = self.pauli.dtype
+        self._dtype = self.operation.dtype
         return self
 
 
@@ -726,7 +730,7 @@ class CPHASE(ControlledRotationGate):
         jC[unitary_idx:, unitary_idx:, :] = jU
         return jC
 
-    def to(self, *args: Any, **kwargs: Any) -> Primitive:
+    def to(self, *args: Any, **kwargs: Any) -> Parametric:
         """Set device of primitive.
 
         Returns:
