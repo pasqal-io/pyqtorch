@@ -42,9 +42,9 @@ def qubit_support_as_tuple(support: int | tuple[int, ...]) -> tuple[int, ...]:
     Returns:
         tuple[int, ...]: Qubit support as tuple.
     """
-    qubit_support = (support,) if isinstance(support, int) else support
-    if isinstance(qubit_support, np.integer):
-        qubit_support = (qubit_support.item(),)
+    if isinstance(support, np.integer):
+        return (qubit_support.item(),)
+    qubit_support = (support,) if isinstance(support, int) else tuple(support)
     return qubit_support
 
 
