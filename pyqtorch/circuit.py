@@ -403,7 +403,7 @@ class Merge(Sequence):
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
             (
-                add_batch_dim(op.unitary(values, embedding), batch_size)
+                add_batch_dim(op.tensor(values, embedding), batch_size)
                 for op in reversed(self.operations)
             ),
         )

@@ -15,7 +15,7 @@ from pyqtorch.matrices import (
     _jacobian,
     parametric_unitary,
 )
-from pyqtorch.utils import Operator, permute_basis, qubit_support_as_tuple
+from pyqtorch.utils import Operator, qubit_support_as_tuple
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
@@ -48,8 +48,6 @@ class Parametric(QuantumOperation):
         generator_operation = (
             OPERATIONS_DICT[generator] if isinstance(generator, str) else generator
         )
-        super().__init__(generator_operation, qubit_support)
-        self.register_buffer("identity", OPERATIONS_DICT["I"])
         self.param_name = param_name
 
         def parse_values(
@@ -110,6 +108,13 @@ class Parametric(QuantumOperation):
         elif isinstance(param_name, (float, int, torch.Tensor)):
             self.parse_values = parse_constant
 
+        super().__init__(
+            generator_operation,
+            qubit_support,
+            operator_function=self._construct_parametric_base_op,
+        )
+        self.register_buffer("identity", OPERATIONS_DICT["I"])
+
     def extra_repr(self) -> str:
         """String representation of the operation.
 
@@ -138,7 +143,7 @@ class Parametric(QuantumOperation):
         """
         return values.unsqueeze(0) if len(values.size()) == 0 else values
 
-    def unitary(
+    def _construct_parametric_base_op(
         self,
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
@@ -156,8 +161,6 @@ class Parametric(QuantumOperation):
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
-        if self._qubit_support != self.qubit_support:
-            mat = permute_basis(mat, self._qubit_support)
         return mat
 
     def jacobian(
@@ -227,7 +230,7 @@ class ControlledParametric(Parametric):
             f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
         )
 
-    def unitary(
+    def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
     ) -> Operator:
         """
@@ -244,8 +247,6 @@ class ControlledParametric(Parametric):
         batch_size = len(thetas)
         mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
         mat = _controlled(mat, batch_size, len(self.control))
-        if self._qubit_support != self.qubit_support:
-            mat = permute_basis(mat, self._qubit_support)
         return mat
 
     def jacobian(
@@ -482,7 +483,7 @@ class PHASE(Parametric):
         """
         return torch.tensor([[0.0], [2.0]], dtype=self.dtype, device=self.device)
 
-    def unitary(
+    def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
     ) -> Operator:
         """
@@ -698,7 +699,7 @@ class CPHASE(ControlledRotationGate):
             )
         ).reshape(-1, 1)
 
-    def unitary(
+    def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
     ) -> Operator:
         """
@@ -818,7 +819,7 @@ class U(Parametric):
         """
         return pauli_singleq_eigenvalues.to(device=self.device, dtype=self.dtype)
 
-    def unitary(
+    def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
     ) -> Operator:
         """

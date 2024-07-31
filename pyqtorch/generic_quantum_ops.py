@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 from functools import cached_property
 from logging import getLogger
-from typing import Any
+from math import log2
+from typing import Any, Callable
 
 import torch
 from torch import Tensor
@@ -41,11 +42,15 @@ class QuantumOperation(torch.nn.Module):
     """Basic QuantumOperation class storing a tensor operation which can represent either
         a quantum operator or a generator inferring the QuantumOperation.
 
+    Note that the methods below are meant
+
     Attributes:
         operation (Tensor): Tensor used to infer the QuantumOperation
             directly or indirectly.
         qubit_support (int | tuple[int, ...]): List of qubits
             the QuantumOperation acts on.
+        operator_function (Callable | None, optional): Function to generate the base operator
+            from operation. If None, we consider returning operation itself.
 
     """
 
@@ -53,6 +58,7 @@ class QuantumOperation(torch.nn.Module):
         self,
         operation: Tensor,
         qubit_support: int | tuple[int, ...],
+        operator_function: Callable | None = None,
     ) -> None:
         """Initializes QuantumOperation
 
@@ -73,6 +79,18 @@ class QuantumOperation(torch.nn.Module):
         self._device = self.operation.device
         self._dtype = self.operation.dtype
 
+        if (operator_function is None) and len(self.qubit_support) != int(
+            log2(operation.shape[0])
+        ):
+            raise ValueError(
+                "The operation shape should match the length of the qubit_support."
+            )
+
+        if operator_function is None:
+            self._operator_function = self._default_operator_function
+        else:
+            self._operator_function = operator_function
+
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
             # WARNING: incurs performance penalty
@@ -90,6 +108,10 @@ class QuantumOperation(torch.nn.Module):
     @cached_property
     def qubit_support(self) -> tuple[int, ...]:
         return tuple(sorted(self._qubit_support))
+
+    @property
+    def operator_function(self) -> Callable[..., Any]:
+        return self._operator_function
 
     def __hash__(self) -> int:
         return hash(self.qubit_support)
@@ -128,7 +150,7 @@ class QuantumOperation(torch.nn.Module):
         spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
         return spectral_gap[spectral_gap.nonzero()]
 
-    def unitary(
+    def _default_operator_function(
         self,
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
@@ -138,8 +160,6 @@ class QuantumOperation(torch.nn.Module):
             if len(self.operation.shape) == 2
             else self.operation
         )
-        if self._qubit_support != self.qubit_support:
-            operation = permute_basis(operation, self._qubit_support)
         return operation
 
     def dagger(
@@ -147,7 +167,7 @@ class QuantumOperation(torch.nn.Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
-        return _dagger(self.unitary(values, embedding))
+        return _dagger(self.operator_function(values, embedding))
 
     def tensor(
         self,
@@ -158,7 +178,9 @@ class QuantumOperation(torch.nn.Module):
     ) -> Tensor:
         if diagonal:
             raise NotImplementedError
-        blockmat = self.unitary(values, embedding)
+        blockmat = self.operator_function(values, embedding)
+        if self._qubit_support != self.qubit_support:
+            blockmat = permute_basis(blockmat, self._qubit_support)
         if full_support is None:
             return blockmat
         else:
@@ -175,7 +197,7 @@ class QuantumOperation(torch.nn.Module):
             # Only supports single-qubit gates
             return DensityMatrix(
                 operator_product(
-                    self.unitary(values, embedding),
+                    self.tensor(values, embedding),
                     operator_product(state, self.dagger(values, embedding), self.qubit_support[-1]),  # type: ignore [arg-type]
                     self.qubit_support[-1],  # type: ignore [arg-type]
                 )
@@ -183,7 +205,7 @@ class QuantumOperation(torch.nn.Module):
         else:
             return apply_operator(
                 state,
-                self.unitary(values, embedding),
+                self.tensor(values, embedding),
                 self.qubit_support,
                 len(state.size()) - 1,
             )

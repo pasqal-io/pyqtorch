@@ -423,8 +423,8 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     for qubit in qubits:
         operator = torch.where(
             target > qubit,
-            operator_kron(I(target).unitary(), operator),
-            operator_kron(operator, I(target).unitary()),
+            operator_kron(I(target).tensor(), operator),
+            operator_kron(operator, I(target).tensor()),
         )
     return operator
 
