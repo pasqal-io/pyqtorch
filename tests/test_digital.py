@@ -234,7 +234,7 @@ def test_multi_controlled_gates(
     initial_state = initial_state.to(device=device, dtype=dtype)
     rot_gate = getattr(pyq, gate)
     controlled_rot_gate = getattr(pyq, "C" + gate)
-    phi = torch.rand(batch_size)
+    phi = torch.rand(batch_size).to(device=device)
     n_qubits = int(log2(torch.numel(initial_state)))
     qubits = tuple([i for i in range(n_qubits)])
     op = controlled_rot_gate(qubits[:-1], qubits[-1], "phi").to(
