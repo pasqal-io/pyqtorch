@@ -33,7 +33,7 @@ ABC_ARRAY: NDArray = array(list(ABC))
 logger = getLogger(__name__)
 
 
-def get_tuple_qubit_support(support: int | tuple[int, ...]) -> tuple[int, ...]:
+def qubit_support_as_tuple(support: int | tuple[int, ...]) -> tuple[int, ...]:
     """Make sure support returned is a tuple of integers.
 
     Args:

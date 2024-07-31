@@ -15,7 +15,7 @@ from pyqtorch.matrices import (
     _jacobian,
     parametric_unitary,
 )
-from pyqtorch.utils import Operator, get_tuple_qubit_support, permute_basis
+from pyqtorch.utils import Operator, permute_basis, qubit_support_as_tuple
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
@@ -213,8 +213,8 @@ class ControlledParametric(Parametric):
             qubit_targets: Target qubit(s).
             param_name: Name of parameters.
         """
-        self.control = get_tuple_qubit_support(control)
-        self.target = get_tuple_qubit_support(target)
+        self.control = qubit_support_as_tuple(control)
+        self.target = qubit_support_as_tuple(target)
         super().__init__(operation, self.control + self.target, param_name)
 
     def extra_repr(self) -> str:

@@ -10,8 +10,8 @@ from pyqtorch.embed import Embedding
 from pyqtorch.generic_quantum_ops import QuantumOperation
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled
 from pyqtorch.utils import (
-    get_tuple_qubit_support,
     product_state,
+    qubit_support_as_tuple,
 )
 
 
@@ -63,8 +63,8 @@ class ControlledPrimitive(Primitive):
         control: int | tuple[int, ...],
         target: int | tuple[int, ...],
     ):
-        self.control = get_tuple_qubit_support(control)
-        self.target = get_tuple_qubit_support(target)
+        self.control = qubit_support_as_tuple(control)
+        self.target = qubit_support_as_tuple(target)
         if isinstance(operation, str):
             operation = OPERATIONS_DICT[operation]
         operation = _controlled(
@@ -133,7 +133,7 @@ class SDagger(Primitive):
 class Projector(Primitive):
     def __init__(self, qubit_support: int | tuple[int, ...], ket: str, bra: str):
 
-        qubit_support = get_tuple_qubit_support(qubit_support)
+        qubit_support = qubit_support_as_tuple(qubit_support)
         if len(ket) != len(bra):
             raise ValueError("Input ket and bra bitstrings must be of same length.")
         if len(qubit_support) != len(ket):
@@ -159,7 +159,7 @@ class CSWAP(Primitive):
     def __init__(self, control: int, target: tuple[int, ...]):
         if not isinstance(target, tuple) or len(target) != 2:
             raise ValueError("Target qubits must be a tuple with two qubits")
-        self.control = get_tuple_qubit_support(control)
+        self.control = qubit_support_as_tuple(control)
         self.target = target
         super().__init__(OPERATIONS_DICT["CSWAP"], self.control + self.target)
 

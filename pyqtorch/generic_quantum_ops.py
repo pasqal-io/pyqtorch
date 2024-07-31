@@ -14,8 +14,8 @@ from pyqtorch.matrices import _dagger
 from pyqtorch.utils import (
     DensityMatrix,
     expand_operator,
-    get_tuple_qubit_support,
     permute_basis,
+    qubit_support_as_tuple,
 )
 
 logger = getLogger(__name__)
@@ -65,10 +65,9 @@ class QuantumOperation(torch.nn.Module):
             ValueError: _description_
         """
         super().__init__()
-        qubit_support = get_tuple_qubit_support(qubit_support)
+        qubit_support = qubit_support_as_tuple(qubit_support)
 
         self._qubit_support = qubit_support
-        self.qubit_support = tuple(sorted(qubit_support))
 
         self.register_buffer("operation", operation)
         self._device = self.operation.device
@@ -87,6 +86,10 @@ class QuantumOperation(torch.nn.Module):
         self._device = self.operation.device
         self._dtype = self.operation.dtype
         return self
+
+    @cached_property
+    def qubit_support(self) -> tuple[int, ...]:
+        return tuple(sorted(self._qubit_support))
 
     def __hash__(self) -> int:
         return hash(self.qubit_support)
