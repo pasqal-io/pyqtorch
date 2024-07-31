@@ -143,10 +143,7 @@ class Sequence(Module):
         values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
-        diagonal: bool = False,
     ) -> Tensor:
-        if diagonal:
-            raise NotImplementedError
         if full_support is None:
             full_support = self.qubit_support
         elif not set(self.qubit_support).issubset(set(full_support)):
@@ -398,13 +395,12 @@ class Merge(Sequence):
         values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
-        diagonal: bool = False,
     ) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
             (
-                op.tensor(values, embedding, full_support, diagonal)
+                op.tensor(values, embedding, full_support)
                 for op in reversed(self.operations)
             ),
         )

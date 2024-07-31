@@ -7,7 +7,6 @@ import torch
 from torch import Tensor
 
 from pyqtorch.embed import Embedding
-from pyqtorch.generic_quantum_ops import QuantumOperation
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
@@ -15,6 +14,7 @@ from pyqtorch.matrices import (
     _jacobian,
     parametric_unitary,
 )
+from pyqtorch.quantum_ops import QuantumOperation
 from pyqtorch.utils import Operator, qubit_support_as_tuple
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)

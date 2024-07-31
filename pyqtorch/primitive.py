@@ -7,8 +7,8 @@ import torch
 from torch import Tensor
 
 from pyqtorch.embed import Embedding
-from pyqtorch.generic_quantum_ops import QuantumOperation
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled
+from pyqtorch.quantum_ops import QuantumOperation
 from pyqtorch.utils import (
     product_state,
     qubit_support_as_tuple,

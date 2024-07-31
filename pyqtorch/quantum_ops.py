@@ -42,8 +42,6 @@ class QuantumOperation(torch.nn.Module):
     """Generic QuantumOperation class storing a tensor operation to represent either
         a quantum operator or a tensor generator inferring the QuantumOperation.
 
-    Note that the methods below are meant
-
     Attributes:
         operation (Tensor): Tensor used to infer the QuantumOperation
             directly or indirectly.
@@ -219,7 +217,6 @@ class QuantumOperation(torch.nn.Module):
         values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
-        diagonal: bool = False,
     ) -> Tensor:
         """Get unitary tensor of the QuantumOperation.
 
@@ -228,16 +225,10 @@ class QuantumOperation(torch.nn.Module):
             embedding (Embedding | None, optional): Optional embedding. Defaults to None.
             full_support (tuple[int, ...] | None, optional): The qubits the returned tensor
                 will be defined over. Defaults to None for only using the qubit_support.
-            diagonal (bool, optional): If operator is diagonal. Defaults to False.
-
-        Raises:
-            NotImplementedError: If diagonal is used.
 
         Returns:
             Tensor: Unitary tensor of QuantumOperation.
         """
-        if diagonal:
-            raise NotImplementedError
         blockmat = self.operator_function(values, embedding)
         if self._qubit_support != self.qubit_support:
             blockmat = permute_basis(blockmat, self._qubit_support)
