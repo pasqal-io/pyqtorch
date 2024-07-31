@@ -108,6 +108,9 @@ class Parametric(QuantumOperation):
         elif isinstance(param_name, (float, int, torch.Tensor)):
             self.parse_values = parse_constant
 
+        # Parametric is defined by generator operation and a function
+        # The function will use parsed parameter values
+        # to compute the unitary
         super().__init__(
             generator_operation,
             qubit_support,
@@ -149,7 +152,7 @@ class Parametric(QuantumOperation):
         embedding: Embedding | None = None,
     ) -> Operator:
         """
-        Get the corresponding unitary.
+        Get the corresponding unitary with parsed values.
 
         Arguments:
             values: A dict containing a Parameter name and value.
@@ -234,7 +237,8 @@ class ControlledParametric(Parametric):
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
     ) -> Operator:
         """
-        Get the corresponding unitary.
+        Get the corresponding unitary with parsed values and kronned identities
+        for control.
 
         Arguments:
             values: A dict containing a Parameter name and value.
@@ -279,10 +283,6 @@ class ControlledParametric(Parametric):
 class ControlledRotationGate(ControlledParametric):
     """
     Primitives for controlled rotation operations.
-
-    Attributes:
-        control: Control qubit(s).
-        qubit_support: Qubits acted on.
     """
 
     n_params = 1

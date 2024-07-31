@@ -40,7 +40,7 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 
 class QuantumOperation(torch.nn.Module):
     """Basic QuantumOperation class storing a tensor operation which can represent either
-        a quantum operator or a generator inferring the QuantumOperation.
+        a quantum operator or a tensor generator inferring the QuantumOperation.
 
     Note that the methods below are meant
 
