@@ -16,7 +16,7 @@ from pyqtorch.utils import (
 
 
 class Primitive(QuantumOperation):
-    """Primitive are fixed quantum operations with a defined
+    """Primitive are fixed quantum operations with a defined unitary operator U.
 
 
     Attributes:
@@ -35,6 +35,11 @@ class Primitive(QuantumOperation):
         self.generator = generator
 
     def to(self, *args: Any, **kwargs: Any) -> Primitive:
+        """Do device or dtype conversions.
+
+        Returns:
+            Primitive: Converted instance.
+        """
         super().to(*args, **kwargs)
         if self.generator is not None:
             self.generator.to(*args, **kwargs)
@@ -59,6 +64,14 @@ class Primitive(QuantumOperation):
 
 
 class ControlledPrimitive(Primitive):
+    """Primitive applied depending on control qubits.
+
+    Attributes:
+        operation (Tensor): Unitary tensor U.
+        control (int | tuple[int, ...]): List of qubits acting as controls.
+        target (int | tuple[int, ...]): List of qubits operations acts on.
+    """
+
     def __init__(
         self,
         operation: str | Tensor,
@@ -105,6 +118,16 @@ class I(Primitive):  # noqa: E742
         values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
+        """Returns only state.
+
+        Args:
+            state (Tensor): Input state
+            values (dict[str, Tensor], optional): Parameter value. Defaults to dict().
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+
+        Returns:
+            Tensor: Input state.
+        """
         return state
 
 

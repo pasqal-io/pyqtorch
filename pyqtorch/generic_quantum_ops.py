@@ -68,7 +68,8 @@ class QuantumOperation(torch.nn.Module):
                 the QuantumOperation acts on.
 
         Raises:
-            ValueError: _description_
+            ValueError: When operation has incompatible shape
+                with  qubit_support
         """
         super().__init__()
         qubit_support = qubit_support_as_tuple(qubit_support)
@@ -100,6 +101,11 @@ class QuantumOperation(torch.nn.Module):
             self.register_full_backward_pre_hook(pre_backward_hook)
 
     def to(self, *args: Any, **kwargs: Any) -> QuantumOperation:
+        """Do device or dtype conversions.
+
+        Returns:
+            QuantumOperation: Converted instance.
+        """
         super().to(*args, **kwargs)
         self._device = self.operation.device
         self._dtype = self.operation.dtype
@@ -107,10 +113,21 @@ class QuantumOperation(torch.nn.Module):
 
     @cached_property
     def qubit_support(self) -> tuple[int, ...]:
+        """Getter qubit_support.
+
+        Returns:
+            tuple[int, ...]: Sorted list of qubits.
+        """
         return tuple(sorted(self._qubit_support))
 
     @property
     def operator_function(self) -> Callable[..., Any]:
+        """Getter operator_function.
+
+        Returns:
+            Callable[..., Any]: Function for
+                getting base operator.
+        """
         return self._operator_function
 
     def __hash__(self) -> int:
@@ -121,10 +138,20 @@ class QuantumOperation(torch.nn.Module):
 
     @property
     def device(self) -> torch.device:
+        """Returns device.
+
+        Returns:
+            torch.device: Device.
+        """
         return self._device
 
     @property
     def dtype(self) -> torch.dtype:
+        """Returns dtype.
+
+        Returns:
+            torch.dtype: Dtype.
+        """
         return self._dtype
 
     @cached_property
@@ -155,6 +182,15 @@ class QuantumOperation(torch.nn.Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
+        """Default operator_function returns symply the operation.
+
+        Args:
+            values (dict[str, Tensor] | Tensor, optional): Parameter values. Defaults to dict().
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+
+        Returns:
+            Tensor: Base operator.
+        """
         operation = (
             self.operation.unsqueeze(2)
             if len(self.operation.shape) == 2
@@ -167,15 +203,39 @@ class QuantumOperation(torch.nn.Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
+        """Apply the dagger to unitary operator.
+
+        Args:
+            values (dict[str, Tensor] | Tensor, optional): Parameter values. Defaults to dict().
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+
+        Returns:
+            Tensor: unitary dagged operator.
+        """
         return _dagger(self.operator_function(values, embedding))
 
     def tensor(
         self,
-        values: dict[str, Tensor] = {},
+        values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
         diagonal: bool = False,
     ) -> Tensor:
+        """Get unitary tensor of the QuantumOperation.
+
+        Args:
+            values (dict[str, Tensor], optional): Parameter values. Defaults to dict().
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+            full_support (tuple[int, ...] | None, optional): The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
+            diagonal (bool, optional): If operator is diagonal. Defaults to False.
+
+        Raises:
+            NotImplementedError: If diagonal is used.
+
+        Returns:
+            Tensor: Unitary tensor of QuantumOperation.
+        """
         if diagonal:
             raise NotImplementedError
         blockmat = self.operator_function(values, embedding)
@@ -192,6 +252,16 @@ class QuantumOperation(torch.nn.Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
+        """Apply the operation on input state or density matrix.
+
+        Args:
+            state (Tensor): Input state.
+            values (dict[str, Tensor], optional): Parameter values. Defaults to dict().
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+
+        Returns:
+            Tensor: _description_
+        """
         if isinstance(state, DensityMatrix):
             # TODO: fix error type int | tuple[int, ...] expected "int"
             # Only supports single-qubit gates
