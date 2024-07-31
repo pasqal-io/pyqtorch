@@ -47,7 +47,7 @@ class QuantumOperation(torch.nn.Module):
     Attributes:
         operation (Tensor): Tensor used to infer the QuantumOperation
             directly or indirectly.
-        qubit_support (int | tuple[int, ...]): List of qubits
+        qubit_support (int | tuple[int, ...]): Tuple of qubits
             the QuantumOperation acts on.
         operator_function (Callable | None, optional): Function to generate the base operator
             from operation. If None, we consider returning operation itself.
