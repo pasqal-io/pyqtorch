@@ -877,10 +877,11 @@ class U(Parametric):
         Returns:
             The digital decomposition.
         """
+        target = self.target[0]
         return [
-            RZ(self.target[0], self.phi),
-            RY(self.target[0], self.theta),
-            RZ(self.target[0], self.omega),
+            RZ(target, self.phi),
+            RY(target, self.theta),
+            RZ(target, self.omega),
         ]
 
     def jacobian_decomposed(self, values: dict[str, Tensor] = dict()) -> list[Operator]:
