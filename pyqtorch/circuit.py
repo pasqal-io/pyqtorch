@@ -107,7 +107,7 @@ class Sequence(Module):
     def forward(
         self,
         state: State,
-        values: dict[str, Tensor] | ParameterDict = {},
+        values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding | None = None,
     ) -> State:
         for op in self.operations:
@@ -143,10 +143,7 @@ class Sequence(Module):
         values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
-        diagonal: bool = False,
     ) -> Tensor:
-        if diagonal:
-            raise NotImplementedError
         if full_support is None:
             full_support = self.qubit_support
         elif not set(self.qubit_support).issubset(set(full_support)):
@@ -184,7 +181,7 @@ class QuantumCircuit(Sequence):
     def run(
         self,
         state: State = None,
-        values: dict[str, Tensor] | ParameterDict = {},
+        values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding | None = None,
     ) -> State:
         if state is None:
@@ -254,7 +251,7 @@ class DropoutQuantumCircuit(QuantumCircuit):
     def forward(
         self,
         state: State,
-        values: dict[str, Tensor] | ParameterDict = {},
+        values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding | None = None,
     ) -> State:
         if self.training:
@@ -265,7 +262,7 @@ class DropoutQuantumCircuit(QuantumCircuit):
         return state
 
     def rotational_dropout(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> State:
         """Randomly drops entangling rotational gates.
 
@@ -287,7 +284,7 @@ class DropoutQuantumCircuit(QuantumCircuit):
         return state
 
     def entangling_dropout(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> State:
         """Randomly drops entangling gates.
 
@@ -308,7 +305,7 @@ class DropoutQuantumCircuit(QuantumCircuit):
         return state
 
     def canonical_fwd_dropout(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = {}
+        self, state: State = None, values: dict[str, Tensor] | ParameterDict = dict()
     ) -> State:
         """Randomly drops rotational gates and next immediate entangling
         gates whose target bit is located on dropped rotational gates.
@@ -371,7 +368,7 @@ class Merge(Sequence):
     def forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | None = None,
+        values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
         batch_size = state.shape[-1]
@@ -389,21 +386,21 @@ class Merge(Sequence):
             )
         return apply_operator(
             state,
-            self.unitary(values, embedding, batch_size),
+            add_batch_dim(self.tensor(values, embedding), batch_size),
             self.qubits,
         )
 
-    def unitary(
+    def tensor(
         self,
-        values: dict[str, Tensor] | None,
-        embedding: Embedding | None,
-        batch_size: int,
+        values: dict[str, Tensor] = dict(),
+        embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
     ) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
             (
-                add_batch_dim(op.unitary(values, embedding), batch_size)
+                op.tensor(values, embedding, full_support)
                 for op in reversed(self.operations)
             ),
         )

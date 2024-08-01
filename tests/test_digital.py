@@ -299,7 +299,7 @@ def test_dagger_single_qubit() -> None:
             values = (
                 {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             )
-            new_state = apply_operator(state, op.unitary(values), [target])
+            new_state = apply_operator(state, op.tensor(values), [target])
             daggered_back = apply_operator(new_state, op.dagger(values), [target])
             assert torch.allclose(daggered_back, state)
 
@@ -332,7 +332,7 @@ def test_dagger_nqubit() -> None:
             values = (
                 {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             )
-            new_state = apply_operator(state, op.unitary(values), qubit_support)
+            new_state = apply_operator(state, op.tensor(values), qubit_support)
             daggered_back = apply_operator(new_state, op.dagger(values), qubit_support)
             assert torch.allclose(daggered_back, state)
 
@@ -377,7 +377,7 @@ def test_dm(n_qubits: int, batch_size: int) -> None:
 
 
 def test_promote(random_gate: Primitive, n_qubits: int, target: int) -> None:
-    op_prom = promote_operator(random_gate.unitary(), target, n_qubits)
+    op_prom = promote_operator(random_gate.tensor(), target, n_qubits)
     assert op_prom.size() == torch.Size([2**n_qubits, 2**n_qubits, 1])
     assert torch.allclose(
         operator_product(op_prom, _dagger(op_prom), target),
@@ -390,11 +390,9 @@ def test_operator_product(random_gate: Primitive, n_qubits: int, target: int) ->
     batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
     batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
     max_batch = max(batch_size_2, batch_size_1)
-    op_prom = promote_operator(op.unitary(), target, n_qubits).repeat(
-        1, 1, batch_size_1
-    )
+    op_prom = promote_operator(op.tensor(), target, n_qubits).repeat(1, 1, batch_size_1)
     op_mul = operator_product(
-        op.unitary().repeat(1, 1, batch_size_2), _dagger(op_prom), target
+        op.tensor().repeat(1, 1, batch_size_2), _dagger(op_prom), target
     )
     assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
     assert torch.allclose(
@@ -425,8 +423,8 @@ def test_operator_kron(operator: Tensor, matrix: Tensor) -> None:
     kron_expect = torch.cat(krons, dim=2)
     assert torch.allclose(kron_out, kron_expect)
     assert torch.allclose(
-        torch.kron(operator(0).dagger().contiguous(), I(0).unitary()),
-        operator_kron(operator(0).dagger(), I(0).unitary()),
+        torch.kron(operator(0).dagger().contiguous(), I(0).tensor()),
+        operator_kron(operator(0).dagger(), I(0).tensor()),
     )
 
 
@@ -544,13 +542,12 @@ def test_dm_partial_trace() -> None:
 
     # testing reduced density matrix
     rho_list = generate_dm(n_qubits, batch_size)
-
     rho_sub = torch.from_numpy(
         array(
             [
-                Qobj(
-                    rollaxis(rho_list.numpy(), 2, 0)[i], dims=[[2] * n_qubits] * 2
-                ).ptrace(sort(keep_indices))
+                Qobj(rollaxis(rho_list.numpy(), 2, 0)[i], dims=[[2] * n_qubits] * 2)
+                .ptrace(sort(keep_indices))
+                .full()
                 for i in range(batch_size)
             ]
         )

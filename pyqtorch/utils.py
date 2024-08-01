@@ -10,6 +10,7 @@ from math import sqrt
 from string import ascii_uppercase as ABC
 from typing import Any, Callable, Sequence
 
+import numpy as np
 import torch
 from numpy import arange, argsort, array, delete, log2
 from numpy import ndarray as NDArray
@@ -30,6 +31,21 @@ GPSR_ACCEPTANCE = 1e-05
 ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)
+
+
+def qubit_support_as_tuple(support: int | tuple[int, ...]) -> tuple[int, ...]:
+    """Make sure support returned is a tuple of integers.
+
+    Args:
+        support (int | tuple[int, ...]): Qubit support.
+
+    Returns:
+        tuple[int, ...]: Qubit support as tuple.
+    """
+    if isinstance(support, np.integer):
+        return (support.item(),)
+    qubit_support = (support,) if isinstance(support, int) else tuple(support)
+    return qubit_support
 
 
 def inner_prod(bra: Tensor, ket: Tensor) -> Tensor:
@@ -407,8 +423,8 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     for qubit in qubits:
         operator = torch.where(
             target > qubit,
-            operator_kron(I(target).unitary(), operator),
-            operator_kron(operator, I(target).unitary()),
+            operator_kron(I(target).tensor(), operator),
+            operator_kron(operator, I(target).tensor()),
         )
     return operator
 

@@ -98,19 +98,19 @@ def _jacobian(
     return -1 / 2 * (sin_t * batch_imat + 1j * cos_t * batch_operation_mat)
 
 
-def _controlled(
-    unitary: torch.Tensor, batch_size: int, n_control_qubits: int = 1
+def controlled(
+    operation: torch.Tensor, batch_size: int, n_control_qubits: int = 1
 ) -> torch.Tensor:
     _controlled: torch.Tensor = (
         torch.eye(
-            2 ** (n_control_qubits + 1), dtype=unitary.dtype, device=unitary.device
+            2 ** (n_control_qubits + 1), dtype=operation.dtype, device=operation.device
         )
         .unsqueeze(2)
         .repeat(1, 1, batch_size)
     )
     _controlled[
         2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :
-    ] = unitary
+    ] = operation
     return _controlled
 
 
