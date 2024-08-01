@@ -277,14 +277,14 @@ class QuantumOperation(torch.nn.Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
-        """Apply the dagger to unitary operator.
+        """Apply the dagger to operator.
 
         Args:
             values (dict[str, Tensor] | Tensor, optional): Parameter values. Defaults to dict().
             embedding (Embedding | None, optional): Optional embedding. Defaults to None.
 
         Returns:
-            Tensor: unitary dagged operator.
+            Tensor: dagged operator.
         """
         return _dagger(self.operator_function(values, embedding))
 
@@ -294,7 +294,7 @@ class QuantumOperation(torch.nn.Module):
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Tensor:
-        """Get unitary tensor of the QuantumOperation.
+        """Get tensor of the QuantumOperation.
 
         Args:
             values (dict[str, Tensor], optional): Parameter values. Defaults to dict().
@@ -303,7 +303,7 @@ class QuantumOperation(torch.nn.Module):
                 will be defined over. Defaults to None for only using the qubit_support.
 
         Returns:
-            Tensor: Unitary tensor of QuantumOperation.
+            Tensor: Tensor representation of QuantumOperation.
         """
         blockmat = self.operator_function(values, embedding)
         if self._qubit_support.qubits != self.qubit_support:

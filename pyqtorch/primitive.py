@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.embed import Embedding
-from pyqtorch.matrices import OPERATIONS_DICT, _controlled
+from pyqtorch.matrices import OPERATIONS_DICT, controlled
 from pyqtorch.quantum_ops import QuantumOperation, Support
 from pyqtorch.utils import (
     product_state,
@@ -16,11 +16,11 @@ from pyqtorch.utils import (
 
 
 class Primitive(QuantumOperation):
-    """Primitive are fixed quantum operations with a defined unitary operator U.
+    """Primitive operators based on a fixed matrix U.
 
 
     Attributes:
-        operation (Tensor): Unitary tensor U.
+        operation (Tensor): Matrix U.
         qubit_support: List of qubits the QuantumOperation acts on.
         generator (Tensor): A tensor G s.t. U = exp(-iG).
     """
@@ -81,8 +81,8 @@ class ControlledPrimitive(Primitive):
         support = Support(target, control)
         if isinstance(operation, str):
             operation = OPERATIONS_DICT[operation]
-        operation = _controlled(
-            unitary=operation.unsqueeze(2),
+        operation = controlled(
+            operation=operation.unsqueeze(2),
             batch_size=1,
             n_control_qubits=len(support.control),
         ).squeeze(2)

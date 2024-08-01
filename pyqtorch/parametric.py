@@ -10,8 +10,8 @@ from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
-    _controlled,
     _jacobian,
+    controlled,
     parametric_unitary,
 )
 from pyqtorch.quantum_ops import QuantumOperation, Support
@@ -249,7 +249,7 @@ class ControlledParametric(Parametric):
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
-        mat = _controlled(mat, batch_size, len(self.control))
+        mat = controlled(mat, batch_size, len(self.control))
         return mat
 
     def jacobian(
@@ -715,7 +715,7 @@ class CPHASE(ControlledRotationGate):
         batch_size = len(thetas)
         mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
         mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
-        return _controlled(mat, batch_size, len(self.control))
+        return controlled(mat, batch_size, len(self.control))
 
     def jacobian(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
