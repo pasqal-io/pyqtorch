@@ -8,7 +8,7 @@ from torch import Tensor
 
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import OPERATIONS_DICT, _controlled
-from pyqtorch.quantum_ops import QuantumOperation
+from pyqtorch.quantum_ops import QuantumOperation, Support
 from pyqtorch.utils import (
     product_state,
     qubit_support_as_tuple,
@@ -28,7 +28,7 @@ class Primitive(QuantumOperation):
     def __init__(
         self,
         operation: Tensor,
-        qubit_support: int | tuple[int, ...],
+        qubit_support: int | tuple[int, ...] | Support,
         generator: Tensor | None = None,
     ) -> None:
         super().__init__(operation, qubit_support)
@@ -78,16 +78,15 @@ class ControlledPrimitive(Primitive):
         control: int | tuple[int, ...],
         target: int | tuple[int, ...],
     ):
-        self.control = qubit_support_as_tuple(control)
-        self.target = qubit_support_as_tuple(target)
+        support = Support(target, control)
         if isinstance(operation, str):
             operation = OPERATIONS_DICT[operation]
         operation = _controlled(
             unitary=operation.unsqueeze(2),
             batch_size=1,
-            n_control_qubits=len(self.control),
+            n_control_qubits=len(support.control),
         ).squeeze(2)
-        super().__init__(operation, self.control + self.target)
+        super().__init__(operation, support)
 
     def extra_repr(self) -> str:
         return f"control:{self.control}, targets:{(self.target,)}"
@@ -184,9 +183,8 @@ class CSWAP(Primitive):
     def __init__(self, control: int, target: tuple[int, ...]):
         if not isinstance(target, tuple) or len(target) != 2:
             raise ValueError("Target qubits must be a tuple with two qubits")
-        self.control = qubit_support_as_tuple(control)
-        self.target = target
-        super().__init__(OPERATIONS_DICT["CSWAP"], self.control + self.target)
+        support = Support(target=qubit_support_as_tuple(control) + target)
+        super().__init__(OPERATIONS_DICT["CSWAP"], support)
 
 
 class CNOT(ControlledPrimitive):

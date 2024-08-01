@@ -14,8 +14,8 @@ from pyqtorch.matrices import (
     _jacobian,
     parametric_unitary,
 )
-from pyqtorch.quantum_ops import QuantumOperation
-from pyqtorch.utils import Operator, qubit_support_as_tuple
+from pyqtorch.quantum_ops import QuantumOperation, Support
+from pyqtorch.utils import Operator
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
@@ -34,7 +34,7 @@ class Parametric(QuantumOperation):
     def __init__(
         self,
         generator: str | Tensor,
-        qubit_support: int | tuple[int, ...],
+        qubit_support: int | tuple[int, ...] | Support,
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes Parametric.
@@ -219,9 +219,8 @@ class ControlledParametric(Parametric):
             qubit_targets: Target qubit(s).
             param_name: Name of parameters.
         """
-        self.control = qubit_support_as_tuple(control)
-        self.target = qubit_support_as_tuple(target)
-        super().__init__(operation, self.control + self.target, param_name)
+        support = Support(target, control)
+        super().__init__(operation, support, param_name)
 
     def extra_repr(self) -> str:
         """String representation of the operation.

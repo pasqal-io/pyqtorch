@@ -38,6 +38,61 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
     torch.cuda.nvtx.range_push("QuantumOperation.backward")
 
 
+class Support:
+    """
+    Generic representation of the qubit support. For single qubit operations,
+    a multiple index support indicates apply the operation for each index in the
+    support.
+
+    Both target and control lists must be ordered!
+
+    Attributes:
+       target = Index or indices where the operation is applied.
+       control = Index or indices to which the operation is conditioned to.
+    """
+
+    def __init__(
+        self,
+        target: int | tuple[int, ...],
+        control: int | tuple[int, ...] | None = None,
+    ) -> None:
+        self.target = qubit_support_as_tuple(target)
+        self.control = qubit_support_as_tuple(control) if control is not None else ()
+        # if self.qubits != tuple(set(self.qubits)):
+        #    raise ValueError("One or more qubits are defined both as control and target.")
+
+    @classmethod
+    def target_all(cls) -> Support:
+        return Support(target=())
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Support):
+            return NotImplemented
+
+        return self.target == other.target and self.control == other.control
+
+    def __len__(self):
+        return len(self.qubits)
+
+    @cached_property
+    def qubits(self) -> tuple[int, ...]:
+        return self.control + self.target
+
+    @cached_property
+    def sorted_qubits(self) -> tuple[int, ...]:
+        return tuple(sorted(self.qubits))
+
+    def __repr__(self) -> str:
+        if not self.target:
+            return f"{self.__class__.__name__}.target_all()"
+
+        subspace = f"target={self.target}"
+        if self.control:
+            subspace += f", control={self.control}"
+
+        return f"{self.__class__.__name__}({subspace})"
+
+
 class QuantumOperation(torch.nn.Module):
     """Generic QuantumOperation class storing a tensor operation to represent either
         a quantum operator or a tensor generator inferring the QuantumOperation.
@@ -55,7 +110,7 @@ class QuantumOperation(torch.nn.Module):
     def __init__(
         self,
         operation: Tensor,
-        qubit_support: int | tuple[int, ...],
+        qubit_support: int | tuple[int, ...] | Support,
         operator_function: Callable | None = None,
     ) -> None:
         """Initializes QuantumOperation
@@ -70,17 +125,20 @@ class QuantumOperation(torch.nn.Module):
                 with  qubit_support
         """
         super().__init__()
-        qubit_support = qubit_support_as_tuple(qubit_support)
 
-        self._qubit_support = qubit_support
+        self._qubit_support = (
+            qubit_support
+            if isinstance(qubit_support, Support)
+            else Support(target=qubit_support)
+        )
 
         self.register_buffer("operation", operation)
         self._device = self.operation.device
         self._dtype = self.operation.dtype
 
-        if (operator_function is None) and len(self.qubit_support) != int(
-            log2(operation.shape[0])
-        ):
+        is_primitive = operator_function is None
+        dim_nomatch = len(self.qubit_support) != int(log2(operation.shape[0]))
+        if is_primitive and dim_nomatch:
             raise ValueError(
                 "The operation shape should match the length of the qubit_support."
             )
@@ -109,14 +167,32 @@ class QuantumOperation(torch.nn.Module):
         self._dtype = self.operation.dtype
         return self
 
-    @cached_property
+    @property
     def qubit_support(self) -> tuple[int, ...]:
         """Getter qubit_support.
 
         Returns:
-            tuple[int, ...]: Sorted list of qubits.
+            Support: Tuple of sorted qubits.
         """
-        return tuple(sorted(self._qubit_support))
+        return self._qubit_support.sorted_qubits
+
+    @property
+    def target(self) -> tuple[int, ...]:
+        """Get target qubits.
+
+        Returns:
+            tuple[int, ...]: The target qubits
+        """
+        return self._qubit_support.target
+
+    @property
+    def control(self) -> tuple[int, ...]:
+        """Get control qubits.
+
+        Returns:
+            tuple[int, ...]: The control qubits
+        """
+        return self._qubit_support.control
 
     @property
     def operator_function(self) -> Callable[..., Any]:
@@ -230,8 +306,8 @@ class QuantumOperation(torch.nn.Module):
             Tensor: Unitary tensor of QuantumOperation.
         """
         blockmat = self.operator_function(values, embedding)
-        if self._qubit_support != self.qubit_support:
-            blockmat = permute_basis(blockmat, self._qubit_support)
+        if self._qubit_support.qubits != self.qubit_support:
+            blockmat = permute_basis(blockmat, self._qubit_support.qubits)
         if full_support is None:
             return blockmat
         else:
@@ -256,13 +332,21 @@ class QuantumOperation(torch.nn.Module):
         if isinstance(state, DensityMatrix):
             # TODO: fix error type int | tuple[int, ...] expected "int"
             # Only supports single-qubit gates
-            return DensityMatrix(
-                operator_product(
-                    self.tensor(values, embedding),
-                    operator_product(state, self.dagger(values, embedding), self.qubit_support[-1]),  # type: ignore [arg-type]
-                    self.qubit_support[-1],  # type: ignore [arg-type]
+            if len(self.target) == 1 and len(self.control) == 0:
+                target_qubit = self.target[0]
+                dagger_op = self.dagger(values, embedding)
+                dagger_product = operator_product(state, dagger_op, target_qubit)  # type: ignore [arg-type]
+                return DensityMatrix(
+                    operator_product(
+                        self.tensor(values, embedding),
+                        dagger_product,
+                        target_qubit,  # type: ignore [arg-type]
+                    )
                 )
-            )
+            else:
+                raise NotImplementedError(
+                    "Density matrices operations are only supported with single-qubit gates"
+                )
         else:
             return apply_operator(
                 state,
