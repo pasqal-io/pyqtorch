@@ -256,7 +256,7 @@ class QuantumOperation(torch.nn.Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
-        """Default operator_function returns symply the operation.
+        """Default operator_function simply returns the operation.
 
         Args:
             values (dict[str, Tensor] | Tensor, optional): Parameter values. Defaults to dict().
