@@ -284,7 +284,7 @@ class QuantumOperation(torch.nn.Module):
             embedding (Embedding | None, optional): Optional embedding. Defaults to None.
 
         Returns:
-            Tensor: dagged operator.
+            Tensor: conjugate transpose operator.
         """
         return _dagger(self.operator_function(values, embedding))
 
