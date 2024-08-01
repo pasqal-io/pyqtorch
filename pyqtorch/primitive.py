@@ -93,23 +93,23 @@ class ControlledPrimitive(Primitive):
 
 
 class X(Primitive):
-    def __init__(self, qubit_support: int):
-        super().__init__(OPERATIONS_DICT["X"], qubit_support)
+    def __init__(self, target: int):
+        super().__init__(OPERATIONS_DICT["X"], target)
 
 
 class Y(Primitive):
-    def __init__(self, qubit_support: int):
-        super().__init__(OPERATIONS_DICT["Y"], qubit_support)
+    def __init__(self, target: int):
+        super().__init__(OPERATIONS_DICT["Y"], target)
 
 
 class Z(Primitive):
-    def __init__(self, qubit_support: int):
-        super().__init__(OPERATIONS_DICT["Z"], qubit_support)
+    def __init__(self, target: int):
+        super().__init__(OPERATIONS_DICT["Z"], target)
 
 
 class I(Primitive):  # noqa: E742
-    def __init__(self, qubit_support: int):
-        super().__init__(OPERATIONS_DICT["I"], qubit_support)
+    def __init__(self, target: int):
+        super().__init__(OPERATIONS_DICT["I"], target)
 
     def forward(
         self,
@@ -131,26 +131,24 @@ class I(Primitive):  # noqa: E742
 
 
 class H(Primitive):
-    def __init__(self, qubit_support: int):
-        super().__init__(OPERATIONS_DICT["H"], qubit_support)
+    def __init__(self, target: int):
+        super().__init__(OPERATIONS_DICT["H"], target)
 
 
 class T(Primitive):
-    def __init__(self, qubit_support: int):
-        super().__init__(OPERATIONS_DICT["T"], qubit_support)
+    def __init__(self, target: int):
+        super().__init__(OPERATIONS_DICT["T"], target)
 
 
 class S(Primitive):
-    def __init__(self, qubit_support: int):
-        super().__init__(
-            OPERATIONS_DICT["S"], qubit_support, 0.5 * OPERATIONS_DICT["Z"]
-        )
+    def __init__(self, target: int):
+        super().__init__(OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"])
 
 
 class SDagger(Primitive):
-    def __init__(self, qubit_support: int):
+    def __init__(self, target: int):
         super().__init__(
-            OPERATIONS_DICT["SDAGGER"], qubit_support, -0.5 * OPERATIONS_DICT["Z"]
+            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"]
         )
 
 
@@ -170,8 +168,8 @@ class Projector(Primitive):
 
 
 class N(Primitive):
-    def __init__(self, qubit_support: int):
-        super().__init__(OPERATIONS_DICT["N"], qubit_support)
+    def __init__(self, target: int):
+        super().__init__(OPERATIONS_DICT["N"], target)
 
 
 class SWAP(Primitive):

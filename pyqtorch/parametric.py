@@ -342,16 +342,16 @@ class RX(Parametric):
 
     def __init__(
         self,
-        qubit_support: int,
+        target: int,
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes RX.
 
         Arguments:
-            qubit_support: Target qubit.
+            target: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__("X", qubit_support, param_name)
+        super().__init__("X", target, param_name)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -381,16 +381,16 @@ class RY(Parametric):
 
     def __init__(
         self,
-        qubit_support: int,
+        target: int,
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes RY.
 
         Arguments:
-            qubit_support: Target qubit.
+            target: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__("Y", qubit_support, param_name)
+        super().__init__("Y", target, param_name)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -420,16 +420,16 @@ class RZ(Parametric):
 
     def __init__(
         self,
-        qubit_support: int,
+        target: int,
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes RZ.
 
         Arguments:
-            qubit_support: Target qubit.
+            target: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__("Z", qubit_support, param_name)
+        super().__init__("Z", target, param_name)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -459,16 +459,16 @@ class PHASE(Parametric):
 
     def __init__(
         self,
-        qubit_support: int,
+        target: int,
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes PHASE.
 
         Arguments:
-            qubit_support: Target qubit.
+            target: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__("I", qubit_support, param_name)
+        super().__init__("I", target, param_name)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -780,10 +780,11 @@ class U(Parametric):
 
     n_params = 3
 
-    def __init__(self, qubit_support: int, phi: str, theta: str, omega: str):
+    def __init__(self, target: int, phi: str, theta: str, omega: str):
         """Initializes U gate.
 
         Arguments:
+            target: Target qubit.
             phi: Phi parameter.
             theta: Theta parameter.
             omega: Omega parameter.
@@ -791,7 +792,7 @@ class U(Parametric):
         self.phi = phi
         self.theta = theta
         self.omega = omega
-        super().__init__("X", qubit_support, param_name="")
+        super().__init__("X", target, param_name="")
 
         self.register_buffer(
             "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
@@ -877,9 +878,9 @@ class U(Parametric):
             The digital decomposition.
         """
         return [
-            RZ(self.qubit_support[0], self.phi),
-            RY(self.qubit_support[0], self.theta),
-            RZ(self.qubit_support[0], self.omega),
+            RZ(self.target[0], self.phi),
+            RY(self.target[0], self.theta),
+            RZ(self.target[0], self.omega),
         ]
 
     def jacobian_decomposed(self, values: dict[str, Tensor] = dict()) -> list[Operator]:
