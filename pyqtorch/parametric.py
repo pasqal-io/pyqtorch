@@ -14,7 +14,7 @@ from pyqtorch.matrices import (
     controlled,
     parametric_unitary,
 )
-from pyqtorch.primitive import NoiseProtocol
+from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.quantum_ops import QuantumOperation, Support
 from pyqtorch.utils import Operator
 
@@ -52,7 +52,6 @@ class Parametric(QuantumOperation):
             OPERATIONS_DICT[generator] if isinstance(generator, str) else generator
         )
         self.param_name = param_name
-        self.noise = noise
 
         def parse_values(
             values: dict[str, Tensor] | Tensor = dict(),
@@ -113,12 +112,12 @@ class Parametric(QuantumOperation):
             self.parse_values = parse_constant
 
         # Parametric is defined by generator operation and a function
-        # The function will use parsed parameter values
-        # to compute the unitary
+        # The function will use parsed parameter values to compute the unitary
         super().__init__(
             generator_operation,
             qubit_support,
             operator_function=self._construct_parametric_base_op,
+            noise=noise,
         )
         self.register_buffer("identity", OPERATIONS_DICT["I"])
 
@@ -128,16 +127,9 @@ class Parametric(QuantumOperation):
         Returns:
             String with information on operation.
         """
-        if self.noise:
-            noise_info = ""
-            if isinstance(self.noise, NoiseProtocol):
-                noise_info = str(self.noise)
-            elif isinstance(self.noise, dict):
-                noise_info = ", ".join(
-                    str(noise_instance) for noise_instance in self.noise.values()
-                )
-            return f"target: {self.qubit_support}, param: {self.param_name}, Noise: {noise_info}"
-        return f"target: {self.qubit_support}, param: {self.param_name}"
+        return f"target: {self.qubit_support}, param: {self.param_name}" + _repr_noise(
+            self.noise
+        )
 
     def __hash__(self) -> int:
         """Hash qubit support and param_name
@@ -234,7 +226,7 @@ class ControlledParametric(Parametric):
             param_name: Name of parameters.
         """
         support = Support(target, control)
-        super().__init__(operation, support, param_name, noise)
+        super().__init__(operation, support, param_name, noise=noise)
 
     def extra_repr(self) -> str:
         """String representation of the operation.
@@ -242,20 +234,9 @@ class ControlledParametric(Parametric):
         Returns:
             String with information on operation.
         """
-        if self.noise:
-            noise_info = ""
-            if isinstance(self.noise, NoiseProtocol):
-                noise_info = str(self.noise)
-            elif isinstance(self.noise, dict):
-                noise_info = ", ".join(
-                    str(noise_instance) for noise_instance in self.noise.values()
-                )
-            return (
-                f"control: {self.control}, target: {self.qubit_support}, "
-                f"param: {self.param_name}, Noise: {noise_info}"
-            )
         return (
-            f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
+            f"control: {self.control}, target: {(self.target,)}, param: {self.param_name}"
+            + _repr_noise(self.noise)
         )
 
     def _construct_parametric_base_op(
@@ -328,7 +309,7 @@ class ControlledRotationGate(ControlledParametric):
             qubit_support: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__(operation, control, target, param_name, noise)
+        super().__init__(operation, control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -380,7 +361,7 @@ class RX(Parametric):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("X", target, param_name, noise)
+        super().__init__("X", target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -421,7 +402,7 @@ class RY(Parametric):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("Y", target, param_name, noise)
+        super().__init__("Y", target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -462,7 +443,7 @@ class RZ(Parametric):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("Z", target, param_name, noise)
+        super().__init__("Z", target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -503,7 +484,7 @@ class PHASE(Parametric):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("I", target, param_name, noise)
+        super().__init__("I", target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -578,7 +559,7 @@ class CRX(ControlledRotationGate):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("X", control, target, param_name, noise)
+        super().__init__("X", control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -624,7 +605,7 @@ class CRY(ControlledRotationGate):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("Y", control, target, param_name, noise)
+        super().__init__("Y", control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -670,7 +651,7 @@ class CRZ(ControlledRotationGate):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("Z", control, target, param_name, noise)
+        super().__init__("Z", control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -718,7 +699,7 @@ class CPHASE(ControlledRotationGate):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("I", control, target, param_name, noise)
+        super().__init__("I", control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:

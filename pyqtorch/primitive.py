@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.matrices import OPERATIONS_DICT, controlled
-from pyqtorch.noise import NoiseProtocol
+from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.quantum_ops import QuantumOperation, Support
 from pyqtorch.utils import (
     product_state,
@@ -91,7 +91,9 @@ class ControlledPrimitive(Primitive):
         super().__init__(operation, support, noise=noise)
 
     def extra_repr(self) -> str:
-        return f"control:{self.control}, targets:{(self.target,)}"
+        return f"control: {self.control}, target: {self.target}" + _repr_noise(
+            self.noise
+        )
 
 
 class X(Primitive):
@@ -220,7 +222,7 @@ class CSWAP(Primitive):
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         if not isinstance(target, tuple) or len(target) != 2:
-            raise ValueError("Target qubits must be a tuple with two qubits")
+            raise ValueError("Target qubits must be a tuple with two qubits.")
         support = Support(target=qubit_support_as_tuple(control) + target)
         super().__init__(OPERATIONS_DICT["CSWAP"], support)
 

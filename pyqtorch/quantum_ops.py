@@ -12,7 +12,7 @@ from torch import Tensor
 from pyqtorch.apply import apply_density_mat, apply_operator
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
-from pyqtorch.noise import NoiseProtocol
+from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -88,9 +88,9 @@ class Support:
         if not self.target:
             return f"{self.__class__.__name__}.target_all()"
 
-        subspace = f"target={self.target}"
+        subspace = f"target: {self.target}"
         if self.control:
-            subspace += f", control={self.control}"
+            subspace += f", control: {self.control}"
 
         return f"{self.__class__.__name__}({subspace})"
 
@@ -213,16 +213,7 @@ class QuantumOperation(torch.nn.Module):
         return hash(self.qubit_support)
 
     def extra_repr(self) -> str:
-        if self.noise:
-            noise_info = ""
-            if isinstance(self.noise, NoiseProtocol):
-                noise_info = str(self.noise)
-            elif isinstance(self.noise, dict):
-                noise_info = ", ".join(
-                    str(noise_instance) for noise_instance in self.noise.values()
-                )
-            return f"target: {self.qubit_support}, Noise: {noise_info}"
-        return f"target: {self.qubit_support}"
+        return f"target: {self.qubit_support}" + _repr_noise(self.noise)
 
     @property
     def device(self) -> torch.device:
