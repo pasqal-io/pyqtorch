@@ -23,7 +23,7 @@ from pyqtorch.noise import (
     PhaseDamping,
 )
 from pyqtorch.parametric import ControlledRotationGate, Parametric
-from pyqtorch.primitive import ControlledOperationGate, H, I, Primitive, X, Y, Z
+from pyqtorch.primitive import ControlledPrimitive, H, I, Primitive, X, Y, Z
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -116,8 +116,8 @@ def test_operator_kron(operator: Tensor, matrix: Tensor) -> None:
     kron_expect = torch.cat(krons, dim=2)
     assert torch.allclose(kron_out, kron_expect)
     assert torch.allclose(
-        torch.kron(operator(0).dagger().contiguous(), I(0).unitary()),
-        operator_kron(operator(0).dagger(), I(0).unitary()),
+        torch.kron(operator(0).dagger().contiguous(), I(0).tensor()),
+        operator_kron(operator(0).dagger(), I(0).tensor()),
     )
 
 
@@ -227,7 +227,7 @@ def test_noise_circ(
     random_single_qubit_gate: Primitive,
     random_noise_gate: Noise,
     random_rotation_gate: Parametric,
-    random_controlled_gate: ControlledOperationGate,
+    random_controlled_gate: ControlledPrimitive,
     random_rotation_control_gate: ControlledRotationGate,
 ) -> None:
     OPERATORS = [

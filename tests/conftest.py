@@ -36,7 +36,7 @@ from pyqtorch.primitive import (
     CNOT,
     CY,
     CZ,
-    ControlledOperationGate,
+    ControlledPrimitive,
     H,
     I,
     Primitive,
@@ -144,7 +144,7 @@ def random_rotation_control_gate(n_qubits: int, target: int) -> Any:
 def random_unitary_gate(
     random_single_qubit_gate: Primitive,
     random_rotation_gate: Parametric,
-    random_controlled_gate: ControlledOperationGate,
+    random_controlled_gate: ControlledPrimitive,
     random_rotation_control_gate: ControlledRotationGate,
 ) -> Any:
     UNITARY_GATES = [

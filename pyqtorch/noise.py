@@ -9,7 +9,7 @@ from torch import Tensor
 from pyqtorch.apply import apply_density_mat
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
-from pyqtorch.utils import DensityMatrix, density_mat
+from pyqtorch.utils import DensityMatrix, density_mat, qubit_support_as_tuple
 
 
 class Noise(torch.nn.Module):
@@ -21,7 +21,7 @@ class Noise(torch.nn.Module):
     ) -> None:
         super().__init__()
         self.target: int = target
-        self.qubit_support: tuple[int, ...] = (self.target,)
+        self.qubit_support: tuple[int, ...] = qubit_support_as_tuple(self.target)
         for index, tensor in enumerate(kraus):
             self.register_buffer(f"kraus_{index}", tensor)
         self._device: torch.device = kraus[0].device
@@ -34,7 +34,7 @@ class Noise(torch.nn.Module):
     def kraus_operators(self) -> list[Tensor]:
         return [getattr(self, f"kraus_{i}") for i in range(len(self._buffers))]
 
-    def unitary(
+    def _tensor(
         self,
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
@@ -87,7 +87,7 @@ class Noise(torch.nn.Module):
         return self
 
     def tensor(self, values: dict[str, Tensor] = {}, n_qubits: int = 1) -> list[Tensor]:
-        blockmats = self.unitary(values)
+        blockmats = self._tensor(values)
         mats = []
         for blockmat in blockmats:
             if n_qubits == 1:

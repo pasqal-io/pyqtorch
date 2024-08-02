@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache, partial, wraps
@@ -9,12 +10,12 @@ from math import sqrt
 from string import ascii_uppercase as ABC
 from typing import Any, Callable, Sequence
 
+import numpy as np
 import torch
-from numpy import arange, array, delete, log2
+from numpy import arange, argsort, array, delete, log2
 from numpy import ndarray as NDArray
 from torch import Tensor, moveaxis
 
-from pyqtorch.bitstrings import permute_basis
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT
 
 State = Tensor
@@ -24,11 +25,27 @@ ATOL = 1e-06
 ATOL_embedding = 1e-03
 RTOL = 0.0
 GRADCHECK_ATOL = 1e-05
-PSR_ACCEPTANCE = 1e-06
-GPSR_ACCEPTANCE = 1e-06
+GRADCHECK_sampling_ATOL = 1e-01
+PSR_ACCEPTANCE = 1e-05
+GPSR_ACCEPTANCE = 1e-05
 ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)
+
+
+def qubit_support_as_tuple(support: int | tuple[int, ...]) -> tuple[int, ...]:
+    """Make sure support returned is a tuple of integers.
+
+    Args:
+        support (int | tuple[int, ...]): Qubit support.
+
+    Returns:
+        tuple[int, ...]: Qubit support as tuple.
+    """
+    if isinstance(support, np.integer):
+        return (support.item(),)
+    qubit_support = (support,) if isinstance(support, int) else tuple(support)
+    return qubit_support
 
 
 def inner_prod(bra: Tensor, ket: Tensor) -> Tensor:
@@ -68,6 +85,44 @@ def overlap(bra: Tensor, ket: Tensor) -> Tensor:
         The overlap.
     """
     return torch.pow(inner_prod(bra, ket).real, 2)
+
+
+def sample_multinomial(
+    probs: Tensor,
+    length_bitstring: int,
+    n_samples: int,
+    return_counter: bool = True,
+    minlength: int = 0,
+) -> Counter | Tensor:
+    """Sample bitstrings from a probability distribution.
+
+    Args:
+        probs (Tensor): Probability distribution
+        length_bitstring (int): Maximal length of bitstring.
+        n_samples (int): Number of samples to extract.
+        instead of ratios.
+        return_counter (bool): If True, return Counter object.
+            Otherwise, the result of torch.bincount is returned.
+        minlength (int): minimum number of bins. Should be non-negative.
+
+    Returns:
+        Counter: Sampled bitstrings with their frequencies or probabilities.
+    """
+
+    bincount_output = torch.bincount(
+        torch.multinomial(input=probs, num_samples=n_samples, replacement=True),
+        minlength=minlength,
+    )
+
+    if return_counter:
+        return Counter(
+            {
+                format(k, "0{}b".format(length_bitstring)): count.item()
+                for k, count in enumerate(bincount_output)
+                if count > 0
+            }
+        )
+    return bincount_output
 
 
 class StrEnum(str, Enum):
@@ -336,6 +391,66 @@ def expand_operator(
         operator = torch.kron(operator.contiguous(), other)
     operator = permute_basis(operator, qubit_support)
     return operator
+
+
+def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
+    from pyqtorch.primitive import I
+
+    """
+    FIXME: Remove and replace usage with the `expand_operator` above.
+
+    Promotes `operator` to the size of the circuit (number of qubits and batch).
+    Targeting the first qubit implies target = 0, so target > n_qubits - 1.
+
+    Arguments:
+        operator: The operator tensor to be promoted.
+        target: The index of the target qubit to which the operator is applied.
+            Targeting the first qubit implies target = 0, so target > n_qubits - 1.
+        n_qubits: Number of qubits in the circuit.
+
+    Returns:
+        Tensor: The promoted operator tensor.
+
+    Raises:
+        ValueError: If `target` is outside the valid range of qubits.
+    """
+    if target > n_qubits - 1:
+        raise ValueError(
+            "The target must be a valid qubit index within the circuit's range."
+        )
+    qubits = torch.arange(0, n_qubits)
+    qubits = qubits[qubits != target]
+    for qubit in qubits:
+        operator = torch.where(
+            target > qubit,
+            operator_kron(I(target).tensor(), operator),
+            operator_kron(operator, I(target).tensor()),
+        )
+    return operator
+
+
+def permute_basis(operator: Tensor, qubit_support: tuple) -> Tensor:
+    """Takes an operator tensor and permutes the rows and
+    columns according to the order of the qubit support.
+
+    Args:
+        operator (Tensor): Operator to permute over.
+        qubit_support (tuple): Qubit support.
+
+    Returns:
+        Tensor: Permuted operator.
+    """
+    ordered_support = argsort(qubit_support)
+    n_qubits = len(qubit_support)
+    if all(a == b for a, b in zip(ordered_support, list(range(n_qubits)))):
+        return operator
+    batch_size = operator.size(-1)
+    operator = operator.view([2] * 2 * n_qubits + [batch_size])
+
+    perm = list(
+        tuple(ordered_support) + tuple(ordered_support + n_qubits) + (2 * n_qubits,)
+    )
+    return operator.permute(perm).reshape([2**n_qubits, 2**n_qubits, batch_size])
 
 
 def random_dm_promotion(

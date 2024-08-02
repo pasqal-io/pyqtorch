@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 from collections import Counter
+from functools import partial
 from logging import getLogger
 
+import torch
 from torch import Tensor
 
 from pyqtorch.adjoint import AdjointExpectation
 from pyqtorch.analog import Observable
+from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.embed import Embedding
 from pyqtorch.gpsr import PSRExpectation, check_support_psr
-from pyqtorch.utils import DiffMode
+from pyqtorch.utils import DiffMode, sample_multinomial
 
 logger = getLogger(__name__)
 
@@ -96,12 +99,100 @@ def sample(
     )
 
 
+def analytical_expectation(
+    circuit: QuantumCircuit,
+    state: Tensor,
+    observable: Observable,
+    values: dict[str, Tensor] = dict(),
+    embedding: Embedding | None = None,
+) -> Tensor:
+    """Compute the analytical expectation value.
+
+    Given an initial state :math:`\\ket\\rangle`,
+    a quantum circuit :math:`U(\\theta)`,
+    the analytical expectation value with :math:`O` is defined as
+    :math:`\\langle\\bra U_{\\dag}(\\theta) |O| U(\\theta) \\ket\\rangle`
+
+    Args:
+        circuit (QuantumCircuit): Quantum circuit :math:`U(\\theta)`.
+        state (Tensor): Input state :math:`\\ket\\rangle`.
+        observable (Observable): Observable O.
+        values (dict[str, Tensor], optional): Parameter values for the observable if any.
+        embedding (Embedding | None, optional): An optional instance of `Embedding`.
+
+    Returns:
+        Tensor: Expectation value.
+    """
+    state = run(circuit, state, values, embedding=embedding)
+    return observable.expectation(state, values, embedding=embedding)
+
+
+def sampled_expectation(
+    circuit: QuantumCircuit,
+    state: Tensor,
+    observable: Observable,
+    values: dict[str, Tensor] = dict(),
+    embedding: Embedding | None = None,
+    n_shots: int = 1,
+) -> Tensor:
+    """Expectation value approximated via sampling.
+
+    Given an input state :math:`\\ket\\rangle`,
+    the expectation analytical value with :math:`O` is defined as
+    :math:`\\langle\\bra|O\\ket\\rangle`
+
+    Args:
+        state (Tensor): Input state :math:`\\ket\\rangle`.
+        observable (Observable): Observable O.
+        values (dict[str, Tensor], optional): Parameter values for the observable if any.
+        embedding (Embedding | None, optional): An optional instance of `Embedding`.
+        n_shots: (int, optional): Number of samples to compute expectation on.
+
+    Returns:
+        Tensor: Expectation value.
+    """
+    state = run(circuit, state, values, embedding=embedding)
+    n_qubits = circuit.n_qubits
+
+    # batchsize needs to be first dim for eigh
+    eigvals, eigvecs = torch.linalg.eigh(
+        observable.tensor(
+            values=values, embedding=embedding, full_support=tuple(range(n_qubits))
+        ).permute((2, 0, 1))
+    )
+    eigvals = eigvals.squeeze()
+    eigvec_state_prod = apply_operator(
+        state,
+        eigvecs.T.conj(),
+        tuple(range(n_qubits)),
+        n_qubits=circuit.n_qubits,
+    )
+    eigvec_state_prod = torch.flatten(eigvec_state_prod, start_dim=0, end_dim=-2).t()
+    probs = torch.pow(torch.abs(eigvec_state_prod), 2)
+    batch_sample_multinomial = torch.func.vmap(
+        lambda p: sample_multinomial(
+            p, n_qubits, n_shots, return_counter=False, minlength=probs.shape[-1]
+        ),
+        randomness="different",
+    )
+    batch_samples = batch_sample_multinomial(probs)
+    normalized_samples = torch.div(
+        batch_samples, torch.tensor(n_shots, dtype=probs.dtype)
+    )
+    normalized_samples.requires_grad = True
+    expectations = torch.einsum(
+        "i,ji ->j", eigvals.to(dtype=normalized_samples.dtype), normalized_samples  # type: ignore[union-attr]
+    )
+    return expectations
+
+
 def expectation(
     circuit: QuantumCircuit,
     state: Tensor = None,
     values: dict[str, Tensor] = dict(),
     observable: Observable = None,  # type: ignore[assignment]
     diff_mode: DiffMode = DiffMode.AD,
+    n_shots: int | None = None,
     embedding: Embedding | None = None,
 ) -> Tensor:
     """Compute the expectation value of `circuit` given a `state`,
@@ -115,6 +206,8 @@ def expectation(
                 denoting the current parameter values for each parameter in `circuit`.
         observable: A pyq.Observable instance.
         diff_mode: The differentiation mode.
+        n_shots: Number of shots for estimating expectation values.
+                    Only used with DiffMode.GPSR or DiffMode.AD.
         embedding: An optional instance of `Embedding`.
 
     Returns:
@@ -136,6 +229,7 @@ def expectation(
     dfdtheta= grad(expval, theta, ones_like(expval))[0]
     ```
     """
+
     if embedding is not None and diff_mode != DiffMode.AD:
         raise NotImplementedError("Only diff_mode AD supports embedding")
     logger.debug(
@@ -144,11 +238,19 @@ def expectation(
     )
     if observable is None:
         logger.error("Please provide an observable to compute expectation.")
+
     if state is None:
         state = circuit.init_state(batch_size=1)
+
+    expectation_fn = analytical_expectation
+    if n_shots is not None:
+        if isinstance(n_shots, int) and n_shots > 0:
+            expectation_fn = partial(sampled_expectation, n_shots=n_shots)
+        else:
+            logger.error("Please provide a 'n_shots' in options of type 'int'.")
+
     if diff_mode == DiffMode.AD:
-        state = run(circuit, state, values, embedding=embedding)
-        return observable.expectation(state, values, embedding=embedding)
+        return expectation_fn(circuit, state, observable, values, embedding)
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit,
@@ -161,7 +263,13 @@ def expectation(
     elif diff_mode == DiffMode.GPSR:
         check_support_psr(circuit)
         return PSRExpectation.apply(
-            circuit, state, observable, embedding, values.keys(), *values.values()
+            circuit,
+            state,
+            observable,
+            embedding,
+            expectation_fn,
+            values.keys(),
+            *values.values(),
         )
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")

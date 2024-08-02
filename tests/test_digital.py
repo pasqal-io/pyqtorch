@@ -213,7 +213,7 @@ def test_multi_controlled_gates(
     initial_state = initial_state.to(device=device, dtype=dtype)
     rot_gate = getattr(pyq, gate)
     controlled_rot_gate = getattr(pyq, "C" + gate)
-    phi = torch.rand(batch_size)
+    phi = torch.rand(batch_size).to(device=device)
     n_qubits = int(log2(torch.numel(initial_state)))
     qubits = tuple([i for i in range(n_qubits)])
     op = controlled_rot_gate(qubits[:-1], qubits[-1], "phi").to(
@@ -278,7 +278,7 @@ def test_dagger_single_qubit() -> None:
             values = (
                 {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             )
-            new_state = apply_operator(state, op.unitary(values), [target])
+            new_state = apply_operator(state, op.tensor(values), [target])
             daggered_back = apply_operator(new_state, op.dagger(values), [target])
             assert torch.allclose(daggered_back, state)
 
@@ -311,7 +311,7 @@ def test_dagger_nqubit() -> None:
             values = (
                 {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             )
-            new_state = apply_operator(state, op.unitary(values), qubit_support)
+            new_state = apply_operator(state, op.tensor(values), qubit_support)
             daggered_back = apply_operator(new_state, op.dagger(values), qubit_support)
             assert torch.allclose(daggered_back, state)
 
