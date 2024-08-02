@@ -205,6 +205,25 @@ def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)) == 0
 
 
+def is_diag_batched(H: Tensor, batch_dim: int, atol: Tensor = ATOL) -> bool:
+    """
+    Returns True if the batched tensors H are diagonal.
+
+    Arguments:
+        H: Input tensors.
+        batch_dim: Dimension of batch.
+        atol: Tolerance for near-zero values.
+
+    Returns:
+        True if diagonal, else False.
+    """
+    diag_check = torch.tensor(
+        [is_diag(H[..., i], atol) for i in range(H.shape[batch_dim])],
+        device=H.device,
+    )
+    return bool(torch.prod(diag_check))
+
+
 def product_state(
     bitstring: str,
     batch_size: int = 1,
@@ -372,7 +391,10 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
 
 
 def expand_operator(
-    operator: Tensor, qubit_support: tuple[int, ...], full_support: tuple[int, ...]
+    operator: Tensor,
+    qubit_support: tuple[int, ...],
+    full_support: tuple[int, ...],
+    diagonal: bool = False,
 ) -> Tensor:
     """
     Expands an operator acting on a given qubit_support to act on a larger full_support
@@ -385,9 +407,13 @@ def expand_operator(
             "larger than or equal to the `qubit_support`."
         )
     device, dtype = operator.device, operator.dtype
+
+    if diagonal:
+        other = torch.ones((2, 1), device=device, dtype=dtype).unsqueeze(2)
+    else:
+        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
     for i in set(full_support) - set(qubit_support):
         qubit_support += (i,)
-        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
         operator = torch.kron(operator.contiguous(), other)
     operator = permute_basis(operator, qubit_support)
     return operator

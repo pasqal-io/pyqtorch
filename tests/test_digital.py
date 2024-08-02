@@ -299,8 +299,13 @@ def test_dagger_single_qubit() -> None:
             values = (
                 {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             )
-            new_state = apply_operator(state, op.tensor(values), [target])
-            daggered_back = apply_operator(new_state, op.dagger(values), [target])
+            print(cls)
+            new_state = apply_operator(
+                state, op.tensor(values), [target], diagonal=op.is_diagonal
+            )
+            daggered_back = apply_operator(
+                new_state, op.dagger(values), [target], diagonal=op.is_diagonal
+            )
             assert torch.allclose(daggered_back, state)
 
 

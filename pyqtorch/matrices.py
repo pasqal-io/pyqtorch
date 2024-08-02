@@ -67,14 +67,23 @@ OPERATIONS_DICT = {
 
 
 def parametric_unitary(
-    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
+    theta: torch.Tensor,
+    P: torch.Tensor,
+    Imat: torch.Tensor,
+    batch_size: int,
+    diagonal: bool = False,  # noqa: E741
 ) -> torch.Tensor:
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
+    cos_t = torch.cos(theta / 2)
+    sin_t = torch.sin(theta / 2)
+    if diagonal:
+        return (cos_t * -1j * sin_t * P).unsqueeze(-1)
+    cos_t = cos_t.unsqueeze(0).unsqueeze(1)
+    sin_t = sin_t.unsqueeze(0).unsqueeze(1)
+
     cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
     sin_t = sin_t.repeat((2, 2, 1))
 
-    batch_imat = I.unsqueeze(2).repeat(1, 1, batch_size)
+    batch_imat = Imat.unsqueeze(2).repeat(1, 1, batch_size)
     batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
 
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat

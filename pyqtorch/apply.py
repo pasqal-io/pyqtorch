@@ -57,6 +57,7 @@ def apply_operator(
         ].copy()
         operator_dims[n_support : 2 * n_support] = in_state_dims[qubits]
     else:
+        # print(operator, n_support, operator.size())
         operator = operator.view([2] * n_support + [operator.size(-1)])
         operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + n_support + 1].copy()
         operator_dims[:n_support] = in_state_dims[qubits]

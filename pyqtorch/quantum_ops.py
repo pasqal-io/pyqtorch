@@ -15,6 +15,7 @@ from pyqtorch.matrices import _dagger
 from pyqtorch.utils import (
     DensityMatrix,
     expand_operator,
+    is_diag,
     permute_basis,
     qubit_support_as_tuple,
 )
@@ -132,6 +133,27 @@ class QuantumOperation(torch.nn.Module):
             else Support(target=qubit_support)
         )
 
+        self._isdiagonal = False
+        if operator_function is None:
+            if len(operation.shape) == 1:
+                self._isdiagonal = True
+                operation = operation.unsqueeze(-1)
+            elif len(operation.shape) == 2:
+                if operation.shape[-1] == 1:
+                    self._isdiagonal = True
+                else:
+                    # square operation
+                    self._isdiagonal = is_diag(operation)
+                    if self._isdiagonal:
+                        operation = torch.diag(operation).unsqueeze(-1)
+            # else:
+            #     # present batch_dim
+            #     self._isdiagonal = is_diag_batched(operation, batch_dim=-1)
+            #     if self._isdiagonal:
+            #         # Put diagonal in a vector of shape (len(qubit_support), batch)
+            #         operation = torch.stack([torch.diag(operation[...,i])
+            # .unsqueeze(-1) for i in range(operation.shape[-1])], axis=1)
+
         self.register_buffer("operation", operation)
         self._device = self.operation.device
         self._dtype = self.operation.dtype
@@ -166,6 +188,15 @@ class QuantumOperation(torch.nn.Module):
         self._device = self.operation.device
         self._dtype = self.operation.dtype
         return self
+
+    @property
+    def is_diagonal(self) -> bool:
+        """Returns if operation is diagonal.
+
+        Returns:
+            bool: True if diagonal
+        """
+        return self._isdiagonal
 
     @property
     def qubit_support(self) -> tuple[int, ...]:
@@ -311,7 +342,9 @@ class QuantumOperation(torch.nn.Module):
         if full_support is None:
             return blockmat
         else:
-            return expand_operator(blockmat, self.qubit_support, full_support)
+            return expand_operator(
+                blockmat, self.qubit_support, full_support, self.is_diagonal
+            )
 
     def forward(
         self,
@@ -348,9 +381,11 @@ class QuantumOperation(torch.nn.Module):
                     "Density matrices operations are only supported with single-qubit gates"
                 )
         else:
+            print(self._isdiagonal)
             return apply_operator(
                 state,
                 self.tensor(values, embedding),
                 self.qubit_support,
                 len(state.size()) - 1,
+                diagonal=self.is_diagonal,
             )

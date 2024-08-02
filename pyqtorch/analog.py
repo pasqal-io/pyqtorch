@@ -16,13 +16,12 @@ from pyqtorch.circuit import Sequence
 from pyqtorch.embed import Embedding
 from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
-    ATOL,
     Operator,
     State,
     StrEnum,
     expand_operator,
     inner_prod,
-    is_diag,
+    is_diag_batched,
 )
 
 BATCH_DIM = 2
@@ -264,27 +263,6 @@ class Observable(Add):
         return inner_prod(state, self.forward(state, values, embedding)).real
 
 
-def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:
-    """
-    Returns True if the batched tensors H are diagonal.
-
-    Arguments:
-        H: Input tensors.
-        atol: Tolerance for near-zero values.
-
-    Returns:
-        True if diagonal, else False.
-    """
-    diag_check = torch.tensor(
-        [
-            is_diag(hamiltonian[..., i], atol)
-            for i in range(hamiltonian.shape[BATCH_DIM])
-        ],
-        device=hamiltonian.device,
-    )
-    return bool(torch.prod(diag_check))
-
-
 def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
     """Get the evolved operator.
 
@@ -297,7 +275,7 @@ def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
     Returns:
         The evolution operator.
     """
-    if is_diag_hamiltonian(hamiltonian):
+    if is_diag_batched(hamiltonian, batch_dim=BATCH_DIM):
         evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
             (-1, 1)
         )
