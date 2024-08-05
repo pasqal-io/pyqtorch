@@ -10,19 +10,19 @@ from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     OPERATIONS_DICT,
-    _controlled,
     _jacobian,
-    _unitary,
+    controlled,
+    parametric_unitary,
 )
-from pyqtorch.primitive import Primitive
+from pyqtorch.quantum_ops import QuantumOperation, Support
 from pyqtorch.utils import Operator
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
 
-class Parametric(Primitive):
+class Parametric(QuantumOperation):
     """
-    Primitives taking parameters as input.
+    QuantumOperation taking parameters as input.
 
     Attributes:
         param_name: Name of parameters.
@@ -33,19 +33,21 @@ class Parametric(Primitive):
 
     def __init__(
         self,
-        generator_name: str,
-        target: int,
+        generator: str | Tensor,
+        qubit_support: int | tuple[int, ...] | Support,
         param_name: str | int | float | torch.Tensor = "",
     ):
         """Initializes Parametric.
 
         Arguments:
-            generator_name: Name of the operation.
-            target: Target qubit.
+            generator: Generator to use.
+            qubit_support: Qubits to act on.
             param_name: Name of parameters.
         """
-        super().__init__(OPERATIONS_DICT[generator_name], target)
-        self.register_buffer("identity", OPERATIONS_DICT["I"])
+
+        generator_operation = (
+            OPERATIONS_DICT[generator] if isinstance(generator, str) else generator
+        )
         self.param_name = param_name
 
         def parse_values(
@@ -106,25 +108,23 @@ class Parametric(Primitive):
         elif isinstance(param_name, (float, int, torch.Tensor)):
             self.parse_values = parse_constant
 
+        # Parametric is defined by generator operation and a function
+        # The function will use parsed parameter values
+        # to compute the unitary
+        super().__init__(
+            generator_operation,
+            qubit_support,
+            operator_function=self._construct_parametric_base_op,
+        )
+        self.register_buffer("identity", OPERATIONS_DICT["I"])
+
     def extra_repr(self) -> str:
         """String representation of the operation.
 
         Returns:
             String with information on operation.
         """
-        return f"target:{self.qubit_support}, param:{self.param_name}"
-
-    @cached_property
-    def eigenvals_generator(self) -> Tensor:
-        """Get eigenvalues of the underlying generator.
-
-        Arguments:
-            values: Parameter values.
-
-        Returns:
-            Eigenvalues of the generator operator.
-        """
-        return torch.linalg.eigvalsh(self.pauli).reshape(-1, 1)
+        return f"qubit_support:{self.qubit_support}, param:{self.param_name}"
 
     def __hash__(self) -> int:
         """Hash qubit support and param_name
@@ -146,13 +146,13 @@ class Parametric(Primitive):
         """
         return values.unsqueeze(0) if len(values.size()) == 0 else values
 
-    def unitary(
+    def _construct_parametric_base_op(
         self,
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Operator:
         """
-        Get the corresponding unitary.
+        Get the corresponding unitary with parsed values.
 
         Arguments:
             values: A dict containing a Parameter name and value.
@@ -163,7 +163,8 @@ class Parametric(Primitive):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        return _unitary(thetas, self.pauli, self.identity, batch_size)
+        mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
+        return mat
 
     def jacobian(
         self,
@@ -181,18 +182,149 @@ class Parametric(Primitive):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        return _jacobian(thetas, self.pauli, self.identity, batch_size)
+        return _jacobian(thetas, self.operation, self.identity, batch_size)
 
-    def to(self, *args: Any, **kwargs: Any) -> Primitive:
+    def to(self, *args: Any, **kwargs: Any) -> Parametric:
         super().to(*args, **kwargs)
-        self._device = self.pauli.device
+        self._device = self.operation.device
         self.param_name = (
             self.param_name.to(*args, **kwargs)
             if isinstance(self.param_name, torch.Tensor)
             else self.param_name
         )
-        self._dtype = self.pauli.dtype
+        self._dtype = self.operation.dtype
         return self
+
+
+class ControlledParametric(Parametric):
+    """
+    Primitives for controlled parametric operations.
+
+    Attributes:
+        control: Control qubit(s).
+    """
+
+    def __init__(
+        self,
+        operation: str | Tensor,
+        control: int | Tuple[int, ...],
+        target: int | Tuple[int, ...],
+        param_name: str | int | float | torch.Tensor = "",
+    ):
+        """Initializes a ControlledParametric.
+
+        Arguments:
+            operation: Rotation gate.
+            control: Control qubit(s).
+            qubit_targets: Target qubit(s).
+            param_name: Name of parameters.
+        """
+        support = Support(target, control)
+        super().__init__(operation, support, param_name)
+
+    def extra_repr(self) -> str:
+        """String representation of the operation.
+
+        Returns:
+            String with information on operation.
+        """
+        return (
+            f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
+        )
+
+    def _construct_parametric_base_op(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
+        """
+        Get the corresponding unitary with parsed values and kronned identities
+        for control.
+
+        Arguments:
+            values: A dict containing a Parameter name and value.
+            embedding: An optional embedding for parameters.
+
+        Returns:
+            The unitary representation.
+        """
+        thetas = self.parse_values(values, embedding)
+        batch_size = len(thetas)
+        mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
+        mat = controlled(mat, batch_size, len(self.control))
+        return mat
+
+    def jacobian(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Operator:
+        """
+        Get the corresponding unitary of the jacobian.
+
+        Arguments:
+            values: Parameter value.
+
+        Returns:
+            The unitary representation of the jacobian.
+        """
+        thetas = self.parse_values(values, embedding)
+        batch_size = len(thetas)
+        n_control = len(self.control)
+        jU = _jacobian(thetas, self.operation, self.identity, batch_size)
+        n_dim = 2 ** (n_control + 1)
+        jC = (
+            torch.zeros((n_dim, n_dim), dtype=self.identity.dtype)
+            .unsqueeze(2)
+            .repeat(1, 1, batch_size)
+        )
+        unitary_idx = 2 ** (n_control + 1) - 2
+        jC[unitary_idx:, unitary_idx:, :] = jU
+        return jC
+
+
+class ControlledRotationGate(ControlledParametric):
+    """
+    Primitives for controlled rotation operations.
+    """
+
+    n_params = 1
+
+    def __init__(
+        self,
+        operation: str | Tensor,
+        control: int | Tuple[int, ...],
+        target: int,
+        param_name: str | int | float | torch.Tensor = "",
+    ):
+        """Initializes a ControlledRotationGate.
+
+        Arguments:
+            gate: Rotation gate.
+            control: Control qubit(s).
+            qubit_support: Target qubit.
+            param_name: Name of parameters.
+        """
+        super().__init__(operation, control, target, param_name)
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying generator.
+
+        Arguments:
+            values: Parameter values.
+
+        Returns:
+            Eigenvalues of the generator operator.
+        """
+        return torch.cat(
+            (
+                torch.zeros(
+                    2 ** len(self.qubit_support) - 2,
+                    device=self.device,
+                    dtype=self.dtype,
+                ),
+                pauli_singleq_eigenvalues.flatten().to(
+                    device=self.device, dtype=self.dtype
+                ),
+            )
+        ).reshape(-1, 1)
 
 
 class RX(Parametric):
@@ -350,7 +482,7 @@ class PHASE(Parametric):
         """
         return torch.tensor([[0.0], [2.0]], dtype=self.dtype, device=self.device)
 
-    def unitary(
+    def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
     ) -> Operator:
         """
@@ -389,116 +521,6 @@ class PHASE(Parametric):
         )
         batch_mat[1, 1, :] = 1j * torch.exp(1j * thetas).unsqueeze(0).unsqueeze(1)
         return batch_mat
-
-
-class ControlledRotationGate(Parametric):
-    """
-    Primitives for controlled rotation operations.
-
-    Attributes:
-        control: Control qubit(s).
-        qubit_support: Qubits acted on.
-    """
-
-    n_params = 1
-
-    def __init__(
-        self,
-        gate: str,
-        control: int | Tuple[int, ...],
-        target: int,
-        param_name: str | int | float | torch.Tensor = "",
-    ):
-        """Initializes a ControlledRotationGate.
-
-        Arguments:
-            gate: Rotation gate.
-            control: Control qubit(s).
-            target: Target qubit.
-            param_name: Name of parameters.
-        """
-        self.control = control if isinstance(control, tuple) else (control,)
-        super().__init__(gate, target, param_name)
-        self.qubit_support = self.control + (self.target,)  # type: ignore[operator]
-        # In this class, target is always an int but herit from Parametric and Primitive that:
-        # target : int | tuple[int,...]
-
-    def extra_repr(self) -> str:
-        """String representation of the operation.
-
-        Returns:
-            String with information on operation.
-        """
-        return (
-            f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
-        )
-
-    @cached_property
-    def eigenvals_generator(self) -> Tensor:
-        """Get eigenvalues of the underlying generator.
-
-        Arguments:
-            values: Parameter values.
-
-        Returns:
-            Eigenvalues of the generator operator.
-        """
-        return torch.cat(
-            (
-                torch.zeros(
-                    2 ** len(self.qubit_support) - 2,
-                    device=self.device,
-                    dtype=self.dtype,
-                ),
-                pauli_singleq_eigenvalues.flatten().to(
-                    device=self.device, dtype=self.dtype
-                ),
-            )
-        ).reshape(-1, 1)
-
-    def unitary(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
-    ) -> Operator:
-        """
-        Get the corresponding unitary.
-
-        Arguments:
-            values: A dict containing a Parameter name and value.
-            embedding: An optional embedding for parameters.
-
-        Returns:
-            The unitary representation.
-        """
-        thetas = self.parse_values(values, embedding)
-        batch_size = len(thetas)
-        mat = _unitary(thetas, self.pauli, self.identity, batch_size)
-        return _controlled(mat, batch_size, len(self.control))
-
-    def jacobian(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
-    ) -> Operator:
-        """
-        Get the corresponding unitary of the jacobian.
-
-        Arguments:
-            values: Parameter value.
-
-        Returns:
-            The unitary representation of the jacobian.
-        """
-        thetas = self.parse_values(values, embedding)
-        batch_size = len(thetas)
-        n_control = len(self.control)
-        jU = _jacobian(thetas, self.pauli, self.identity, batch_size)
-        n_dim = 2 ** (n_control + 1)
-        jC = (
-            torch.zeros((n_dim, n_dim), dtype=self.identity.dtype)
-            .unsqueeze(2)
-            .repeat(1, 1, batch_size)
-        )
-        unitary_idx = 2 ** (n_control + 1) - 2
-        jC[unitary_idx:, unitary_idx:, :] = jU
-        return jC
 
 
 class CRX(ControlledRotationGate):
@@ -676,7 +698,7 @@ class CPHASE(ControlledRotationGate):
             )
         ).reshape(-1, 1)
 
-    def unitary(
+    def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
     ) -> Operator:
         """
@@ -693,7 +715,7 @@ class CPHASE(ControlledRotationGate):
         batch_size = len(thetas)
         mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
         mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
-        return _controlled(mat, batch_size, len(self.control))
+        return controlled(mat, batch_size, len(self.control))
 
     def jacobian(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
@@ -726,7 +748,7 @@ class CPHASE(ControlledRotationGate):
         jC[unitary_idx:, unitary_idx:, :] = jU
         return jC
 
-    def to(self, *args: Any, **kwargs: Any) -> Primitive:
+    def to(self, *args: Any, **kwargs: Any) -> Parametric:
         """Set device of primitive.
 
         Returns:
@@ -762,6 +784,7 @@ class U(Parametric):
         """Initializes U gate.
 
         Arguments:
+            target: Target qubit.
             phi: Phi parameter.
             theta: Theta parameter.
             omega: Omega parameter.
@@ -796,7 +819,7 @@ class U(Parametric):
         """
         return pauli_singleq_eigenvalues.to(device=self.device, dtype=self.dtype)
 
-    def unitary(
+    def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
     ) -> Operator:
         """
@@ -854,10 +877,11 @@ class U(Parametric):
         Returns:
             The digital decomposition.
         """
+        target = self.target[0]
         return [
-            RZ(self.qubit_support[0], self.phi),
-            RY(self.qubit_support[0], self.theta),
-            RZ(self.qubit_support[0], self.omega),
+            RZ(target, self.phi),
+            RY(target, self.theta),
+            RZ(target, self.omega),
         ]
 
     def jacobian_decomposed(self, values: dict[str, Tensor] = dict()) -> list[Operator]:
@@ -874,3 +898,8 @@ class U(Parametric):
             NotImplementedError
         """
         return [op.jacobian(values) for op in self.digital_decomposition()]
+
+
+OPS_PARAM_1Q = {PHASE, RX, RY, RZ, U}
+OPS_PARAM_2Q = {CPHASE, CRX, CRY, CRZ}
+OPS_PARAM = OPS_PARAM_1Q.union(OPS_PARAM_2Q)

@@ -3,10 +3,9 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Callable
 
-import numpy as np
 import pytest
 import torch
-from conftest import _calc_mat_vec_wavefunction
+from helpers import calc_mat_vec_wavefunction, random_pauli_hamiltonian
 
 import pyqtorch as pyq
 from pyqtorch.analog import GeneratorType
@@ -160,69 +159,6 @@ def test_hamiltonianevolution_with_types(
     assert torch.allclose(result, target, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("n_qubits", [2, 4, 6])
-def test_hamevo_parametric_gen(n_qubits: int) -> None:
-    dim = torch.randint(1, n_qubits + 1, (1,)).item()
-    vparam = "theta"
-    sup = tuple(range(dim))
-    parametric = True
-    ops = [pyq.X, pyq.Y, pyq.Z]
-    qubit_targets = np.random.choice(dim, len(ops), replace=True)
-    generator = pyq.Add([pyq.Scale(op(q), vparam) for op, q in zip(ops, qubit_targets)])
-    hamevo = pyq.HamiltonianEvolution(
-        generator, vparam, sup, parametric, cache_length=2
-    )
-    assert hamevo.generator_type == GeneratorType.PARAMETRIC_OPERATION
-    assert len(hamevo._cache_hamiltonian_evo) == 0
-
-    def apply_hamevo_and_compare_expected(psi, vals):
-        psi_star = hamevo(psi, vals)
-        psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
-        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-
-    vals = {vparam: torch.rand(1)}
-    psi = random_state(n_qubits)
-    apply_hamevo_and_compare_expected(psi, vals)
-
-    # test cached
-    assert len(hamevo._cache_hamiltonian_evo) == 1
-    apply_hamevo_and_compare_expected(psi, vals)
-    assert len(hamevo._cache_hamiltonian_evo) == 1
-
-    # test caching new value
-    vals[vparam] += 0.1
-    apply_hamevo_and_compare_expected(psi, vals)
-    assert len(hamevo._cache_hamiltonian_evo) == 2
-
-    # changing input state should not change the cache
-    psi = random_state(n_qubits)
-    apply_hamevo_and_compare_expected(psi, vals)
-    assert len(hamevo._cache_hamiltonian_evo) == 2
-
-    # test limit cache
-    previous_cache_keys = hamevo._cache_hamiltonian_evo.keys()
-    vals[vparam] += 0.1
-    values_cache_key = str(OrderedDict(vals))
-    assert values_cache_key not in previous_cache_keys
-
-    apply_hamevo_and_compare_expected(psi, vals)
-    assert len(hamevo._cache_hamiltonian_evo) == 2
-    assert values_cache_key in previous_cache_keys
-
-
-def test_hevo_constant_gen() -> None:
-    sup = (0, 1)
-    generator = pyq.Add(
-        [pyq.Scale(pyq.Z(0), torch.rand(1)), pyq.Scale(pyq.Z(1), torch.rand(1))]
-    )
-    hamevo = pyq.HamiltonianEvolution(generator, torch.rand(1), sup)
-    assert hamevo.generator_type == GeneratorType.OPERATION
-    psi = pyq.zero_state(2)
-    psi_star = hamevo(psi)
-    psi_expected = _calc_mat_vec_wavefunction(hamevo, len(sup), psi)
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-
-
 @pytest.mark.parametrize(
     "H, t_evo, expected_state",
     [
@@ -283,95 +219,6 @@ def test_hamevo_fixed_tensor_result() -> None:
         dtype=torch.complex128,
     )
     assert torch.allclose(hamevo.tensor(), expected_evo_result, atol=1.0e-4)
-
-
-@pytest.mark.parametrize("n_qubits", [2, 4, 6])
-def test_hamevo_tensor(n_qubits: int) -> None:
-    dim = torch.randint(1, n_qubits + 1, (1,)).item()
-    vparam = "theta"
-    sup = tuple(range(dim))
-    parametric = True
-
-    h = torch.rand(2**dim, 2**dim, dtype=DEFAULT_REAL_DTYPE)
-    hermitian_matrix = h + torch.conj(torch.transpose(h, 0, 1))
-    hamevo = pyq.HamiltonianEvolution(hermitian_matrix, vparam, sup, parametric)
-
-    psi = random_state(n_qubits)
-    vals = {vparam: torch.rand(1)}
-    psi_star = hamevo(psi, vals)
-    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-
-
-@pytest.mark.parametrize("n_qubits", [2, 4, 6])
-@pytest.mark.parametrize("dim", [1, 2, 3, 4, 5, 6])
-@pytest.mark.parametrize("same_qubit_case", [True, False])
-def test_hamevo_tensor_from_circuit(
-    n_qubits: int, dim: int, same_qubit_case: bool
-) -> None:
-    dim = min(n_qubits, dim)
-    vparam = "theta"
-    parametric = True
-    ops = [pyq.X, pyq.Y] * 2
-    if same_qubit_case:
-        qubit_targets = [dim] * len(ops)
-    else:
-        qubit_targets = np.random.choice(dim, len(ops), replace=True)
-    generator = pyq.QuantumCircuit(
-        n_qubits,
-        [
-            pyq.Add([op(q) for op, q in zip(ops, qubit_targets)]),
-            *[op(q) for op, q in zip(ops, qubit_targets)],
-        ],
-    )
-    generator = generator.tensor(n_qubits=n_qubits)
-    generator = generator + torch.conj(torch.transpose(generator, 0, 1))
-    hamevo = pyq.HamiltonianEvolution(
-        generator, vparam, tuple(range(n_qubits)), parametric
-    )
-    assert hamevo.generator_type == GeneratorType.TENSOR
-    vals = {vparam: torch.tensor([0.5])}
-    psi = random_state(n_qubits)
-    psi_star = hamevo(psi, vals)
-    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-
-
-@pytest.mark.parametrize("n_qubits", [2, 4, 6])
-@pytest.mark.parametrize("dim", [1, 2, 3, 4, 5, 6])
-@pytest.mark.parametrize("same_qubit_case", [True, False])
-def test_hamevo_tensor_from_paramcircuit(
-    n_qubits: int, dim: int, same_qubit_case: bool
-) -> None:
-    dim = min(n_qubits, dim)
-    tparam = "theta"
-    vparam = "rtheta"
-    parametric = True
-    ops = [pyq.RX, pyq.RY] * 2
-    if same_qubit_case:
-        qubit_targets = [dim] * len(ops)
-    else:
-        qubit_targets = np.random.choice(dim, len(ops), replace=True)
-    generator = pyq.QuantumCircuit(
-        n_qubits,
-        [
-            pyq.Add([op(q, vparam) for op, q in zip(ops, qubit_targets)]),
-            *[op(q, vparam) for op, q in zip(ops, qubit_targets)],
-        ],
-    )
-    generator = generator.tensor(
-        n_qubits=n_qubits, values={vparam: torch.tensor([0.5])}
-    )
-    generator = generator + torch.conj(torch.transpose(generator, 0, 1))
-    hamevo = pyq.HamiltonianEvolution(
-        generator, tparam, tuple(range(n_qubits)), parametric
-    )
-    assert hamevo.generator_type == GeneratorType.TENSOR
-    vals = {tparam: torch.tensor([0.5])}
-    psi = random_state(n_qubits)
-    psi_star = hamevo(psi, vals)
-    psi_expected = _calc_mat_vec_wavefunction(hamevo, n_qubits, psi, vals)
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize(
@@ -440,3 +287,64 @@ def test_hamevo_endianness_cnot() -> None:
     cnot_op = pyq.CNOT(0, 1)
     wf_cnot = cnot_op(state_10)
     assert torch.allclose(wf_cnot, wf_hamevo, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("n_qubits", [2, 4, 6])
+@pytest.mark.parametrize("batch_size", [1, 2])
+def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
+    k_1q = 2 * n_qubits  # Number of 1-qubit terms
+    k_2q = n_qubits**2  # Number of 2-qubit terms
+    generator, param_list = random_pauli_hamiltonian(
+        n_qubits, k_1q, k_2q, make_param=True
+    )
+
+    tparam = "t"
+
+    param_list.append("t")
+
+    hamevo = pyq.HamiltonianEvolution(
+        generator, tparam, generator_parametric=True, cache_length=2
+    )
+
+    assert hamevo.generator_type == GeneratorType.PARAMETRIC_OPERATION
+    assert len(hamevo._cache_hamiltonian_evo) == 0
+
+    def apply_hamevo_and_compare_expected(psi, values):
+        psi_star = hamevo(psi, values)
+        psi_expected = calc_mat_vec_wavefunction(hamevo, psi, values)
+        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+    values = {param: torch.rand(batch_size) for param in param_list}
+
+    psi = random_state(n_qubits)
+    apply_hamevo_and_compare_expected(psi, values)
+
+    # test cached
+    assert len(hamevo._cache_hamiltonian_evo) == 1
+    apply_hamevo_and_compare_expected(psi, values)
+    assert len(hamevo._cache_hamiltonian_evo) == 1
+
+    # test caching new value
+    for param in param_list:
+        values[param] += 0.1
+
+    apply_hamevo_and_compare_expected(psi, values)
+    assert len(hamevo._cache_hamiltonian_evo) == 2
+
+    # changing input state should not change the cache
+    psi = random_state(n_qubits)
+    apply_hamevo_and_compare_expected(psi, values)
+    assert len(hamevo._cache_hamiltonian_evo) == 2
+
+    # test limit cache
+    previous_cache_keys = hamevo._cache_hamiltonian_evo.keys()
+
+    for param in param_list:
+        values[param] += 0.1
+
+    values_cache_key = str(OrderedDict(values))
+    assert values_cache_key not in previous_cache_keys
+
+    apply_hamevo_and_compare_expected(psi, values)
+    assert len(hamevo._cache_hamiltonian_evo) == 2
+    assert values_cache_key in previous_cache_keys
