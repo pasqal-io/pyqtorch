@@ -74,8 +74,8 @@ def apply_density_mat(op: Tensor, density_matrix: DensityMatrix) -> DensityMatri
     batch_size_op = op.size(-1)
     batch_size_dm = density_matrix.size(-1)
     if batch_size_dm > batch_size_op:
-        # The other condition is impossible beacause
-        # the operators are always initialize with batch_size = 1.
+        # The other condition is impossible because
+        # operators are always initialized with batch_size = 1.
         op = op.repeat(1, 1, batch_size_dm)
     return einsum("ijb,jkb,klb->ilb", op, density_matrix, _dagger(op))
 

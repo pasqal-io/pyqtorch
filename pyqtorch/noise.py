@@ -18,7 +18,7 @@ class Noise(torch.nn.Module):
         self,
         kraus: list[Tensor],
         target: int,
-        error_probability: tuple[float, ...] | float,
+        error_probabilities: tuple[float, ...] | float,
     ) -> None:
         super().__init__()
         self.target: int = target
@@ -27,7 +27,7 @@ class Noise(torch.nn.Module):
             self.register_buffer(f"kraus_{index}", tensor)
         self._device: torch.device = kraus[0].device
         self._dtype: torch.dtype = kraus[0].dtype
-        self.probabilities: tuple[float, ...] | float = error_probability
+        self.error_probabilities: tuple[float, ...] | float = error_probabilities
 
     def extra_repr(self) -> str:
         return f"target: {self.qubit_support}, prob: {self.probabilities}"
@@ -93,7 +93,7 @@ class Noise(torch.nn.Module):
         self._dtype = self.kraus_0.dtype
         return self
 
-    def tensor(self, values: dict[str, Tensor] = {}, n_qubits: int = 1) -> list[Tensor]:
+    def tensor(self, values: dict[str, Tensor] = dict(), n_qubits: int = 1) -> list[Tensor]:
         blockmats = self._tensor(values)
         mats = []
         for blockmat in blockmats:

@@ -546,9 +546,9 @@ class CRX(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
-        param_name: str | int | float | torch.Tensor = "",
+        param_name: str | int | float | Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled RX.
@@ -592,9 +592,9 @@ class CRY(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
-        param_name: str | int | float | torch.Tensor = "",
+        param_name: str | int | float | Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled RY.
@@ -638,9 +638,9 @@ class CRZ(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
-        param_name: str | int | float | torch.Tensor = "",
+        param_name: str | int | float | Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled RZ.
@@ -686,9 +686,9 @@ class CPHASE(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
-        param_name: str | int | float | torch.Tensor = "",
+        param_name: str | int | float | Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled PHASE.
