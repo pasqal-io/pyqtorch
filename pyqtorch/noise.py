@@ -93,7 +93,9 @@ class Noise(torch.nn.Module):
         self._dtype = self.kraus_0.dtype
         return self
 
-    def tensor(self, values: dict[str, Tensor] = dict(), n_qubits: int = 1) -> list[Tensor]:
+    def tensor(
+        self, values: dict[str, Tensor] = dict(), n_qubits: int = 1
+    ) -> list[Tensor]:
         blockmats = self._tensor(values)
         mats = []
         for blockmat in blockmats:
