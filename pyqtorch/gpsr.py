@@ -287,11 +287,11 @@ class PSRExpectation(Function):
         )
 
 
-def check_support_psr(circuit: QuantumCircuit):
+def check_support_psr(circuit: Sequence):
     """Checking that circuit has only compatible operations for PSR.
 
     Args:
-        circuit (QuantumCircuit): Circuit to check.
+        circuit (Sequence): Circuit to check.
 
     Raises:
         ValueError: When circuit contains Scale, HamiltonianEvolution,
@@ -313,13 +313,13 @@ def check_support_psr(circuit: QuantumCircuit):
                     whose generator type is {op.generator_type}."
             )
         if isinstance(op, Sequence):
-            for subop in op.flatten():
-                if isinstance(subop, Parametric):
-                    if isinstance(subop.param_name, str):
-                        param_names.append(subop.param_name)
+            param_names += check_support_psr(op)
         elif isinstance(op, Parametric):
             if isinstance(op.param_name, str):
                 param_names.append(op.param_name)
+        elif isinstance(op, HamiltonianEvolution):
+            if isinstance(op.time, str):
+                param_names.append(op.time)
         else:
             continue
 
@@ -327,3 +327,4 @@ def check_support_psr(circuit: QuantumCircuit):
         raise ValueError(
             "PSR is not supported when using a same param_name in different operations."
         )
+    return param_names

@@ -10,7 +10,7 @@ import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
 from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
+from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES, DEFAULT_MATRIX_DTYPE
 from pyqtorch.parametric import Parametric
 from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL
 
@@ -171,7 +171,9 @@ def test_compatibility_gpsr(gate_type: str, sequence_circuit: bool) -> None:
         scale = pyq.Scale(seq_gate, pname)
         ops = [scale]
     elif gate_type == "hamevo":
-        hamevo = pyq.HamiltonianEvolution(pyq.Sequence([pyq.X(0)]), pname, (0,))
+        symbol = pname
+        t_evo = torch.tensor([torch.pi / 4], dtype=DEFAULT_MATRIX_DTYPE)
+        hamevo = pyq.HamiltonianEvolution(symbol, t_evo, (0,))
         ops = [hamevo]
     elif gate_type == "same":
         ops = [pyq.RY(0, pname), pyq.RZ(0, pname)]
@@ -186,20 +188,21 @@ def test_compatibility_gpsr(gate_type: str, sequence_circuit: bool) -> None:
     obs = pyq.Observable([pyq.Z(0)])
     state = pyq.zero_state(2)
 
-    param_value = torch.pi / 2
-    values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
+    if gate_type == "hamevo":
+        H = pyq.X(0).tensor()
+        H.requires_grad = True
+        values = {"theta_0": H}
+    else:
+        param_value = torch.pi / 2
+        values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
 
     if gate_type != "":
         with pytest.raises(ValueError):
             exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
-
-            grad_gpsr = torch.autograd.grad(
-                exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
-            )
     else:
         exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
 
         grad_gpsr = torch.autograd.grad(
             exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr)
         )
-        assert len(grad_gpsr) > 0
+        assert len(grad_gpsr) == 1
