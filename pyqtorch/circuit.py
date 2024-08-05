@@ -20,6 +20,7 @@ from pyqtorch.matrices import _dagger, add_batch_dim
 from pyqtorch.parametric import RX, RY, Parametric
 from pyqtorch.primitive import CNOT, Primitive
 from pyqtorch.utils import (
+    DensityMatrix,
     DropoutMode,
     State,
     product_state,
@@ -106,7 +107,7 @@ class Sequence(Module):
 
     def forward(
         self,
-        state: State,
+        state: Tensor,
         values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding | None = None,
     ) -> State:
@@ -180,7 +181,7 @@ class QuantumCircuit(Sequence):
 
     def run(
         self,
-        state: State = None,
+        state: Tensor = None,
         values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding | None = None,
     ) -> State:
@@ -216,11 +217,16 @@ class QuantumCircuit(Sequence):
             )
 
         with torch.no_grad():
-            state = torch.flatten(
-                self.run(state=state, values=values, embedding=embedding),
-                start_dim=0,
-                end_dim=-2,
-            ).t()
+            state = self.run(state=state, values=values, embedding=embedding)
+            if isinstance(state, DensityMatrix):
+                probs = torch.diagonal(state, dim1=0, dim2=1).real
+            else:
+                state = torch.flatten(
+                    state,
+                    start_dim=0,
+                    end_dim=-2,
+                ).t()
+                probs = torch.abs(torch.pow(state, 2))
 
             probs = torch.pow(torch.abs(state), 2)
             return list(

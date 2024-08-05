@@ -14,6 +14,7 @@ from pyqtorch.matrices import (
     controlled,
     parametric_unitary,
 )
+from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.quantum_ops import QuantumOperation, Support
 from pyqtorch.utils import Operator
 
@@ -36,6 +37,7 @@ class Parametric(QuantumOperation):
         generator: str | Tensor,
         qubit_support: int | tuple[int, ...] | Support,
         param_name: str | int | float | torch.Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes Parametric.
 
@@ -43,6 +45,7 @@ class Parametric(QuantumOperation):
             generator: Generator to use.
             qubit_support: Qubits to act on.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
 
         generator_operation = (
@@ -109,12 +112,12 @@ class Parametric(QuantumOperation):
             self.parse_values = parse_constant
 
         # Parametric is defined by generator operation and a function
-        # The function will use parsed parameter values
-        # to compute the unitary
+        # The function will use parsed parameter values to compute the unitary
         super().__init__(
             generator_operation,
             qubit_support,
             operator_function=self._construct_parametric_base_op,
+            noise=noise,
         )
         self.register_buffer("identity", OPERATIONS_DICT["I"])
 
@@ -124,7 +127,9 @@ class Parametric(QuantumOperation):
         Returns:
             String with information on operation.
         """
-        return f"qubit_support:{self.qubit_support}, param:{self.param_name}"
+        return f"target: {self.qubit_support}, param: {self.param_name}" + _repr_noise(
+            self.noise
+        )
 
     def __hash__(self) -> int:
         """Hash qubit support and param_name
@@ -150,7 +155,7 @@ class Parametric(QuantumOperation):
         self,
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
-    ) -> Operator:
+    ) -> Tensor:
         """
         Get the corresponding unitary with parsed values.
 
@@ -170,7 +175,7 @@ class Parametric(QuantumOperation):
         self,
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
-    ) -> Operator:
+    ) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -210,6 +215,7 @@ class ControlledParametric(Parametric):
         control: int | Tuple[int, ...],
         target: int | Tuple[int, ...],
         param_name: str | int | float | torch.Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes a ControlledParametric.
 
@@ -220,7 +226,7 @@ class ControlledParametric(Parametric):
             param_name: Name of parameters.
         """
         support = Support(target, control)
-        super().__init__(operation, support, param_name)
+        super().__init__(operation, support, param_name, noise=noise)
 
     def extra_repr(self) -> str:
         """String representation of the operation.
@@ -229,7 +235,8 @@ class ControlledParametric(Parametric):
             String with information on operation.
         """
         return (
-            f"control: {self.control}, target:{(self.target,)}, param:{self.param_name}"
+            f"control: {self.control}, target: {(self.target,)}, param: {self.param_name}"
+            + _repr_noise(self.noise)
         )
 
     def _construct_parametric_base_op(
@@ -292,6 +299,7 @@ class ControlledRotationGate(ControlledParametric):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str | int | float | torch.Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes a ControlledRotationGate.
 
@@ -301,7 +309,7 @@ class ControlledRotationGate(ControlledParametric):
             qubit_support: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__(operation, control, target, param_name)
+        super().__init__(operation, control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -344,14 +352,16 @@ class RX(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes RX.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("X", target, param_name)
+        super().__init__("X", target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -383,14 +393,16 @@ class RY(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes RY.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("Y", target, param_name)
+        super().__init__("Y", target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -422,14 +434,16 @@ class RZ(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes RZ.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("Z", target, param_name)
+        super().__init__("Z", target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -461,14 +475,16 @@ class PHASE(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes PHASE.
 
         Arguments:
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("I", target, param_name)
+        super().__init__("I", target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -484,7 +500,7 @@ class PHASE(Parametric):
 
     def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
-    ) -> Operator:
+    ) -> Tensor:
         """
         Get the corresponding unitary.
 
@@ -503,7 +519,7 @@ class PHASE(Parametric):
 
     def jacobian(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
-    ) -> Operator:
+    ) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -530,9 +546,10 @@ class CRX(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
-        param_name: str | int | float | torch.Tensor = "",
+        param_name: str | int | float | Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled RX.
 
@@ -540,8 +557,9 @@ class CRX(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("X", control, target, param_name)
+        super().__init__("X", control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -574,9 +592,10 @@ class CRY(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
-        param_name: str | int | float | torch.Tensor = "",
+        param_name: str | int | float | Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled RY.
 
@@ -584,8 +603,9 @@ class CRY(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("Y", control, target, param_name)
+        super().__init__("Y", control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -618,9 +638,10 @@ class CRZ(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
-        param_name: str | int | float | torch.Tensor = "",
+        param_name: str | int | float | Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled RZ.
 
@@ -628,8 +649,9 @@ class CRZ(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("Z", control, target, param_name)
+        super().__init__("Z", control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -664,9 +686,10 @@ class CPHASE(ControlledRotationGate):
 
     def __init__(
         self,
-        control: int | Tuple[int, ...],
+        control: int | tuple[int, ...],
         target: int,
-        param_name: str | int | float | torch.Tensor = "",
+        param_name: str | int | float | Tensor = "",
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         """Initializes controlled PHASE.
 
@@ -674,8 +697,9 @@ class CPHASE(ControlledRotationGate):
             control: Control qubit(s).
             target: Target qubit.
             param_name: Name of parameters.
+            noise: Optional noise protocols to apply.
         """
-        super().__init__("I", control, target, param_name)
+        super().__init__("I", control, target, param_name, noise=noise)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -700,7 +724,7 @@ class CPHASE(ControlledRotationGate):
 
     def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
-    ) -> Operator:
+    ) -> Tensor:
         """
         Get the corresponding unitary.
 
@@ -719,7 +743,7 @@ class CPHASE(ControlledRotationGate):
 
     def jacobian(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
-    ) -> Operator:
+    ) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -780,7 +804,14 @@ class U(Parametric):
 
     n_params = 3
 
-    def __init__(self, target: int, phi: str, theta: str, omega: str):
+    def __init__(
+        self,
+        target: int,
+        phi: str,
+        theta: str,
+        omega: str,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
         """Initializes U gate.
 
         Arguments:
@@ -788,11 +819,12 @@ class U(Parametric):
             phi: Phi parameter.
             theta: Theta parameter.
             omega: Omega parameter.
+            noise: Optional noise protocols to apply.
         """
         self.phi = phi
         self.theta = theta
         self.omega = omega
-        super().__init__("X", target, param_name="")
+        super().__init__("X", target, param_name="", noise=noise)
 
         self.register_buffer(
             "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
@@ -821,7 +853,7 @@ class U(Parametric):
 
     def _construct_parametric_base_op(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
-    ) -> Operator:
+    ) -> Tensor:
         """
         Get the corresponding unitary.
 
@@ -855,7 +887,7 @@ class U(Parametric):
 
     def jacobian(
         self, values: dict[str, Tensor] = {}, embedding: Embedding | None = None
-    ) -> Operator:
+    ) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
 
@@ -884,7 +916,7 @@ class U(Parametric):
             RZ(target, self.omega),
         ]
 
-    def jacobian_decomposed(self, values: dict[str, Tensor] = dict()) -> list[Operator]:
+    def jacobian_decomposed(self, values: dict[str, Tensor] = dict()) -> list[Tensor]:
         """
         Get the corresponding unitary decomposition of the jacobian.
 

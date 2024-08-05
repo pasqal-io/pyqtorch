@@ -6,8 +6,8 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from pyqtorch.embed import Embedding
 from pyqtorch.matrices import OPERATIONS_DICT, controlled
+from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.quantum_ops import QuantumOperation, Support
 from pyqtorch.utils import (
     product_state,
@@ -30,8 +30,9 @@ class Primitive(QuantumOperation):
         operation: Tensor,
         qubit_support: int | tuple[int, ...] | Support,
         generator: Tensor | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ) -> None:
-        super().__init__(operation, qubit_support)
+        super().__init__(operation, qubit_support, noise=noise)
         self.generator = generator
 
     def to(self, *args: Any, **kwargs: Any) -> Primitive:
@@ -77,6 +78,7 @@ class ControlledPrimitive(Primitive):
         operation: str | Tensor,
         control: int | tuple[int, ...],
         target: int | tuple[int, ...],
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         support = Support(target, control)
         if isinstance(operation, str):
@@ -86,74 +88,98 @@ class ControlledPrimitive(Primitive):
             batch_size=1,
             n_control_qubits=len(support.control),
         ).squeeze(2)
-        super().__init__(operation, support)
+        super().__init__(operation, support, noise=noise)
 
     def extra_repr(self) -> str:
-        return f"control:{self.control}, targets:{(self.target,)}"
+        return f"control: {self.control}, target: {self.target}" + _repr_noise(
+            self.noise
+        )
 
 
 class X(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["X"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["X"], target, noise=noise)
 
 
 class Y(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["Y"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["Y"], target, noise=noise)
 
 
 class Z(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["Z"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
 
 
 class I(Primitive):  # noqa: E742
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["I"], target)
-
-    def forward(
+    def __init__(
         self,
-        state: Tensor,
-        values: dict[str, Tensor] = dict(),
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        """Returns only state.
-
-        Args:
-            state (Tensor): Input state
-            values (dict[str, Tensor], optional): Parameter value. Defaults to dict().
-            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
-
-        Returns:
-            Tensor: Input state.
-        """
-        return state
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["I"], target, noise=noise)
 
 
 class H(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["H"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
 
 
 class T(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["T"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
 
 
 class S(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"])
+    def __init__(
+        self,
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__(
+            OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"], noise=noise
+        )
 
 
 class SDagger(Primitive):
-    def __init__(self, target: int):
+    def __init__(
+        self,
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
         super().__init__(
-            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"]
+            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"], noise=noise
         )
 
 
 class Projector(Primitive):
-    def __init__(self, qubit_support: int | tuple[int, ...], ket: str, bra: str):
+    def __init__(
+        self,
+        qubit_support: int | tuple[int, ...],
+        ket: str,
+        bra: str,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
 
         qubit_support = qubit_support_as_tuple(qubit_support)
         if len(ket) != len(bra):
@@ -164,48 +190,84 @@ class Projector(Primitive):
             )
         ket_state = product_state(ket).flatten()
         bra_state = product_state(bra).flatten()
-        super().__init__(OPERATIONS_DICT["PROJ"](ket_state, bra_state), qubit_support)
+        super().__init__(
+            OPERATIONS_DICT["PROJ"](ket_state, bra_state), qubit_support, noise=noise
+        )
 
 
 class N(Primitive):
-    def __init__(self, target: int):
-        super().__init__(OPERATIONS_DICT["N"], target)
+    def __init__(
+        self,
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["N"], target, noise=noise)
 
 
 class SWAP(Primitive):
-    def __init__(self, i: int, j: int):
-        super().__init__(OPERATIONS_DICT["SWAP"], (i, j))
+    def __init__(
+        self,
+        i: int,
+        j: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__(OPERATIONS_DICT["SWAP"], (i, j), noise=noise)
 
 
 class CSWAP(Primitive):
-    def __init__(self, control: int, target: tuple[int, ...]):
+    def __init__(
+        self,
+        control: int,
+        target: tuple[int, ...],
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
         if not isinstance(target, tuple) or len(target) != 2:
-            raise ValueError("Target qubits must be a tuple with two qubits")
+            raise ValueError("Target qubits must be a tuple with two qubits.")
         support = Support(target=qubit_support_as_tuple(control) + target)
         super().__init__(OPERATIONS_DICT["CSWAP"], support)
 
 
 class CNOT(ControlledPrimitive):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("X", control, target)
+    def __init__(
+        self,
+        control: int | tuple[int, ...],
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__("X", control, target, noise=noise)
 
 
 CX = CNOT
 
 
 class CY(ControlledPrimitive):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("Y", control, target)
+    def __init__(
+        self,
+        control: int | tuple[int, ...],
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__("Y", control, target, noise=noise)
 
 
 class CZ(ControlledPrimitive):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("Z", control, target)
+    def __init__(
+        self,
+        control: int | tuple[int, ...],
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__("Z", control, target, noise=noise)
 
 
 class Toffoli(ControlledPrimitive):
-    def __init__(self, control: int | tuple[int, ...], target: int):
-        super().__init__("X", control, target)
+    def __init__(
+        self,
+        control: int | tuple[int, ...],
+        target: int,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+    ):
+        super().__init__("X", control, target, noise=noise)
 
 
 OPS_PAULI = {X, Y, Z, I}

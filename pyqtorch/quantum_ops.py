@@ -9,11 +9,13 @@ from typing import Any, Callable
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator, operator_product
+from pyqtorch.apply import apply_density_mat, apply_operator
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
+from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.utils import (
     DensityMatrix,
+    density_mat,
     expand_operator,
     permute_basis,
     qubit_support_as_tuple,
@@ -86,9 +88,9 @@ class Support:
         if not self.target:
             return f"{self.__class__.__name__}.target_all()"
 
-        subspace = f"target={self.target}"
+        subspace = f"target: {self.target}"
         if self.control:
-            subspace += f", control={self.control}"
+            subspace += f", control: {self.control}"
 
         return f"{self.__class__.__name__}({subspace})"
 
@@ -112,6 +114,7 @@ class QuantumOperation(torch.nn.Module):
         operation: Tensor,
         qubit_support: int | tuple[int, ...] | Support,
         operator_function: Callable | None = None,
+        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ) -> None:
         """Initializes QuantumOperation
 
@@ -147,6 +150,8 @@ class QuantumOperation(torch.nn.Module):
             self._operator_function = self._default_operator_function
         else:
             self._operator_function = operator_function
+
+        self.noise: NoiseProtocol | dict[str, NoiseProtocol] | None = noise
 
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
@@ -208,7 +213,7 @@ class QuantumOperation(torch.nn.Module):
         return hash(self.qubit_support)
 
     def extra_repr(self) -> str:
-        return f"{self.qubit_support}"
+        return f"target: {self.qubit_support}" + _repr_noise(self.noise)
 
     @property
     def device(self) -> torch.device:
@@ -313,6 +318,62 @@ class QuantumOperation(torch.nn.Module):
         else:
             return expand_operator(blockmat, self.qubit_support, full_support)
 
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        if isinstance(state, DensityMatrix):
+            n_qubits = int(log2(state.size(1)))
+            full_support = tuple(range(n_qubits))
+            return apply_density_mat(
+                self.tensor(values, embedding, full_support=full_support), state
+            )
+        else:
+            return apply_operator(
+                state,
+                self.tensor(values, embedding),
+                self.qubit_support,
+                len(state.size()) - 1,
+            )
+
+    def _noise_forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        if not isinstance(state, DensityMatrix):
+            state = density_mat(state)
+        n_qubits = int(log2(state.size(1)))
+        full_support = tuple(range(n_qubits))
+        state = apply_density_mat(
+            self.tensor(values, embedding, full_support=full_support), state
+        )
+        if isinstance(self.noise, dict):
+            for noise_instance in self.noise.values():
+                protocol = noise_instance.protocol_to_gate()
+                noise_gate = protocol(
+                    target=(
+                        noise_instance.target
+                        if noise_instance.target is not None
+                        else self.target
+                    ),
+                    error_probability=noise_instance.error_probability,
+                )
+                state = noise_gate(state, values)
+            return state
+        elif isinstance(self.noise, NoiseProtocol):
+            protocol = self.noise.protocol_to_gate()
+            noise_gate = protocol(
+                target=(
+                    self.noise.target if self.noise.target is not None else self.target
+                ),
+                error_probability=self.noise.error_probability,
+            )
+            return noise_gate(state, values)
+
     def forward(
         self,
         state: Tensor,
@@ -329,28 +390,7 @@ class QuantumOperation(torch.nn.Module):
         Returns:
             Tensor: _description_
         """
-        if isinstance(state, DensityMatrix):
-            # TODO: fix error type int | tuple[int, ...] expected "int"
-            # Only supports single-qubit gates
-            if len(self.target) == 1 and len(self.control) == 0:
-                target_qubit = self.target[0]
-                dagger_op = self.dagger(values, embedding)
-                dagger_product = operator_product(state, dagger_op, target_qubit)  # type: ignore [arg-type]
-                return DensityMatrix(
-                    operator_product(
-                        self.tensor(values, embedding),
-                        dagger_product,
-                        target_qubit,  # type: ignore [arg-type]
-                    )
-                )
-            else:
-                raise NotImplementedError(
-                    "Density matrices operations are only supported with single-qubit gates"
-                )
+        if self.noise:
+            return self._noise_forward(state, values, embedding)
         else:
-            return apply_operator(
-                state,
-                self.tensor(values, embedding),
-                self.qubit_support,
-                len(state.size()) - 1,
-            )
+            return self._forward(state, values, embedding)

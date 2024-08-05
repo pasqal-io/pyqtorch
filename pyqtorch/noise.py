@@ -1,53 +1,48 @@
 from __future__ import annotations
 
-from math import sqrt
+import sys
+from math import log2, sqrt
+from typing import Any
 
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import operator_product
+from pyqtorch.apply import apply_density_mat
 from pyqtorch.embed import Embedding
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT, _dagger
-from pyqtorch.utils import DensityMatrix, density_mat
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
+from pyqtorch.utils import DensityMatrix, density_mat, qubit_support_as_tuple
 
 
 class Noise(torch.nn.Module):
     def __init__(
-        self, kraus: list[Tensor], target: int, probabilities: tuple[float, ...] | float
+        self,
+        kraus: list[Tensor],
+        target: int,
+        error_probabilities: tuple[float, ...] | float,
     ) -> None:
         super().__init__()
         self.target: int = target
-        self.qubit_support: tuple[int, ...] = (self.target,)
+        self.qubit_support: tuple[int, ...] = qubit_support_as_tuple(self.target)
         for index, tensor in enumerate(kraus):
             self.register_buffer(f"kraus_{index}", tensor)
         self._device: torch.device = kraus[0].device
-        self.probabilities: tuple[float, ...] | float = probabilities
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return (
-                self.__class__.__name__ == other.__class__.__name__
-                and self.probabilities == other.probabilities
-            )
-        return False
+        self._dtype: torch.dtype = kraus[0].dtype
+        self.error_probabilities: tuple[float, ...] | float = error_probabilities
 
     def extra_repr(self) -> str:
-        return f"'qubit_support'={self.qubit_support}, 'probabilities'={self.probabilities}"
+        return f"target: {self.qubit_support}, prob: {self.probabilities}"
 
     @property
     def kraus_operators(self) -> list[Tensor]:
         return [getattr(self, f"kraus_{i}") for i in range(len(self._buffers))]
 
-    def unitary(
+    def _tensor(
         self,
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> list[Tensor]:
         # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
         return [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
-
-    def dagger(self, values: dict[str, Tensor] | Tensor = dict()) -> list[Tensor]:
-        return [_dagger(kraus_op) for kraus_op in self.unitary(values)]
 
     def forward(
         self,
@@ -75,15 +70,10 @@ class Noise(torch.nn.Module):
         """
         if not isinstance(state, DensityMatrix):
             state = density_mat(state)
+        n_qubits = int(log2(state.size(1)))
         rho_evols: list[Tensor] = []
-        for kraus_unitary, kraus_dagger in zip(
-            self.unitary(values), self.dagger(values)
-        ):
-            rho_evol: Tensor = operator_product(
-                kraus_unitary,
-                operator_product(state, kraus_dagger, self.target),
-                self.target,
-            )
+        for kraus in self.tensor(values, n_qubits):
+            rho_evol: Tensor = apply_density_mat(kraus, state)
             rho_evols.append(rho_evol)
         rho_final: Tensor = torch.stack(rho_evols, dim=0)
         rho_final = torch.sum(rho_final, dim=0)
@@ -93,10 +83,41 @@ class Noise(torch.nn.Module):
     def device(self) -> torch.device:
         return self._device
 
-    def to(self, device: torch.device) -> Noise:
-        super().to(device)
-        self._device = device
+    @property
+    def dtype(self) -> torch.dtype:
+        return self._dtype
+
+    def to(self, *args: Any, **kwargs: Any) -> Noise:
+        super().to(*args, **kwargs)
+        self._device = self.kraus_0.device
+        self._dtype = self.kraus_0.dtype
         return self
+
+    def tensor(
+        self, values: dict[str, Tensor] = dict(), n_qubits: int = 1
+    ) -> list[Tensor]:
+        block_mats = self._tensor(values)
+        mats = []
+        for blockmat in block_mats:
+            if n_qubits == 1:
+                mats.append(blockmat)
+            else:
+                full_sup = tuple(i for i in range(n_qubits))
+                support = tuple(sorted(self.qubit_support))
+                mat = (
+                    IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
+                    if support[0] != full_sup[0]
+                    else blockmat
+                )
+                for i in full_sup[1:]:
+                    if i == support[0]:
+                        other = blockmat
+                        mat = torch.kron(mat.contiguous(), other.contiguous())
+                    elif i not in support:
+                        other = IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
+                        mat = torch.kron(mat.contiguous(), other.contiguous())
+                mats.append(mat)
+        return mats
 
 
 class BitFlip(Noise):
@@ -110,23 +131,23 @@ class BitFlip(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        probability (float): The probability of a bit flip error.
+        error_probability (float): The probability of a bit flip error.
 
     Raises:
-        TypeError: If the probability value is not a float.
+        TypeError: If the error_probability value is not a float.
     """
 
     def __init__(
         self,
         target: int,
-        probability: float,
+        error_probability: float,
     ):
-        if probability > 1.0 or probability < 0.0:
-            raise ValueError("The probability value is not a correct probability")
-        K0: Tensor = sqrt(1.0 - probability) * IMAT
-        K1: Tensor = sqrt(probability) * XMAT
+        if error_probability > 1.0 or error_probability < 0.0:
+            raise ValueError("The error_probability value is not a correct probability")
+        K0: Tensor = sqrt(1.0 - error_probability) * IMAT
+        K1: Tensor = sqrt(error_probability) * XMAT
         kraus_bitflip: list[Tensor] = [K0, K1]
-        super().__init__(kraus_bitflip, target, probability)
+        super().__init__(kraus_bitflip, target, error_probability)
 
 
 class PhaseFlip(Noise):
@@ -140,23 +161,23 @@ class PhaseFlip(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        probability (float): The probability of phase flip error.
+        error_probability (float): The probability of phase flip error.
 
     Raises:
-        TypeError: If the probability value is not a float.
+        TypeError: If the error_probability value is not a float.
     """
 
     def __init__(
         self,
         target: int,
-        probability: float,
+        error_probability: float,
     ):
-        if probability > 1.0 or probability < 0.0:
-            raise ValueError("The probability value is not a correct probability")
-        K0: Tensor = sqrt(1.0 - probability) * IMAT
-        K1: Tensor = sqrt(probability) * ZMAT
+        if error_probability > 1.0 or error_probability < 0.0:
+            raise ValueError("The error_probability value is not a correct probability")
+        K0: Tensor = sqrt(1.0 - error_probability) * IMAT
+        K1: Tensor = sqrt(error_probability) * ZMAT
         kraus_phaseflip: list[Tensor] = [K0, K1]
-        super().__init__(kraus_phaseflip, target, probability)
+        super().__init__(kraus_phaseflip, target, error_probability)
 
 
 class Depolarizing(Noise):
@@ -173,25 +194,25 @@ class Depolarizing(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        probability (float): The probability of depolarizing error.
+        error_probability (float): The probability of depolarizing error.
 
     Raises:
-        TypeError: If the probability value is not a float.
+        TypeError: If the error_probability value is not a float.
     """
 
     def __init__(
         self,
         target: int,
-        probability: float,
+        error_probability: float,
     ):
-        if probability > 1.0 or probability < 0.0:
-            raise ValueError("The probability value is not a correct probability")
-        K0: Tensor = sqrt(1.0 - probability) * IMAT
-        K1: Tensor = sqrt(probability / 3) * XMAT
-        K2: Tensor = sqrt(probability / 3) * YMAT
-        K3: Tensor = sqrt(probability / 3) * ZMAT
+        if error_probability > 1.0 or error_probability < 0.0:
+            raise ValueError("The error_probability value is not a correct probability")
+        K0: Tensor = sqrt(1.0 - error_probability) * IMAT
+        K1: Tensor = sqrt(error_probability / 3) * XMAT
+        K2: Tensor = sqrt(error_probability / 3) * YMAT
+        K3: Tensor = sqrt(error_probability / 3) * ZMAT
         kraus_depolarizing: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(kraus_depolarizing, target, probability)
+        super().__init__(kraus_depolarizing, target, error_probability)
 
 
 class PauliChannel(Noise):
@@ -208,7 +229,8 @@ class PauliChannel(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        probabilities (Tuple[float, ...]): Tuple containing probabilities of X, Y, and Z errors.
+        error_probability (Tuple[float, ...]): Tuple containing probabilities
+            of X, Y, and Z errors.
 
     Raises:
         TypeError: If the probabilities values are not provided in a tuple.
@@ -217,21 +239,25 @@ class PauliChannel(Noise):
     def __init__(
         self,
         target: int,
-        probabilities: tuple[float, ...],
+        error_probability: tuple[float, ...],
     ):
-        sum_prob = sum(probabilities)
+        sum_prob = sum(error_probability)
         if sum_prob > 1.0:
             raise ValueError("The sum of probabilities can't be greater than 1.0")
-        for probability in probabilities:
+        for probability in error_probability:
             if probability > 1.0 or probability < 0.0:
                 raise ValueError("The probability values are not correct probabilities")
-        px, py, pz = probabilities[0], probabilities[1], probabilities[2]
+        px, py, pz = (
+            error_probability[0],
+            error_probability[1],
+            error_probability[2],
+        )
         K0: Tensor = sqrt(1.0 - (px + py + pz)) * IMAT
         K1: Tensor = sqrt(px) * XMAT
         K2: Tensor = sqrt(py) * YMAT
         K3: Tensor = sqrt(pz) * ZMAT
         kraus_pauli_channel: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(kraus_pauli_channel, target, probabilities)
+        super().__init__(kraus_pauli_channel, target, error_probability)
 
 
 class AmplitudeDamping(Noise):
@@ -252,7 +278,7 @@ class AmplitudeDamping(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        rate (float): The damping rate, indicating the probability of amplitude loss.
+        error_probability (float): The damping rate, indicating the probability of amplitude loss.
 
     Raises:
         TypeError: If the rate value is not a float.
@@ -262,8 +288,9 @@ class AmplitudeDamping(Noise):
     def __init__(
         self,
         target: int,
-        rate: float,
+        error_probability: float,
     ):
+        rate = error_probability
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
         K0: Tensor = torch.tensor(
@@ -292,7 +319,7 @@ class PhaseDamping(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        rate (float): The damping rate, indicating the probability of phase damping.
+        error_probability (float): The damping rate, indicating the probability of phase damping.
 
     Raises:
         TypeError: If the rate value is not a float.
@@ -302,8 +329,9 @@ class PhaseDamping(Noise):
     def __init__(
         self,
         target: int,
-        rate: float,
+        error_probability: float,
     ):
+        rate = error_probability
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
         K0: Tensor = torch.tensor(
@@ -335,8 +363,9 @@ class GeneralizedAmplitudeDamping(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        probability (float): The probability of amplitude damping error.
-        rate (float): The damping rate, indicating the probability of generalized amplitude damping.
+        error_probabilities (tuple[float,...]): The first float must be the probability
+            of amplitude damping error, and the second float is the damping rate, indicating
+            the probability of generalized amplitude damping.
 
     Raises:
         TypeError: If the probability or rate values is not float.
@@ -346,9 +375,10 @@ class GeneralizedAmplitudeDamping(Noise):
     def __init__(
         self,
         target: int,
-        probability: float,
-        rate: float,
+        error_probability: tuple[float, ...],
     ):
+        probability = error_probability[0]
+        rate = error_probability[1]
         if probability > 1.0 or probability < 0.0:
             raise ValueError("The probability value is not a correct probability")
         if rate > 1.0 or rate < 0.0:
@@ -366,4 +396,55 @@ class GeneralizedAmplitudeDamping(Noise):
             [[0, 0], [sqrt(rate), 0]], dtype=DEFAULT_MATRIX_DTYPE
         )
         kraus_generalized_amplitude_damping: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(kraus_generalized_amplitude_damping, target, probability)
+        super().__init__(kraus_generalized_amplitude_damping, target, error_probability)
+
+
+class NoiseProtocol:
+    BITFLIP = "BitFlip"
+    PHASEFLIP = "PhaseFlip"
+    DEPOLARIZING = "Depolarizing"
+    PAULI_CHANNEL = "PauliChannel"
+    AMPLITUDE_DAMPING = "AmplitudeDamping"
+    PHASE_DAMPING = "PhaseDamping"
+    GENERALIZED_AMPLITUDE_DAMPING = "GeneralizedAmplitudeDamping"
+
+    def __init__(self, protocol: str, options: dict = dict()) -> None:
+        self.protocol: str = protocol
+        self.options: dict = options
+
+    def __repr__(self) -> str:
+        if self.target:
+            return (
+                f"{self.protocol}(prob: {self.error_probability}, "
+                f"target: {self.target})"
+            )
+        return f"{self.protocol}(prob: {self.error_probability})"
+
+    @property
+    def error_probability(self):
+        return self.options.get("error_probability")
+
+    @property
+    def target(self):  #! init_state not good size
+        return self.options.get("target")
+
+    def protocol_to_gate(self):
+        try:
+            gate_class = getattr(sys.modules[__name__], self.protocol)
+            return gate_class
+        except AttributeError:
+            raise ValueError(
+                f"The protocol {self.protocol} has not been implemented in pyq yet."
+            )
+
+
+def _repr_noise(noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None) -> str:
+    """Returns the string for noise representation in gates."""
+    noise_info = ""
+    if noise is None:
+        return noise_info
+    elif isinstance(noise, NoiseProtocol):
+        noise_info = str(noise)
+    elif isinstance(noise, dict):
+        noise_info = ", ".join(str(noise_instance) for noise_instance in noise.values())
+    return f", noise: {noise_info}"
