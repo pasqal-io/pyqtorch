@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from math import log2, sqrt
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -25,6 +26,7 @@ class Noise(torch.nn.Module):
         for index, tensor in enumerate(kraus):
             self.register_buffer(f"kraus_{index}", tensor)
         self._device: torch.device = kraus[0].device
+        self._dtype: torch.dtype = kraus[0].dtype
         self.probabilities: tuple[float, ...] | float = error_probability
 
     def extra_repr(self) -> str:
@@ -81,9 +83,14 @@ class Noise(torch.nn.Module):
     def device(self) -> torch.device:
         return self._device
 
-    def to(self, device: torch.device) -> Noise:
-        super().to(device)
-        self._device = device
+    @property
+    def dtype(self) -> torch.dtype:
+        return self._dtype
+
+    def to(self, *args: Any, **kwargs: Any) -> Noise:
+        super().to(*args, **kwargs)
+        self._device = self.kraus_0.device
+        self._dtype = self.kraus_0.dtype
         return self
 
     def tensor(self, values: dict[str, Tensor] = {}, n_qubits: int = 1) -> list[Tensor]:
@@ -96,7 +103,7 @@ class Noise(torch.nn.Module):
                 full_sup = tuple(i for i in range(n_qubits))
                 support = tuple(sorted(self.qubit_support))
                 mat = (
-                    IMAT.clone().to(self.device).unsqueeze(2)
+                    IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
                     if support[0] != full_sup[0]
                     else blockmat
                 )
@@ -105,7 +112,7 @@ class Noise(torch.nn.Module):
                         other = blockmat
                         mat = torch.kron(mat.contiguous(), other.contiguous())
                     elif i not in support:
-                        other = IMAT.clone().to(self.device).unsqueeze(2)
+                        other = IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
                         mat = torch.kron(mat.contiguous(), other.contiguous())
                 mats.append(mat)
         return mats
