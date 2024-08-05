@@ -245,7 +245,9 @@ class PSRExpectation(Function):
             dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(batch_size)
             return dfdx
 
-        def vjp(operation: Parametric, values: dict[str, Tensor]) -> Tensor:
+        def vjp(
+            operation: Parametric | HamiltonianEvolution, values: dict[str, Tensor]
+        ) -> Tensor:
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
 
             Args:
@@ -261,7 +263,7 @@ class PSRExpectation(Function):
                 else (single_gap_shift, shift_pi2)
             )
             return grad_out * psr_fn(  # type: ignore[operator]
-                operation.param_name,  # type: ignore
+                operation.param_name if isinstance(operation, Parametric) else operation.time,  # type: ignore
                 values,
                 operation.spectral_gap,
                 shift,

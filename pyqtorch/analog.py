@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
-from functools import reduce
+from functools import cached_property, reduce
 from logging import getLogger
 from operator import add
 from typing import Any, Callable, Tuple, Union
@@ -471,6 +471,29 @@ class HamiltonianEvolution(Sequence):
             The right generator getter.
         """
         return self._generator_map[self.generator_type]
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying hamiltonian.
+
+        Note: Only works for GeneratorType.TENSOR
+        or GeneratorType.OPERATION.
+
+        Returns:
+            Eigenvalues of the operation.
+        """
+        return self.generator[0].eigenvalues
+
+    @cached_property
+    def spectral_gap(self) -> Tensor:
+        """Difference between the moduli of the two largest eigenvalues of the generator.
+
+        Returns:
+            Tensor: Spectral gap value.
+        """
+        spectrum = self.eigenvals_generator
+        spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
+        return spectral_gap[spectral_gap.nonzero()]
 
     def forward(
         self,

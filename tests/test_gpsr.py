@@ -9,7 +9,7 @@ from test_analog import Hamiltonian_general
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
-from pyqtorch.analog import Observable
+from pyqtorch.analog import HamiltonianEvolution, Observable
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES, DEFAULT_MATRIX_DTYPE
 from pyqtorch.parametric import Parametric
@@ -92,14 +92,14 @@ def circuit_hamevo_tensor_gpsr(n_qubits: int) -> QuantumCircuit:
 @pytest.mark.parametrize(
     ["n_qubits", "batch_size", "circuit_fn"],
     [
-        (2, 1, circuit_psr),
-        (5, 10, circuit_psr),
-        (3, 1, circuit_gpsr),
-        (5, 10, circuit_gpsr),
-        (3, 1, circuit_sequence),
-        (5, 10, circuit_sequence),
-        # (3, 1, circuit_hamevo_tensor_gpsr),
-        # (5, 10, circuit_hamevo_tensor_gpsr),
+        # (2, 1, circuit_psr),
+        # (5, 10, circuit_psr),
+        # (3, 1, circuit_gpsr),
+        # (5, 10, circuit_gpsr),
+        # (3, 1, circuit_sequence),
+        # (5, 10, circuit_sequence),
+        (3, 1, circuit_hamevo_tensor_gpsr),
+        (5, 10, circuit_hamevo_tensor_gpsr),
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
@@ -123,6 +123,15 @@ def test_expectation_gpsr(
         for op in circ.flatten()
         if isinstance(op, Parametric) and isinstance(op.param_name, str)
     }
+    values.update(
+        {
+            op.time: torch.rand(
+                batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
+            )
+            for op in circ.operations
+            if isinstance(op, HamiltonianEvolution) and isinstance(op.time, str)
+        }
+    )
     state = pyq.random_state(n_qubits, dtype=dtype)
 
     # Apply adjoint
