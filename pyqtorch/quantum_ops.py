@@ -241,6 +241,24 @@ class QuantumOperation(torch.nn.Module):
         return torch.linalg.eigvalsh(self.operation).reshape(-1, 1)
 
     @cached_property
+    def eigenvalues(
+        self,
+        values: dict[str, Tensor] | Tensor = dict(),
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        """Get eigenvalues of the tensor of QuantumOperation.
+
+        Args:
+            values (dict[str, Tensor], optional): Parameter values. Defaults to dict().
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+
+        Returns:
+            Eigenvalues of the related tensor.
+        """
+        blockmat = self.tensor(values, embedding)
+        return torch.linalg.eigvalsh(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+
+    @cached_property
     def spectral_gap(self) -> Tensor:
         """Difference between the moduli of the two largest eigenvalues of the generator.
 

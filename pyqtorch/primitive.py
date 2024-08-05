@@ -62,23 +62,6 @@ class Primitive(QuantumOperation):
             return torch.linalg.eigvalsh(self.generator).reshape(-1, 1)
         pass
 
-    @cached_property
-    def eigenvalues(self) -> Tensor:
-        """Get eigenvalues of the underlying operation.
-
-        Arguments:
-            values: Parameter values.
-
-        Returns:
-            Eigenvalues of the generator operator.
-        """
-        if len(self.operation.size()) == 3:
-            return torch.linalg.eigvalsh(self.operation.permute((2, 0, 1))).reshape(
-                -1, 1
-            )
-        else:
-            return torch.linalg.eigvalsh(self.operation).reshape(-1, 1)
-
 
 class ControlledPrimitive(Primitive):
     """Primitive applied depending on control qubits.
