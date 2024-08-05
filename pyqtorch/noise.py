@@ -96,9 +96,9 @@ class Noise(torch.nn.Module):
     def tensor(
         self, values: dict[str, Tensor] = dict(), n_qubits: int = 1
     ) -> list[Tensor]:
-        blockmats = self._tensor(values)
+        block_mats = self._tensor(values)
         mats = []
-        for blockmat in blockmats:
+        for blockmat in block_mats:
             if n_qubits == 1:
                 mats.append(blockmat)
             else:
