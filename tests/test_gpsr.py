@@ -5,6 +5,7 @@ from typing import Callable
 import pytest
 import torch
 from helpers import random_pauli_hamiltonian
+from test_analog import Hamiltonian_general
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
@@ -66,6 +67,28 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
+def circuit_hamevo_tensor_gpsr(n_qubits: int) -> QuantumCircuit:
+    """Helper function to make an example circuit."""
+
+    ham = Hamiltonian_general(n_qubits)
+    ham_op = pyq.HamiltonianEvolution(ham, "t", qubit_support=tuple(range(n_qubits)))
+
+    ops = [
+        pyq.CRX(0, 1, "theta_0"),
+        pyq.X(1),
+        pyq.CRY(1, 2, "theta_1"),
+        ham_op,
+        pyq.CRX(1, 2, "theta_2"),
+        pyq.X(0),
+        pyq.CRY(0, 1, "theta_3"),
+        pyq.CNOT(0, 1),
+    ]
+
+    circ = QuantumCircuit(n_qubits, ops)
+
+    return circ
+
+
 @pytest.mark.parametrize(
     ["n_qubits", "batch_size", "circuit_fn"],
     [
@@ -75,6 +98,8 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
         (5, 10, circuit_gpsr),
         (3, 1, circuit_sequence),
         (5, 10, circuit_sequence),
+        # (3, 1, circuit_hamevo_tensor_gpsr),
+        # (5, 10, circuit_hamevo_tensor_gpsr),
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])

@@ -276,6 +276,14 @@ class PSRExpectation(Function):
                     else:
                         grads[op.param_name] = vjp(op, values)
 
+        for op in ctx.circuit.operations:
+            if isinstance(op, HamiltonianEvolution) and isinstance(op.time, str):
+                if values[op.time].requires_grad:
+                    if grads[op.time] is not None:
+                        grads[op.time] += vjp(op, values)
+                    else:
+                        grads[op.time] = vjp(op, values)
+
         return (
             None,
             None,
@@ -304,10 +312,10 @@ def check_support_psr(circuit: Sequence):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
             )
-        if (
-            isinstance(op, HamiltonianEvolution)
-            and op.generator_type == GeneratorType.SYMBOL
-        ):
+        if isinstance(op, HamiltonianEvolution) and op.generator_type in [
+            GeneratorType.SYMBOL,
+            GeneratorType.PARAMETRIC_OPERATION,
+        ]:
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)} \
                     whose generator type is {op.generator_type}."
