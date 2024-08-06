@@ -122,8 +122,7 @@ class PSRExpectation(Function):
         """
 
         values = param_dict(ctx.param_names, ctx.saved_tensors)
-        shift_pi2 = torch.tensor(torch.pi) / 2.0
-        shift_multi = 0.5
+        
 
         dtype_values = DEFAULT_REAL_DTYPE
         device = torch.device("cpu")
@@ -131,6 +130,9 @@ class PSRExpectation(Function):
             dtype_values, device = [(v.dtype, v.device) for v in values.values()][0]
         except Exception:
             pass
+
+        shift_pi2 = torch.tensor(torch.pi, dtype = dtype_values) / 2.0
+        shift_multi = 0.5
 
         def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
@@ -155,7 +157,7 @@ class PSRExpectation(Function):
             param_name: str,
             values: dict[str, Tensor],
             spectral_gap: Tensor,
-            shift: Tensor = torch.tensor(torch.pi) / 2.0,
+            shift: Tensor = shift_pi2,
         ) -> Tensor:
             """Implements single gap PSR rule.
 
@@ -182,14 +184,14 @@ class PSRExpectation(Function):
             return (
                 spectral_gap
                 * (f_plus - f_minus)
-                / (4 * torch.sin(spectral_gap * shift / 2))
+                / (4.0 * torch.sin(spectral_gap * shift / 2.0))
             )
 
         def multi_gap_shift(
             param_name: str,
             values: dict[str, Tensor],
             spectral_gaps: Tensor,
-            shift_prefac: float = 0.5,
+            shift_prefac: float = shift_multi,
         ) -> Tensor:
             """Implement multi gap PSR rule.
 
@@ -246,45 +248,49 @@ class PSRExpectation(Function):
             return dfdx
 
         def vjp(
-            operation: Parametric | HamiltonianEvolution, values: dict[str, Tensor]
+            param_name: str, spectral_gap: Tensor, values: dict[str, Tensor]
         ) -> Tensor:
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
 
             Args:
-                operation: Parametric operation to compute PSR.
+                param_name: Parameter name to compute gradient over.
+                spectral_gap: Spectral gap of the corresponding operation.
                 values: Dictionary with parameter values.
 
             Returns:
                 Updated jacobian by PSR.
             """
-            psr_fn, shift = (
-                (multi_gap_shift, shift_multi)
-                if len(operation.spectral_gap) > 1
-                else (single_gap_shift, shift_pi2)
+            psr_fn = (
+                multi_gap_shift
+                if len(spectral_gap) > 1
+                else single_gap_shift
             )
+
             return grad_out * psr_fn(  # type: ignore[operator]
-                operation.param_name if isinstance(operation, Parametric) else operation.time,  # type: ignore
+                param_name,  # type: ignore
                 values,
-                operation.spectral_gap,
-                shift,
+                spectral_gap,
             )
 
         grads = {p: None for p in ctx.param_names}
+
+        def update_gradient(param_name: str, spectral_gap: Tensor):
+            if values[param_name].requires_grad:
+                if grads[param_name] is not None:
+                    grads[param_name] += vjp(param_name, spectral_gap, values)
+                else:
+                    grads[param_name] = vjp(param_name, spectral_gap, values)
+
+
         for op in ctx.circuit.flatten():
+            
             if isinstance(op, Parametric) and isinstance(op.param_name, str):
-                if values[op.param_name].requires_grad:
-                    if grads[op.param_name] is not None:
-                        grads[op.param_name] += vjp(op, values)
-                    else:
-                        grads[op.param_name] = vjp(op, values)
+                update_gradient(op.param_name, op.spectral_gap)
+                
 
         for op in ctx.circuit.operations:
             if isinstance(op, HamiltonianEvolution) and isinstance(op.time, str):
-                if values[op.time].requires_grad:
-                    if grads[op.time] is not None:
-                        grads[op.time] += vjp(op, values)
-                    else:
-                        grads[op.time] = vjp(op, values)
+                update_gradient(op.time, op.spectral_gap * 2.0)
 
         return (
             None,

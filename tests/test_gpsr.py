@@ -92,14 +92,13 @@ def circuit_hamevo_tensor_gpsr(n_qubits: int) -> QuantumCircuit:
 @pytest.mark.parametrize(
     ["n_qubits", "batch_size", "circuit_fn"],
     [
-        # (2, 1, circuit_psr),
-        # (5, 10, circuit_psr),
-        # (3, 1, circuit_gpsr),
-        # (5, 10, circuit_gpsr),
-        # (3, 1, circuit_sequence),
-        # (5, 10, circuit_sequence),
+        (2, 1, circuit_psr),
+        (5, 10, circuit_psr),
+        (3, 1, circuit_gpsr),
+        (5, 10, circuit_gpsr),
+        (3, 1, circuit_sequence),
+        (5, 10, circuit_sequence),
         (3, 1, circuit_hamevo_tensor_gpsr),
-        (5, 10, circuit_hamevo_tensor_gpsr),
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])

@@ -67,14 +67,38 @@ OPERATIONS_DICT = {
 
 
 def parametric_unitary(
-    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
+    theta: torch.Tensor,
+    P: torch.Tensor,
+    identity_mat: torch.Tensor,
+    batch_size: int,
+    a: float = 0.5,  # noqa: E741
 ) -> torch.Tensor:
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
+    """Compute the exponentiation of a matrix :math:`P`
+
+    The exponentiation is given by:
+    :math:`exp(-i a \\theta P ) = I cos(r \\theta) - i a P sin(r \\theta) / r`
+
+    where :math:`a` is a prefactor
+    and :math:`r = a * sg / 2`, :math:`sg` corresponding to the spectral gap.
+
+    Here, we assume :math:`sg = 2`
+
+    Args:
+        theta (torch.Tensor): Parameter values.
+        P (torch.Tensor): Matrix to exponentiate.
+        I (torch.Tensor): Identity matrix
+        batch_size (int): Batch size of parameters.
+        a (float): Prefactor.
+
+    Returns:
+        torch.Tensor: The exponentiation of P
+    """
+    cos_t = torch.cos(theta * a).unsqueeze(0).unsqueeze(1)
     cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
+    sin_t = torch.sin(theta * a).unsqueeze(0).unsqueeze(1)
     sin_t = sin_t.repeat((2, 2, 1))
 
-    batch_imat = I.unsqueeze(2).repeat(1, 1, batch_size)
+    batch_imat = identity_mat.unsqueeze(2).repeat(1, 1, batch_size)
     batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
 
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat

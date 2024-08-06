@@ -482,6 +482,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
+
         return self.generator[0].eigenvalues
 
     @cached_property
