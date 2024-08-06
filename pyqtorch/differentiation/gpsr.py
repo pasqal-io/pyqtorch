@@ -11,7 +11,7 @@ from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
 from pyqtorch.circuit import QuantumCircuit, Sequence
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
-from pyqtorch.parametric import Parametric
+from pyqtorch.primitives import Parametric
 from pyqtorch.utils import param_dict
 
 logger = getLogger(__name__)

@@ -11,7 +11,7 @@ from pyqtorch import DiffMode, expectation
 from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
-from pyqtorch.parametric import Parametric
+from pyqtorch.primitives import Parametric
 from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL
 
 

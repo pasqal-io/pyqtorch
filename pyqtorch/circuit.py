@@ -17,8 +17,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 from pyqtorch.apply import apply_operator
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger, add_batch_dim
-from pyqtorch.parametric import RX, RY, Parametric
-from pyqtorch.primitive import CNOT, Primitive
+from pyqtorch.primitives import CNOT, RX, RY, Parametric, Primitive
 from pyqtorch.utils import (
     DensityMatrix,
     DropoutMode,

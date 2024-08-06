@@ -14,7 +14,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.embed import Embedding
-from pyqtorch.primitive import Primitive
+from pyqtorch.primitives import Primitive
 from pyqtorch.utils import (
     ATOL,
     Operator,

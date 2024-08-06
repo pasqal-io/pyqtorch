@@ -9,7 +9,7 @@ import torch
 import pyqtorch as pyq
 from pyqtorch.circuit import hea
 from pyqtorch.utils import DiffMode
-from pyqtorch.parametric import Parametric
+from pyqtorch.primitives import Parametric
 import matplotlib.pyplot as plt
 
 from torch.nn.functional import mse_loss

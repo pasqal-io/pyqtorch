@@ -10,8 +10,7 @@ from pyqtorch.analog import Observable, Scale
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.embed import Embedding
-from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import Primitive
+from pyqtorch.primitives import Parametric, Primitive
 from pyqtorch.utils import inner_prod, param_dict
 
 logger = getLogger(__name__)
