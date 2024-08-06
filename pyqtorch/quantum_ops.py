@@ -14,6 +14,7 @@ from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
 from pyqtorch.utils import (
     DensityMatrix,
+    _round_complex,
     expand_operator,
     permute_basis,
     qubit_support_as_tuple,
@@ -256,7 +257,7 @@ class QuantumOperation(torch.nn.Module):
             Eigenvalues of the related tensor.
         """
         blockmat = self.tensor(values, embedding)
-        return torch.linalg.eigvalsh(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+        return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
 
     @cached_property
     def spectral_gap(self) -> Tensor:
@@ -266,7 +267,10 @@ class QuantumOperation(torch.nn.Module):
             Tensor: Spectral gap value.
         """
         spectrum = self.eigenvals_generator
-        spectral_gap = torch.unique(torch.abs(torch.tril(spectrum - spectrum.T)))
+        diffs = spectrum - spectrum.T
+        if torch.is_complex(diffs):
+            diffs = _round_complex(diffs)
+        spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 
     def _default_operator_function(

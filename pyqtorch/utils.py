@@ -48,6 +48,16 @@ def qubit_support_as_tuple(support: int | tuple[int, ...]) -> tuple[int, ...]:
     return qubit_support
 
 
+def _round_complex(t: Tensor, decimals: int = 4) -> Tensor:
+    def _round(_t: Tensor) -> Tensor:
+        r = _t.real.round(decimals=decimals)
+        i = _t.imag.round(decimals=decimals)
+        return torch.complex(r, i)
+
+    fn = torch.vmap(_round)
+    return fn(t)
+
+
 def inner_prod(bra: Tensor, ket: Tensor) -> Tensor:
     """
     Compute the inner product :math:`\\langle\\bra|\\ket\\rangle`

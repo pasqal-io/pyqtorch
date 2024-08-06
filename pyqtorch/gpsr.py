@@ -122,7 +122,6 @@ class PSRExpectation(Function):
         """
 
         values = param_dict(ctx.param_names, ctx.saved_tensors)
-        
 
         dtype_values = DEFAULT_REAL_DTYPE
         device = torch.device("cpu")
@@ -131,7 +130,7 @@ class PSRExpectation(Function):
         except Exception:
             pass
 
-        shift_pi2 = torch.tensor(torch.pi, dtype = dtype_values) / 2.0
+        shift_pi2 = torch.tensor(torch.pi, dtype=dtype_values) / 2.0
         shift_multi = 0.5
 
         def expectation_fn(values: dict[str, Tensor]) -> Tensor:
@@ -260,11 +259,7 @@ class PSRExpectation(Function):
             Returns:
                 Updated jacobian by PSR.
             """
-            psr_fn = (
-                multi_gap_shift
-                if len(spectral_gap) > 1
-                else single_gap_shift
-            )
+            psr_fn = multi_gap_shift if len(spectral_gap) > 1 else single_gap_shift
 
             return grad_out * psr_fn(  # type: ignore[operator]
                 param_name,  # type: ignore
@@ -281,16 +276,14 @@ class PSRExpectation(Function):
                 else:
                     grads[param_name] = vjp(param_name, spectral_gap, values)
 
-
         for op in ctx.circuit.flatten():
-            
+
             if isinstance(op, Parametric) and isinstance(op.param_name, str):
                 update_gradient(op.param_name, op.spectral_gap)
-                
 
         for op in ctx.circuit.operations:
             if isinstance(op, HamiltonianEvolution) and isinstance(op.time, str):
-                update_gradient(op.time, op.spectral_gap * 2.0)
+                update_gradient(op.time, op.spectral_gap)
 
         return (
             None,
