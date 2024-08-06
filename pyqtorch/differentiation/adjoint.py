@@ -6,10 +6,11 @@ from typing import Any, Tuple
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-from pyqtorch.analog import Observable, Scale
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.composite import Scale
 from pyqtorch.embed import Embedding
+from pyqtorch.hamiltonians import Observable
 from pyqtorch.primitives import Parametric, Primitive
 from pyqtorch.utils import inner_prod, param_dict
 

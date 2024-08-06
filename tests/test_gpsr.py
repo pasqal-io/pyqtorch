@@ -8,8 +8,8 @@ from helpers import random_pauli_hamiltonian
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
-from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.hamiltonians import Observable
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.primitives import Parametric
 from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL

@@ -8,7 +8,7 @@ import torch
 from helpers import calc_mat_vec_wavefunction, random_pauli_hamiltonian
 
 import pyqtorch as pyq
-from pyqtorch.analog import GeneratorType
+from pyqtorch.hamiltonians import GeneratorType
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     DEFAULT_REAL_DTYPE,

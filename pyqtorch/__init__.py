@@ -46,16 +46,17 @@ logger.setLevel(LOG_LEVEL)
 logger.info(f"PyQTorch logger successfully setup with log level {LOG_LEVEL}")
 
 
-from .analog import (
-    Add,
-    HamiltonianEvolution,
-    Observable,
-    Scale,
-)
 from .api import expectation, run, sample
 from .apply import apply_operator
-from .circuit import DropoutQuantumCircuit, Merge, QuantumCircuit, Sequence
+from .circuit import DropoutQuantumCircuit, QuantumCircuit
+from .composite import (
+    Add,
+    Merge,
+    Scale,
+    Sequence,
+)
 from .embed import ConcretizedCallable, Embedding
+from .hamiltonians import HamiltonianEvolution, Observable
 from .noise import (
     AmplitudeDamping,
     BitFlip,

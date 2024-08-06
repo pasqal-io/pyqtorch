@@ -6,8 +6,8 @@ import pytest
 import torch
 from helpers import calc_mat_vec_wavefunction, get_op_support, random_pauli_hamiltonian
 
-from pyqtorch.analog import Add, GeneratorType, HamiltonianEvolution, Scale
-from pyqtorch.circuit import Sequence
+from pyqtorch.composite import Add, Scale, Sequence
+from pyqtorch.hamiltonians import GeneratorType, HamiltonianEvolution
 from pyqtorch.primitives import (
     CNOT,
     OPS_DIGITAL,

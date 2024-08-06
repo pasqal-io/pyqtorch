@@ -4,9 +4,8 @@ import random
 
 import torch
 
-from pyqtorch.analog import Add, Scale
 from pyqtorch.apply import apply_operator
-from pyqtorch.circuit import Sequence
+from pyqtorch.composite import Add, Scale, Sequence
 from pyqtorch.primitives import (
     OPS_1Q,
     OPS_2Q,
