@@ -6,9 +6,8 @@ from .gates import (
     Depolarizing,
     GeneralizedAmplitudeDamping,
     Noise,
-    NoiseProtocol,
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
-    _repr_noise,
 )
+from .protocol import NoiseProtocol, _repr_noise
