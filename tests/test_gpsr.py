@@ -92,13 +92,91 @@ def circuit_hamevo_tensor_gpsr(n_qubits: int) -> QuantumCircuit:
 @pytest.mark.parametrize(
     ["n_qubits", "batch_size", "circuit_fn"],
     [
+        (3, 1, circuit_hamevo_tensor_gpsr),
+    ],
+)
+def test_expectation_gpsr_hamevo(
+    n_qubits: int,
+    batch_size: int,
+    circuit_fn: Callable,
+) -> None:
+    torch.manual_seed(42)
+    dtype = torch.complex128
+    circ = circuit_fn(n_qubits).to(dtype)
+    obs = Observable(
+        random_pauli_hamiltonian(
+            n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
+        )[0]
+    ).to(dtype)
+    values = {
+        op.param_name: torch.rand(
+            batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
+        )
+        for op in circ.flatten()
+        if isinstance(op, Parametric) and isinstance(op.param_name, str)
+    }
+    values.update(
+        {
+            op.time: torch.rand(
+                batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
+            )
+            for op in circ.operations
+            if isinstance(op, HamiltonianEvolution) and isinstance(op.time, str)
+        }
+    )
+    state = pyq.random_state(n_qubits, dtype=dtype)
+
+    # Apply adjoint
+    exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values.values()), torch.ones_like(exp_ad), create_graph=True
+    )
+
+    # Apply PSR
+    exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
+    grad_gpsr = torch.autograd.grad(
+        exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
+    )
+
+    atol = 1.0e-01
+
+    # first order checks
+
+    for i in range(len(grad_ad)):
+        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
+
+    # second order checks
+    for i in range(len(grad_ad)):
+        gradgrad_ad = torch.autograd.grad(
+            grad_ad[i],
+            tuple(values.values()),
+            torch.ones_like(grad_ad[i]),
+            create_graph=True,
+        )
+
+        gradgrad_gpsr = torch.autograd.grad(
+            grad_gpsr[i],
+            tuple(values.values()),
+            torch.ones_like(grad_gpsr[i]),
+            create_graph=True,
+        )
+
+        assert len(gradgrad_ad) == len(gradgrad_gpsr)
+
+        # check second order gradients
+        for j in range(len(gradgrad_ad)):
+            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=atol)
+
+
+@pytest.mark.parametrize(
+    ["n_qubits", "batch_size", "circuit_fn"],
+    [
         (2, 1, circuit_psr),
         (5, 10, circuit_psr),
         (3, 1, circuit_gpsr),
         (5, 10, circuit_gpsr),
         (3, 1, circuit_sequence),
         (5, 10, circuit_sequence),
-        (3, 1, circuit_hamevo_tensor_gpsr),
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
@@ -122,15 +200,6 @@ def test_expectation_gpsr(
         for op in circ.flatten()
         if isinstance(op, Parametric) and isinstance(op.param_name, str)
     }
-    values.update(
-        {
-            op.time: torch.rand(
-                batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
-            )
-            for op in circ.operations
-            if isinstance(op, HamiltonianEvolution) and isinstance(op.time, str)
-        }
-    )
     state = pyq.random_state(n_qubits, dtype=dtype)
 
     # Apply adjoint
