@@ -7,7 +7,7 @@ from operator import add
 from functools import reduce
 import torch
 import pyqtorch as pyq
-from pyqtorch.circuit import hea
+from pyqtorch.composite import hea
 from pyqtorch.utils import DiffMode
 from pyqtorch.primitives import Parametric
 import matplotlib.pyplot as plt

@@ -13,7 +13,7 @@ import numpy as np
 import torch
 from torch import Tensor, exp, linspace, ones_like, optim, rand, sin, tensor
 from torch.autograd import grad
-from pyqtorch.circuit import hea
+from pyqtorch.composite import hea
 from pyqtorch import CNOT, RX, RY, QuantumCircuit, Z, expectation, Sequence, Merge, Add, Observable
 from pyqtorch.primitives import Parametric
 from pyqtorch.utils import DiffMode
