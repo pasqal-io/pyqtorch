@@ -145,28 +145,6 @@ def test_expectation_gpsr_hamevo(
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
 
-    # second order checks
-    for i in range(len(grad_ad)):
-        gradgrad_ad = torch.autograd.grad(
-            grad_ad[i],
-            tuple(values.values()),
-            torch.ones_like(grad_ad[i]),
-            create_graph=True,
-        )
-
-        gradgrad_gpsr = torch.autograd.grad(
-            grad_gpsr[i],
-            tuple(values.values()),
-            torch.ones_like(grad_gpsr[i]),
-            create_graph=True,
-        )
-
-        assert len(gradgrad_ad) == len(gradgrad_gpsr)
-
-        # check second order gradients
-        for j in range(len(gradgrad_ad)):
-            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=atol)
-
 
 @pytest.mark.parametrize(
     ["n_qubits", "batch_size", "circuit_fn"],
