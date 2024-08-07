@@ -1,4 +1,4 @@
-name: Linting / Tests / Documentation
+name: Tests / Documentation
 
 on:
   push:
@@ -16,29 +16,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Linting
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10"]
-    steps:
-        - name: Checkout main code and submodules
-          uses: actions/checkout@v4
-        - name: Set up Python ${{ matrix.python-version }}
-          uses: actions/setup-python@v4
-          with:
-            python-version: ${{ matrix.python-version }}
-        - name: Install hatch
-          run: |
-            python -m pip install hatch
-        - name: Install main dependencies
-          run: |
-            python -m hatch -v -e tests
-        - name: Lint
-          run: |
-            python -m hatch -e tests run pre-commit run --all-files
-
   unit_tests:
     name: Unit testing
     runs-on: ubuntu-latest
@@ -49,21 +26,19 @@ jobs:
         - name: Checkout main code and submodules
           uses: actions/checkout@v4
         - name: Set up Python ${{ matrix.python-version }}
-          uses: actions/setup-python@v4
+          uses: actions/setup-python@v5
           with:
             python-version: ${{ matrix.python-version }}
         - name: Install hatch
           run: |
-            python -m pip install hatch
-        - name: Install main dependencies
+            pip install --upgrade pip
+            pip install hatch
+        - name: Install main dependencies in test env
           run: |
-            python -m hatch -v -e tests
-        - name: Lint
-          run: |
-            python -m hatch -e tests run pre-commit run --all-files
+            hatch -v -e tests
         - name: Perform unit tests
           run: |
-            python -m hatch -e tests run pytest -n auto
+            hatch -e tests run pytest -n auto
 
   test_docs:
     name: Documentation
@@ -75,41 +50,46 @@ jobs:
         - name: Checkout main code and submodules
           uses: actions/checkout@v4
         - name: Set up Python ${{ matrix.python-version }}
-          uses: actions/setup-python@v4
+          uses: actions/setup-python@v5
           with:
             python-version: ${{ matrix.python-version }}
         - name: Install hatch
           run: |
-            python -m pip install hatch
+            pip install --upgrade pip
+            pip install hatch
         - name: Install main dependencies
           run: |
-            python -m hatch -v -e docs
+            hatch -v -e docs
         - name: Test docs
           run: |
-            python -m hatch run docs:build
+            hatch run docs:build
 
   publish:
     name: Publish to PyPI
     if: startsWith(github.ref, 'refs/tags/v')
     needs: unit_tests
     runs-on: ubuntu-latest
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
     steps:
-      - name: Checkout main code and submodules
+      - name: Checkout main code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
           pip install hatch
-      - name: Build and publish package
+      - name: Build package
         run: |
           hatch build
-          hatch publish -u __token__ -a ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
       - name: Confirm deployment
         timeout-minutes: 5
         run: |
@@ -123,17 +103,28 @@ jobs:
   deploy_docs:
     name: Deploy documentation
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: unit_tests
+    needs: [unit_tests, test_docs]
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout main code and submodules
+    - name: Checkout main code
       uses: actions/checkout@v4
+    - name: Install JetBrains Mono font
+      run: |
+        sudo apt install -y wget unzip fontconfig
+        wget https://download.jetbrains.com/fonts/JetBrainsMono-2.304.zip
+        unzip JetBrainsMono-2.304.zip -d JetBrainsMono
+        mkdir -p /usr/share/fonts/truetype/jetbrains
+        cp JetBrainsMono/fonts/ttf/*.ttf /usr/share/fonts/truetype/jetbrains/
+        fc-cache -f -v
+    - name: Install graphviz
+      run: sudo apt-get install -y graphviz
     - name: Set up Python 3.10
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
     - name: Install Hatch
       run: |
+        pip install --upgrade pip
         pip install hatch
     - name: Deploy docs
       run: |
