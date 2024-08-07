@@ -282,10 +282,6 @@ class PSRExpectation(Function):
             if isinstance(op, Parametric) and isinstance(op.param_name, str):
                 update_gradient(op.param_name, op.spectral_gap)
 
-        for op in ctx.circuit.operations:
-            if isinstance(op, HamiltonianEvolution) and isinstance(op.time, str):
-                update_gradient(op.time, op.spectral_gap)
-
         return (
             None,
             None,
@@ -309,7 +305,7 @@ def check_support_psr(circuit: Sequence):
     """
 
     param_names = list()
-    for op in circuit.operations:
+    for op in circuit.flatten():
         if isinstance(op, Scale):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
@@ -322,8 +318,6 @@ def check_support_psr(circuit: Sequence):
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)} \
                     whose generator type is {op.generator_type}."
             )
-        if isinstance(op, Sequence):
-            param_names += check_support_psr(op)
         elif isinstance(op, Parametric):
             if isinstance(op.param_name, str):
                 param_names.append(op.param_name)

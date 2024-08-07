@@ -423,6 +423,13 @@ class HamiltonianEvolution(Sequence):
         """
         return self.operations
 
+    def flatten(self) -> ModuleList:
+        return ModuleList([self])
+
+    @property
+    def param_name(self) -> Tensor | str:
+        return self.time
+
     def _symbolic_generator(
         self,
         values: dict,

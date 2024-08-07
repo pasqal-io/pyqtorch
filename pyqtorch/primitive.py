@@ -89,7 +89,7 @@ class ControlledPrimitive(Primitive):
         super().__init__(operation, support)
 
     def extra_repr(self) -> str:
-        return f"control:{self.control}, targets:{(self.target,)}"
+        return f"control:{self.control}, target:{self.target}"
 
 
 class X(Primitive):
