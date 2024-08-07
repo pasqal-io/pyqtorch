@@ -76,7 +76,7 @@ class AdjointExpectation(Function):
         values = param_dict(ctx.param_names, param_values)
         grads_dict = {k: None for k in values.keys()}
         for op in ctx.circuit.flatten()[::-1]:
-            if isinstance(op, Primitive):
+            if isinstance(op, (Primitive, Parametric)):
                 ctx.out_state = apply_operator(
                     ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
                 )

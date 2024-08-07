@@ -121,30 +121,24 @@ class Scale(Sequence):
         values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
-        diagonal: bool = False,
     ) -> Operator:
         """
         Get the corresponding unitary over n_qubits.
 
         Arguments:
             values: Parameter value.
+            embedding: An optional embedding.
             full_support: Can be higher than the number of qubit support.
-            diagonal: Whether the operation is diagonal.
-
 
         Returns:
             The unitary representation.
-        Raises:
-            NotImplementedError for the diagonal case.
         """
         scale = (
             values[self.param_name]
             if isinstance(self.param_name, str)
             else self.param_name
         )
-        return scale * self.operations[0].tensor(
-            values, embedding, full_support, diagonal
-        )
+        return scale * self.operations[0].tensor(values, embedding, full_support)
 
     def flatten(self) -> list[Scale]:
         """This method should only be called in the AdjointExpectation,
@@ -204,7 +198,6 @@ class Add(Sequence):
         values: dict = dict(),
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
-        diagonal: bool = False,
     ) -> Tensor:
         """
         Get the corresponding sum of unitaries over n_qubits.
@@ -212,13 +205,10 @@ class Add(Sequence):
         Arguments:
             values: Parameter value.
             Can be higher than the number of qubit support.
-            diagonal: Whether the operation is diagonal.
 
 
         Returns:
             The unitary representation.
-        Raises:
-            NotImplementedError for the diagonal case.
         """
         if full_support is None:
             full_support = self.qubit_support
@@ -232,10 +222,7 @@ class Add(Sequence):
         )
         return reduce(
             add,
-            (
-                op.tensor(values, embedding, full_support, diagonal)
-                for op in self.operations
-            ),
+            (op.tensor(values, embedding, full_support) for op in self.operations),
             mat,
         )
 
@@ -516,7 +503,6 @@ class HamiltonianEvolution(Sequence):
         values: dict = dict(),
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
-        diagonal: bool = False,
     ) -> Operator:
         """Get the corresponding unitary over n_qubits.
 
@@ -525,16 +511,10 @@ class HamiltonianEvolution(Sequence):
         Arguments:
             values: Parameter value.
             Can be higher than the number of qubit support.
-            diagonal: Whether the operation is diagonal.
-
 
         Returns:
             The unitary representation.
-        Raises:
-            NotImplementedError for the diagonal case.
         """
-        if diagonal:
-            raise NotImplementedError
         values_cache_key = str(OrderedDict(values))
         if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
             evolved_op = self._cache_hamiltonian_evo[values_cache_key]
