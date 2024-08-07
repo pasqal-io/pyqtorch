@@ -279,7 +279,7 @@ class PSRExpectation(Function):
 
         for op in ctx.circuit.flatten():
 
-            if isinstance(op, Parametric) and isinstance(op.param_name, str):
+            if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(op.param_name, str):
                 update_gradient(op.param_name, op.spectral_gap)
 
         return (
