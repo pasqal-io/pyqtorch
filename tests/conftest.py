@@ -20,25 +20,23 @@ from pyqtorch.noise import (
     PhaseDamping,
     PhaseFlip,
 )
-from pyqtorch.parametric import (
+from pyqtorch.primitives import (
+    CNOT,
     CPHASE,
     CRX,
     CRY,
     CRZ,
+    CY,
+    CZ,
     PHASE,
     RX,
     RY,
     RZ,
-    ControlledRotationGate,
-    Parametric,
-)
-from pyqtorch.primitive import (
-    CNOT,
-    CY,
-    CZ,
     ControlledPrimitive,
+    ControlledRotationGate,
     H,
     I,
+    Parametric,
     Primitive,
     S,
     T,

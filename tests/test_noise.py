@@ -22,8 +22,17 @@ from pyqtorch.noise import (
     Noise,
     PhaseDamping,
 )
-from pyqtorch.parametric import ControlledRotationGate, Parametric
-from pyqtorch.primitive import ControlledPrimitive, H, I, Primitive, X, Y, Z
+from pyqtorch.primitives import (
+    ControlledPrimitive,
+    ControlledRotationGate,
+    H,
+    I,
+    Parametric,
+    Primitive,
+    X,
+    Y,
+    Z,
+)
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,

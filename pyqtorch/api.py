@@ -7,7 +7,6 @@ from logging import getLogger
 import torch
 from torch import Tensor
 
-from pyqtorch.analog import Observable
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.differentiation import (
@@ -16,6 +15,7 @@ from pyqtorch.differentiation import (
     check_support_psr,
 )
 from pyqtorch.embed import Embedding
+from pyqtorch.hamiltonians import Observable
 from pyqtorch.utils import DiffMode, sample_multinomial
 
 logger = getLogger(__name__)

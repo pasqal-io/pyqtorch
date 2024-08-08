@@ -7,11 +7,12 @@ import torch
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-from pyqtorch.analog import HamiltonianEvolution, Observable, Scale
-from pyqtorch.circuit import QuantumCircuit, Sequence
+from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.composite import Scale, Sequence
 from pyqtorch.embed import Embedding
+from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
-from pyqtorch.parametric import Parametric
+from pyqtorch.primitives import Parametric
 from pyqtorch.utils import param_dict
 
 logger = getLogger(__name__)

@@ -116,7 +116,7 @@ import torch
 
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.noise import BitFlip
-from pyqtorch.primitive import X
+from pyqtorch.primitives import X
 from pyqtorch.utils import product_state
 
 

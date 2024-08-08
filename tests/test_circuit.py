@@ -20,7 +20,7 @@ def test_device_inference() -> None:
 
 
 @pytest.mark.parametrize("fn", [pyq.X, pyq.Z, pyq.Y])
-def test_scale(fn: pyq.primitive.Primitive) -> None:
+def test_scale(fn: pyq.primitives.Primitive) -> None:
     n_qubits = torch.randint(low=1, high=4, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
     state = pyq.random_state(n_qubits)

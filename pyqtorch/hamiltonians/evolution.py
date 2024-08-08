@@ -2,26 +2,23 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
-from functools import reduce
 from logging import getLogger
-from operator import add
-from typing import Any, Callable, Tuple, Union
+from typing import Callable, Tuple, Union
 
 import torch
 from torch import Tensor
-from torch.nn import Module, ModuleList, ParameterDict
+from torch.nn import ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.embed import Embedding
-from pyqtorch.primitive import Primitive
+from pyqtorch.primitives import Primitive
 from pyqtorch.utils import (
     ATOL,
     Operator,
     State,
     StrEnum,
     expand_operator,
-    inner_prod,
     is_diag,
 )
 
@@ -66,202 +63,6 @@ class GeneratorType(StrEnum):
     """Generators of type torch.Tensor in which case a qubit_support needs to be passed."""
     SYMBOL = "symbol"
     """Generators which are symbolic, i.e. will be passed via the 'values' dict by the user."""
-
-
-class Scale(Sequence):
-    """
-    Generic container for multiplying a 'Primitive', 'Sequence' or 'Add' instance by a parameter.
-
-    Attributes:
-        operations: Operations as a Sequence, Add, or a single Primitive operation.
-        param_name: Name of the parameter to multiply operations with.
-    """
-
-    def __init__(
-        self, operations: Union[Primitive, Sequence, Add], param_name: str | Tensor
-    ):
-        """
-        Initializes a Scale object.
-
-        Arguments:
-            operations: Operations as a Sequence, Add, or a single Primitive operation.
-            param_name: Name of the parameter to multiply operations with.
-        """
-        if not isinstance(operations, (Primitive, Sequence, Add)):
-            raise ValueError("Scale only supports a single operation, Sequence or Add.")
-        super().__init__([operations])
-        self.param_name = param_name
-
-    def forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | ParameterDict = dict(),
-        embedding: Embedding | None = None,
-    ) -> State:
-        """
-        Apply the operation(s) multiplying by the parameter value.
-
-        Arguments:
-            state: Input state.
-            values: Parameter value.
-
-        Returns:
-            The transformed state.
-        """
-
-        scale = (
-            values[self.param_name]
-            if isinstance(self.param_name, str)
-            else self.param_name
-        )
-        return scale * self.operations[0].forward(state, values, embedding)
-
-    def tensor(
-        self,
-        values: dict[str, Tensor] = dict(),
-        embedding: Embedding | None = None,
-        full_support: tuple[int, ...] | None = None,
-    ) -> Operator:
-        """
-        Get the corresponding unitary over n_qubits.
-
-        Arguments:
-            values: Parameter value.
-            embedding: An optional embedding.
-            full_support: Can be higher than the number of qubit support.
-
-        Returns:
-            The unitary representation.
-        """
-        scale = (
-            values[self.param_name]
-            if isinstance(self.param_name, str)
-            else self.param_name
-        )
-        return scale * self.operations[0].tensor(values, embedding, full_support)
-
-    def flatten(self) -> list[Scale]:
-        """This method should only be called in the AdjointExpectation,
-        where the `Scale` is only supported for Primitive (and not Sequences)
-        so we don't want to flatten this to preserve the scale parameter.
-
-        Returns:
-            The Scale within a list.
-        """
-        return [self]
-
-    def to(self, *args: Any, **kwargs: Any) -> Scale:
-        """Perform conversions for dtype or device.
-
-        Returns:
-            Converted Scale.
-        """
-        super().to(*args, **kwargs)
-        if not isinstance(self.param_name, str):
-            self.param_name = self.param_name.to(*args, **kwargs)
-
-        return self
-
-
-class Add(Sequence):
-    """
-    The 'add' operation applies all 'operations' to 'state' and returns the sum of states.
-
-    Attributes:
-        operations: List of operations to add up.
-    """
-
-    def __init__(self, operations: list[Module]):
-
-        super().__init__(operations=operations)
-
-    def forward(
-        self,
-        state: State,
-        values: dict[str, Tensor] | ParameterDict = dict(),
-        embedding: Embedding | None = None,
-    ) -> State:
-        """
-        Apply the operations multiplying by the parameter values.
-
-        Arguments:
-            state: Input state.
-            values: Parameter value.
-
-        Returns:
-            The transformed state.
-        """
-        return reduce(add, (op(state, values, embedding) for op in self.operations))
-
-    def tensor(
-        self,
-        values: dict = dict(),
-        embedding: Embedding | None = None,
-        full_support: tuple[int, ...] | None = None,
-    ) -> Tensor:
-        """
-        Get the corresponding sum of unitaries over n_qubits.
-
-        Arguments:
-            values: Parameter value.
-            Can be higher than the number of qubit support.
-
-
-        Returns:
-            The unitary representation.
-        """
-        if full_support is None:
-            full_support = self.qubit_support
-        elif not set(self.qubit_support).issubset(set(full_support)):
-            raise ValueError(
-                "Expanding tensor operation requires a `full_support` argument "
-                "larger than or equal to the `qubit_support`."
-            )
-        mat = torch.zeros(
-            (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
-        )
-        return reduce(
-            add,
-            (op.tensor(values, embedding, full_support) for op in self.operations),
-            mat,
-        )
-
-
-class Observable(Add):
-    """
-    The Observable :math:`O` represents an operator from which
-    we can extract expectation values from quantum states.
-
-    Given an input state :math:`\\ket\\rangle`, the expectation value with :math:`O` is defined as
-    :math:`\\langle\\bra|O\\ket\\rangle`
-
-    Attributes:
-        operations: List of operations.
-        n_qubits: Number of qubits it is defined on.
-    """
-
-    def __init__(
-        self,
-        operations: list[Module] | Primitive | Sequence,
-    ):
-        super().__init__(operations if isinstance(operations, list) else [operations])
-
-    def expectation(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | ParameterDict = dict(),
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
-
-        Arguments:
-            state: Input state.
-            values: Values of parameters.
-
-        Returns:
-            The expectation value.
-        """
-        return inner_prod(state, self.forward(state, values, embedding)).real
 
 
 def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:

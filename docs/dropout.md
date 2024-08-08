@@ -15,7 +15,7 @@ from torch import manual_seed, optim, tensor
 
 import pyqtorch as pyq
 from pyqtorch.circuit import DropoutQuantumCircuit
-from pyqtorch.parametric import Parametric
+from pyqtorch.primitives import Parametric
 from pyqtorch.utils import DropoutMode
 
 seed = 70
