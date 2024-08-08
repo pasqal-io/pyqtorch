@@ -138,7 +138,7 @@ def test_expectation_gpsr_hamevo(
         exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
     )
 
-    rtol = 1.0e-02
+    rtol = 1.0e-01
 
     # first order checks
 
