@@ -273,7 +273,6 @@ class QuantumOperation(torch.nn.Module):
         """
         spectrum = self.eigenvals_generator
         diffs = spectrum - spectrum.T
-        diffs = _round_operator(diffs)
         spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 
