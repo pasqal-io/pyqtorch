@@ -5,6 +5,11 @@ build-backend = "hatchling.build"
 [project]
 name = "pyqtorch"
 description = "An efficient, large-scale emulator designed for quantum machine learning, seamlessly integrated with a PyTorch backend. Please refer to https://pyqtorch.readthedocs.io/en/latest/ for setup and usage info, along with the full documentation."
+readme = "README.md"
+version = "1.4.1"
+requires-python = ">=3.8,<3.13"
+license = { text = "Apache 2.0" }
+keywords = ["quantum"]
 authors = [
     { name = "Slimane Thabet", email = "slimane.thabet@pasqal.com" },
     { name = "Aleksander Wennersteen", email = "aleksander.wennersteen@pasqal.com" },
@@ -18,9 +23,6 @@ authors = [
     { name = "Charles Moussa", email = "charles.moussa@pasqal.com" },
     { name = "Callum Duffy", email = "callum.duffy@pasqal.com" },
 ]
-requires-python = ">=3.8,<3.13"
-license = {text = "Apache 2.0"}
-version = "1.4.0"
 classifiers=[
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
@@ -33,18 +35,67 @@ classifiers=[
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = ["torch", "numpy"]
 
+# always specify a version for each package
+# to maintain consistency
+dependencies = [
+    "torch",
+    "numpy"
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+allow-ambiguous-features = true
+
+# add one or more extras in the dependencies
 [project.optional-dependencies]
-dev = ["flaky","black", "pytest", "pytest-xdist", "pytest-cov", "flake8", "mypy", "pre-commit", "ruff", "matplotlib"]
-testlibs = [ "jax", "qutip~=4.7.5", "jaxlib"]
+dev = [
+    "flaky",
+    "black",
+    "pytest",
+    "pytest-xdist",
+    "pytest-cov",
+    "flake8",
+    "mypy",
+    "pre-commit",
+    "ruff",
+    "matplotlib"
+]
+testlibs = [
+    "jax",
+    "qutip~=4.7.5",
+    "jaxlib"
+]
+
+[project.urls]
+Documentation = "https://pasqal-io.github.io/pyqtorch/latest/"
+Issues = "https://github.com/pasqal-io/pyqtorch/-/issues"
+Source = "https://github.com/pasqal-io/pyqtorch"
+
 [tool.hatch.envs.tests]
-features=["testlibs", "dev"]
+features = [
+    "testlibs",
+    "dev"
+]
 
 [tool.hatch.envs.tests.scripts]
 test = "pytest -n auto {args}"
 test-docs = "hatch -e docs run mkdocs build --clean --strict"
 test-cov = "pytest -n auto --cov=pyqtorch tests/"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = """-vvv --cov-report=term-missing --cov-config=pyproject.toml --cov=template_python --cov=tests"""
+xfail_strict = true
+filterwarnings = [
+  "ignore:Call to deprecated create function FieldDescriptor",
+  "ignore:Call to deprecated create function Descriptor",
+  "ignore:Call to deprecated create function EnumDescriptor",
+  "ignore:Call to deprecated create function EnumValueDescriptor",
+  "ignore:Call to deprecated create function FileDescriptor",
+  "ignore:Call to deprecated create function OneofDescriptor",
+  "ignore:distutils Version classes are deprecated."
+]
 
 [tool.hatch.envs.docs]
 dependencies = [

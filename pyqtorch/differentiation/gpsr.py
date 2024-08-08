@@ -7,11 +7,12 @@ import torch
 from torch import Tensor, no_grad
 from torch.autograd import Function
 
-from pyqtorch.analog import GeneratorType, HamiltonianEvolution, Observable, Scale
-from pyqtorch.circuit import QuantumCircuit, Sequence
+from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.composite import Scale, Sequence
 from pyqtorch.embed import Embedding
+from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
-from pyqtorch.parametric import Parametric
+from pyqtorch.primitives import Parametric
 from pyqtorch.utils import param_dict
 
 logger = getLogger(__name__)
@@ -122,6 +123,8 @@ class PSRExpectation(Function):
         """
 
         values = param_dict(ctx.param_names, ctx.saved_tensors)
+        shift_pi2 = torch.tensor(torch.pi) / 2.0
+        shift_multi = 0.5
 
         dtype_values = DEFAULT_REAL_DTYPE
         device = torch.device("cpu")
@@ -129,9 +132,6 @@ class PSRExpectation(Function):
             dtype_values, device = [(v.dtype, v.device) for v in values.values()][0]
         except Exception:
             pass
-
-        shift_pi2 = torch.tensor(torch.pi, dtype=dtype_values) / 2.0
-        shift_multi = 0.5
 
         def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
@@ -156,7 +156,7 @@ class PSRExpectation(Function):
             param_name: str,
             values: dict[str, Tensor],
             spectral_gap: Tensor,
-            shift: Tensor = shift_pi2,
+            shift: Tensor = torch.tensor(torch.pi) / 2.0,
         ) -> Tensor:
             """Implements single gap PSR rule.
 
@@ -183,14 +183,14 @@ class PSRExpectation(Function):
             return (
                 spectral_gap
                 * (f_plus - f_minus)
-                / (4.0 * torch.sin(spectral_gap * shift / 2.0))
+                / (4 * torch.sin(spectral_gap * shift / 2))
             )
 
         def multi_gap_shift(
             param_name: str,
             values: dict[str, Tensor],
             spectral_gaps: Tensor,
-            shift_prefac: float = shift_multi,
+            shift_prefac: float = 0.5,
         ) -> Tensor:
             """Implement multi gap PSR rule.
 
@@ -244,45 +244,38 @@ class PSRExpectation(Function):
             F = torch.stack(F).reshape(n_eqs, -1)
             R = torch.linalg.solve(M, F)
             dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(batch_size)
-
             return dfdx
 
-        def vjp(
-            param_name: str, spectral_gap: Tensor, values: dict[str, Tensor]
-        ) -> Tensor:
+        def vjp(operation: Parametric, values: dict[str, Tensor]) -> Tensor:
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
 
             Args:
-                param_name: Parameter name to compute gradient over.
-                spectral_gap: Spectral gap of the corresponding operation.
+                operation: Parametric operation to compute PSR.
                 values: Dictionary with parameter values.
 
             Returns:
                 Updated jacobian by PSR.
             """
-            psr_fn = multi_gap_shift if len(spectral_gap) > 1 else single_gap_shift
-
+            psr_fn, shift = (
+                (multi_gap_shift, shift_multi)
+                if len(operation.spectral_gap) > 1
+                else (single_gap_shift, shift_pi2)
+            )
             return grad_out * psr_fn(  # type: ignore[operator]
-                param_name,  # type: ignore
+                operation.param_name,  # type: ignore
                 values,
-                spectral_gap,
+                operation.spectral_gap,
+                shift,
             )
 
         grads = {p: None for p in ctx.param_names}
-
-        def update_gradient(param_name: str, spectral_gap: Tensor):
-            if values[param_name].requires_grad:
-                if grads[param_name] is not None:
-                    grads[param_name] += vjp(param_name, spectral_gap, values)
-                else:
-                    grads[param_name] = vjp(param_name, spectral_gap, values)
-
         for op in ctx.circuit.flatten():
-
-            if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(
-                op.param_name, str
-            ):
-                update_gradient(op.param_name, op.spectral_gap)
+            if isinstance(op, Parametric) and isinstance(op.param_name, str):
+                if values[op.param_name].requires_grad:
+                    if grads[op.param_name] is not None:
+                        grads[op.param_name] += vjp(op, values)
+                    else:
+                        grads[op.param_name] = vjp(op, values)
 
         return (
             None,
@@ -295,11 +288,11 @@ class PSRExpectation(Function):
         )
 
 
-def check_support_psr(circuit: Sequence):
+def check_support_psr(circuit: QuantumCircuit):
     """Checking that circuit has only compatible operations for PSR.
 
     Args:
-        circuit (Sequence): Circuit to check.
+        circuit (QuantumCircuit): Circuit to check.
 
     Raises:
         ValueError: When circuit contains Scale, HamiltonianEvolution,
@@ -307,25 +300,24 @@ def check_support_psr(circuit: Sequence):
     """
 
     param_names = list()
-    for op in circuit.flatten():
-        if isinstance(op, Scale):
+    for op in circuit.operations:
+        if isinstance(op, Scale) or isinstance(op, HamiltonianEvolution):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
             )
-        if isinstance(op, HamiltonianEvolution) and op.generator_type in [
-            GeneratorType.SYMBOL,
-            GeneratorType.PARAMETRIC_OPERATION,
-        ]:
-            raise ValueError(
-                f"PSR is not applicable as circuit contains an operation of type: {type(op)} \
-                    whose generator type is {op.generator_type}."
-            )
+        if isinstance(op, Sequence):
+            for subop in op.flatten():
+                if isinstance(subop, Scale) or isinstance(subop, HamiltonianEvolution):
+                    raise ValueError(
+                        f"PSR is not applicable as circuit contains \
+                        an operation of type: {type(subop)}."
+                    )
+                if isinstance(subop, Parametric):
+                    if isinstance(subop.param_name, str):
+                        param_names.append(subop.param_name)
         elif isinstance(op, Parametric):
             if isinstance(op.param_name, str):
                 param_names.append(op.param_name)
-        elif isinstance(op, HamiltonianEvolution):
-            if isinstance(op.time, str):
-                param_names.append(op.time)
         else:
             continue
 
@@ -333,4 +325,3 @@ def check_support_psr(circuit: Sequence):
         raise ValueError(
             "PSR is not supported when using a same param_name in different operations."
         )
-    return param_names

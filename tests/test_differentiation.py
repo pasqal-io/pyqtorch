@@ -6,7 +6,7 @@ import torch
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
-from pyqtorch.primitive import Primitive
+from pyqtorch.primitives import Primitive
 from pyqtorch.utils import (
     GRADCHECK_ATOL,
 )

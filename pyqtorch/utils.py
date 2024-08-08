@@ -404,7 +404,7 @@ def expand_operator(
 
 
 def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
-    from pyqtorch.primitive import I
+    from pyqtorch.primitives import I
 
     """
     FIXME: Remove and replace usage with the `expand_operator` above.

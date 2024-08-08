@@ -4,16 +4,10 @@ import random
 
 import pytest
 import torch
-from torch import Tensor
 
 import pyqtorch as pyq
 from pyqtorch import run, sample
-from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.noise import Noise
-from pyqtorch.parametric import Parametric
-from pyqtorch.primitive import Primitive
 from pyqtorch.utils import (
-    DensityMatrix,
     product_state,
 )
 
@@ -26,7 +20,7 @@ def test_device_inference() -> None:
 
 
 @pytest.mark.parametrize("fn", [pyq.X, pyq.Z, pyq.Y])
-def test_scale(fn: pyq.primitive.Primitive) -> None:
+def test_scale(fn: pyq.primitives.Primitive) -> None:
     n_qubits = torch.randint(low=1, high=4, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
     state = pyq.random_state(n_qubits)
@@ -97,33 +91,6 @@ def test_merge_nested_dict() -> None:
     }
     vals["nested"] = vals
     mergecirc(pyq.random_state(2), vals)
-
-
-@pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
-@pytest.mark.parametrize("batch_size", [{"low": 1, "high": 5}], indirect=True)
-def test_noise_circ(
-    n_qubits: int,
-    batch_size: int,
-    random_input_state: Tensor,
-    random_gate: Primitive,
-    random_noise_gate: Noise,
-    random_rotation_gate: Parametric,
-) -> None:
-    OPERATORS = [random_gate, random_noise_gate, random_rotation_gate]
-    random.shuffle(OPERATORS)
-    circ = QuantumCircuit(n_qubits, OPERATORS)
-
-    values = {random_rotation_gate.param_name: torch.rand(1)}
-    output_state = circ(random_input_state, values)
-    assert isinstance(output_state, DensityMatrix)
-    assert output_state.shape == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
-
-    diag_sums = []
-    for i in range(batch_size):
-        diag_batch = torch.diagonal(output_state[:, :, i], dim1=0, dim2=1)
-        diag_sums.append(torch.sum(diag_batch))
-    diag_sum = torch.stack(diag_sums)
-    assert torch.allclose(diag_sum, torch.ones((batch_size,), dtype=torch.cdouble))
 
 
 def test_sample_run() -> None:

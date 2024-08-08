@@ -4,19 +4,16 @@ import random
 
 import torch
 
-from pyqtorch.analog import Add, Scale
 from pyqtorch.apply import apply_operator
-from pyqtorch.circuit import Sequence
-from pyqtorch.parametric import (
-    OPS_PARAM_1Q,
-    OPS_PARAM_2Q,
-    Parametric,
-)
-from pyqtorch.primitive import (
+from pyqtorch.composite import Add, Scale, Sequence
+from pyqtorch.primitives import (
     OPS_1Q,
     OPS_2Q,
     OPS_3Q,
+    OPS_PARAM_1Q,
+    OPS_PARAM_2Q,
     OPS_PAULI,
+    Parametric,
     Primitive,
     Toffoli,
 )

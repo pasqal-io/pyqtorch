@@ -11,7 +11,7 @@ from torch.nn import Module
 
 import pyqtorch as pyq
 from pyqtorch.embed import ConcretizedCallable, Embedding
-from pyqtorch.primitive import Primitive
+from pyqtorch.primitives import Primitive
 from pyqtorch.utils import ATOL_embedding
 
 
