@@ -27,7 +27,6 @@ RTOL = 0.0
 GRADCHECK_ATOL = 1e-05
 GRADCHECK_sampling_ATOL = 1e-01
 PSR_ACCEPTANCE = 1e-05
-GPSR_ACCEPTANCE = 1e-05
 ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)

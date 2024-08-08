@@ -13,7 +13,7 @@ from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES, DEFAULT_MATRIX_DTYPE
 from pyqtorch.primitives import Parametric
-from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL
+from pyqtorch.utils import PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL
 
 
 def circuit_psr(n_qubits: int) -> QuantumCircuit:
@@ -166,7 +166,29 @@ def test_expectation_gpsr_hamevo(
 
     # first order checks
     for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=GPSR_ACCEPTANCE)
+        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=PSR_ACCEPTANCE)
+
+    # second order checks
+    for i in range(len(grad_ad)):
+        gradgrad_ad = torch.autograd.grad(
+            grad_ad[i],
+            tuple(values.values()),
+            torch.ones_like(grad_ad[i]),
+            create_graph=True,
+        )
+
+        gradgrad_gpsr = torch.autograd.grad(
+            grad_gpsr[i],
+            tuple(values.values()),
+            torch.ones_like(grad_gpsr[i]),
+            create_graph=True,
+        )
+
+        assert len(gradgrad_ad) == len(gradgrad_gpsr)
+
+        # check second order gradients
+        for j in range(len(gradgrad_ad)):
+            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=PSR_ACCEPTANCE)
 
 
 @pytest.mark.parametrize(
@@ -231,12 +253,10 @@ def test_expectation_gpsr(
     )
     assert torch.allclose(exp_gpsr, exp_gpsr_sampled, atol=1e-01)
 
-    atol = PSR_ACCEPTANCE if circuit_fn != circuit_gpsr else GPSR_ACCEPTANCE
-
     # first order checks
 
     for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
+        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=PSR_ACCEPTANCE)
         assert torch.allclose(
             grad_gpsr[i], grad_gpsr_sampled[i], atol=GRADCHECK_sampling_ATOL
         )
@@ -261,7 +281,7 @@ def test_expectation_gpsr(
 
         # check second order gradients
         for j in range(len(gradgrad_ad)):
-            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=atol)
+            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=PSR_ACCEPTANCE)
 
 
 @pytest.mark.parametrize("gate_type", ["scale", "hamevo", "same", ""])
