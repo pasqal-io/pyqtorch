@@ -138,12 +138,12 @@ def test_expectation_gpsr_hamevo(
         exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
     )
 
-    atol = 1.0e-01
+    rtol = 1.0e-02
 
     # first order checks
 
     for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
+        assert torch.allclose(grad_ad[i], grad_gpsr[i], rtol=rtol)
 
 
 @pytest.mark.parametrize(
