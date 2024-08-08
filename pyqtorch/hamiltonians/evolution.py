@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
-from functools import cached_property, reduce
+from functools import cached_property
 from logging import getLogger
 from typing import Callable, Tuple, Union
 

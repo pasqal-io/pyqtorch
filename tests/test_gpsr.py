@@ -9,10 +9,9 @@ from test_analog import Hamiltonian_general
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
-from pyqtorch.analog import Observable
 from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.hamiltonians import Observable, HamiltonianEvolution
-from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
+from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
+from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES, DEFAULT_MATRIX_DTYPE
 from pyqtorch.primitives import Parametric
 from pyqtorch.utils import GPSR_ACCEPTANCE, PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL
 
