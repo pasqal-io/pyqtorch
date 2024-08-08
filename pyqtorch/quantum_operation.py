@@ -15,7 +15,7 @@ from pyqtorch.matrices import _dagger
 from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.utils import (
     DensityMatrix,
-    _round_complex,
+    _round_operator,
     density_mat,
     expand_operator,
     permute_basis,
@@ -273,8 +273,7 @@ class QuantumOperation(torch.nn.Module):
         """
         spectrum = self.eigenvals_generator
         diffs = spectrum - spectrum.T
-        if torch.is_complex(diffs):
-            diffs = _round_complex(diffs)
+        diffs = _round_operator(diffs)
         spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 

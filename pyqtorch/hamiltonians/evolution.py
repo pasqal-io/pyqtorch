@@ -19,7 +19,7 @@ from pyqtorch.utils import (
     Operator,
     State,
     StrEnum,
-    _round_complex,
+    _round_operator,
     expand_operator,
     is_diag,
 )
@@ -304,8 +304,7 @@ class HamiltonianEvolution(Sequence):
         """
         spectrum = self.eigenvals_generator
         diffs = spectrum - spectrum.T
-        if torch.is_complex(diffs):
-            diffs = _round_complex(diffs)
+        diffs = _round_operator(diffs)
         spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 
