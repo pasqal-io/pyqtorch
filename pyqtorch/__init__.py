@@ -46,17 +46,17 @@ logger.setLevel(LOG_LEVEL)
 logger.info(f"PyQTorch logger successfully setup with log level {LOG_LEVEL}")
 
 
-from .analog import (
-    Add,
-    DiagonalObservable,
-    HamiltonianEvolution,
-    Observable,
-    Scale,
-)
 from .api import expectation, run, sample
 from .apply import apply_operator
-from .circuit import Merge, QuantumCircuit, Sequence
+from .circuit import DropoutQuantumCircuit, QuantumCircuit
+from .composite import (
+    Add,
+    Merge,
+    Scale,
+    Sequence,
+)
 from .embed import ConcretizedCallable, Embedding
+from .hamiltonians import HamiltonianEvolution, Observable
 from .noise import (
     AmplitudeDamping,
     BitFlip,
@@ -66,12 +66,27 @@ from .noise import (
     PhaseDamping,
     PhaseFlip,
 )
-from .parametric import CPHASE, CRX, CRY, CRZ, PHASE, RX, RY, RZ, U
-from .primitive import (
+from .primitives import (
     CNOT,
+    CPHASE,
+    CRX,
+    CRY,
+    CRZ,
     CSWAP,
     CY,
     CZ,
+    OPS_1Q,
+    OPS_2Q,
+    OPS_3Q,
+    OPS_DIGITAL,
+    OPS_PARAM,
+    OPS_PARAM_1Q,
+    OPS_PARAM_2Q,
+    OPS_PAULI,
+    PHASE,
+    RX,
+    RY,
+    RZ,
     SWAP,
     H,
     I,
@@ -81,6 +96,7 @@ from .primitive import (
     SDagger,
     T,
     Toffoli,
+    U,
     X,
     Y,
     Z,
@@ -111,6 +127,7 @@ __all__ = [
     "Scale",
     "Merge",
     "QuantumCircuit",
+    "DropoutQuantumCircuit",
     "Sequence",
     "CPHASE",
     "CRX",
@@ -148,7 +165,6 @@ __all__ = [
     "Z",
     "apply_operator",
     "Observable",
-    "DiagonalObservable",
     "sesolve",
     "mesolve",
 ]

@@ -7,9 +7,9 @@ from operator import add
 from functools import reduce
 import torch
 import pyqtorch as pyq
-from pyqtorch.circuit import hea
+from pyqtorch.composite import hea
 from pyqtorch.utils import DiffMode
-from pyqtorch.parametric import Parametric
+from pyqtorch.primitives import Parametric
 import matplotlib.pyplot as plt
 
 from torch.nn.functional import mse_loss
@@ -35,7 +35,7 @@ feature_map = [pyq.RX(i, f'x') for i in range(N_QUBITS)]
 ansatz, params = hea(N_QUBITS, DEPTH, 'theta')
 # Lets move all necessary components to the DEVICE
 circ = pyq.QuantumCircuit(N_QUBITS, feature_map + ansatz).to(device=DEVICE, dtype=COMPLEX_DTYPE)
-observable = pyq.DiagonalObservable(N_QUBITS, pyq.Z(0)).to(device=DEVICE, dtype=COMPLEX_DTYPE)
+observable = pyq.Observable(pyq.Z(0)).to(device=DEVICE, dtype=COMPLEX_DTYPE)
 params = params.to(device=DEVICE, dtype=REAL_DTYPE)
 x, y = x.to(device=DEVICE, dtype=REAL_DTYPE), y.to(device=DEVICE, dtype=REAL_DTYPE)
 state = circ.init_state()
