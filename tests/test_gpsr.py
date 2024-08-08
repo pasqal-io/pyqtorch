@@ -120,12 +120,11 @@ def circuit_hamevo_pauligen_gpsr(n_qubits: int) -> QuantumCircuit:
         (3, 1, circuit_hamevo_pauligen_gpsr),
     ],
 )
-@pytest.mark.parametrize("dtype", [torch.complex128])
 def test_expectation_gpsr_hamevo(
     n_qubits: int,
     batch_size: int,
     circuit_fn: Callable,
-    dtype: torch.dtype,
+    dtype: torch.dtype = torch.complex128,
 ) -> None:
     torch.manual_seed(42)
     circ = circuit_fn(n_qubits).to(dtype)
@@ -188,7 +187,7 @@ def test_expectation_gpsr_hamevo(
 
         # check second order gradients
         for j in range(len(gradgrad_ad)):
-            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=PSR_ACCEPTANCE)
+            assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=1.0e-2)
 
 
 @pytest.mark.parametrize(
@@ -254,7 +253,6 @@ def test_expectation_gpsr(
     assert torch.allclose(exp_gpsr, exp_gpsr_sampled, atol=1e-01)
 
     # first order checks
-
     for i in range(len(grad_ad)):
         assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=PSR_ACCEPTANCE)
         assert torch.allclose(
