@@ -282,7 +282,8 @@ class PSRExpectation(Function):
             if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(
                 op.param_name, str
             ):
-                update_gradient(op.param_name, op.spectral_gap)
+                factor = 1.0 if isinstance(op, Parametric) else 2.0
+                update_gradient(op.param_name, factor * op.spectral_gap)
 
         return (
             None,

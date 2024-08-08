@@ -95,7 +95,6 @@ def circuit_hamevo_pauligen_gpsr(n_qubits: int) -> QuantumCircuit:
     ham = random_pauli_hamiltonian(
         n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
     )[0]
-    print("generator", ham)
     ham_op = pyq.HamiltonianEvolution(ham, "t", qubit_support=tuple(range(n_qubits)))
 
     ops = [
@@ -117,7 +116,7 @@ def circuit_hamevo_pauligen_gpsr(n_qubits: int) -> QuantumCircuit:
 @pytest.mark.parametrize(
     ["n_qubits", "batch_size", "circuit_fn"],
     [
-        # (3, 1, circuit_hamevo_tensor_gpsr),
+        (3, 1, circuit_hamevo_tensor_gpsr),
         (3, 1, circuit_hamevo_pauligen_gpsr),
     ],
 )
@@ -135,7 +134,6 @@ def test_expectation_gpsr_hamevo(
             n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
         )[0]
     ).to(dtype)
-    print("obs", obs)
     values = {
         op.param_name: torch.rand(
             batch_size, requires_grad=True, dtype=COMPLEX_TO_REAL_DTYPES[dtype]
@@ -166,13 +164,9 @@ def test_expectation_gpsr_hamevo(
         exp_gpsr, tuple(values.values()), torch.ones_like(exp_gpsr), create_graph=True
     )
 
-    atol = 1.0e-05
-
     # first order checks
-
     for i in range(len(grad_ad)):
-        print(i, grad_ad[i], grad_gpsr[i])
-        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=atol)
+        assert torch.allclose(grad_ad[i], grad_gpsr[i], atol=GPSR_ACCEPTANCE)
 
 
 @pytest.mark.parametrize(

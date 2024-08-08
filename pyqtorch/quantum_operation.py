@@ -15,7 +15,6 @@ from pyqtorch.matrices import _dagger
 from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.utils import (
     DensityMatrix,
-    _round_operator,
     density_mat,
     expand_operator,
     permute_basis,
