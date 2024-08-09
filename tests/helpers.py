@@ -41,7 +41,7 @@ def calc_mat_vec_wavefunction(
     return apply_operator(
         init_state,
         mat,
-        qubits=qubit_support,
+        qubit_support=qubit_support,
     )
 
 

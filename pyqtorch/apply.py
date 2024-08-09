@@ -15,9 +15,7 @@ ABC_ARRAY: NDArray = array(list(ABC))
 def apply_operator(
     state: Tensor,
     operator: Tensor,
-    qubits: tuple[int, ...] | list[int],
-    n_qubits: int | None = None,
-    batch_size: int | None = None,
+    qubit_support: tuple[int, ...] | list[int],
 ) -> Tensor:
     """Applies an operator, i.e. a single tensor of shape [2, 2, ...], on a given state
        of shape [2 for _ in range(n_qubits)] for a given set of (target and control) qubits.
@@ -39,20 +37,20 @@ def apply_operator(
     Returns:
         State after applying 'operator'.
     """
-    qubits = list(qubits)
-    if n_qubits is None:
-        n_qubits = len(state.size()) - 1
-    if batch_size is None:
-        batch_size = state.size(-1)
-    n_support = len(qubits)
-    n_state_dims = n_qubits + 1
+    qubit_support = list(qubit_support)
+    # if n_qubits is None:
+    #    n_qubits = len(state.size()) - 1
+    # if batch_size is None:
+    #    batch_size = state.size(-1)
+    n_support = len(qubit_support)
+    n_state_dims = len(state.size())
     operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
     in_state_dims = ABC_ARRAY[0:n_state_dims].copy()
     operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + 2 * n_support + 1].copy()
-    operator_dims[n_support : 2 * n_support] = in_state_dims[qubits]
+    operator_dims[n_support : 2 * n_support] = in_state_dims[qubit_support]
     operator_dims[-1] = in_state_dims[-1]
     out_state_dims = in_state_dims.copy()
-    out_state_dims[qubits] = operator_dims[0:n_support]
+    out_state_dims[qubit_support] = operator_dims[0:n_support]
     operator_dims, in_state_dims, out_state_dims = list(
         map(lambda e: "".join(list(e)), [operator_dims, in_state_dims, out_state_dims])
     )

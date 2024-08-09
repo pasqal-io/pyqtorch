@@ -335,7 +335,6 @@ class QuantumOperation(torch.nn.Module):
                 state,
                 self.tensor(values, embedding),
                 self.qubit_support,
-                len(state.size()) - 1,
             )
 
     def _noise_forward(
