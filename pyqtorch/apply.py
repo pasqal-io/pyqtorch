@@ -38,10 +38,6 @@ def apply_operator(
         State after applying 'operator'.
     """
     qubit_support = list(qubit_support)
-    # if n_qubits is None:
-    #    n_qubits = len(state.size()) - 1
-    # if batch_size is None:
-    #    batch_size = state.size(-1)
     n_support = len(qubit_support)
     n_state_dims = len(state.size())
     operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
