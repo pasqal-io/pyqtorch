@@ -27,7 +27,6 @@ RTOL = 0.0
 GRADCHECK_ATOL = 1e-05
 GRADCHECK_sampling_ATOL = 1e-01
 PSR_ACCEPTANCE = 1e-05
-GPSR_ACCEPTANCE = 1e-05
 ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)
@@ -46,6 +45,23 @@ def qubit_support_as_tuple(support: int | tuple[int, ...]) -> tuple[int, ...]:
         return (support.item(),)
     qubit_support = (support,) if isinstance(support, int) else tuple(support)
     return qubit_support
+
+
+def _round_operator(t: Tensor, decimals: int = 4) -> Tensor:
+    if torch.is_complex(t):
+
+        def _round(_t: Tensor) -> Tensor:
+            r = _t.real.round(decimals=decimals)
+            i = _t.imag.round(decimals=decimals)
+            return torch.complex(r, i)
+
+    else:
+
+        def _round(_t: Tensor) -> Tensor:
+            return _t.round(decimals=decimals)
+
+    fn = torch.vmap(_round)
+    return fn(t)
 
 
 def inner_prod(bra: Tensor, ket: Tensor) -> Tensor:
