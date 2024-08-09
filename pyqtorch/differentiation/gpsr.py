@@ -297,8 +297,14 @@ class PSRExpectation(Function):
                 else:
                     shift_factor = 1.0
                     if isinstance(op, HamiltonianEvolution):
-                        shift_factor = 1.0 / (op.spectral_gap.item() * factor) if len(op.spectral_gap) == 1 else 1.0
-                    update_gradient(op.param_name, factor * op.spectral_gap, shift_factor)
+                        shift_factor = (
+                            1.0 / (op.spectral_gap.item() * factor)
+                            if len(op.spectral_gap) == 1
+                            else 1.0
+                        )
+                    update_gradient(
+                        op.param_name, factor * op.spectral_gap, shift_factor
+                    )
 
         return (
             None,
