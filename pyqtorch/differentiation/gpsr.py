@@ -130,7 +130,7 @@ class PSRExpectation(Function):
         except Exception:
             pass
 
-        PI = torch.tensor(torch.pi, dtype=dtype_values)
+        shift_pi2 = torch.tensor(torch.pi, dtype=dtype_values) / 2.0
 
         def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
@@ -155,26 +155,16 @@ class PSRExpectation(Function):
             param_name: str,
             values: dict[str, Tensor],
             spectral_gap: Tensor,
-            shift_prefac: float = 0.5,
+            shift_prefac: float = 1.0,
         ) -> Tensor:
             """Implements single gap PSR rule.
-
-            Ref: https://arxiv.org/pdf/1905.13311
-
-            Given a parameterized operation defined as
-            exp(-i a t G), the gradient wrt t is given as:
-            r * [f(t + pi / 4r) - f(t - pi / 4r)].
-
-            where r = 0.5 * a * spectral_gap.
-
-            For many quantum gates, a = 0.5.
 
             Args:
                 param_name: Name of the parameter to apply PSR.
                 values: Dictionary with parameter values.
                 spectral_gap: Spectral gap value for PSR.
-                shift_prefac: Coefficient a.
-                Defaults to 0.5.
+                shift_prefac: Shift prefactor value to multiply pi/2.
+                Defaults to 1.
 
             Returns:
                 Gradient evaluation for param_name.
@@ -182,8 +172,7 @@ class PSRExpectation(Function):
 
             # device conversions
             spectral_gap = spectral_gap.to(device=device)
-            r = 0.5 * shift_prefac * spectral_gap.item()
-            shift = PI.to(device=device) / (4.0 * r)
+            shift = shift_pi2.to(device=device) * shift_prefac
 
             # apply shift rule
             shifted_values = values.copy()
@@ -191,8 +180,11 @@ class PSRExpectation(Function):
             f_plus = expectation_fn(shifted_values)
             shifted_values[param_name] = shifted_values[param_name] - 2 * shift
             f_minus = expectation_fn(shifted_values)
-            return r * (f_plus - f_minus)
-
+            return (
+                spectral_gap
+                * (f_plus - f_minus)
+                / (4.0 * torch.sin(spectral_gap * shift / 2.0))
+            )
 
         def multi_gap_shift(
             param_name: str,
@@ -241,7 +233,7 @@ class PSRExpectation(Function):
                 shifted_params[param_name] = shifted_params[param_name] + shifts[i]
                 F.append((f_plus - f_minus))
 
-                # calculate M matrix 
+                # calculate M matrix
                 for j in range(n_eqs):
                     M[i, j] = 4 * torch.sin(shifts[i] * spectral_gaps[j] / 2)
 
@@ -278,31 +270,35 @@ class PSRExpectation(Function):
                 param_name,  # type: ignore
                 values,
                 spectral_gap,
-                shift_prefac,
+                shift_prefac=shift_prefac,
             )
 
-        grads = {p: torch.zeros_like(v) for p, v in values.items()}
+        grads = {p: None for p in ctx.param_names}
 
-        def update_gradient(op: Parametric | HamiltonianEvolution):
-            param_name = op.param_name
-            spectral_gap = op.spectral_gap
-            shift_factor = 0.5 
-            if isinstance(op, HamiltonianEvolution):
-                if len(spectral_gap) <= 1:
-                    shift_factor = 1.0
-                else:
-                    spectral_gap *= 2.0
-
+        def update_gradient(param_name: str, spectral_gap: Tensor, shift_prefac: float):
             if values[param_name].requires_grad:
-                grads[param_name] = vjp(
-                    param_name, spectral_gap, values, shift_prefac=shift_factor
-                )
+                if grads[param_name] is not None:
+                    grads[param_name] += vjp(
+                        param_name, spectral_gap, values, shift_prefac
+                    )
+                else:
+                    grads[param_name] = vjp(
+                        param_name, spectral_gap, values, shift_prefac
+                    )
 
         for op in ctx.circuit.flatten():
+
             if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(
                 op.param_name, str
             ):
-                update_gradient(op)
+                factor = 1.0 if isinstance(op, Parametric) else 2.0
+                if len(op.spectral_gap) > 1:
+                    update_gradient(op.param_name, factor * op.spectral_gap, 0.5)
+                else:
+                    shift_factor = 1.0
+                    if isinstance(op, HamiltonianEvolution):
+                        shift_factor = 1.0 / (op.spectral_gap.item() * factor) if len(op.spectral_gap) == 1 else 1.0
+                    update_gradient(op.param_name, factor * op.spectral_gap, shift_factor)
 
         return (
             None,
