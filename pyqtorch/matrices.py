@@ -73,7 +73,7 @@ def parametric_unitary(
     batch_size: int,
     a: float = 0.5,  # noqa: E741
 ) -> torch.Tensor:
-    """Compute the exponentiation of a matrix :math:`P`
+    """Compute the exponentiation of a Pauli matrix :math:`P`
 
     The exponentiation is given by:
     :math:`exp(-i a \\theta P ) = I cos(r \\theta) - i a P sin(r \\theta) / r`
@@ -85,7 +85,7 @@ def parametric_unitary(
 
     Args:
         theta (torch.Tensor): Parameter values.
-        P (torch.Tensor): Matrix to exponentiate.
+        P (torch.Tensor): Pauli matrix to exponentiate.
         I (torch.Tensor): Identity matrix
         batch_size (int): Batch size of parameters.
         a (float): Prefactor.
