@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
+from functools import cached_property
 from logging import getLogger
 from typing import Callable, Tuple, Union
 
@@ -18,6 +19,7 @@ from pyqtorch.utils import (
     Operator,
     State,
     StrEnum,
+    _round_operator,
     expand_operator,
     is_diag,
 )
@@ -223,6 +225,13 @@ class HamiltonianEvolution(Sequence):
         """
         return self.operations
 
+    def flatten(self) -> ModuleList:
+        return ModuleList([self])
+
+    @property
+    def param_name(self) -> Tensor | str:
+        return self.time
+
     def _symbolic_generator(
         self,
         values: dict,
@@ -272,6 +281,32 @@ class HamiltonianEvolution(Sequence):
             The right generator getter.
         """
         return self._generator_map[self.generator_type]
+
+    @cached_property
+    def eigenvals_generator(self) -> Tensor:
+        """Get eigenvalues of the underlying hamiltonian.
+
+        Note: Only works for GeneratorType.TENSOR
+        or GeneratorType.OPERATION.
+
+        Returns:
+            Eigenvalues of the operation.
+        """
+
+        return self.generator[0].eigenvalues
+
+    @cached_property
+    def spectral_gap(self) -> Tensor:
+        """Difference between the moduli of the two largest eigenvalues of the generator.
+
+        Returns:
+            Tensor: Spectral gap value.
+        """
+        spectrum = self.eigenvals_generator
+        diffs = spectrum - spectrum.T
+        diffs = _round_operator(diffs)
+        spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
+        return spectral_gap[spectral_gap.nonzero()]
 
     def forward(
         self,

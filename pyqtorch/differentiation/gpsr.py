@@ -8,9 +8,9 @@ from torch import Tensor, no_grad
 from torch.autograd import Function
 
 from pyqtorch.circuit import QuantumCircuit
-from pyqtorch.composite import Scale, Sequence
+from pyqtorch.composite import Scale
 from pyqtorch.embed import Embedding
-from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
+from pyqtorch.hamiltonians import GeneratorType, HamiltonianEvolution, Observable
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
 from pyqtorch.primitives import Parametric
 from pyqtorch.utils import param_dict
@@ -123,15 +123,14 @@ class PSRExpectation(Function):
         """
 
         values = param_dict(ctx.param_names, ctx.saved_tensors)
-        shift_pi2 = torch.tensor(torch.pi) / 2.0
-        shift_multi = 0.5
-
         dtype_values = DEFAULT_REAL_DTYPE
         device = torch.device("cpu")
         try:
             dtype_values, device = [(v.dtype, v.device) for v in values.values()][0]
         except Exception:
             pass
+
+        shift_pi2 = torch.tensor(torch.pi, dtype=dtype_values) / 2.0
 
         def expectation_fn(values: dict[str, Tensor]) -> Tensor:
             """Use the PSRExpectation for nested grad calls.
@@ -156,7 +155,7 @@ class PSRExpectation(Function):
             param_name: str,
             values: dict[str, Tensor],
             spectral_gap: Tensor,
-            shift: Tensor = torch.tensor(torch.pi) / 2.0,
+            shift_prefac: float = 1.0,
         ) -> Tensor:
             """Implements single gap PSR rule.
 
@@ -164,7 +163,8 @@ class PSRExpectation(Function):
                 param_name: Name of the parameter to apply PSR.
                 values: Dictionary with parameter values.
                 spectral_gap: Spectral gap value for PSR.
-                shift: Shift value. Defaults to torch.tensor(torch.pi)/2.0.
+                shift_prefac: Shift prefactor value to multiply pi/2.
+                Defaults to 1.
 
             Returns:
                 Gradient evaluation for param_name.
@@ -172,7 +172,7 @@ class PSRExpectation(Function):
 
             # device conversions
             spectral_gap = spectral_gap.to(device=device)
-            shift = shift.to(device=device)
+            shift = shift_pi2.to(device=device) * shift_prefac
 
             # apply shift rule
             shifted_values = values.copy()
@@ -183,7 +183,7 @@ class PSRExpectation(Function):
             return (
                 spectral_gap
                 * (f_plus - f_minus)
-                / (4 * torch.sin(spectral_gap * shift / 2))
+                / (4.0 * torch.sin(spectral_gap * shift / 2.0))
             )
 
         def multi_gap_shift(
@@ -244,38 +244,69 @@ class PSRExpectation(Function):
             F = torch.stack(F).reshape(n_eqs, -1)
             R = torch.linalg.solve(M, F)
             dfdx = torch.sum(spectral_gaps * R, dim=0).reshape(batch_size)
+
             return dfdx
 
-        def vjp(operation: Parametric, values: dict[str, Tensor]) -> Tensor:
+        def vjp(
+            param_name: str,
+            spectral_gap: Tensor,
+            values: dict[str, Tensor],
+            shift_prefac: float,
+        ) -> Tensor:
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
 
             Args:
-                operation: Parametric operation to compute PSR.
+                param_name: Parameter name to compute gradient over.
+                spectral_gap: Spectral gap of the corresponding operation.
                 values: Dictionary with parameter values.
+                shift_prefac: Shift prefactor value for PSR shifts.
 
             Returns:
                 Updated jacobian by PSR.
             """
-            psr_fn, shift = (
-                (multi_gap_shift, shift_multi)
-                if len(operation.spectral_gap) > 1
-                else (single_gap_shift, shift_pi2)
-            )
+            psr_fn = multi_gap_shift if len(spectral_gap) > 1 else single_gap_shift
+
             return grad_out * psr_fn(  # type: ignore[operator]
-                operation.param_name,  # type: ignore
+                param_name,  # type: ignore
                 values,
-                operation.spectral_gap,
-                shift,
+                spectral_gap,
+                shift_prefac=shift_prefac,
             )
 
-        grads = {p: None for p in ctx.param_names}
+        grads = {p: torch.zeros_like(v) for p, v in values.items()}
+
+        def update_gradient(param_name: str, spectral_gap: Tensor, shift_prefac: float):
+            """Update gradient of a parameter using PSR.
+
+            Args:
+                param_name (str): Parameter name to compute gradient over.
+                spectral_gap (Tensor): Spectral gap of the corresponding operation.
+                shift_prefac (float): Shift prefactor value for PSR shifts.
+            """
+            if values[param_name].requires_grad:
+                grads[param_name] = vjp(param_name, spectral_gap, values, shift_prefac)
+
         for op in ctx.circuit.flatten():
-            if isinstance(op, Parametric) and isinstance(op.param_name, str):
-                if values[op.param_name].requires_grad:
-                    if grads[op.param_name] is not None:
-                        grads[op.param_name] += vjp(op, values)
-                    else:
-                        grads[op.param_name] = vjp(op, values)
+
+            if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(
+                op.param_name, str
+            ):
+                factor = 1.0 if isinstance(op, Parametric) else 2.0
+                if len(op.spectral_gap) > 1:
+                    update_gradient(op.param_name, factor * op.spectral_gap, 0.5)
+                else:
+                    shift_factor = 1.0
+                    # note the spectral gap can be empty
+                    # this is handled in single-gap PSR
+                    if isinstance(op, HamiltonianEvolution):
+                        shift_factor = (
+                            1.0 / (op.spectral_gap.item() * factor)
+                            if len(op.spectral_gap) == 1
+                            else 1.0
+                        )
+                    update_gradient(
+                        op.param_name, factor * op.spectral_gap, shift_factor
+                    )
 
         return (
             None,
@@ -300,24 +331,25 @@ def check_support_psr(circuit: QuantumCircuit):
     """
 
     param_names = list()
-    for op in circuit.operations:
-        if isinstance(op, Scale) or isinstance(op, HamiltonianEvolution):
+    for op in circuit.flatten():
+        if isinstance(op, Scale):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
             )
-        if isinstance(op, Sequence):
-            for subop in op.flatten():
-                if isinstance(subop, Scale) or isinstance(subop, HamiltonianEvolution):
-                    raise ValueError(
-                        f"PSR is not applicable as circuit contains \
-                        an operation of type: {type(subop)}."
-                    )
-                if isinstance(subop, Parametric):
-                    if isinstance(subop.param_name, str):
-                        param_names.append(subop.param_name)
+        if isinstance(op, HamiltonianEvolution) and op.generator_type in [
+            GeneratorType.SYMBOL,
+            GeneratorType.PARAMETRIC_OPERATION,
+        ]:
+            raise ValueError(
+                f"PSR is not applicable as circuit contains an operation of type: {type(op)} \
+                    whose generator type is {op.generator_type}."
+            )
         elif isinstance(op, Parametric):
             if isinstance(op.param_name, str):
                 param_names.append(op.param_name)
+        elif isinstance(op, HamiltonianEvolution):
+            if isinstance(op.time, str):
+                param_names.append(op.time)
         else:
             continue
 
