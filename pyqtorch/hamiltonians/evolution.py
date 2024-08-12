@@ -13,7 +13,7 @@ from torch.nn import ModuleList, ParameterDict
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.embed import Embedding
-from pyqtorch.primitives import Primitive
+from pyqtorch.primitives import Parametric, Primitive
 from pyqtorch.utils import (
     ATOL,
     Operator,
@@ -25,7 +25,7 @@ from pyqtorch.utils import (
 )
 
 BATCH_DIM = 2
-TGenerator = Union[Tensor, str, Primitive, Sequence]
+TGenerator = Union[Tensor, str, Primitive, Parametric, Sequence]
 
 logger = getLogger(__name__)
 
@@ -170,7 +170,7 @@ class HamiltonianEvolution(Sequence):
             self.generator_type = GeneratorType.SYMBOL
             self.generator_symbol = generator
             generator = []
-        elif isinstance(generator, (Primitive, Sequence)):
+        elif isinstance(generator, (Primitive, Parametric, Sequence)):
             if qubit_support is not None:
                 logger.warning(
                     "Taking support from generator and ignoring qubit_support input."
