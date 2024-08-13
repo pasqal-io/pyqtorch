@@ -446,7 +446,34 @@ def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
     return operator
 
 
-def permute_basis(operator: Tensor, qubit_support: tuple, inv=False) -> Tensor:
+def permute_state(
+    state: Tensor, qubit_support: tuple | list, inv: bool = False
+) -> Tensor:
+    """Takes a state tensor and permutes the qubit amplitudes
+    according to the order of the qubit support.
+
+    Args:
+        state (Tensor): State to permute over.
+        qubit_support (tuple): Qubit support.
+
+    Returns:
+        Tensor: Permuted state.
+    """
+    if tuple(qubit_support) == tuple(sorted(qubit_support)):
+        return state
+
+    ordered_support = argsort(qubit_support)
+    ranked_support = argsort(ordered_support)
+
+    perm = list(ranked_support) + [len(qubit_support)]
+
+    if inv:
+        perm = np.argsort(perm).tolist()
+
+    return state.permute(perm)
+
+
+def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> Tensor:
     """Takes an operator tensor and permutes the rows and
     columns according to the order of the qubit support.
 

@@ -49,10 +49,13 @@ def test_digital_tensor(n_qubits: int, batch_size: int, use_full_support: bool) 
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
+@pytest.mark.parametrize("use_permute", [True, False])
 @pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
-def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) -> None:
+def test_param_tensor(
+    n_qubits: int, batch_size: int, use_full_support: bool, use_permute: bool
+) -> None:
     """
     Goes through all parametric gates and tests their application to a random state
     in comparison with the `tensor` method, either using just the qubit support of the gate
@@ -68,7 +71,11 @@ def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) ->
         psi_star = op_concrete(psi_init, values)
         full_support = tuple(range(n_qubits)) if use_full_support else None
         psi_expected = calc_mat_vec_wavefunction(
-            op_concrete, psi_init, values=values, full_support=full_support
+            op_concrete,
+            psi_init,
+            values=values,
+            full_support=full_support,
+            use_permute=use_permute,
         )
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 

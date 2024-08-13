@@ -4,7 +4,7 @@ import random
 
 import torch
 
-from pyqtorch.apply import apply_operator
+from pyqtorch.apply import apply_operator, apply_operator_permute
 from pyqtorch.composite import Add, Scale, Sequence
 from pyqtorch.primitives import (
     OPS_1Q,
@@ -24,6 +24,7 @@ def calc_mat_vec_wavefunction(
     init_state: torch.Tensor,
     values: dict = dict(),
     full_support: tuple | None = None,
+    use_permute: bool = False,
 ) -> torch.Tensor:
     """Get the result of applying the matrix representation of a block to an initial state.
 
@@ -38,10 +39,11 @@ def calc_mat_vec_wavefunction(
     """
     mat = block.tensor(values=values, full_support=full_support)
     qubit_support = block.qubit_support if full_support is None else full_support
-    return apply_operator(
+    apply_func = apply_operator_permute if use_permute else apply_operator
+    return apply_func(
         init_state,
         mat,
-        qubits=qubit_support,
+        qubit_support,
     )
 
 
