@@ -455,6 +455,7 @@ def permute_state(
     Args:
         state (Tensor): State to permute over.
         qubit_support (tuple): Qubit support.
+        inv (bool): Applies the inverse permutation instead.
 
     Returns:
         Tensor: Permuted state.
@@ -480,6 +481,7 @@ def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> 
     Args:
         operator (Tensor): Operator to permute over.
         qubit_support (tuple): Qubit support.
+        inv (bool): Applies the inverse permutation instead.
 
     Returns:
         Tensor: Permuted operator.
