@@ -168,7 +168,6 @@ def sampled_expectation(
         state,
         eigvecs.T.conj(),
         tuple(range(n_qubits)),
-        n_qubits=circuit.n_qubits,
     )
     eigvec_state_prod = torch.flatten(eigvec_state_prod, start_dim=0, end_dim=-2).t()
     probs = torch.pow(torch.abs(eigvec_state_prod), 2)

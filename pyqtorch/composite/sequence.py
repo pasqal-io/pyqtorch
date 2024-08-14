@@ -85,7 +85,7 @@ class Sequence(Module):
 
     @property
     def qubit_support(self) -> tuple:
-        return self._qubit_support
+        return tuple(sorted(self._qubit_support))
 
     def __iter__(self) -> Iterator:
         return iter(self.operations)

@@ -330,9 +330,7 @@ class HamiltonianEvolution(Sequence):
         return apply_operator(
             state=state,
             operator=evolved_op,
-            qubits=self.qubit_support,
-            n_qubits=len(state.size()) - 1,
-            batch_size=evolved_op.shape[BATCH_DIM],
+            qubit_support=self.qubit_support,
         )
 
     def tensor(
