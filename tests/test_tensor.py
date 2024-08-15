@@ -39,6 +39,7 @@ from pyqtorch.utils import (
 pi = torch.tensor(torch.pi)
 
 
+@pytest.mark.parametrize("use_permute", [True, False])
 @pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
@@ -267,8 +268,8 @@ def test_permute_tensor(n_qubits: int) -> None:
 
         perm = op_concrete1._qubit_support.qubits
 
-        assert torch.allclose(mat1, permute_basis(mat2, perm))
-        assert torch.allclose(mat2, permute_basis(mat1, perm, inv=True))
+        assert torch.allclose(mat1, permute_basis(mat2, perm, inv=True))
+        assert torch.allclose(mat2, permute_basis(mat1, perm))
 
 
 @pytest.mark.parametrize("n_qubits", [3, 5])
@@ -287,8 +288,8 @@ def test_permute_tensor_parametric(n_qubits: int, batch_size: int) -> None:
 
         perm = op_concrete1._qubit_support.qubits
 
-        assert torch.allclose(mat1, permute_basis(mat2, perm))
-        assert torch.allclose(mat2, permute_basis(mat1, perm, inv=True))
+        assert torch.allclose(mat1, permute_basis(mat2, perm, inv=True))
+        assert torch.allclose(mat2, permute_basis(mat1, perm))
 
 
 def test_tensor_symmetries() -> None:
