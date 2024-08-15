@@ -301,8 +301,8 @@ def test_tensor_symmetries() -> None:
     assert torch.allclose(CPHASE(0, 1, 1.0).tensor(), CPHASE(1, 0, 1.0).tensor())
     assert torch.allclose(SWAP(0, 1).tensor(), SWAP(1, 0).tensor())
     assert torch.allclose(CSWAP(0, (1, 2)).tensor(), CSWAP(0, (2, 1)).tensor())
-    assert torch.allclose(CSWAP(1, (0, 2)).tensor(), CSWAP(1, (2, 0)).tensor())  # F
-    assert torch.allclose(CSWAP(2, (0, 1)).tensor(), CSWAP(2, (1, 0)).tensor())  # F
+    assert torch.allclose(CSWAP(1, (0, 2)).tensor(), CSWAP(1, (2, 0)).tensor())
+    assert torch.allclose(CSWAP(2, (0, 1)).tensor(), CSWAP(2, (1, 0)).tensor())
     assert torch.allclose(Toffoli((0, 1), 2).tensor(), Toffoli((1, 0), 2).tensor())
-    assert torch.allclose(Toffoli((0, 2), 1).tensor(), Toffoli((2, 0), 1).tensor())  # F
-    assert torch.allclose(Toffoli((1, 2), 0).tensor(), Toffoli((2, 1), 0).tensor())  # F
+    assert torch.allclose(Toffoli((0, 2), 1).tensor(), Toffoli((2, 0), 1).tensor())
+    assert torch.allclose(Toffoli((1, 2), 0).tensor(), Toffoli((2, 1), 0).tensor())

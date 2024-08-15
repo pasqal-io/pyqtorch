@@ -331,7 +331,7 @@ class QuantumOperation(torch.nn.Module):
         """
         blockmat = self.operator_function(values, embedding)
         if self._qubit_support.qubits != self.qubit_support:
-            blockmat = permute_basis(blockmat, self._qubit_support.qubits)
+            blockmat = permute_basis(blockmat, self._qubit_support.qubits, inv=True)
         if full_support is None:
             return blockmat
         else:
