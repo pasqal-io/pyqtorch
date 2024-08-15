@@ -47,16 +47,25 @@ def calc_mat_vec_wavefunction(
     )
 
 
-def get_op_support(op: type[Primitive] | type[Parametric], n_qubits: int) -> tuple:
+def get_op_support(
+    op: type[Primitive] | type[Parametric], n_qubits: int, get_ordered: bool = False
+) -> tuple:
     """Decides a random qubit support for any gate, up to a some max n_qubits."""
     if op in OPS_1Q.union(OPS_PARAM_1Q):
         supp: tuple = (random.randint(0, n_qubits - 1),)
+        ordered_supp = supp
     elif op in OPS_2Q.union(OPS_PARAM_2Q):
         supp = tuple(random.sample(range(n_qubits), 2))
+        ordered_supp = tuple(sorted(supp))
     elif op in OPS_3Q:
         i, j, k = tuple(random.sample(range(n_qubits), 3))
+        a, b, c = tuple(sorted((i, j, k)))
         supp = ((i, j), k) if op == Toffoli else (i, (j, k))
-    return supp
+        ordered_supp = ((a, b), c) if op == Toffoli else (a, (b, c))
+    if get_ordered:
+        return supp, ordered_supp
+    else:
+        return supp
 
 
 def random_pauli_hamiltonian(
