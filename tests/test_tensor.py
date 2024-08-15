@@ -10,27 +10,42 @@ from pyqtorch.composite import Add, Scale, Sequence
 from pyqtorch.hamiltonians import GeneratorType, HamiltonianEvolution
 from pyqtorch.primitives import (
     CNOT,
+    CPHASE,
+    CRX,
+    CRY,
+    CRZ,
+    CSWAP,
+    CY,
+    CZ,
+    OPS_2Q,
+    OPS_3Q,
     OPS_DIGITAL,
     OPS_PARAM,
+    OPS_PARAM_2Q,
     SWAP,
     N,
     Parametric,
     Primitive,
     Projector,
+    Toffoli,
 )
 from pyqtorch.utils import (
     ATOL,
     RTOL,
+    permute_basis,
     random_state,
 )
 
 pi = torch.tensor(torch.pi)
 
 
+@pytest.mark.parametrize("use_permute", [True, False])
 @pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
-def test_digital_tensor(n_qubits: int, batch_size: int, use_full_support: bool) -> None:
+def test_digital_tensor(
+    n_qubits: int, batch_size: int, use_full_support: bool, use_permute: bool
+) -> None:
     """
     Goes through all non-parametric gates and tests their application to a random state
     in comparison with the `tensor` method, either using just the qubit support of the gate
@@ -44,15 +59,18 @@ def test_digital_tensor(n_qubits: int, batch_size: int, use_full_support: bool) 
         psi_star = op_concrete(psi_init)
         full_support = tuple(range(n_qubits)) if use_full_support else None
         psi_expected = calc_mat_vec_wavefunction(
-            op_concrete, psi_init, full_support=full_support
+            op_concrete, psi_init, full_support=full_support, use_permute=use_permute
         )
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
+@pytest.mark.parametrize("use_permute", [True, False])
 @pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
-def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) -> None:
+def test_param_tensor(
+    n_qubits: int, batch_size: int, use_full_support: bool, use_permute: bool
+) -> None:
     """
     Goes through all parametric gates and tests their application to a random state
     in comparison with the `tensor` method, either using just the qubit support of the gate
@@ -68,7 +86,11 @@ def test_param_tensor(n_qubits: int, batch_size: int, use_full_support: bool) ->
         psi_star = op_concrete(psi_init, values)
         full_support = tuple(range(n_qubits)) if use_full_support else None
         psi_expected = calc_mat_vec_wavefunction(
-            op_concrete, psi_init, values=values, full_support=full_support
+            op_concrete,
+            psi_init,
+            values=values,
+            full_support=full_support,
+            use_permute=use_permute,
         )
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
@@ -233,3 +255,57 @@ def test_hevo_tensor_tensor(
     psi_star = operator(psi_init, values)
     psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("n_qubits", [3, 5])
+def test_permute_tensor(n_qubits: int) -> None:
+    for op in OPS_2Q.union(OPS_3Q):
+        supp, ordered_supp = get_op_support(op, n_qubits, get_ordered=True)
+
+        op_concrete1 = op(*supp)
+        op_concrete2 = op(*ordered_supp)
+
+        mat1 = op_concrete1.tensor()
+        mat2 = op_concrete2.tensor()
+
+        perm = op_concrete1._qubit_support.qubits
+
+        assert torch.allclose(mat1, permute_basis(mat2, perm, inv=True))
+        assert torch.allclose(mat2, permute_basis(mat1, perm))
+
+
+@pytest.mark.parametrize("n_qubits", [3, 5])
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_permute_tensor_parametric(n_qubits: int, batch_size: int) -> None:
+    for op in OPS_PARAM_2Q:
+        supp, ordered_supp = get_op_support(op, n_qubits, get_ordered=True)
+        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
+        values = {param: torch.rand(batch_size) for param in params}
+
+        op_concrete1 = op(*supp, *params)
+        op_concrete2 = op(*ordered_supp, *params)
+
+        mat1 = op_concrete1.tensor(values=values)
+        mat2 = op_concrete2.tensor(values=values)
+
+        perm = op_concrete1._qubit_support.qubits
+
+        assert torch.allclose(mat1, permute_basis(mat2, perm, inv=True))
+        assert torch.allclose(mat2, permute_basis(mat1, perm))
+
+
+def test_tensor_symmetries() -> None:
+    assert not torch.allclose(CNOT(0, 1).tensor(), CNOT(1, 0).tensor())
+    assert not torch.allclose(CY(0, 1).tensor(), CY(1, 0).tensor())
+    assert not torch.allclose(CZ(0, 1).tensor(), CY(1, 0).tensor())
+    assert not torch.allclose(CRX(0, 1, 1.0).tensor(), CRX(1, 0, 1.0).tensor())
+    assert not torch.allclose(CRY(0, 1, 1.0).tensor(), CRY(1, 0, 1.0).tensor())
+    assert not torch.allclose(CRZ(0, 1, 1.0).tensor(), CRZ(1, 0, 1.0).tensor())
+    assert torch.allclose(CPHASE(0, 1, 1.0).tensor(), CPHASE(1, 0, 1.0).tensor())
+    assert torch.allclose(SWAP(0, 1).tensor(), SWAP(1, 0).tensor())
+    assert torch.allclose(CSWAP(0, (1, 2)).tensor(), CSWAP(0, (2, 1)).tensor())
+    assert torch.allclose(CSWAP(1, (0, 2)).tensor(), CSWAP(1, (2, 0)).tensor())
+    assert torch.allclose(CSWAP(2, (0, 1)).tensor(), CSWAP(2, (1, 0)).tensor())
+    assert torch.allclose(Toffoli((0, 1), 2).tensor(), Toffoli((1, 0), 2).tensor())
+    assert torch.allclose(Toffoli((0, 2), 1).tensor(), Toffoli((2, 0), 1).tensor())
+    assert torch.allclose(Toffoli((1, 2), 0).tensor(), Toffoli((2, 1), 0).tensor())

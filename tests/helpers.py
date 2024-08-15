@@ -4,7 +4,7 @@ import random
 
 import torch
 
-from pyqtorch.apply import apply_operator
+from pyqtorch.apply import apply_operator, apply_operator_permute
 from pyqtorch.composite import Add, Scale, Sequence
 from pyqtorch.primitives import (
     OPS_1Q,
@@ -24,6 +24,7 @@ def calc_mat_vec_wavefunction(
     init_state: torch.Tensor,
     values: dict = dict(),
     full_support: tuple | None = None,
+    use_permute: bool = False,
 ) -> torch.Tensor:
     """Get the result of applying the matrix representation of a block to an initial state.
 
@@ -38,23 +39,33 @@ def calc_mat_vec_wavefunction(
     """
     mat = block.tensor(values=values, full_support=full_support)
     qubit_support = block.qubit_support if full_support is None else full_support
-    return apply_operator(
+    apply_func = apply_operator_permute if use_permute else apply_operator
+    return apply_func(
         init_state,
         mat,
-        qubit_support=qubit_support,
+        qubit_support,
     )
 
 
-def get_op_support(op: type[Primitive] | type[Parametric], n_qubits: int) -> tuple:
+def get_op_support(
+    op: type[Primitive] | type[Parametric], n_qubits: int, get_ordered: bool = False
+) -> tuple:
     """Decides a random qubit support for any gate, up to a some max n_qubits."""
     if op in OPS_1Q.union(OPS_PARAM_1Q):
         supp: tuple = (random.randint(0, n_qubits - 1),)
+        ordered_supp = supp
     elif op in OPS_2Q.union(OPS_PARAM_2Q):
         supp = tuple(random.sample(range(n_qubits), 2))
+        ordered_supp = tuple(sorted(supp))
     elif op in OPS_3Q:
         i, j, k = tuple(random.sample(range(n_qubits), 3))
+        a, b, c = tuple(sorted((i, j, k)))
         supp = ((i, j), k) if op == Toffoli else (i, (j, k))
-    return supp
+        ordered_supp = ((a, b), c) if op == Toffoli else (a, (b, c))
+    if get_ordered:
+        return supp, ordered_supp
+    else:
+        return supp
 
 
 def random_pauli_hamiltonian(

@@ -44,6 +44,12 @@ F_{S} & =4\overset{S}{\underset{s=1}{\sum}}{\rm sin}\left(\frac{\delta_{M}\Delta
 
 Here $F_s=f(x+\delta_s)-f(x-\delta_s)$ denotes the difference between values of functions evaluated at shifted arguments $x\pm\delta_s$.
 
+!!! caution "Using GPSR with HamiltonianEvolution"
+    GPSR works with the formalism above-presented, which corresponds to many parametric operations such as rotation gates.
+    For HamiltonianEvolution, since the factor 1/2 is missing, to allow GPSR differentiation, we multiply by 2 the
+    spectral gaps. Also we use a shift prefactor of 0.5 for multi-gap GPSR or 0.5 divided by the spectral gap for single-gap GPSR.
+
+
 ### Example
 ```python exec="on" source="material-block" html="1"
 import pyqtorch as pyq

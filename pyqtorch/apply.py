@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 from torch import Tensor, einsum
 
 from pyqtorch.matrices import _dagger
-from pyqtorch.utils import DensityMatrix
+from pyqtorch.utils import DensityMatrix, permute_state
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -30,16 +30,15 @@ def apply_operator(
     Arguments:
         state: State to operate on.
         operator: Tensor to contract over 'state'.
-        qubits: Tuple of qubits on which to apply the 'operator' to.
-        n_qubits: The number of qubits of the full system.
-        batch_size: Batch size of either state and or operators.
+        qubit_support: Tuple of qubits on which to apply the 'operator' to.
 
     Returns:
         State after applying 'operator'.
     """
     qubit_support = list(qubit_support)
+    n_qubits = len(state.size()) - 1
     n_support = len(qubit_support)
-    n_state_dims = len(state.size())
+    n_state_dims = n_qubits + 1
     operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
     in_state_dims = ABC_ARRAY[0:n_state_dims].copy()
     operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + 2 * n_support + 1].copy()
@@ -51,6 +50,42 @@ def apply_operator(
         map(lambda e: "".join(list(e)), [operator_dims, in_state_dims, out_state_dims])
     )
     return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
+
+
+def apply_operator_permute(
+    state: Tensor,
+    operator: Tensor,
+    qubit_support: tuple[int, ...] | list[int],
+) -> Tensor:
+    """NOTE: Currently not being used.
+
+       Alternative apply operator function with a logic based on state permutations.
+       Seems to be as fast as the current `apply_operator`. To be saved for now, we
+       may want to switch to this one in the future if we wish to remove the state
+       [2] * n_qubits shape and make the batch dimension the first one as the typical
+       torch convention.
+
+    Arguments:
+        state: State to operate on.
+        operator: Tensor to contract over 'state'.
+        qubit_support: Tuple of qubits on which to apply the 'operator' to.
+
+    Returns:
+        State after applying 'operator'.
+    """
+    n_qubits = len(state.size()) - 1
+    n_support = len(qubit_support)
+    batch_size = max(state.size(-1), operator.size(-1))
+    full_support = tuple(range(n_qubits))
+    support_perm = list(sorted(qubit_support)) + list(
+        set(full_support) - set(qubit_support)
+    )
+    state = permute_state(state, support_perm)
+    state = state.reshape([2**n_support, 2 ** (n_qubits - n_support), state.size(-1)])
+    result = einsum("ijb,jkb->ikb", operator, state).reshape(
+        [2] * n_qubits + [batch_size]
+    )
+    return permute_state(result, support_perm, inv=True)
 
 
 def apply_density_mat(op: Tensor, density_matrix: DensityMatrix) -> DensityMatrix:
