@@ -25,6 +25,7 @@ ATOL = 1e-06
 ATOL_embedding = 1e-03
 RTOL = 0.0
 GRADCHECK_ATOL = 1e-05
+GRADCHECK_ATOL_hamevo = 1e-03
 GRADCHECK_sampling_ATOL = 1e-01
 PSR_ACCEPTANCE = 1e-05
 ABC_ARRAY: NDArray = array(list(ABC))

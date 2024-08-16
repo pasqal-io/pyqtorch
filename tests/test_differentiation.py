@@ -10,6 +10,7 @@ from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.primitives import Primitive
 from pyqtorch.utils import (
     GRADCHECK_ATOL,
+    GRADCHECK_ATOL_hamevo,
 )
 
 
@@ -81,7 +82,6 @@ def test_adjoint_diff_hamevo(n_qubits: int, n_layers: int) -> None:
     )[0]
     ham_op = pyq.HamiltonianEvolution(ham, "t", qubit_support=tuple(range(n_qubits)))
     ops = [ham_op, cnot] * n_layers
-    atol = 1e-03
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.Observable(pyq.Z(0))
 
@@ -109,12 +109,7 @@ def test_adjoint_diff_hamevo(n_qubits: int, n_layers: int) -> None:
 
     assert len(grad_ad) == len(grad_adjoint)
     for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=atol)
-
-    # TODO higher order adjoint is not yet supported.
-    # gradgrad_adjoint = torch.autograd.grad(
-    #     grad_adjoint, tuple(values_adjoint.values()), torch.ones_like(grad_adjoint)
-    # )
+        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL_hamevo)
 
 
 @pytest.mark.parametrize("n_qubits", [3, 5])
