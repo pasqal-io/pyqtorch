@@ -257,18 +257,17 @@ def finitediff(
     if len(derivative_indices) > 3 or len(set(derivative_indices)) > 1:
         di = derivative_indices[1:]
         return (finitediff(f, x + ev, di) - finitediff(f, x - ev, di)) * _eps / 2
-    elif len(derivative_indices) == 3:
+    if len(derivative_indices) == 3:
         return (
             (f(x + 2 * ev) - 2 * f(x + ev) + 2 * f(x - ev) - f(x - 2 * ev))
             * _eps**3
             / 2
         )
-    elif len(derivative_indices) == 2:
+    if len(derivative_indices) == 2:
         return (f(x + ev) + f(x - ev) - 2 * f(x)) * _eps**2
-    elif len(derivative_indices) == 1:
+    if len(derivative_indices) == 1:
         return (f(x + ev) - f(x - ev)) * _eps / 2
-    else:
-        raise ValueError(
+    raise ValueError(
             "If you see this error there is a bug in the `finitediff` function."
         )
 
