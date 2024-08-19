@@ -22,6 +22,7 @@ from pyqtorch.utils import (
     StrEnum,
     _round_operator,
     expand_operator,
+    finitediff,
     is_diag,
 )
 
@@ -196,7 +197,12 @@ class HamiltonianEvolution(Sequence):
             )
         super().__init__(generator)
         self._qubit_support = qubit_support  # type: ignore
-        self.time = time
+
+        if isinstance(time, str) or isinstance(time, Tensor):
+            self.time = time
+        else:
+            raise ValueError("time should be passed as str or tensor.")
+
         logger.debug("Hamiltonian Evolution initialized")
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
@@ -372,3 +378,27 @@ class HamiltonianEvolution(Sequence):
             return evolved_op
         else:
             return expand_operator(evolved_op, self.qubit_support, full_support)
+
+    def jacobian(
+        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+    ) -> Tensor:
+        """
+        Get the corresponding unitary of the jacobian.
+
+        Arguments:
+            values: Parameter value.
+
+        Returns:
+            The unitary representation of the jacobian.
+        """
+
+        hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
+        time_evolution: torch.Tensor = (
+            values[self.time] if isinstance(self.time, str) else self.time
+        )  # If `self.time` is a string / hence, a Parameter,
+        # we expect the user to pass it in the `values` dict
+        return finitediff(
+            lambda t: evolve(hamiltonian, t),
+            values[self.param_name].reshape(-1, 1),
+            (0,),
+        )
