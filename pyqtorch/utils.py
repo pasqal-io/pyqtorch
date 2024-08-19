@@ -247,29 +247,32 @@ def finitediff(
         eps = torch.finfo(x.dtype).eps ** (1 / (2 + order))
 
     # compute derivative direction vector(s)
-    eps = torch.as_tensor(eps, dtype=x.dtype)
-    _eps = 1 / eps  # type: ignore[operator]
-    ev = torch.zeros_like(x)
+    delta = torch.zeros_like(x)
     i = derivative_indices[0]
-    ev[:, i] += eps
+    delta[:, i] += torch.as_tensor(eps, dtype=x.dtype)
+    denominator = 1 / delta[:, i]
 
     # recursive finite differencing for higher order than 3 / mixed derivatives
     if len(derivative_indices) > 3 or len(set(derivative_indices)) > 1:
         di = derivative_indices[1:]
-        return (finitediff(f, x + ev, di) - finitediff(f, x - ev, di)) * _eps / 2
+        return (
+            (finitediff(f, x + delta, di) - finitediff(f, x - delta, di))
+            * denominator
+            / 2
+        )
     if len(derivative_indices) == 3:
         return (
-            (f(x + 2 * ev) - 2 * f(x + ev) + 2 * f(x - ev) - f(x - 2 * ev))
-            * _eps**3
+            (f(x + 2 * delta) - 2 * f(x + delta) + 2 * f(x - delta) - f(x - 2 * delta))
+            * denominator**3
             / 2
         )
     if len(derivative_indices) == 2:
-        return (f(x + ev) + f(x - ev) - 2 * f(x)) * _eps**2
+        return (f(x + delta) + f(x - delta) - 2 * f(x)) * denominator**2
     if len(derivative_indices) == 1:
-        return (f(x + ev) - f(x - ev)) * _eps / 2
+        return (f(x + delta) - f(x - delta)) * denominator / 2
     raise ValueError(
-            "If you see this error there is a bug in the `finitediff` function."
-        )
+        "If you see this error there is a bug in the `finitediff` function."
+    )
 
 
 def product_state(

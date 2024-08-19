@@ -197,7 +197,12 @@ class HamiltonianEvolution(Sequence):
             )
         super().__init__(generator)
         self._qubit_support = qubit_support  # type: ignore
-        self.time = time
+
+        if isinstance(time, str) or isinstance(time, Tensor):
+            self.time = time
+        else:
+            raise ValueError("time should be passed as str or tensor.")
+
         logger.debug("Hamiltonian Evolution initialized")
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
