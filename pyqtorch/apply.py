@@ -141,10 +141,8 @@ def operator_product_permute(
     batch_size = max(batch_big, batch_small)
 
     # Permute the large operator and reshape into a wide matrix
-    reordered_support = tuple(sorted(small_supp)) + tuple(
-        set(big_supp) - set(small_supp)
-    )
-    big_op = permute_basis(big_op, reordered_support)
+    support_perm = tuple(sorted(small_supp)) + tuple(set(big_supp) - set(small_supp))
+    big_op = permute_basis(big_op, support_perm)
     big_op = big_op.reshape([2**n_small, (2 ** (2 * n_big - n_small)), batch_big])
 
     # Compute S.W and reshape back to square
@@ -154,11 +152,9 @@ def operator_product_permute(
 
     # Apply the inverse qubit permutation
     if transpose:
-        return (
-            permute_basis(result, reordered_support, inv=True).conj().permute(1, 0, 2)
-        )
+        return permute_basis(result, support_perm, inv=True).conj().permute(1, 0, 2)
     else:
-        return permute_basis(result, reordered_support, inv=True)
+        return permute_basis(result, support_perm, inv=True)
 
 
 def apply_density_mat(op: Tensor, density_matrix: DensityMatrix) -> DensityMatrix:
