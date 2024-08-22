@@ -121,20 +121,16 @@ def operator_product_permute(
         return einsum("ijb,jkb->ikb", op1, op2)
 
     if len(supp1) < len(supp2):
-        small_op = op1
-        small_supp = supp1
-        big_op = op2
-        big_supp = supp2
+        small_op, small_supp = op1, supp1
+        big_op, big_supp = op2, supp2
         transpose = False
     else:
-        small_op = op2.conj().permute(1, 0, 2)
-        small_supp = supp2
-        big_op = op1.conj().permute(1, 0, 2)
-        big_supp = supp1
+        small_op, small_supp = op2.conj().transpose(0, 1), supp2
+        big_op, big_supp = op1.conj().transpose(0, 1), supp1
         transpose = True
 
     if not set(small_supp).issubset(set(big_supp)):
-        raise ValueError
+        raise ValueError("Operator product requires overlapping qubit supports.")
 
     n_big, n_small = len(big_supp), len(small_supp)
     batch_big, batch_small = big_op.size(-1), small_op.size(-1)
@@ -152,7 +148,7 @@ def operator_product_permute(
 
     # Apply the inverse qubit permutation
     if transpose:
-        return permute_basis(result, support_perm, inv=True).conj().permute(1, 0, 2)
+        return permute_basis(result, support_perm, inv=True).conj().transpose(0, 1)
     else:
         return permute_basis(result, support_perm, inv=True)
 
