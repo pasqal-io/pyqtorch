@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 import torch
+from helpers import random_pauli_hamiltonian
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
@@ -9,6 +10,7 @@ from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.primitives import Primitive
 from pyqtorch.utils import (
     GRADCHECK_ATOL,
+    GRADCHECK_ATOL_hamevo,
 )
 
 
@@ -18,6 +20,7 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     rx = pyq.RX(0, param_name="theta_0")
     cry = pyq.CPHASE(0, 1, param_name="theta_1")
     rz = pyq.RZ(2, param_name="theta_2")
+
     cnot = pyq.CNOT(1, 2)
     ops = [rx, cry, rz, cnot] * n_layers
     circ = pyq.QuantumCircuit(n_qubits, ops)
@@ -38,7 +41,11 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     theta_2_ad = torch.tensor([theta_2_value], requires_grad=True)
     thetas_2_adjoint = torch.tensor([theta_2_value], requires_grad=True)
 
-    values_ad = {"theta_0": theta_0_ad, "theta_1": theta_1_ad, "theta_2": theta_2_ad}
+    values_ad = {
+        "theta_0": theta_0_ad,
+        "theta_1": theta_1_ad,
+        "theta_2": theta_2_ad,
+    }
     values_adjoint = {
         "theta_0": thetas_0_adjoint,
         "theta_1": thetas_1_adjoint,
@@ -63,6 +70,46 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     # gradgrad_adjoint = torch.autograd.grad(
     #     grad_adjoint, tuple(values_adjoint.values()), torch.ones_like(grad_adjoint)
     # )
+
+
+@pytest.mark.parametrize("n_qubits", [3, 4, 5])
+@pytest.mark.parametrize("n_layers", [1, 2, 3])
+def test_adjoint_diff_hamevo(n_qubits: int, n_layers: int) -> None:
+
+    cnot = pyq.CNOT(1, 2)
+    ham = random_pauli_hamiltonian(
+        n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
+    )[0]
+    ham_op = pyq.HamiltonianEvolution(ham, "t", qubit_support=tuple(range(n_qubits)))
+    ops = [ham_op, cnot] * n_layers
+    circ = pyq.QuantumCircuit(n_qubits, ops)
+    obs = pyq.Observable(pyq.Z(0))
+
+    t = torch.pi / 3
+
+    state = pyq.zero_state(n_qubits)
+
+    t_ad = torch.tensor([t], requires_grad=True)
+    t_adjoint = torch.tensor([t], requires_grad=True)
+
+    values_ad = {"t": t_ad}
+    values_adjoint = {
+        "t": t_adjoint,
+    }
+    exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
+    exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
+
+    grad_ad = torch.autograd.grad(
+        exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad)
+    )
+
+    grad_adjoint = torch.autograd.grad(
+        exp_adjoint, tuple(values_adjoint.values()), torch.ones_like(exp_adjoint)
+    )
+
+    assert len(grad_ad) == len(grad_adjoint)
+    for i in range(len(grad_ad)):
+        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL_hamevo)
 
 
 @pytest.mark.parametrize("n_qubits", [3, 5])

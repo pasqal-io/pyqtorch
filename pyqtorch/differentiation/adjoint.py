@@ -10,7 +10,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.composite import Scale
 from pyqtorch.embed import Embedding
-from pyqtorch.hamiltonians import Observable
+from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
 from pyqtorch.primitives import Parametric, Primitive
 from pyqtorch.utils import inner_prod, param_dict
 
@@ -76,11 +76,13 @@ class AdjointExpectation(Function):
         values = param_dict(ctx.param_names, param_values)
         grads_dict = {k: None for k in values.keys()}
         for op in ctx.circuit.flatten()[::-1]:
-            if isinstance(op, (Primitive, Parametric)):
+            if isinstance(op, (Primitive, Parametric, HamiltonianEvolution)):
                 ctx.out_state = apply_operator(
                     ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
                 )
-                if isinstance(op, Parametric) and isinstance(op.param_name, str):
+                if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(
+                    op.param_name, str
+                ):
                     if values[op.param_name].requires_grad:
                         mu = apply_operator(
                             ctx.out_state,

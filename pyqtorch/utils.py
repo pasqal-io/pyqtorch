@@ -25,6 +25,7 @@ ATOL = 1e-06
 ATOL_embedding = 1e-03
 RTOL = 0.0
 GRADCHECK_ATOL = 1e-05
+GRADCHECK_ATOL_hamevo = 1e-03
 GRADCHECK_sampling_ATOL = 1e-01
 PSR_ACCEPTANCE = 1e-05
 ABC_ARRAY: NDArray = array(list(ABC))
@@ -219,6 +220,59 @@ def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     p, q = H.stride()
     offdiag_view = torch.as_strided(H[:, 1:], (m - 1, m), (p + q, q))
     return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)) == 0
+
+
+def finitediff(
+    f: Callable,
+    x: Tensor,
+    derivative_indices: tuple[int, ...],
+    eps: float | None = None,
+) -> Tensor:
+    """
+    Compute the finite difference of a function at a point.
+
+    Args:
+        f: The function to differentiate.
+        x: Input of size `(batch_size, input_size)`.
+        derivative_indices: Which *input* to differentiate (i.e. which variable x[:,i])
+        eps: finite difference spacing (uses `torch.finfo(x.dtype).eps ** (1 / (2 + order))`
+            as default)
+
+    Returns:
+        (Tensor): The finite difference of the function at the point `x`.
+    """
+
+    if eps is None:
+        order = len(derivative_indices)
+        eps = torch.finfo(x.dtype).eps ** (1 / (2 + order))
+
+    # compute derivative direction vector(s)
+    delta = torch.zeros_like(x)
+    i = derivative_indices[0]
+    delta[:, i] += torch.as_tensor(eps, dtype=x.dtype)
+    denominator = 1 / delta[:, i]
+
+    # recursive finite differencing for higher order than 3 / mixed derivatives
+    if len(derivative_indices) > 3 or len(set(derivative_indices)) > 1:
+        di = derivative_indices[1:]
+        return (
+            (finitediff(f, x + delta, di) - finitediff(f, x - delta, di))
+            * denominator
+            / 2
+        )
+    if len(derivative_indices) == 3:
+        return (
+            (f(x + 2 * delta) - 2 * f(x + delta) + 2 * f(x - delta) - f(x - 2 * delta))
+            * denominator**3
+            / 2
+        )
+    if len(derivative_indices) == 2:
+        return (f(x + delta) + f(x - delta) - 2 * f(x)) * denominator**2
+    if len(derivative_indices) == 1:
+        return (f(x + delta) - f(x - delta)) * denominator / 2
+    raise ValueError(
+        "If you see this error there is a bug in the `finitediff` function."
+    )
 
 
 def product_state(
