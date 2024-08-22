@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 from torch import Tensor, einsum
 
 from pyqtorch.matrices import _dagger
-from pyqtorch.utils import DensityMatrix, permute_state
+from pyqtorch.utils import DensityMatrix, permute_basis, permute_state
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -86,6 +86,79 @@ def apply_operator_permute(
         [2] * n_qubits + [batch_size]
     )
     return permute_state(result, support_perm, inv=True)
+
+
+def operator_product_permute(
+    op1: Tensor,
+    supp1: tuple[int, ...],
+    op2: Tensor,
+    supp2: tuple[int, ...],
+) -> Tensor:
+    """
+    Operator product based on block matrix multiplication.
+
+    E.g., for some small operator S and a big operator with 4 partitions A, B, C, D:
+
+    |S 0|.|A B| = |S.A S.B|
+    |0 S| |C D|   |S.C S.D|
+
+    or
+
+    |A B|.|S 0| = |A.S B.S|
+    |C D|.|0 S|   |C.S D.S|
+
+    The same generalizes for different sizes of the big operator. Note that the block
+    diagonal matrix is never computed. Instead, the big operator is permuted and
+    reshaped into a wide matrix:
+
+    W = [A B C D]
+
+    And then the result is computed as S.W, reshaped back into a square matrix, and
+    permuted back into the original ordering.
+    """
+
+    if supp1 == supp2:
+        return einsum("ijb,jkb->ikb", op1, op2)
+
+    if len(supp1) < len(supp2):
+        small_op = op1
+        small_supp = supp1
+        big_op = op2
+        big_supp = supp2
+        transpose = False
+    else:
+        small_op = op2.conj().permute(1, 0, 2)
+        small_supp = supp2
+        big_op = op1.conj().permute(1, 0, 2)
+        big_supp = supp1
+        transpose = True
+
+    if not set(small_supp).issubset(set(big_supp)):
+        raise ValueError
+
+    n_big, n_small = len(big_supp), len(small_supp)
+    batch_big, batch_small = big_op.size(-1), small_op.size(-1)
+    batch_size = max(batch_big, batch_small)
+
+    # Permute the large operator and reshape into a wide matrix
+    reordered_support = tuple(sorted(small_supp)) + tuple(
+        set(big_supp) - set(small_supp)
+    )
+    big_op = permute_basis(big_op, reordered_support)
+    big_op = big_op.reshape([2**n_small, (2 ** (2 * n_big - n_small)), batch_big])
+
+    # Compute S.W and reshape back to square
+    result = einsum("ijb,jkb->ikb", small_op, big_op).reshape(
+        [2**n_big, 2**n_big, batch_size]
+    )
+
+    # Apply the inverse qubit permutation
+    if transpose:
+        return (
+            permute_basis(result, reordered_support, inv=True).conj().permute(1, 0, 2)
+        )
+    else:
+        return permute_basis(result, reordered_support, inv=True)
 
 
 def apply_density_mat(op: Tensor, density_matrix: DensityMatrix) -> DensityMatrix:
