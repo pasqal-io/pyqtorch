@@ -15,11 +15,11 @@ from pyqtorch.noise import (
     Depolarizing,
     GeneralizedAmplitudeDamping,
     Noise,
-    NoiseProtocol,
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
 )
+from pyqtorch.noise.protocol import NoiseProtocol
 from pyqtorch.primitives import (
     CNOT,
     CPHASE,

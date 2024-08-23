@@ -9,10 +9,10 @@ from typing import Any, Callable
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_density_mat, apply_operator
+from pyqtorch.apply import apply_operator, apply_operator_dm
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
-from pyqtorch.noise import NoiseProtocol, _repr_noise
+from pyqtorch.noise.protocol import NoiseProtocol, _repr_noise
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -344,10 +344,8 @@ class QuantumOperation(torch.nn.Module):
         embedding: Embedding | None = None,
     ) -> Tensor:
         if isinstance(state, DensityMatrix):
-            n_qubits = int(log2(state.size(1)))
-            full_support = tuple(range(n_qubits))
-            return apply_density_mat(
-                self.tensor(values, embedding, full_support=full_support), state
+            return apply_operator_dm(
+                state, self.tensor(values, embedding), self.qubit_support
             )
         else:
             return apply_operator(
@@ -362,13 +360,14 @@ class QuantumOperation(torch.nn.Module):
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
+
         if not isinstance(state, DensityMatrix):
             state = density_mat(state)
-        n_qubits = int(log2(state.size(1)))
-        full_support = tuple(range(n_qubits))
-        state = apply_density_mat(
-            self.tensor(values, embedding, full_support=full_support), state
+
+        state = apply_operator_dm(
+            state, self.tensor(values, embedding), self.qubit_support
         )
+
         if isinstance(self.noise, dict):
             for noise_instance in self.noise.values():
                 protocol = noise_instance.protocol_to_gate()
@@ -382,6 +381,7 @@ class QuantumOperation(torch.nn.Module):
                 )
                 state = noise_gate(state, values)
             return state
+
         elif isinstance(self.noise, NoiseProtocol):
             protocol = self.noise.protocol_to_gate()
             noise_gate = protocol(

@@ -13,7 +13,7 @@ from pyqtorch.matrices import (
     controlled,
     parametric_unitary,
 )
-from pyqtorch.noise import NoiseProtocol, _repr_noise
+from pyqtorch.noise.protocol import NoiseProtocol, _repr_noise
 from pyqtorch.quantum_operation import QuantumOperation, Support
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)

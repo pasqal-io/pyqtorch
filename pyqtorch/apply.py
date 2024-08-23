@@ -94,6 +94,19 @@ def apply_operator_dm(
     operator: Tensor,
     qubit_support: tuple[int, ...] | list[int],
 ) -> Tensor:
+    """
+    Apply an operator to a density matrix on a given qubit suport, i.e., compute:
+
+    OP.DM.OP.dagger()
+
+    Args:
+        state: State to operate on.
+        operator: Tensor to contract over 'state'.
+        qubit_support: Tuple of qubits on which to apply the 'operator' to.
+
+    Returns:
+        DensityMatrix: The resulting density matrix after applying the operator.
+    """
 
     if not isinstance(state, DensityMatrix):
         raise TypeError("Function apply_operator_dm requires a density matrix state.")
@@ -106,6 +119,8 @@ def apply_operator_dm(
         set(full_support) - set(qubit_support)
     )
     state = permute_basis(state, support_perm)
+
+    # There is probably a smart way to represent the lines below in a single einsum...
     state = state.reshape(
         [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
     )
@@ -121,27 +136,6 @@ def apply_operator_dm(
         )
     )
     return permute_basis(state, support_perm, inv=True)
-
-
-def apply_density_mat(op: Tensor, density_matrix: DensityMatrix) -> DensityMatrix:
-    """
-    Apply an operator to a density matrix, i.e., compute:
-    op1 * density_matrix * op1_dagger.
-
-    Args:
-        op (Tensor): The operator to apply.
-        density_matrix (DensityMatrix): The density matrix.
-
-    Returns:
-        DensityMatrix: The resulting density matrix after applying the operator and its dagger.
-    """
-    batch_size_op = op.size(-1)
-    batch_size_dm = density_matrix.size(-1)
-    if batch_size_dm > batch_size_op:
-        # The other condition is impossible because
-        # operators are always initialized with batch_size = 1.
-        op = op.repeat(1, 1, batch_size_dm)
-    return einsum("ijb,jkb,klb->ilb", op, density_matrix, _dagger(op))
 
 
 def operator_product(

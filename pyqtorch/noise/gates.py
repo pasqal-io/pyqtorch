@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from math import log2, sqrt
+from math import sqrt
 from typing import Any
 
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_density_mat
+from pyqtorch.apply import apply_operator_dm
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
 from pyqtorch.utils import DensityMatrix, density_mat, qubit_support_as_tuple
@@ -29,13 +29,13 @@ class Noise(torch.nn.Module):
         self.error_probabilities: tuple[float, ...] | float = error_probabilities
 
     def extra_repr(self) -> str:
-        return f"target: {self.qubit_support}, prob: {self.probabilities}"
+        return f"target: {self.qubit_support}, prob: {self.error_probabilities}"
 
     @property
     def kraus_operators(self) -> list[Tensor]:
         return [getattr(self, f"kraus_{i}") for i in range(len(self._buffers))]
 
-    def _tensor(
+    def tensor(
         self,
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
@@ -69,10 +69,9 @@ class Noise(torch.nn.Module):
         """
         if not isinstance(state, DensityMatrix):
             state = density_mat(state)
-        n_qubits = int(log2(state.size(1)))
         rho_evols: list[Tensor] = []
-        for kraus in self.tensor(values, n_qubits):
-            rho_evol: Tensor = apply_density_mat(kraus, state)
+        for kraus in self.tensor(values):
+            rho_evol: Tensor = apply_operator_dm(state, kraus, self.qubit_support)
             rho_evols.append(rho_evol)
         rho_final: Tensor = torch.stack(rho_evols, dim=0)
         rho_final = torch.sum(rho_final, dim=0)
@@ -92,31 +91,31 @@ class Noise(torch.nn.Module):
         self._dtype = self.kraus_0.dtype
         return self
 
-    def tensor(
-        self, values: dict[str, Tensor] = dict(), n_qubits: int = 1
-    ) -> list[Tensor]:
-        block_mats = self._tensor(values)
-        mats = []
-        for blockmat in block_mats:
-            if n_qubits == 1:
-                mats.append(blockmat)
-            else:
-                full_sup = tuple(i for i in range(n_qubits))
-                support = tuple(sorted(self.qubit_support))
-                mat = (
-                    IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
-                    if support[0] != full_sup[0]
-                    else blockmat
-                )
-                for i in full_sup[1:]:
-                    if i == support[0]:
-                        other = blockmat
-                        mat = torch.kron(mat.contiguous(), other.contiguous())
-                    elif i not in support:
-                        other = IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
-                        mat = torch.kron(mat.contiguous(), other.contiguous())
-                mats.append(mat)
-        return mats
+    # def tensor(
+    #     self, values: dict[str, Tensor] = dict()
+    # ) -> list[Tensor]:
+    #     block_mats = self._tensor(values)
+    #     mats = []
+    #     for blockmat in block_mats:
+    #         if n_qubits == 1:
+    #             mats.append(blockmat)
+    #         else:
+    #             full_sup = tuple(i for i in range(n_qubits))
+    #             support = tuple(sorted(self.qubit_support))
+    #             mat = (
+    #                 IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
+    #                 if support[0] != full_sup[0]
+    #                 else blockmat
+    #             )
+    #             for i in full_sup[1:]:
+    #                 if i == support[0]:
+    #                     other = blockmat
+    #                     mat = torch.kron(mat.contiguous(), other.contiguous())
+    #                 elif i not in support:
+    #                     other = IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
+    #                     mat = torch.kron(mat.contiguous(), other.contiguous())
+    #             mats.append(mat)
+    #     return mats
 
 
 class BitFlip(Noise):

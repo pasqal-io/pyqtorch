@@ -6,7 +6,7 @@ import pytest
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_density_mat, operator_product
+from pyqtorch.apply import apply_operator_dm, operator_product
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import (
     HMAT,
@@ -100,12 +100,13 @@ def test_apply_density_mat(
 ) -> None:
     values = {"theta": torch.rand(1)}
     full_support = tuple(range(n_qubits))
-    op = random_unitary_gate.tensor(values=values, full_support=tuple(range(n_qubits)))
+    op = random_unitary_gate
     rho = random_input_dm
-    rho_evol = apply_density_mat(op, rho)
+    op_mat = op.tensor(values=values)
+    rho_evol = apply_operator_dm(rho, op_mat, op.qubit_support)
     assert rho_evol.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
-    mul1 = operator_product(rho, full_support, _dagger(op), full_support)
-    rho_expected = operator_product(op, full_support, mul1, full_support)
+    mul1 = operator_product(rho, full_support, _dagger(op_mat), op.qubit_support)
+    rho_expected = operator_product(op_mat, op.qubit_support, mul1, full_support)
     assert torch.allclose(rho_evol, rho_expected)
 
 
