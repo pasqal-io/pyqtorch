@@ -25,6 +25,7 @@ def calc_mat_vec_wavefunction(
     values: dict = dict(),
     full_support: tuple | None = None,
     use_permute: bool = False,
+    use_dm: bool = False,
 ) -> torch.Tensor:
     """Get the result of applying the matrix representation of a block to an initial state.
 
