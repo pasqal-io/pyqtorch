@@ -11,7 +11,7 @@ from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     controlled,
 )
-from pyqtorch.noise.protocol import NoiseProtocol
+from pyqtorch.noise import NoiseProtocol
 
 from .parametric import ControlledRotationGate, Parametric
 

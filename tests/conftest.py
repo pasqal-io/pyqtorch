@@ -19,7 +19,7 @@ from pyqtorch.noise import (
     PhaseDamping,
     PhaseFlip,
 )
-from pyqtorch.noise.protocol import NoiseProtocol
+from pyqtorch.noise import NoiseProtocol
 from pyqtorch.primitives import (
     CNOT,
     CPHASE,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pyqtorch.matrices import OPERATIONS_DICT
-from pyqtorch.noise.protocol import NoiseProtocol
+from pyqtorch.noise import NoiseProtocol
 from pyqtorch.quantum_operation import Support
 from pyqtorch.utils import (
     product_state,

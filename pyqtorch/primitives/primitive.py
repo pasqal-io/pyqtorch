@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.matrices import OPERATIONS_DICT, controlled
-from pyqtorch.noise.protocol import NoiseProtocol, _repr_noise
+from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.quantum_operation import QuantumOperation, Support
 
 

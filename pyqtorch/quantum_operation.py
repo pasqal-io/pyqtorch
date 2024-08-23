@@ -12,7 +12,7 @@ from torch import Tensor
 from pyqtorch.apply import apply_operator, apply_operator_dm
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
-from pyqtorch.noise.protocol import NoiseProtocol, _repr_noise
+from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
