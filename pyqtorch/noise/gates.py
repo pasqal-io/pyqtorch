@@ -37,8 +37,6 @@ class Noise(torch.nn.Module):
 
     def tensor(
         self,
-        values: dict[str, Tensor] | Tensor = dict(),
-        embedding: Embedding | None = None,
     ) -> list[Tensor]:
         # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
         return [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
@@ -90,32 +88,6 @@ class Noise(torch.nn.Module):
         self._device = self.kraus_0.device
         self._dtype = self.kraus_0.dtype
         return self
-
-    # def tensor(
-    #     self, values: dict[str, Tensor] = dict()
-    # ) -> list[Tensor]:
-    #     block_mats = self._tensor(values)
-    #     mats = []
-    #     for blockmat in block_mats:
-    #         if n_qubits == 1:
-    #             mats.append(blockmat)
-    #         else:
-    #             full_sup = tuple(i for i in range(n_qubits))
-    #             support = tuple(sorted(self.qubit_support))
-    #             mat = (
-    #                 IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
-    #                 if support[0] != full_sup[0]
-    #                 else blockmat
-    #             )
-    #             for i in full_sup[1:]:
-    #                 if i == support[0]:
-    #                     other = blockmat
-    #                     mat = torch.kron(mat.contiguous(), other.contiguous())
-    #                 elif i not in support:
-    #                     other = IMAT.clone().to(self.device, self.dtype).unsqueeze(2)
-    #                     mat = torch.kron(mat.contiguous(), other.contiguous())
-    #             mats.append(mat)
-    #     return mats
 
 
 class BitFlip(Noise):
