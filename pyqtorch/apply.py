@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from math import log2
 from string import ascii_letters as ABC
 
 from numpy import array
@@ -88,7 +89,62 @@ def apply_operator_permute(
     return permute_state(result, support_perm, inv=True)
 
 
-def operator_product_permute(
+def apply_operator_dm(
+    state: DensityMatrix,
+    operator: Tensor,
+    qubit_support: tuple[int, ...] | list[int],
+) -> Tensor:
+
+    if not isinstance(state, DensityMatrix):
+        raise TypeError("Function apply_operator_dm requires a density matrix state.")
+
+    n_qubits = int(log2(state.size()[0]))
+    n_support = len(qubit_support)
+    batch_size = max(state.size(-1), operator.size(-1))
+    full_support = tuple(range(n_qubits))
+    support_perm = tuple(sorted(qubit_support)) + tuple(
+        set(full_support) - set(qubit_support)
+    )
+    state = permute_basis(state, support_perm)
+    state = state.reshape(
+        [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
+    )
+    state = einsum("ijb,jkb->ikb", operator, state).reshape(
+        [2**n_qubits, 2**n_qubits, batch_size]
+    )
+    state = _dagger(state).reshape(
+        [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
+    )
+    state = _dagger(
+        einsum("ijb,jkb->ikb", operator, state).reshape(
+            [2**n_qubits, 2**n_qubits, batch_size]
+        )
+    )
+    return permute_basis(state, support_perm, inv=True)
+
+
+def apply_density_mat(op: Tensor, density_matrix: DensityMatrix) -> DensityMatrix:
+    """
+    Apply an operator to a density matrix, i.e., compute:
+    op1 * density_matrix * op1_dagger.
+
+    Args:
+        op (Tensor): The operator to apply.
+        density_matrix (DensityMatrix): The density matrix.
+
+    Returns:
+        DensityMatrix: The resulting density matrix after applying the operator and its dagger.
+    """
+    batch_size_op = op.size(-1)
+    batch_size_dm = density_matrix.size(-1)
+    if batch_size_dm > batch_size_op:
+        # The other condition is impossible because
+        # operators are always initialized with batch_size = 1.
+        op = op.repeat(1, 1, batch_size_dm)
+    return einsum("ijb,jkb,klb->ilb", op, density_matrix, _dagger(op))
+
+
+def operator_product(
     op1: Tensor,
     supp1: tuple[int, ...],
     op2: Tensor,
@@ -125,8 +181,8 @@ def operator_product_permute(
         big_op, big_supp = op2, supp2
         transpose = False
     else:
-        small_op, small_supp = op2.conj().transpose(0, 1), supp2
-        big_op, big_supp = op1.conj().transpose(0, 1), supp1
+        small_op, small_supp = _dagger(op2), supp2
+        big_op, big_supp = _dagger(op1), supp1
         transpose = True
 
     if not set(small_supp).issubset(set(big_supp)):
@@ -148,50 +204,6 @@ def operator_product_permute(
 
     # Apply the inverse qubit permutation
     if transpose:
-        return permute_basis(result, support_perm, inv=True).conj().transpose(0, 1)
+        return _dagger(permute_basis(result, support_perm, inv=True))
     else:
         return permute_basis(result, support_perm, inv=True)
-
-
-def apply_density_mat(op: Tensor, density_matrix: DensityMatrix) -> DensityMatrix:
-    """
-    Apply an operator to a density matrix, i.e., compute:
-    op1 * density_matrix * op1_dagger.
-
-    Args:
-        op (Tensor): The operator to apply.
-        density_matrix (DensityMatrix): The density matrix.
-
-    Returns:
-        DensityMatrix: The resulting density matrix after applying the operator and its dagger.
-    """
-    batch_size_op = op.size(-1)
-    batch_size_dm = density_matrix.size(-1)
-    if batch_size_dm > batch_size_op:
-        # The other condition is impossible because
-        # operators are always initialized with batch_size = 1.
-        op = op.repeat(1, 1, batch_size_dm)
-    return einsum("ijb,jkb,klb->ilb", op, density_matrix, _dagger(op))
-
-
-def operator_product(op1: Tensor, op2: Tensor) -> Tensor:
-    """
-    Compute the product of two operators.
-    `torch.bmm` is not suitable for our purposes because,
-    in our convention, the batch_size is in the last dimension.
-
-    Args:
-        op1 (Tensor): The first operator.
-        op2 (Tensor): The second operator.
-    Returns:
-        Tensor: The product of the two operators.
-    """
-    # ? Should we continue to adjust the batch here?
-    # ? as now all gates are init with batch_size=1.
-    batch_size_1 = op1.size(-1)
-    batch_size_2 = op2.size(-1)
-    if batch_size_1 > batch_size_2:
-        op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
-    elif batch_size_2 > batch_size_1:
-        op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
-    return einsum("ijb,jkb->ikb", op1, op2)
