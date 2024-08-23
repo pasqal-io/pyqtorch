@@ -68,7 +68,7 @@ class Noise(torch.nn.Module):
         if not isinstance(state, DensityMatrix):
             state = density_mat(state)
         rho_evols: list[Tensor] = []
-        for kraus in self.tensor(values):
+        for kraus in self.tensor():
             rho_evol: Tensor = apply_operator_dm(state, kraus, self.qubit_support)
             rho_evols.append(rho_evol)
         rho_final: Tensor = torch.stack(rho_evols, dim=0)
