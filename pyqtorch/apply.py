@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from math import log2
 from string import ascii_letters as ABC
 
 from numpy import array
@@ -7,7 +8,7 @@ from numpy.typing import NDArray
 from torch import Tensor, einsum
 
 from pyqtorch.matrices import _dagger
-from pyqtorch.utils import DensityMatrix, permute_state
+from pyqtorch.utils import DensityMatrix, permute_basis, permute_state
 
 ABC_ARRAY: NDArray = array(list(ABC))
 
@@ -88,45 +89,115 @@ def apply_operator_permute(
     return permute_state(result, support_perm, inv=True)
 
 
-def apply_density_mat(op: Tensor, density_matrix: DensityMatrix) -> DensityMatrix:
+def apply_operator_dm(
+    state: DensityMatrix,
+    operator: Tensor,
+    qubit_support: tuple[int, ...] | list[int],
+) -> Tensor:
     """
-    Apply an operator to a density matrix, i.e., compute:
-    op1 * density_matrix * op1_dagger.
+    Apply an operator to a density matrix on a given qubit suport, i.e., compute:
+
+    OP.DM.OP.dagger()
 
     Args:
-        op (Tensor): The operator to apply.
-        density_matrix (DensityMatrix): The density matrix.
+        state: State to operate on.
+        operator: Tensor to contract over 'state'.
+        qubit_support: Tuple of qubits on which to apply the 'operator' to.
 
     Returns:
-        DensityMatrix: The resulting density matrix after applying the operator and its dagger.
+        DensityMatrix: The resulting density matrix after applying the operator.
     """
-    batch_size_op = op.size(-1)
-    batch_size_dm = density_matrix.size(-1)
-    if batch_size_dm > batch_size_op:
-        # The other condition is impossible because
-        # operators are always initialized with batch_size = 1.
-        op = op.repeat(1, 1, batch_size_dm)
-    return einsum("ijb,jkb,klb->ilb", op, density_matrix, _dagger(op))
+
+    if not isinstance(state, DensityMatrix):
+        raise TypeError("Function apply_operator_dm requires a density matrix state.")
+
+    n_qubits = int(log2(state.size()[0]))
+    n_support = len(qubit_support)
+    batch_size = max(state.size(-1), operator.size(-1))
+    full_support = tuple(range(n_qubits))
+    support_perm = tuple(sorted(qubit_support)) + tuple(
+        set(full_support) - set(qubit_support)
+    )
+    state = permute_basis(state, support_perm)
+
+    # There is probably a smart way to represent the lines below in a single einsum...
+    state = state.reshape(
+        [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
+    )
+    state = einsum("ijb,jkb->ikb", operator, state).reshape(
+        [2**n_qubits, 2**n_qubits, batch_size]
+    )
+    state = _dagger(state).reshape(
+        [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
+    )
+    state = _dagger(
+        einsum("ijb,jkb->ikb", operator, state).reshape(
+            [2**n_qubits, 2**n_qubits, batch_size]
+        )
+    )
+    return permute_basis(state, support_perm, inv=True)
 
 
-def operator_product(op1: Tensor, op2: Tensor) -> Tensor:
+def operator_product(
+    op1: Tensor,
+    supp1: tuple[int, ...],
+    op2: Tensor,
+    supp2: tuple[int, ...],
+) -> Tensor:
     """
-    Compute the product of two operators.
-    `torch.bmm` is not suitable for our purposes because,
-    in our convention, the batch_size is in the last dimension.
+    Operator product based on block matrix multiplication.
 
-    Args:
-        op1 (Tensor): The first operator.
-        op2 (Tensor): The second operator.
-    Returns:
-        Tensor: The product of the two operators.
+    E.g., for some small operator S and a big operator with 4 partitions A, B, C, D:
+
+    |S 0|.|A B| = |S.A S.B|
+    |0 S| |C D|   |S.C S.D|
+
+    or
+
+    |A B|.|S 0| = |A.S B.S|
+    |C D|.|0 S|   |C.S D.S|
+
+    The same generalizes for different sizes of the big operator. Note that the block
+    diagonal matrix is never computed. Instead, the big operator is permuted and
+    reshaped into a wide matrix:
+
+    W = [A B C D]
+
+    And then the result is computed as S.W, reshaped back into a square matrix, and
+    permuted back into the original ordering.
     """
-    # ? Should we continue to adjust the batch here?
-    # ? as now all gates are init with batch_size=1.
-    batch_size_1 = op1.size(-1)
-    batch_size_2 = op2.size(-1)
-    if batch_size_1 > batch_size_2:
-        op2 = op2.repeat(1, 1, batch_size_1)[:, :, :batch_size_1]
-    elif batch_size_2 > batch_size_1:
-        op1 = op1.repeat(1, 1, batch_size_2)[:, :, :batch_size_2]
-    return einsum("ijb,jkb->ikb", op1, op2)
+
+    if supp1 == supp2:
+        return einsum("ijb,jkb->ikb", op1, op2)
+
+    if len(supp1) < len(supp2):
+        small_op, small_supp = op1, supp1
+        big_op, big_supp = op2, supp2
+        transpose = False
+    else:
+        small_op, small_supp = _dagger(op2), supp2
+        big_op, big_supp = _dagger(op1), supp1
+        transpose = True
+
+    if not set(small_supp).issubset(set(big_supp)):
+        raise ValueError("Operator product requires overlapping qubit supports.")
+
+    n_big, n_small = len(big_supp), len(small_supp)
+    batch_big, batch_small = big_op.size(-1), small_op.size(-1)
+    batch_size = max(batch_big, batch_small)
+
+    # Permute the large operator and reshape into a wide matrix
+    support_perm = tuple(sorted(small_supp)) + tuple(set(big_supp) - set(small_supp))
+    big_op = permute_basis(big_op, support_perm)
+    big_op = big_op.reshape([2**n_small, (2 ** (2 * n_big - n_small)), batch_big])
+
+    # Compute S.W and reshape back to square
+    result = einsum("ijb,jkb->ikb", small_op, big_op).reshape(
+        [2**n_big, 2**n_big, batch_size]
+    )
+
+    # Apply the inverse qubit permutation
+    if transpose:
+        return _dagger(permute_basis(result, support_perm, inv=True))
+    else:
+        return permute_basis(result, support_perm, inv=True)

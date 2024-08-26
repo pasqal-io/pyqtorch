@@ -6,7 +6,7 @@ import pytest
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_density_mat, operator_product
+from pyqtorch.apply import apply_operator_dm, operator_product
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.matrices import (
     HMAT,
@@ -72,20 +72,22 @@ def test_operator_product(
     random_unitary_gate: Primitive | Parametric,
     n_qubits: int,
 ) -> None:
-    batch_size_1 = torch.randint(low=1, high=5, size=(1,)).item()
-    batch_size_2 = torch.randint(low=1, high=5, size=(1,)).item()
-    max_batch = max(batch_size_2, batch_size_1)
+    batch_size = torch.randint(low=2, high=5, size=(1,)).item()
     values = {"theta": torch.rand(1)}
-    op = random_unitary_gate.tensor(values=values, full_support=tuple(range(n_qubits)))
+    full_support = tuple(range(n_qubits))
+    op = random_unitary_gate.tensor(values=values, full_support=full_support)
     op_mul = operator_product(
-        op.repeat(1, 1, batch_size_1), _dagger(op.repeat(1, 1, batch_size_2))
+        op1=op.repeat(1, 1, batch_size),
+        supp1=full_support,
+        op2=_dagger(op),
+        supp2=full_support,
     )
-    assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, max_batch])
+    assert op_mul.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
     assert torch.allclose(
         op_mul,
         torch.eye(2**n_qubits, dtype=torch.cdouble)
         .unsqueeze(2)
-        .repeat(1, 1, max_batch),
+        .repeat(1, 1, batch_size),
     )
 
 
@@ -97,11 +99,14 @@ def test_apply_density_mat(
     random_input_dm: DensityMatrix,
 ) -> None:
     values = {"theta": torch.rand(1)}
-    op = random_unitary_gate.tensor(values=values, full_support=tuple(range(n_qubits)))
+    full_support = tuple(range(n_qubits))
+    op = random_unitary_gate
     rho = random_input_dm
-    rho_evol = apply_density_mat(op, rho)
+    op_mat = op.tensor(values=values)
+    rho_evol = apply_operator_dm(rho, op_mat, op.qubit_support)
     assert rho_evol.size() == torch.Size([2**n_qubits, 2**n_qubits, batch_size])
-    rho_expected = operator_product(op, operator_product(rho, _dagger(op)))
+    mul1 = operator_product(rho, full_support, _dagger(op_mat), op.qubit_support)
+    rho_expected = operator_product(op_mat, op.qubit_support, mul1, full_support)
     assert torch.allclose(rho_evol, rho_expected)
 
 
