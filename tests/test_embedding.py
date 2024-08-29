@@ -153,11 +153,11 @@ def test_sample_run_expectation_grads_with_embedding(diff_mode) -> None:
     y = torch.rand(1, requires_grad=True)
 
     values_ad = {"x": x, "y": y}
-    embedded_params = embedding(values_ad)
-    wf = pyq.run(circ, state, embedded_params, embedding)
-    samples = pyq.sample(circ, state, embedded_params, 100, embedding)
+
+    wf = pyq.run(circ, state, values_ad, embedding)
+    samples = pyq.sample(circ, state, values_ad, 100, embedding)
     exp_ad = pyq.expectation(
-        circ, state, embedded_params, obs, diff_mode, embedding=embedding
+        circ, state, values_ad, obs, diff_mode, embedding=embedding
     )
     assert torch.autograd.gradcheck(
         lambda x, y: pyq.expectation(
