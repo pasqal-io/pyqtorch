@@ -94,7 +94,11 @@ class Sequence(Module):
         return len(self.operations)
 
     def __hash__(self) -> int:
-        return hash(reduce(add, (hash(op) for op in self.operations)))
+        return hash(
+            reduce(add, (hash(op) for op in self.operations))
+            if len(self.operations) > 0
+            else self.operations
+        )
 
     def forward(
         self,
