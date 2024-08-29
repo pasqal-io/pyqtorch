@@ -115,11 +115,14 @@ class DropoutQuantumCircuit(QuantumCircuit):
             state = self.dropout_fn(state, values)
         else:
             for op in self.operations:
-                state = op(state, values)
+                state = op(state, values, embedding)
         return state
 
     def rotational_dropout(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: State = None,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> State:
         """Randomly drops entangling rotational gates.
 
@@ -136,12 +139,15 @@ class DropoutQuantumCircuit(QuantumCircuit):
                 and (values[op.param_name].requires_grad)
                 and not (int(1 - bernoulli(tensor(self.dropout_prob))))
             ):
-                state = op(state, values)
+                state = op(state, values, embedding)
 
         return state
 
     def entangling_dropout(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: State = None,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> State:
         """Randomly drops entangling gates.
 
@@ -157,12 +163,15 @@ class DropoutQuantumCircuit(QuantumCircuit):
             keep = int(1 - bernoulli(tensor(self.dropout_prob)))
 
             if has_param or keep:
-                state = op(state, values)
+                state = op(state, values, embedding)
 
         return state
 
     def canonical_fwd_dropout(
-        self, state: State = None, values: dict[str, Tensor] | ParameterDict = dict()
+        self,
+        state: State = None,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
     ) -> State:
         """Randomly drops rotational gates and next immediate entangling
         gates whose target bit is located on dropped rotational gates.
@@ -188,6 +197,6 @@ class DropoutQuantumCircuit(QuantumCircuit):
                 ):
                     entanglers_to_drop[op.control[0]] = 0
                 else:
-                    state = op(state, values)
+                    state = op(state, values, embedding)
 
         return state

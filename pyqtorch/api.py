@@ -53,8 +53,6 @@ def run(
     run(circ, state, {'theta': rand(1)})
     ```
     """
-    if embedding is not None:
-        values = embedding(values)
     logger.debug(f"Running circuit {circuit} on state {state} and values {values}.")
     return circuit.run(state=state, values=values, embedding=embedding)
 

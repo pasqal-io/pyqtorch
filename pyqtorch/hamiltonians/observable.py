@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from torch import Tensor
+from math import log2
+
+from torch import Tensor, trace, vmap
 from torch.nn import Module, ParameterDict
 
+from pyqtorch.apply import operator_product
 from pyqtorch.circuit import Sequence
 from pyqtorch.composite import Add
 from pyqtorch.embed import Embedding
 from pyqtorch.primitives import Primitive
-from pyqtorch.utils import (
-    inner_prod,
-)
+from pyqtorch.utils import DensityMatrix, inner_prod
 
 
 class Observable(Add):
@@ -46,4 +47,15 @@ class Observable(Add):
         Returns:
             The expectation value.
         """
+
+        if isinstance(state, DensityMatrix):
+            n_qubits = int(log2(state.size()[0]))
+            obs_rho = operator_product(
+                self.tensor(values=values, embedding=embedding),
+                self.qubit_support,
+                state,
+                tuple(range(n_qubits)),
+            )
+            return vmap(trace)(obs_rho.permute(2, 0, 1)).real
+
         return inner_prod(state, self.forward(state, values, embedding)).real

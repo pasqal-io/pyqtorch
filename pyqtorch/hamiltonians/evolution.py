@@ -356,6 +356,10 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The unitary representation.
         """
+
+        if embedding is not None:
+            embedding(values)
+
         values_cache_key = str(OrderedDict(values))
         if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
             evolved_op = self._cache_hamiltonian_evo[values_cache_key]
@@ -391,6 +395,9 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The unitary representation of the jacobian.
         """
+
+        if embedding is not None:
+            embedding(values)
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
         time_evolution: torch.Tensor = (
