@@ -66,6 +66,9 @@ class Scale(Sequence):
             The transformed state.
         """
 
+        if embedding is not None:
+            embedding(values)
+
         scale = (
             values[self.param_name]
             if isinstance(self.param_name, str)
@@ -90,6 +93,10 @@ class Scale(Sequence):
         Returns:
             The unitary representation.
         """
+
+        if embedding is not None:
+            embedding(values)
+
         scale = (
             values[self.param_name]
             if isinstance(self.param_name, str)

@@ -66,6 +66,10 @@ class Parametric(QuantumOperation):
             Returns:
                 A Torch Tensor denoting values for the `param_name`.
             """
+
+            if embedding is not None:
+                embedding(values)
+
             return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 
         def parse_tensor(
