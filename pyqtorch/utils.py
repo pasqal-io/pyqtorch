@@ -409,6 +409,8 @@ def density_mat(state: Tensor) -> DensityMatrix:
     Returns:
         Tensor: The density matrix :math:`\\rho = |\psi \\rangle \\langle\\psi|`.
     """
+    if isinstance(state, DensityMatrix):
+        return state
     n_qubits = len(state.size()) - 1
     batch_size = state.shape[-1]
     state = state.reshape(2**n_qubits, batch_size)
