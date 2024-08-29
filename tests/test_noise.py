@@ -4,10 +4,12 @@ import random
 
 import pytest
 import torch
+from helpers import random_pauli_hamiltonian
 from torch import Tensor
 
 from pyqtorch.apply import apply_operator_dm, operator_product
 from pyqtorch.circuit import QuantumCircuit
+from pyqtorch.hamiltonians import Observable
 from pyqtorch.matrices import (
     HMAT,
     IMAT,
@@ -265,3 +267,19 @@ def test_noise_circ(
         diag_sums.append(torch.sum(diag_batch))
     diag_sum = torch.stack(diag_sums)
     assert torch.allclose(diag_sum, torch.ones((batch_size,), dtype=torch.cdouble))
+
+
+@pytest.mark.parametrize("make_param", [True, False])
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_dm_expectation(n_qubits: int, batch_size: int, make_param: bool) -> None:
+    k_1q = 2 * n_qubits  # Number of 1-qubit terms
+    k_2q = n_qubits**2  # Number of 2-qubit terms
+    hamiltonian, param_list = random_pauli_hamiltonian(n_qubits, k_1q, k_2q, make_param)
+    values = {param: torch.rand(batch_size) for param in param_list}
+    psi_init = random_state(n_qubits, batch_size)
+    dm_init = density_mat(psi_init)
+    obs = Observable(hamiltonian)
+    exp_state = obs.expectation(psi_init, values=values)
+    exp_dm = obs.expectation(dm_init, values=values)
+    assert torch.allclose(exp_state, exp_dm)

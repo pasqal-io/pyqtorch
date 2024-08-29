@@ -107,6 +107,7 @@ from .utils import (
     DEFAULT_MATRIX_DTYPE,
     DEFAULT_REAL_DTYPE,
     DiffMode,
+    density_mat,
     inner_prod,
     is_normalized,
     overlap,
