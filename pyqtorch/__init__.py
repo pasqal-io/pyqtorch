@@ -55,7 +55,21 @@ from .composite import (
     Scale,
     Sequence,
 )
-from .embed import ConcretizedCallable, Embedding
+from .embed import (
+    ConcretizedCallable,
+    Embedding,
+    add,
+    cos,
+    div,
+    log,
+    mul,
+    sin,
+    sqrt,
+    square,
+    sub,
+    tan,
+    tanh,
+)
 from .hamiltonians import HamiltonianEvolution, Observable
 from .noise import (
     AmplitudeDamping,

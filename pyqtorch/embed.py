@@ -75,7 +75,7 @@ class ConcretizedCallable:
     def __init__(
         self,
         call_name: str,
-        abstract_args: list[str | float | int],
+        abstract_args: list[str | float | int | ConcretizedCallable],
         instruction_mapping: dict[str, Tuple[str, str]] = dict(),
         engine_name: str = "torch",
         device: str = "cpu",
@@ -113,6 +113,8 @@ class ConcretizedCallable:
     def evaluate(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
         arraylike_args = []
         for symbol_or_numeric in self.abstract_args:
+            if isinstance(symbol_or_numeric, ConcretizedCallable):
+                arraylike_args.append(symbol_or_numeric(inputs))
             if isinstance(symbol_or_numeric, (float, int)):
                 arraylike_args.append(
                     self.arraylike_fn(symbol_or_numeric, device=self.device)
@@ -148,6 +150,50 @@ def init_param(
         return engine.rand(1, requires_grad=trainable, device=device)
     elif engine_name == "numpy":
         return engine.random.uniform(0, 1)
+
+
+def sin(x: str | ConcretizedCallable):
+    return ConcretizedCallable("sin", [x])
+
+
+def cos(x: str | ConcretizedCallable):
+    return ConcretizedCallable("cos", [x])
+
+
+def log(x: str | ConcretizedCallable):
+    return ConcretizedCallable("log", [x])
+
+
+def tan(x: str | ConcretizedCallable):
+    return ConcretizedCallable("tan", [x])
+
+
+def tanh(x: str | ConcretizedCallable):
+    return ConcretizedCallable("tanh", [x])
+
+
+def sqrt(x: str | ConcretizedCallable):
+    return ConcretizedCallable("sqrt", [x])
+
+
+def square(x: str | ConcretizedCallable):
+    return ConcretizedCallable("square", [x])
+
+
+def mul(x: str | ConcretizedCallable, y: str | ConcretizedCallable):
+    return ConcretizedCallable("mul", [x, y])
+
+
+def add(x: str | ConcretizedCallable, y: str | ConcretizedCallable):
+    return ConcretizedCallable("add", [x, y])
+
+
+def div(x: str | ConcretizedCallable, y: str | ConcretizedCallable):
+    return ConcretizedCallable("div", [x, y])
+
+
+def sub(x: str | ConcretizedCallable, y: str | ConcretizedCallable):
+    return ConcretizedCallable("sub", [x, y])
 
 
 class Embedding:
