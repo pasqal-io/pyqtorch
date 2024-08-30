@@ -243,7 +243,7 @@ def test_hevo_pauli_tensor(
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
     # Test the hamiltonian evolution
     tparam = "t"
-    operator = HamiltonianEvolution(generator, tparam, generator_parametric=make_param)
+    operator = HamiltonianEvolution(generator, tparam)
     if make_param:
         assert operator.generator_type == GeneratorType.PARAMETRIC_OPERATION
     else:
