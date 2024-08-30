@@ -58,10 +58,15 @@ from .composite import (
 from .embed import (
     ConcretizedCallable,
     Embedding,
+    add,
     cos,
+    div,
     log,
+    mul,
     sin,
     sqrt,
+    square,
+    sub,
     tan,
     tanh,
 )

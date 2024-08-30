@@ -94,6 +94,7 @@ def random_pauli_hamiltonian(
     k_1q: int = 5,
     k_2q: int = 10,
     make_param: bool = False,
+    make_embed: bool = False,
     default_scale_coeffs: float | None = None,
     p_param: float = 0.5,
 ) -> tuple[Sequence, list]:
