@@ -252,26 +252,6 @@ def sqrt(x: str | ConcretizedCallable):
     return ConcretizedCallable("sqrt", [x])
 
 
-def square(x: str | ConcretizedCallable):
-    return ConcretizedCallable("square", [x])
-
-
-def mul(x: str | ConcretizedCallable, y: str | ConcretizedCallable):
-    return ConcretizedCallable("mul", [x, y])
-
-
-def add(x: str | ConcretizedCallable, y: str | ConcretizedCallable):
-    return ConcretizedCallable("add", [x, y])
-
-
-def div(x: str | ConcretizedCallable, y: str | ConcretizedCallable):
-    return ConcretizedCallable("div", [x, y])
-
-
-def sub(x: str | ConcretizedCallable, y: str | ConcretizedCallable):
-    return ConcretizedCallable("sub", [x, y])
-
-
 class Embedding:
     """A class relating variational and feature parameters used in ConcretizedCallable instances to
     parameter names used in gates.
