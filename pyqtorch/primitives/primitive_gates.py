@@ -1,8 +1,14 @@
 from __future__ import annotations
 
-import torch
-
-from pyqtorch.matrices import OPERATIONS_DICT
+from pyqtorch.matrices import (
+    IDIAG,
+    NDIAG,
+    OPERATIONS_DICT,
+    SDAGGERDIAG,
+    SDIAG,
+    TDIAG,
+    ZDIAG,
+)
 from pyqtorch.noise import NoiseProtocol
 from pyqtorch.quantum_operation import Support
 from pyqtorch.utils import (
@@ -37,10 +43,7 @@ class Z(Primitive):
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
-        # super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
-        super().__init__(
-            torch.diag(OPERATIONS_DICT["Z"]), target, noise=noise, diagonal=True
-        )
+        super().__init__(ZDIAG, target, noise=noise, diagonal=True)
 
 
 class I(Primitive):  # noqa: E742
@@ -49,7 +52,7 @@ class I(Primitive):  # noqa: E742
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["I"], target, noise=noise)
+        super().__init__(IDIAG, target, noise=noise, diagonal=True)
 
 
 class H(Primitive):
@@ -67,7 +70,7 @@ class T(Primitive):
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
+        super().__init__(TDIAG, target, noise=noise, diagonal=True)
 
 
 class S(Primitive):
@@ -77,7 +80,11 @@ class S(Primitive):
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(
-            OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"], noise=noise
+            SDIAG,
+            target,
+            0.5 * OPERATIONS_DICT["Z"],
+            noise=noise,
+            diagonal=True,
         )
 
 
@@ -88,7 +95,11 @@ class SDagger(Primitive):
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(
-            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"], noise=noise
+            SDAGGERDIAG,
+            target,
+            -0.5 * OPERATIONS_DICT["Z"],
+            noise=noise,
+            diagonal=True,
         )
 
 
@@ -121,7 +132,7 @@ class N(Primitive):
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["N"], target, noise=noise)
+        super().__init__(NDIAG, target, noise=noise, diagonal=True)
 
 
 class SWAP(Primitive):

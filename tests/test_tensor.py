@@ -74,6 +74,7 @@ def test_digital_tensor(
             psi_expected = density_mat(psi_expected)
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
+
 @pytest.mark.parametrize("use_dm", [True, False])
 @pytest.mark.parametrize("use_permute", [True, False])
 @pytest.mark.parametrize("use_full_support", [True, False])

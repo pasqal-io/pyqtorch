@@ -18,7 +18,7 @@ from torch import Tensor, moveaxis
 from typing_extensions import TypeAlias
 
 import pyqtorch as pyq
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IDIAG, IMAT
 
 State: TypeAlias = Tensor
 Operator: TypeAlias = Tensor
@@ -464,7 +464,7 @@ def expand_operator(
     if len(operator.size()) == 3:
         other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
     else:
-        other = torch.diag(IMAT.clone()).to(device=device, dtype=dtype).unsqueeze(1)
+        other = IDIAG.clone().to(device=device, dtype=dtype).unsqueeze(1)
     for i in set(full_support) - set(qubit_support):
         qubit_support += (i,)
         operator = torch.kron(operator.contiguous(), other)
