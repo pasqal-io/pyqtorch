@@ -564,9 +564,7 @@ def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> 
         return operator.permute(perm).reshape([2**n_qubits, 2**n_qubits, batch_size])
     else:
         operator = operator.view([2] * n_qubits + [batch_size])
-        perm = list(
-            tuple(ranked_support) + tuple(ranked_support + n_qubits) + (n_qubits,)
-        )
+        perm = list(tuple(ranked_support) + (n_qubits,))
         if inv:
             perm = np.argsort(perm).tolist()
         return operator.permute(perm).reshape([2**n_qubits, batch_size])
