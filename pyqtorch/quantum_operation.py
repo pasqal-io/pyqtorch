@@ -9,7 +9,7 @@ from typing import Any, Callable
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator, apply_operator_dm
+from pyqtorch.apply import apply_diagonal_operator, apply_operator, apply_operator_dm
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
 from pyqtorch.noise import NoiseProtocol, _repr_noise
@@ -167,7 +167,7 @@ class QuantumOperation(torch.nn.Module):
             self._operator_function = operator_function
         self.diagonal = diagonal
         if diagonal and len(self.operation.size()) == 3:
-            raise ValueError("The operation shape should be only .")
+            raise ValueError("The operation dimansion should be less than 3.")
 
         self.noise: NoiseProtocol | dict[str, NoiseProtocol] | None = noise
 
@@ -366,6 +366,13 @@ class QuantumOperation(torch.nn.Module):
                 state, self.tensor(values, embedding), self.qubit_support
             )
         else:
+            if self.diagonal:
+                return apply_diagonal_operator(
+                    state,
+                    self.tensor(values, embedding),
+                    self.qubit_support,
+                )
+
             return apply_operator(
                 state,
                 self.tensor(values, embedding),

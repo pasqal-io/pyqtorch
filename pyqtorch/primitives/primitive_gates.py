@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import torch
+
 from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.noise import NoiseProtocol
 from pyqtorch.quantum_operation import Support
@@ -35,8 +37,10 @@ class Z(Primitive):
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
-        # super().__init__(torch.diag(OPERATIONS_DICT["Z"]), target, noise=noise)
+        # super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
+        super().__init__(
+            torch.diag(OPERATIONS_DICT["Z"]), target, noise=noise, diagonal=True
+        )
 
 
 class I(Primitive):  # noqa: E742

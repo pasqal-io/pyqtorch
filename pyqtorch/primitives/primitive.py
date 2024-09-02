@@ -27,8 +27,14 @@ class Primitive(QuantumOperation):
         qubit_support: int | tuple[int, ...] | Support,
         generator: Tensor | None = None,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = False,
     ) -> None:
-        super().__init__(operation, qubit_support, noise=noise)
+        super().__init__(
+            operation,
+            qubit_support,
+            noise=noise,
+            diagonal=diagonal,
+        )
         self.generator = generator
 
     def to(self, *args: Any, **kwargs: Any) -> Primitive:
