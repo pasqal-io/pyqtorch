@@ -322,6 +322,55 @@ class HamiltonianEvolution(Sequence):
         spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
+    ) -> State:
+        evolved_op = self.tensor(values, embedding)
+        return apply_operator(
+            state=state, operator=evolved_op, qubit_support=self.qubit_support
+        )
+
+    def _forward_time(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding = Embedding(),
+    ) -> State:
+        n_qubits = len(state.shape) - 1
+        batch_size = state.shape[-1]
+        t_grid = torch.linspace(0, float(self.time), self.steps)
+
+        values.update({embedding.tparam_name: torch.tensor(0.0)})  # type: ignore [dict-item]
+        embedded_params = embedding(values)
+
+        def Ht(t: torch.Tensor) -> torch.Tensor:
+            """Accepts a value 't' for time and returns
+            a (2**n_qubits, 2**n_qubits) Hamiltonian evaluated at time 't'.
+            """
+            # We use the origial embedded params and return a new dict
+            # where we reembedded all parameters depending on time with value 't'
+            reembedded_time_values = embedding.reembed_tparam(
+                embedded_params, torch.as_tensor(t)
+            )
+            return (
+                self.generator[0].tensor(reembedded_time_values, embedding).squeeze(2)
+            )
+
+        sol = sesolve(
+            Ht,
+            torch.flatten(state, start_dim=0, end_dim=-2),
+            t_grid,
+            self.solver_type,
+        )
+
+        # Retrieve the last state of shape (2**n_qubits, batch_size)
+        state = sol.states[-1]
+
+        return state.reshape([2] * n_qubits + [batch_size])
+
     def forward(
         self,
         state: Tensor,
@@ -334,54 +383,16 @@ class HamiltonianEvolution(Sequence):
         Arguments:
             state: Input state.
             values: Values of parameters.
+            embedding: Embedding of parameters.
 
         Returns:
             The transformed state.
         """
         if embedding is not None and getattr(embedding, "tparam_name", None):
-            n_qubits = len(state.shape) - 1
-            batch_size = state.shape[-1]
-            t_grid = torch.linspace(0, float(self.time), self.steps)
-
-            values.update({embedding.tparam_name: torch.tensor(0.0)})  # type: ignore [dict-item]
-            embedded_params = embedding(values)
-
-            def Ht(t: torch.Tensor) -> torch.Tensor:
-                """Accepts a value 't' for time and returns
-                a (2**n_qubits, 2**n_qubits) Hamiltonian evaluated at time 't'.
-                """
-                # We use the origial embedded params and return a new dict
-                # where we reembedded all parameters depending on time with value 't'
-                reembedded_time_values = embedding.reembed_tparam(
-                    embedded_params, torch.as_tensor(t)
-                )
-                return (
-                    self.generator[0]
-                    .tensor(reembedded_time_values, embedding)
-                    .squeeze(2)
-                )  # squeeze the batch dim and return shape (2**n_qubits, 2**n_qubits)
-
-            sol = sesolve(
-                Ht,  # returns a tensor of shape (2**n_qubits, 2**n_qubits)
-                torch.flatten(
-                    state, start_dim=0, end_dim=-2
-                ),  # reshape to (2**n_qubits, batch_size)
-                t_grid,
-                self.solver_type,
-            )
-
-            # Retrieve the last state of shape (2**n_qubits, batch_size)
-            state = sol.states[-1]
-
-            return state.reshape(
-                [2] * n_qubits + [batch_size]
-            )  # reshape to [2] * n_qubits + [batch_size]
+            return self._forward_time(state, values, embedding)
 
         else:
-            evolved_op = self.tensor(values, embedding)
-            return apply_operator(
-                state=state, operator=evolved_op, qubit_support=self.qubit_support
-            )
+            return self._forward(state, values, embedding)
 
     def tensor(
         self,
