@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 
 import pyqtorch as pyq
-from pyqtorch.apply import apply_diagonal_operator, apply_operator
+from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
 )
@@ -277,14 +277,8 @@ def test_dagger_single_qubit() -> None:
             values = (
                 {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             )
-            if op.diagonal:
-                new_state = apply_diagonal_operator(state, op.tensor(values), [target])
-                daggered_back = apply_diagonal_operator(
-                    new_state, op.dagger(values), [target]
-                )
-            else:
-                new_state = apply_operator(state, op.tensor(values), [target])
-                daggered_back = apply_operator(new_state, op.dagger(values), [target])
+            new_state = apply_operator(state, op.tensor(values), [target])
+            daggered_back = apply_operator(new_state, op.dagger(values), [target])
             assert torch.allclose(daggered_back, state)
 
 
@@ -316,18 +310,9 @@ def test_dagger_nqubit() -> None:
             values = (
                 {param_name: torch.rand(1)} if param_name == "theta" else torch.rand(1)
             )
-            if op.diagonal:
-                new_state = apply_diagonal_operator(
-                    state, op.tensor(values), qubit_support
-                )
-                daggered_back = apply_diagonal_operator(
-                    new_state, op.dagger(values), qubit_support
-                )
-            else:
-                new_state = apply_operator(state, op.tensor(values), qubit_support)
-                daggered_back = apply_operator(
-                    new_state, op.dagger(values), qubit_support
-                )
+
+            new_state = apply_operator(state, op.tensor(values), qubit_support)
+            daggered_back = apply_operator(new_state, op.dagger(values), qubit_support)
             assert torch.allclose(daggered_back, state)
 
 

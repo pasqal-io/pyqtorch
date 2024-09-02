@@ -458,9 +458,13 @@ def expand_operator(
             "larger than or equal to the `qubit_support`."
         )
     device, dtype = operator.device, operator.dtype
+
+    if len(operator.size()) == 3:
+        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
+    else:
+        other = torch.diag(IMAT.clone()).to(device=device, dtype=dtype).unsqueeze(2)
     for i in set(full_support) - set(qubit_support):
         qubit_support += (i,)
-        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
         operator = torch.kron(operator.contiguous(), other)
     operator = permute_basis(operator, qubit_support, inv=True)
     return operator
@@ -548,16 +552,24 @@ def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> 
     if all(a == b for a, b in zip(ranked_support, list(range(n_qubits)))):
         return operator
     batch_size = operator.size(-1)
-    operator = operator.view([2] * 2 * n_qubits + [batch_size])
+    if len(operator.size()) == 3:
+        operator = operator.view([2] * 2 * n_qubits + [batch_size])
+        perm = list(
+            tuple(ranked_support) + tuple(ranked_support + n_qubits) + (2 * n_qubits,)
+        )
 
-    perm = list(
-        tuple(ranked_support) + tuple(ranked_support + n_qubits) + (2 * n_qubits,)
-    )
+        if inv:
+            perm = np.argsort(perm).tolist()
 
-    if inv:
-        perm = np.argsort(perm).tolist()
-
-    return operator.permute(perm).reshape([2**n_qubits, 2**n_qubits, batch_size])
+        return operator.permute(perm).reshape([2**n_qubits, 2**n_qubits, batch_size])
+    else:
+        operator = operator.view([2] * n_qubits + [batch_size])
+        perm = list(
+            tuple(ranked_support) + tuple(ranked_support + n_qubits) + (n_qubits,)
+        )
+        if inv:
+            perm = np.argsort(perm).tolist()
+            return operator.permute(perm).reshape([2**n_qubits, batch_size])
 
 
 def random_dm_promotion(
