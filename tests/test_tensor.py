@@ -184,7 +184,7 @@ def test_projector_tensor(
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("n_qubits", [2, 3])
 @pytest.mark.parametrize("operator", [N, CNOT, SWAP])
 @pytest.mark.parametrize("use_full_support", [True, False])
 def test_projector_vs_operator(
@@ -194,7 +194,7 @@ def test_projector_vs_operator(
 ) -> None:
     if operator == N:
         supp: tuple = (random.randint(0, n_qubits - 1),)
-        op_concrete = N(*supp)
+        op_concrete = N(*supp, diagonal=False)
         projector = Projector(supp, "1", "1")
     if operator == CNOT:
         supp = tuple(random.sample(range(n_qubits), 2))

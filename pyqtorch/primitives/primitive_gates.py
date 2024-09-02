@@ -42,8 +42,9 @@ class Z(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = True,
     ):
-        super().__init__(ZDIAG, target, noise=noise, diagonal=True)
+        super().__init__(ZDIAG if diagonal else OPERATIONS_DICT["Z"], target, noise=noise, diagonal=diagonal)
 
 
 class I(Primitive):  # noqa: E742
@@ -51,8 +52,9 @@ class I(Primitive):  # noqa: E742
         self,
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = True,
     ):
-        super().__init__(IDIAG, target, noise=noise, diagonal=True)
+        super().__init__(IDIAG if diagonal else OPERATIONS_DICT["I"], target, noise=noise, diagonal=diagonal)
 
 
 class H(Primitive):
@@ -69,8 +71,9 @@ class T(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = True,
     ):
-        super().__init__(TDIAG, target, noise=noise, diagonal=True)
+        super().__init__(TDIAG if diagonal else OPERATIONS_DICT["T"], target, noise=noise, diagonal=diagonal)
 
 
 class S(Primitive):
@@ -78,13 +81,14 @@ class S(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = True,
     ):
         super().__init__(
-            SDIAG,
+            SDIAG if diagonal else OPERATIONS_DICT["S"],
             target,
             0.5 * OPERATIONS_DICT["Z"],
             noise=noise,
-            diagonal=True,
+            diagonal=diagonal,
         )
 
 
@@ -93,13 +97,14 @@ class SDagger(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = True,
     ):
         super().__init__(
-            SDAGGERDIAG,
+            SDAGGERDIAG if diagonal else OPERATIONS_DICT["SDAGGER"],
             target,
             -0.5 * OPERATIONS_DICT["Z"],
             noise=noise,
-            diagonal=True,
+            diagonal=diagonal,
         )
 
 
@@ -131,8 +136,9 @@ class N(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = True,
     ):
-        super().__init__(NDIAG, target, noise=noise, diagonal=True)
+        super().__init__(NDIAG if diagonal else OPERATIONS_DICT["N"], target, noise=noise, diagonal=diagonal)
 
 
 class SWAP(Primitive):
