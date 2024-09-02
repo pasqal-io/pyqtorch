@@ -68,7 +68,7 @@ class Parametric(QuantumOperation):
             """
 
             if embedding is not None:
-                embedding(values)
+                values = embedding(values)
 
             return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 

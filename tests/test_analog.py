@@ -8,6 +8,7 @@ import torch
 from helpers import calc_mat_vec_wavefunction, random_pauli_hamiltonian
 
 import pyqtorch as pyq
+from pyqtorch.composite import Sequence
 from pyqtorch.hamiltonians import GeneratorType
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
@@ -19,6 +20,7 @@ from pyqtorch.matrices import (
 from pyqtorch.utils import (
     ATOL,
     RTOL,
+    SolverType,
     is_normalized,
     operator_kron,
     overlap,
@@ -289,6 +291,46 @@ def test_hamevo_endianness_cnot() -> None:
     assert torch.allclose(wf_cnot, wf_hamevo, rtol=RTOL, atol=ATOL)
 
 
+@pytest.mark.parametrize("ode_solver", [SolverType.DP5_SE, SolverType.KRYLOV_SE])
+def test_timedependent(
+    tparam: str,
+    param_y: float,
+    duration: float,
+    n_steps: int,
+    torch_hamiltonian: Callable,
+    hamevo_generator: Sequence,
+    sin: tuple,
+    sq: tuple,
+    ode_solver: SolverType,
+) -> None:
+
+    psi_start = random_state(2)
+
+    # simulate with time-dependent solver
+    t_points = torch.linspace(0, duration, n_steps)
+    psi_solver = pyq.sesolve(
+        torch_hamiltonian, psi_start.reshape(-1, 1), t_points, ode_solver
+    ).states[-1]
+
+    # simulate with HamiltonianEvolution
+    embedding = pyq.Embedding(
+        tparam_name=tparam,
+        var_to_call={sin[0]: sin[1], sq[0]: sq[1]},
+    )
+    hamiltonian_evolution = pyq.HamiltonianEvolution(
+        generator=hamevo_generator,
+        time=torch.as_tensor(duration),
+        steps=n_steps,
+        solver=ode_solver,
+    )
+    values = {"y": param_y}
+    psi_hamevo = hamiltonian_evolution(
+        state=psi_start, values=values, embedding=embedding
+    ).reshape(-1, 1)
+
+    assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=ATOL)
+
+
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
@@ -302,9 +344,7 @@ def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
 
     param_list.append("t")
 
-    hamevo = pyq.HamiltonianEvolution(
-        generator, tparam, generator_parametric=True, cache_length=2
-    )
+    hamevo = pyq.HamiltonianEvolution(generator, tparam, cache_length=2)
 
     assert hamevo.generator_type == GeneratorType.PARAMETRIC_OPERATION
     assert len(hamevo._cache_hamiltonian_evo) == 0
