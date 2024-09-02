@@ -9,6 +9,8 @@ import torch
 from pytest import FixtureRequest
 from torch import Tensor
 
+from pyqtorch.composite import Add, Scale, Sequence
+from pyqtorch.embed import ConcretizedCallable
 from pyqtorch.noise import (
     AmplitudeDamping,
     BitFlip,
@@ -483,3 +485,38 @@ def qutip_hamiltonian(omega: float, param_x: float, param_y: float) -> Callable:
         )
 
     return hamiltonian_t
+
+
+@pytest.fixture
+def tparam() -> str:
+    return "t"
+
+
+@pytest.fixture
+def sin(tparam: str) -> tuple[str, ConcretizedCallable]:
+    sin_t, sin_fn = "sin_x", ConcretizedCallable("sin", [tparam])
+    return sin_t, sin_fn
+
+
+@pytest.fixture
+def sq(tparam: str) -> tuple[str, ConcretizedCallable]:
+    t_sq, t_sq_fn = "t_sq", ConcretizedCallable("mul", [tparam, tparam])
+    return t_sq, t_sq_fn
+
+
+@pytest.fixture
+def hamevo_generator(
+    omega: float, param_x: float, param_y: float, sin: tuple, sq: tuple
+) -> Sequence:
+    sin_t, _ = sin
+    t_sq, _ = sq
+    generator = Scale(
+        Add(
+            [
+                Scale(Scale(X(0), sin_t), "y"),
+                Scale(Scale(Y(1), t_sq), param_x),
+            ]
+        ),
+        omega,
+    )
+    return generator

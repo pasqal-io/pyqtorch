@@ -25,6 +25,7 @@ def test_sesolve(
     qutip_hamiltonian: Callable,
     ode_solver: SolverType,
 ) -> None:
+
     psi0_qutip = qutip.basis(4, 0)
 
     # simulate with torch-based solver

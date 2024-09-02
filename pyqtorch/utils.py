@@ -15,11 +15,13 @@ import torch
 from numpy import arange, argsort, array, delete, log2
 from numpy import ndarray as NDArray
 from torch import Tensor, moveaxis
+from typing_extensions import TypeAlias
 
+import pyqtorch as pyq
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT
 
-State = Tensor
-Operator = Tensor
+State: TypeAlias = Tensor
+Operator: TypeAlias = Tensor
 
 ATOL = 1e-06
 ATOL_embedding = 1e-03
@@ -741,3 +743,17 @@ class SolverType(StrEnum):
 
     KRYLOV_SE = "krylov_se"
     """Uses Krylov Schrodinger equation solver"""
+
+
+def is_parametric(operation: pyq.Sequence) -> bool:
+    from pyqtorch.primitives import Parametric
+
+    params = []
+    for m in operation.modules():
+        if isinstance(m, (pyq.Scale, Parametric)):
+            params.append(m.param_name)
+
+    res = False
+    if any(isinstance(p, str) for p in params):
+        res = True
+    return res
