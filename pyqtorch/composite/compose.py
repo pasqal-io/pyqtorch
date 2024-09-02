@@ -37,7 +37,7 @@ class Scale(Sequence):
     def __init__(
         self,
         operations: Union[Primitive, Sequence, Add],
-        param_name: str | Tensor,
+        param_name: str | Tensor | ConcretizedCallable,
     ):
         """
         Initializes a Scale object.
