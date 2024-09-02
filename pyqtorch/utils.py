@@ -754,6 +754,6 @@ def is_parametric(operation: pyq.Sequence) -> bool:
             params.append(m.param_name)
 
     res = False
-    if any([isinstance(p, str) for p in params]):
+    if any(isinstance(p, str) for p in params):
         res = True
     return res
