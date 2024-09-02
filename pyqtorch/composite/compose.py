@@ -71,10 +71,11 @@ class Scale(Sequence):
         if embedding is not None:
             values = embedding(values)
 
-        if isinstance(self.param_name, str):
-            scale = values[self.param_name]
-        elif isinstance(self.param_name, Tensor):
-            scale = self.param_name
+        scale = (
+            values[self.param_name]
+            if isinstance(self.param_name, str)
+            else self.param_name
+        )
 
         return scale * self.operations[0].forward(state, values)
 
@@ -99,10 +100,11 @@ class Scale(Sequence):
         if embedding is not None:
             values = embedding(values)
 
-        if isinstance(self.param_name, str):
-            scale = values[self.param_name]
-        elif isinstance(self.param_name, Tensor):
-            scale = self.param_name
+        scale = (
+            values[self.param_name]
+            if isinstance(self.param_name, str)
+            else self.param_name
+        )
 
         return scale * self.operations[0].tensor(values, full_support=full_support)
 
