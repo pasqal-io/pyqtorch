@@ -746,9 +746,11 @@ class SolverType(StrEnum):
 
 
 def is_parametric(operation: pyq.Sequence) -> bool:
+    from pyqtorch.primitives import Parametric
+
     params = []
     for m in operation.modules():
-        if isinstance(m, pyq.Scale):
+        if isinstance(m, (pyq.Scale, Parametric)):
             params.append(m.param_name)
 
     res = False
