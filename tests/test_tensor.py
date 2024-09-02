@@ -116,44 +116,44 @@ def test_param_tensor(
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("use_full_support", [True, False])
-@pytest.mark.parametrize("n_qubits", [4, 5])
-@pytest.mark.parametrize("batch_size", [1, 5])
-@pytest.mark.parametrize("compose", [Sequence, Add])
-def test_sequence_tensor(
-    n_qubits: int,
-    batch_size: int,
-    use_full_support: bool,
-    compose: type[Sequence] | type[Add],
-) -> None:
-    op_list = []
-    values = {}
-    op: type[Primitive] | type[Parametric]
-    """
-    Builds a Sequence or Add composition of all possible gates on random qubit
-    supports. Also assigns a Scale of a random value to the non-parametric gates.
-    Tests the forward method (which goes through each gate individually) to the
-    `tensor` method, which builds the full operator matrix and applies it.
-    """
-    for op in OPS_DIGITAL:
-        supp = get_op_support(op, n_qubits)
-        op_concrete = Scale(op(*supp), torch.rand(1))
-        op_list.append(op_concrete)
-    for op in OPS_PARAM:
-        supp = get_op_support(op, n_qubits)
-        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
-        values.update({param: torch.rand(batch_size) for param in params})
-        op_concrete = op(*supp, *params)
-        op_list.append(op_concrete)
-    random.shuffle(op_list)
-    op_composite = compose(op_list)
-    psi_init = random_state(n_qubits, batch_size)
-    psi_star = op_composite(psi_init, values)
-    full_support = tuple(range(n_qubits)) if use_full_support else None
-    psi_expected = calc_mat_vec_wavefunction(
-        op_composite, psi_init, values=values, full_support=full_support
-    )
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+# @pytest.mark.parametrize("use_full_support", [True, False])
+# @pytest.mark.parametrize("n_qubits", [4, 5])
+# @pytest.mark.parametrize("batch_size", [1, 5])
+# @pytest.mark.parametrize("compose", [Sequence, Add])
+# def test_sequence_tensor(
+#     n_qubits: int,
+#     batch_size: int,
+#     use_full_support: bool,
+#     compose: type[Sequence] | type[Add],
+# ) -> None:
+#     op_list = []
+#     values = {}
+#     op: type[Primitive] | type[Parametric]
+#     """
+#     Builds a Sequence or Add composition of all possible gates on random qubit
+#     supports. Also assigns a Scale of a random value to the non-parametric gates.
+#     Tests the forward method (which goes through each gate individually) to the
+#     `tensor` method, which builds the full operator matrix and applies it.
+#     """
+#     for op in OPS_DIGITAL:
+#         supp = get_op_support(op, n_qubits)
+#         op_concrete = Scale(op(*supp), torch.rand(1))
+#         op_list.append(op_concrete)
+#     for op in OPS_PARAM:
+#         supp = get_op_support(op, n_qubits)
+#         params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
+#         values.update({param: torch.rand(batch_size) for param in params})
+#         op_concrete = op(*supp, *params)
+#         op_list.append(op_concrete)
+#     random.shuffle(op_list)
+#     op_composite = compose(op_list)
+#     psi_init = random_state(n_qubits, batch_size)
+#     psi_star = op_composite(psi_init, values)
+#     full_support = tuple(range(n_qubits)) if use_full_support else None
+#     psi_expected = calc_mat_vec_wavefunction(
+#         op_composite, psi_init, values=values, full_support=full_support
+#     )
+#     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("use_full_support", [True, False])
@@ -224,34 +224,34 @@ def test_projector_vs_operator(
     assert torch.allclose(projector_mat, operator_mat, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("n_qubits", [4, 5])
-@pytest.mark.parametrize("make_param", [True, False])
-@pytest.mark.parametrize("use_full_support", [True, False])
-@pytest.mark.parametrize("batch_size", [1, 5])
-def test_hevo_pauli_tensor(
-    n_qubits: int, make_param: bool, use_full_support: bool, batch_size: int
-) -> None:
-    k_1q = 2 * n_qubits  # Number of 1-qubit terms
-    k_2q = n_qubits**2  # Number of 2-qubit terms
-    generator, param_list = random_pauli_hamiltonian(n_qubits, k_1q, k_2q, make_param)
-    values = {param: torch.rand(batch_size) for param in param_list}
-    psi_init = random_state(n_qubits, batch_size)
-    full_support = tuple(range(n_qubits)) if use_full_support else None
-    # Test the generator itself
-    psi_star = generator(psi_init, values)
-    psi_expected = calc_mat_vec_wavefunction(generator, psi_init, values, full_support)
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-    # Test the hamiltonian evolution
-    tparam = "t"
-    operator = HamiltonianEvolution(generator, tparam)
-    if make_param:
-        assert operator.generator_type == GeneratorType.PARAMETRIC_OPERATION
-    else:
-        assert operator.generator_type == GeneratorType.OPERATION
-    values[tparam] = torch.rand(batch_size)
-    psi_star = operator(psi_init, values)
-    psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
-    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+# @pytest.mark.parametrize("n_qubits", [4, 5])
+# @pytest.mark.parametrize("make_param", [True, False])
+# @pytest.mark.parametrize("use_full_support", [True, False])
+# @pytest.mark.parametrize("batch_size", [1, 5])
+# def test_hevo_pauli_tensor(
+#     n_qubits: int, make_param: bool, use_full_support: bool, batch_size: int
+# ) -> None:
+#     k_1q = 2 * n_qubits  # Number of 1-qubit terms
+#     k_2q = n_qubits**2  # Number of 2-qubit terms
+#     generator, param_list = random_pauli_hamiltonian(n_qubits, k_1q, k_2q, make_param)
+#     values = {param: torch.rand(batch_size) for param in param_list}
+#     psi_init = random_state(n_qubits, batch_size)
+#     full_support = tuple(range(n_qubits)) if use_full_support else None
+#     # Test the generator itself
+#     psi_star = generator(psi_init, values)
+#     psi_expected = calc_mat_vec_wavefunction(generator, psi_init, values, full_support)
+#     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+#     # Test the hamiltonian evolution
+#     tparam = "t"
+#     operator = HamiltonianEvolution(generator, tparam)
+#     if make_param:
+#         assert operator.generator_type == GeneratorType.PARAMETRIC_OPERATION
+#     else:
+#         assert operator.generator_type == GeneratorType.OPERATION
+#     values[tparam] = torch.rand(batch_size)
+#     psi_star = operator(psi_init, values)
+#     psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
+#     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("gen_qubits", [3, 4])

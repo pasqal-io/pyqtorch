@@ -94,13 +94,12 @@ def apply_operator_permute(
     state = permute_state(state, support_perm)
     state = state.reshape([2**n_support, 2 ** (n_qubits - n_support), state.size(-1)])
     if len(operator.size()) == 3:
-        result = einsum("ijb,jkb->ikb", operator, state).reshape(
-            [2] * n_qubits + [batch_size]
-        )
+        einsum_expr = "ijb,jkb->ikb"
     else:
-        result = einsum("jb,jkb->jkb", operator, state).reshape(
-            [2] * n_qubits + [batch_size]
-        )
+        einsum_expr = "jb,jkb->jkb"
+    result = einsum(einsum_expr, operator, state).reshape(
+        [2] * n_qubits + [batch_size]
+    )
     return permute_state(result, support_perm, inv=True)
 
 
@@ -137,37 +136,25 @@ def apply_operator_dm(
 
     # There is probably a smart way to represent the lines below in a single einsum...
     if len(operator.size()) == 3:
-        state = state.reshape(
-            [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
-        )
-        state = einsum("ijb,jkb->ikb", operator, state).reshape(
-            [2**n_qubits, 2**n_qubits, batch_size]
-        )
-        state = _dagger(state).reshape(
-            [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
-        )
-        state = _dagger(
-            einsum("ijb,jkb->ikb", operator, state).reshape(
-                [2**n_qubits, 2**n_qubits, batch_size]
-            )
-        )
-        return permute_basis(state, support_perm, inv=True)
+        einsum_expr = "ijb,jkb->ikb"
     else:
-        state = state.reshape(
-            [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
-        )
-        state = einsum("jb,jkb->jkb", operator, state).reshape(
+        einsum_expr = "jb,jkb->jkb"
+    state = state.reshape(
+        [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
+    )
+    state = einsum(einsum_expr, operator, state).reshape(
+        [2**n_qubits, 2**n_qubits, batch_size]
+    )
+    state = _dagger(state).reshape(
+        [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
+    )
+    state = _dagger(
+        einsum(einsum_expr, operator, state).reshape(
             [2**n_qubits, 2**n_qubits, batch_size]
         )
-        state = _dagger(state).reshape(
-            [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
-        )
-        state = _dagger(
-            einsum("jb,jkb->jkb", operator, state).reshape(
-                [2**n_qubits, 2**n_qubits, batch_size]
-            )
-        )
-        return permute_basis(state, support_perm, inv=True)
+    )
+    return permute_basis(state, support_perm, inv=True)
+    
 
 
 def operator_product(
