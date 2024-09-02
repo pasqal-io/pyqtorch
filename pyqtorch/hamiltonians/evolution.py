@@ -358,7 +358,7 @@ class HamiltonianEvolution(Sequence):
         """
 
         if embedding is not None:
-            embedding(values)
+            values = embedding(values)
 
         values_cache_key = str(OrderedDict(values))
         if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
@@ -397,7 +397,7 @@ class HamiltonianEvolution(Sequence):
         """
 
         if embedding is not None:
-            embedding(values)
+            values = embedding(values)
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
         time_evolution: torch.Tensor = (

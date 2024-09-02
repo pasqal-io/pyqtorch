@@ -67,7 +67,7 @@ class Scale(Sequence):
         """
 
         if embedding is not None:
-            embedding(values)
+            values = embedding(values)
 
         scale = (
             values[self.param_name]
@@ -95,7 +95,7 @@ class Scale(Sequence):
         """
 
         if embedding is not None:
-            embedding(values)
+            values = embedding(values)
 
         scale = (
             values[self.param_name]
