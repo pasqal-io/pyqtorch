@@ -462,7 +462,7 @@ def expand_operator(
     if len(operator.size()) == 3:
         other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
     else:
-        other = torch.diag(IMAT.clone()).to(device=device, dtype=dtype).unsqueeze(2)
+        other = torch.diag(IMAT.clone()).to(device=device, dtype=dtype).unsqueeze(1)
     for i in set(full_support) - set(qubit_support):
         qubit_support += (i,)
         operator = torch.kron(operator.contiguous(), other)
@@ -569,7 +569,7 @@ def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> 
         )
         if inv:
             perm = np.argsort(perm).tolist()
-            return operator.permute(perm).reshape([2**n_qubits, batch_size])
+        return operator.permute(perm).reshape([2**n_qubits, batch_size])
 
 
 def random_dm_promotion(
