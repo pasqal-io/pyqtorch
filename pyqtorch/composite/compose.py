@@ -10,7 +10,7 @@ from torch import Tensor, einsum, rand
 from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
-from pyqtorch.embed import ConcretizedCallable, Embedding
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import add_batch_dim
 from pyqtorch.primitives import CNOT, RX, RY, Parametric, Primitive
 from pyqtorch.utils import (
@@ -37,7 +37,7 @@ class Scale(Sequence):
     def __init__(
         self,
         operations: Union[Primitive, Sequence, Add],
-        param_name: str | Tensor | ConcretizedCallable,
+        param_name: str | Tensor,
     ):
         """
         Initializes a Scale object.
@@ -75,8 +75,6 @@ class Scale(Sequence):
             scale = values[self.param_name]
         elif isinstance(self.param_name, Tensor):
             scale = self.param_name
-        elif isinstance(self.param_name, ConcretizedCallable):
-            scale = self.param_name(values)
 
         return scale * self.operations[0].forward(state, values)
 
@@ -105,8 +103,6 @@ class Scale(Sequence):
             scale = values[self.param_name]
         elif isinstance(self.param_name, Tensor):
             scale = self.param_name
-        elif isinstance(self.param_name, ConcretizedCallable):
-            scale = self.param_name(values)
 
         return scale * self.operations[0].tensor(values, full_support=full_support)
 
