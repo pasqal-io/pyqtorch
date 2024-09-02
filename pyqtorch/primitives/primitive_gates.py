@@ -36,6 +36,7 @@ class Z(Primitive):
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
     ):
         super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
+        # super().__init__(torch.diag(OPERATIONS_DICT["Z"]), target, noise=noise)
 
 
 class I(Primitive):  # noqa: E742

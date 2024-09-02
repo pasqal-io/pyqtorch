@@ -42,18 +42,42 @@ def apply_operator(
     n_state_dims = n_qubits + 1
 
     in_state_dims = ABC_ARRAY[0:n_state_dims].copy()
+    operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
+    operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + 2 * n_support + 1].copy()
+    operator_dims[n_support : 2 * n_support] = in_state_dims[qubit_support]
 
-    diagonal = True if len(operator.size()) == 2 else False
-    if not diagonal:
-        operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
-        operator_dims = ABC_ARRAY[
-            n_state_dims : n_state_dims + 2 * n_support + 1
-        ].copy()
-        operator_dims[n_support : 2 * n_support] = in_state_dims[qubit_support]
-    else:
-        operator = operator.view([2] * n_support + [operator.size(-1)])
-        operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + n_support + 1].copy()
-        operator_dims[:n_support] = in_state_dims[qubit_support]
+    operator_dims[-1] = in_state_dims[-1]
+    out_state_dims = in_state_dims.copy()
+    out_state_dims[qubit_support] = operator_dims[0:n_support]
+    operator_dims, in_state_dims, out_state_dims = list(
+        map(lambda e: "".join(list(e)), [operator_dims, in_state_dims, out_state_dims])
+    )
+    return einsum(f"{operator_dims},{in_state_dims}->{out_state_dims}", operator, state)
+
+
+def apply_diagonal_operator(
+    state: Tensor,
+    operator: Tensor,
+    qubit_support: tuple[int, ...] | list[int],
+) -> Tensor:
+    """Applies a diagonal operator.
+
+    Arguments:
+        state: State to operate on.
+        operator: Tensor to contract over 'state'.
+        qubit_support: Tuple of qubits on which to apply the 'operator' to.
+
+    Returns:
+        State after applying 'operator'.
+    """
+    qubit_support = list(qubit_support)
+    n_qubits = len(state.size()) - 1
+    n_support = len(qubit_support)
+    n_state_dims = n_qubits + 1
+    in_state_dims = ABC_ARRAY[0:n_state_dims].copy()
+    operator = operator.view([2] * n_support + [operator.size(-1)])
+    operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + n_support + 1].copy()
+    operator_dims[:n_support] = in_state_dims[qubit_support]
     operator_dims[-1] = in_state_dims[-1]
     out_state_dims = in_state_dims.copy()
     out_state_dims[qubit_support] = operator_dims[0:n_support]

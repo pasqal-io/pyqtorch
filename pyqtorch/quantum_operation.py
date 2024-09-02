@@ -106,6 +106,12 @@ class QuantumOperation(torch.nn.Module):
             the QuantumOperation acts on.
         operator_function (Callable | None, optional): Function to generate the base operator
             from operation. If None, we consider returning operation itself.
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
+        diagonal (bool, optional): Specify if the operation is diagonal.
+            For supporting, only pass a 1 or 2-dim operation tensor
+            containing diagonal elements with batchsize.
+
 
     """
 
@@ -115,6 +121,7 @@ class QuantumOperation(torch.nn.Module):
         qubit_support: int | tuple[int, ...] | Support,
         operator_function: Callable | None = None,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = False,
     ) -> None:
         """Initializes QuantumOperation
 
@@ -122,6 +129,14 @@ class QuantumOperation(torch.nn.Module):
             operation (Tensor): Tensor used to infer the QuantumOperation.
             qubit_support (int | tuple[int, ...]): List of qubits
                 the QuantumOperation acts on.
+            operator_function (Callable | None, optional): Function to generate the base operator
+                from operation. If None, we consider returning operation itself.
+            noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+                to add in the operation.
+            diagonal (bool, optional): Specify if the operation is diagonal.
+                For supporting, only pass a 1 or 2-dim operation tensor
+                containing diagonal elements with batchsize.
+
 
         Raises:
             ValueError: When operation has incompatible shape
@@ -150,6 +165,9 @@ class QuantumOperation(torch.nn.Module):
             self._operator_function = self._default_operator_function
         else:
             self._operator_function = operator_function
+        self.diagonal = diagonal
+        if diagonal and len(self.operation.size()) == 3:
+            raise ValueError("The operation shape should be only .")
 
         self.noise: NoiseProtocol | dict[str, NoiseProtocol] | None = noise
 
@@ -290,7 +308,7 @@ class QuantumOperation(torch.nn.Module):
             Tensor: Base operator.
         """
         operation = (
-            self.operation.unsqueeze(2)
+            self.operation.unsqueeze(-1)
             if len(self.operation.shape) == 2
             else self.operation
         )

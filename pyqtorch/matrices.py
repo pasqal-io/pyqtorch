@@ -105,7 +105,11 @@ def parametric_unitary(
 
 
 def _dagger(matrices: torch.Tensor) -> torch.Tensor:  # noqa: E741
-    return torch.permute(matrices.conj(), (1, 0, 2))
+    return (
+        torch.permute(matrices.conj(), (1, 0, 2))
+        if len(matrices.size()) == 3
+        else matrices.conj()
+    )
 
 
 def _jacobian(
