@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import sys
 
+from pyqtorch.utils import StrEnum
 
-class NoiseProtocol:
+
+class NoiseType(StrEnum):
     BITFLIP = "BitFlip"
     PHASEFLIP = "PhaseFlip"
     DEPOLARIZING = "Depolarizing"
@@ -12,17 +14,25 @@ class NoiseProtocol:
     PHASE_DAMPING = "PhaseDamping"
     GENERALIZED_AMPLITUDE_DAMPING = "GeneralizedAmplitudeDamping"
 
-    def __init__(self, protocol: str, options: dict = dict()) -> None:
-        self.protocol: str = protocol
-        self.options: dict = options
+
+class NoiseProtocol:
+    def __init__(
+        self, noise_types: NoiseType | list[NoiseType], options: dict = dict()
+    ) -> None:
+
+        self.noise_types = (
+            [noise_types] if isinstance(noise_types, NoiseType) else noise_types
+        )
+        self.options = options
 
     def __repr__(self) -> str:
+        noise_types = [str(noise_type) for noise_type in self.noise_types]
         if self.target:
             return (
-                f"{self.protocol}(prob: {self.error_probability}, "
+                f"{noise_types}(prob: {self.error_probability}, "
                 f"target: {self.target})"
             )
-        return f"{self.protocol}(prob: {self.error_probability})"
+        return f"{noise_types}(prob: {self.error_probability})"
 
     @property
     def error_probability(self):
