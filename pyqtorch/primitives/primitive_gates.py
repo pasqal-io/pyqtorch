@@ -44,7 +44,12 @@ class Z(Primitive):
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
         diagonal: bool = True,
     ):
-        super().__init__(ZDIAG if diagonal else OPERATIONS_DICT["Z"], target, noise=noise, diagonal=diagonal)
+        super().__init__(
+            ZDIAG if diagonal else OPERATIONS_DICT["Z"],
+            target,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
 
 class I(Primitive):  # noqa: E742
@@ -54,7 +59,12 @@ class I(Primitive):  # noqa: E742
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
         diagonal: bool = True,
     ):
-        super().__init__(IDIAG if diagonal else OPERATIONS_DICT["I"], target, noise=noise, diagonal=diagonal)
+        super().__init__(
+            IDIAG if diagonal else OPERATIONS_DICT["I"],
+            target,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
 
 class H(Primitive):
@@ -73,7 +83,12 @@ class T(Primitive):
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
         diagonal: bool = True,
     ):
-        super().__init__(TDIAG if diagonal else OPERATIONS_DICT["T"], target, noise=noise, diagonal=diagonal)
+        super().__init__(
+            TDIAG if diagonal else OPERATIONS_DICT["T"],
+            target,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
 
 class S(Primitive):
@@ -138,7 +153,12 @@ class N(Primitive):
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
         diagonal: bool = True,
     ):
-        super().__init__(NDIAG if diagonal else OPERATIONS_DICT["N"], target, noise=noise, diagonal=diagonal)
+        super().__init__(
+            NDIAG if diagonal else OPERATIONS_DICT["N"],
+            target,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
 
 class SWAP(Primitive):

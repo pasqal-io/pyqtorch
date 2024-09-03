@@ -19,6 +19,7 @@ from typing_extensions import TypeAlias
 
 import pyqtorch as pyq
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IDIAG, IMAT
+from pyqtorch.tensors import DensityMatrix
 
 State: TypeAlias = Tensor
 Operator: TypeAlias = Tensor
@@ -395,10 +396,6 @@ def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tenso
         Dictionary mapping parameters and values.
     """
     return {key: val for key, val in zip(keys, values)}
-
-
-class DensityMatrix(Tensor):
-    pass
 
 
 def density_mat(state: Tensor) -> DensityMatrix:

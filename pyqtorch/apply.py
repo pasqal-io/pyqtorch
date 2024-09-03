@@ -97,9 +97,7 @@ def apply_operator_permute(
         einsum_expr = "ijb,jkb->ikb"
     else:
         einsum_expr = "jb,jkb->jkb"
-    result = einsum(einsum_expr, operator, state).reshape(
-        [2] * n_qubits + [batch_size]
-    )
+    result = einsum(einsum_expr, operator, state).reshape([2] * n_qubits + [batch_size])
     return permute_state(result, support_perm, inv=True)
 
 
@@ -154,7 +152,6 @@ def apply_operator_dm(
         )
     )
     return permute_basis(state, support_perm, inv=True)
-    
 
 
 def operator_product(

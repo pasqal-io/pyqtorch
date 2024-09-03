@@ -6,7 +6,7 @@ import pytest
 import torch
 from helpers import calc_mat_vec_wavefunction, get_op_support, random_pauli_hamiltonian
 
-from pyqtorch.composite import Add, Scale, Sequence
+from pyqtorch.composite import Add
 from pyqtorch.hamiltonians import GeneratorType, HamiltonianEvolution
 from pyqtorch.primitives import (
     CNOT,
@@ -194,7 +194,7 @@ def test_projector_vs_operator(
 ) -> None:
     if operator == N:
         supp: tuple = (random.randint(0, n_qubits - 1),)
-        op_concrete = N(*supp, diagonal=False)
+        op_concrete = N(target=supp[0], diagonal=False)
         projector = Projector(supp, "1", "1")
     if operator == CNOT:
         supp = tuple(random.sample(range(n_qubits), 2))
