@@ -4,6 +4,7 @@ import random
 
 import torch
 
+import pyqtorch.embed as pyq_em
 from pyqtorch.apply import apply_operator, apply_operator_permute
 from pyqtorch.composite import Add, Scale, Sequence
 from pyqtorch.primitives import (
@@ -68,12 +69,31 @@ def get_op_support(
         return supp
 
 
+def get_random_embed() -> tuple:
+    fn_list = [
+        (pyq_em.sin, torch.sin),
+        (pyq_em.cos, torch.cos),
+        (pyq_em.log, torch.log),
+        (pyq_em.tanh, torch.tanh),
+        (pyq_em.tan, torch.tan),
+        (pyq_em.sqrt, torch.sqrt),
+    ]
+
+    fn1, fn2 = random.choice(fn_list), random.choice(fn_list)
+
+    expr = (1.0 + 2 ** fn1[0]("x")) * fn2[0]("x")
+    call = lambda x: (12.0 + 2 ** fn1[1](x)) * fn2[1]("x")
+
+    embedding = pyq_em.Embedding(fparam_names=["x"], var_to_call={"expr": expr})
+
+    return embedding, call
+
+
 def random_pauli_hamiltonian(
     n_qubits: int,
     k_1q: int = 5,
     k_2q: int = 10,
     make_param: bool = False,
-    make_embed: bool = False,
     default_scale_coeffs: float | None = None,
     p_param: float = 0.5,
 ) -> tuple[Sequence, list]:

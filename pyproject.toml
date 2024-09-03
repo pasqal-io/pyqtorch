@@ -117,7 +117,7 @@ serve = "mkdocs serve --dev-addr localhost:8000"
 
 [tool.ruff]
 lint.select = ["E", "F", "I", "Q"]
-lint.extend-ignore = ["F841"]
+lint.extend-ignore = ["F841", "E731"]
 line-length = 100
 
 [tool.ruff.lint.isort]
