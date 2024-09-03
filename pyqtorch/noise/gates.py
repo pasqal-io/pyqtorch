@@ -17,7 +17,7 @@ class Noise(torch.nn.Module):
         self,
         kraus: list[Tensor],
         target: int,
-        error_probabilities: tuple[float, ...] | float,
+        error_probability: tuple[float, ...] | float,
     ) -> None:
         super().__init__()
         self.target: int = target
@@ -26,10 +26,10 @@ class Noise(torch.nn.Module):
             self.register_buffer(f"kraus_{index}", tensor)
         self._device: torch.device = kraus[0].device
         self._dtype: torch.dtype = kraus[0].dtype
-        self.error_probabilities: tuple[float, ...] | float = error_probabilities
+        self.error_probability: tuple[float, ...] | float = error_probability
 
     def extra_repr(self) -> str:
-        return f"target: {self.qubit_support}, prob: {self.error_probabilities}"
+        return f"target: {self.qubit_support}, prob: {self.error_probability}"
 
     @property
     def kraus_operators(self) -> list[Tensor]:
