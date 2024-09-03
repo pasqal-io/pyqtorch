@@ -19,7 +19,6 @@ from typing_extensions import TypeAlias
 
 import pyqtorch as pyq
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IDIAG, IMAT
-from pyqtorch.tensors import DensityMatrix
 
 State: TypeAlias = Tensor
 Operator: TypeAlias = Tensor
@@ -34,6 +33,10 @@ PSR_ACCEPTANCE = 1e-05
 ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)
+
+
+class DensityMatrix(Tensor):
+    pass
 
 
 def qubit_support_as_tuple(support: int | tuple[int, ...]) -> tuple[int, ...]:
