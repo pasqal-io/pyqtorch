@@ -114,7 +114,7 @@ class QuantumOperation(torch.nn.Module):
         operation: Tensor,
         qubit_support: int | tuple[int, ...] | Support,
         operator_function: Callable | None = None,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ) -> None:
         """Initializes QuantumOperation
 
@@ -151,7 +151,7 @@ class QuantumOperation(torch.nn.Module):
         else:
             self._operator_function = operator_function
 
-        self.noise: NoiseProtocol | dict[str, NoiseProtocol] | None = noise
+        self.noise = noise
 
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
@@ -368,29 +368,13 @@ class QuantumOperation(torch.nn.Module):
             state, self.tensor(values, embedding), self.qubit_support
         )
 
-        if isinstance(self.noise, dict):
-            for noise_instance in self.noise.values():
-                protocol = noise_instance.protocol_to_gate()
-                noise_gate = protocol(
-                    target=(
-                        noise_instance.target
-                        if noise_instance.target is not None
-                        else self.target
-                    ),
-                    error_probability=noise_instance.error_probability,
-                )
-                state = noise_gate(state, values)
-            return state
+        for noise_class, options in self.noise.gates:  # type: ignore [union-attr]
+            error_probability = options.get("error_probability")
+            target = options.get("target", self.target)
+            noise_gate = noise_class(target=target, error_probability=error_probability)
+            state = noise_gate(state, values)
 
-        elif isinstance(self.noise, NoiseProtocol):
-            protocol = self.noise.protocol_to_gate()
-            noise_gate = protocol(
-                target=(
-                    self.noise.target if self.noise.target is not None else self.target
-                ),
-                error_probability=self.noise.error_probability,
-            )
-            return noise_gate(state, values)
+        return state
 
     def forward(
         self,

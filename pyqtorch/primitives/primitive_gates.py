@@ -15,7 +15,7 @@ class X(Primitive):
     def __init__(
         self,
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["X"], target, noise=noise)
 
@@ -24,7 +24,7 @@ class Y(Primitive):
     def __init__(
         self,
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["Y"], target, noise=noise)
 
@@ -33,7 +33,7 @@ class Z(Primitive):
     def __init__(
         self,
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
 
@@ -42,7 +42,7 @@ class I(Primitive):  # noqa: E742
     def __init__(
         self,
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["I"], target, noise=noise)
 
@@ -51,7 +51,7 @@ class H(Primitive):
     def __init__(
         self,
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
 
@@ -60,7 +60,7 @@ class T(Primitive):
     def __init__(
         self,
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
 
@@ -69,7 +69,7 @@ class S(Primitive):
     def __init__(
         self,
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(
             OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"], noise=noise
@@ -80,7 +80,7 @@ class SDagger(Primitive):
     def __init__(
         self,
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(
             OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"], noise=noise
@@ -93,7 +93,7 @@ class Projector(Primitive):
         qubit_support: int | tuple[int, ...],
         ket: str,
         bra: str,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
 
         qubit_support = qubit_support_as_tuple(qubit_support)
@@ -114,7 +114,7 @@ class N(Primitive):
     def __init__(
         self,
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["N"], target, noise=noise)
 
@@ -124,7 +124,7 @@ class SWAP(Primitive):
         self,
         i: int,
         j: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["SWAP"], (i, j), noise=noise)
 
@@ -134,7 +134,7 @@ class CSWAP(Primitive):
         self,
         control: int,
         target: tuple[int, ...],
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         if not isinstance(target, tuple) or len(target) != 2:
             raise ValueError("Target qubits must be a tuple with two qubits.")
@@ -147,7 +147,7 @@ class CNOT(ControlledPrimitive):
         self,
         control: int | tuple[int, ...],
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__("X", control, target, noise=noise)
 
@@ -160,7 +160,7 @@ class CY(ControlledPrimitive):
         self,
         control: int | tuple[int, ...],
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__("Y", control, target, noise=noise)
 
@@ -170,7 +170,7 @@ class CZ(ControlledPrimitive):
         self,
         control: int | tuple[int, ...],
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__("Z", control, target, noise=noise)
 
@@ -180,7 +180,7 @@ class Toffoli(ControlledPrimitive):
         self,
         control: int | tuple[int, ...],
         target: int,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         super().__init__("X", control, target, noise=noise)
 

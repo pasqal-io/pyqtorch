@@ -20,15 +20,15 @@ class NoiseProtocol:
     Defines a protocol of noisy quantum channels.
 
     Args:
-        protocol: single NoiseType instance, list of NoiseType instances or
-            a dict of NoiseType instances. When passing a dict of NoiseType instances,
-            each value should be a dict of options containing the "error_probability",
+        protocol: single NoiseType instance or list of NoiseType instances, or
+            list of (NoiseType, options) tuple. When passing list of tuples,
+            for each NoiseType the options should be a dict containing the "error_probability",
             and optionally a "target". If no "target" is present, the noise instance
             will be applied to the same target of the gate it is used on.
         error_probability: probability of error when passing a single NoiseType
-            or a list of NoiseTypes. Note that all noise types require a single float
-            for the error_probability, while the PauliChannel requires a tuple
-            (px, py, pz) of error probabilities.
+            or a list of NoiseTypes. Note that all noise types require a single float for the
+            error_probability, while the PauliChannel and GeneralizedAmplitudeDamping require
+            a tuple of error probabilities.
 
     Examples:
     ```
@@ -60,13 +60,13 @@ class NoiseProtocol:
     ) -> None:
 
         if isinstance(protocol, NoiseType):
-            self.protocol = [(protocol, {"error_probability": error_probability})]
+            self.protocol = [(protocol, {"error_probability": error_probability})]  # type: ignore [misc]
         elif isinstance(protocol, list) and isinstance(protocol[0], NoiseType):
             self.protocol = [
-                (p, {"error_probability": error_probability}) for p in protocol
+                (p, {"error_probability": error_probability}) for p in protocol  # type: ignore [misc]
             ]
         else:
-            self.protocol = protocol
+            self.protocol = protocol  # type: ignore [assignment]
 
         for _, options in self.protocol:
             err = options.get("error_probability")
@@ -78,19 +78,8 @@ class NoiseProtocol:
 
         self.len = len(self.protocol)
 
-    def __repr__(self) -> str:
-        if self.len == 1:
-            noise, options = self.protocol[0]
-            error_probability = options.get("error_probability")
-            target = options.get("target")
-            if target is not None:
-                return f"{str(noise)}(prob: {error_probability}, target: {target})"
-            else:
-                return f"{str(noise)}(prob: {error_probability})"
-        elif self.len >= 1:
-            return f"NoiseProtocol(length = {self.len})"
-
-    def to_gates(self) -> list:
+    @property
+    def gates(self) -> list:
         gate_list = []
         for noise, options in self.protocol:
             try:
@@ -102,14 +91,24 @@ class NoiseProtocol:
                 )
         return gate_list
 
+    def __repr__(self) -> str:
+        if self.len == 1:
+            noise, options = self.protocol[0]
+            error_probability = options.get("error_probability")
+            target = options.get("target")
+            if target is not None:
+                return f"{str(noise)}(prob: {error_probability}, target: {target})"
+            else:
+                return f"{str(noise)}(prob: {error_probability})"
+        else:
+            return f"NoiseProtocol(length = {self.len})"
 
-def _repr_noise(noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None) -> str:
+
+def _repr_noise(noise: NoiseProtocol | None = None) -> str:
     """Returns the string for noise representation in gates."""
     noise_info = ""
     if noise is None:
         return noise_info
     elif isinstance(noise, NoiseProtocol):
         noise_info = str(noise)
-    elif isinstance(noise, dict):
-        noise_info = ", ".join(str(noise_instance) for noise_instance in noise.values())
     return f", noise: {noise_info}"

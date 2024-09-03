@@ -35,7 +35,7 @@ class Parametric(QuantumOperation):
         generator: str | Tensor,
         qubit_support: int | tuple[int, ...] | Support,
         param_name: str | int | float | torch.Tensor = "",
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         """Initializes Parametric.
 
@@ -217,7 +217,7 @@ class ControlledParametric(Parametric):
         control: int | Tuple[int, ...],
         target: int | Tuple[int, ...],
         param_name: str | int | float | torch.Tensor = "",
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         """Initializes a ControlledParametric.
 
@@ -301,7 +301,7 @@ class ControlledRotationGate(ControlledParametric):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         """Initializes a ControlledRotationGate.
 
