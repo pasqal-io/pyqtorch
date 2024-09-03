@@ -21,8 +21,8 @@ class NoiseProtocol:
 
     Args:
         protocol: single NoiseType instance or list of NoiseType instances, or
-            list of (NoiseType, options) tuple. When passing list of tuples,
-            for each NoiseType the options should be a dict containing the "error_probability",
+            list of (NoiseType, options) tuple. When passing list of tuples, for
+            each NoiseType the options should be a dict containing the "error_probability",
             and optionally a "target". If no "target" is present, the noise instance
             will be applied to the same target of the gate it is used on.
         error_probability: probability of error when passing a single NoiseType
