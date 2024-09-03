@@ -368,9 +368,8 @@ class QuantumOperation(torch.nn.Module):
             state, self.tensor(values, embedding), self.qubit_support
         )
 
-        for noise_class, options in self.noise.gates:  # type: ignore [union-attr]
-            error_probability = options.get("error_probability")
-            target = options.get("target", self.target)
+        for noise_class, error_probability, target in self.noise.gates:  # type: ignore [union-attr]
+            target = self.target if target is None else target
             noise_gate = noise_class(target=target, error_probability=error_probability)
             state = noise_gate(state, values)
 

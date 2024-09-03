@@ -36,6 +36,7 @@ class NoiseProtocol:
 
         # Single noise instance
         protocol = NoiseProtocol(NoiseType.BITFLIP, error_probability = 0.5)
+        protocol = NoiseProtocol.bitflip(error_probability = 0.5)
 
         # Multiples noise instances with same probability
         protocol = NoiseProtocol(
@@ -44,58 +45,100 @@ class NoiseProtocol:
                     )
 
         # Multiples noise instances with different options
-        protocol = NoiseProtocol([
-                        (NoiseType.BITFLIP, {"error_probability": 0.5}),
-                        (NoiseType.PHASEFLIP, {"error_probability": 0.2, "target": 0}),
-                        (NoiseType.PAULI_CHANNEL, {"error_probability": (0.1, 0.2, 0.2)})
-                    ])
+        prot0 = NoiseProtocol.bitflip(0.5)
+        prot1 = NoiseProtocol.pauli_channel((0.1, 0.2, 0.7))
+        protocol = NoiseProtocol([prot0, prot1])
 
     ```
     """
 
     def __init__(
         self,
-        protocol: NoiseType | list[NoiseType] | list[tuple[NoiseType, dict]],
+        protocol: NoiseType | list[NoiseType] | list[NoiseProtocol],
         error_probability: tuple[float, ...] | float | None = None,
+        target: int | None = None,
     ) -> None:
 
-        if isinstance(protocol, NoiseType):
-            self.protocol = [(protocol, {"error_probability": error_probability})]  # type: ignore [misc]
-        elif isinstance(protocol, list) and isinstance(protocol[0], NoiseType):
-            self.protocol = [
-                (p, {"error_probability": error_probability}) for p in protocol  # type: ignore [misc]
-            ]
-        else:
-            self.protocol = protocol  # type: ignore [assignment]
+        self._error_probability = error_probability
+        self._target = target
 
-        for _, options in self.protocol:
-            err = options.get("error_probability")
-            if err is None:
+        if isinstance(protocol, NoiseType):
+            self.noise_instances = [(protocol, error_probability, target)]
+        elif isinstance(protocol, list) and isinstance(protocol[0], NoiseType):
+            self.noise_instances = [(p, error_probability, target) for p in protocol]  # type: ignore [misc]
+        elif isinstance(protocol, list) and isinstance(protocol[0], NoiseProtocol):
+            self.noise_instances = []
+            for p in protocol:
+                self.noise_instances.extend(p.noise_instances)  # type: ignore [union-attr]
+        else:
+            raise TypeError("Incorrect protocol argument.")
+
+        for _, error_probability, _ in self.noise_instances:
+            if error_probability is None:
                 raise ValueError(
-                    "Found missing error_probability in noise protocol. Pass it directly in the "
-                    "error_probability argument or in the options dict for each noise instance."
+                    "This protocol requires a value to the error_probability argument"
                 )
 
-        self.len = len(self.protocol)
+        self.len = len(self.noise_instances)
+
+    @property
+    def error_probability(self):
+        if self.len == 1:
+            return self._error_probability
+        else:
+            return [p[1] for p in self.noise_instances]
+
+    @property
+    def target(self):
+        if self.len == 1:
+            return self._target
+        else:
+            return [p[2] for p in self.noise_instances]
 
     @property
     def gates(self) -> list:
         gate_list = []
-        for noise, options in self.protocol:
+        for noise, error_probability, target in self.noise_instances:
             try:
                 gate_class = getattr(sys.modules["pyqtorch.noise.gates"], str(noise))
-                gate_list.append((gate_class, options))
+                gate_list.append((gate_class, error_probability, target))
             except AttributeError:
                 raise ValueError(
                     f"The protocol {str(noise)} has not been implemented in pyq yet."
                 )
         return gate_list
 
+    @classmethod
+    def bitflip(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(NoiseType.BITFLIP, *args, **kwargs)
+
+    @classmethod
+    def phaseflip(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(NoiseType.PHASEFLIP, *args, **kwargs)
+
+    @classmethod
+    def depolarizing(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(NoiseType.DEPOLARIZING, *args, **kwargs)
+
+    @classmethod
+    def pauli_channel(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(NoiseType.PAULI_CHANNEL, *args, **kwargs)
+
+    @classmethod
+    def amplitude_damping(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(NoiseType.AMPLITUDE_DAMPING, *args, **kwargs)
+
+    @classmethod
+    def phase_damping(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(NoiseType.PHASE_DAMPING, *args, **kwargs)
+
+    @classmethod
+    def generalized_amplitude_damping(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(NoiseType.GENERALIZED_AMPLITUDE_DAMPING, *args, **kwargs)
+
     def __repr__(self) -> str:
         if self.len == 1:
-            noise, options = self.protocol[0]
-            error_probability = options.get("error_probability")
-            target = options.get("target")
+            noise, error_probability, target = self.noise_instances[0]
             if target is not None:
                 return f"{str(noise)}(prob: {error_probability}, target: {target})"
             else:
