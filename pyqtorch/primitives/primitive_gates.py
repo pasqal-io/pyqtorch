@@ -215,7 +215,9 @@ class CZ(ControlledPrimitive):
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
         diagonal: bool = True,
     ):
-        super().__init__(ZDIAG if diagonal else "Z", control, target, noise=noise, diagonal=diagonal)
+        super().__init__(
+            ZDIAG if diagonal else "Z", control, target, noise=noise, diagonal=diagonal
+        )
 
 
 class Toffoli(ControlledPrimitive):

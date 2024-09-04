@@ -328,7 +328,7 @@ class QuantumOperation(torch.nn.Module):
         Returns:
             Tensor: conjugate transpose operator.
         """
-        return _dagger(self.operator_function(values, embedding))
+        return _dagger(self.operator_function(values, embedding), self.diagonal)
 
     def tensor(
         self,
@@ -349,11 +349,15 @@ class QuantumOperation(torch.nn.Module):
         """
         blockmat = self.operator_function(values, embedding)
         if self._qubit_support.qubits != self.qubit_support:
-            blockmat = permute_basis(blockmat, self._qubit_support.qubits, inv=True, diagonal=self.diagonal)
+            blockmat = permute_basis(
+                blockmat, self._qubit_support.qubits, inv=True, diagonal=self.diagonal
+            )
         if full_support is None:
             return blockmat
         else:
-            return expand_operator(blockmat, self.qubit_support, full_support, diagonal=self.diagonal)
+            return expand_operator(
+                blockmat, self.qubit_support, full_support, diagonal=self.diagonal
+            )
 
     def _forward(
         self,
@@ -363,7 +367,10 @@ class QuantumOperation(torch.nn.Module):
     ) -> Tensor:
         if isinstance(state, DensityMatrix):
             return apply_operator_dm(
-                state, self.tensor(values, embedding), self.qubit_support, self.diagonal,
+                state,
+                self.tensor(values, embedding),
+                self.qubit_support,
+                self.diagonal,
             )
         else:
             return apply_operator(
@@ -384,7 +391,10 @@ class QuantumOperation(torch.nn.Module):
             state = density_mat(state)
 
         state = apply_operator_dm(
-            state, self.tensor(values, embedding), self.qubit_support, self.diagonal,
+            state,
+            self.tensor(values, embedding),
+            self.qubit_support,
+            self.diagonal,
         )
 
         if isinstance(self.noise, dict):

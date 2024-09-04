@@ -9,8 +9,8 @@ from torch import Tensor
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
-    controlled,
     ZDIAG,
+    controlled,
 )
 from pyqtorch.noise import NoiseProtocol
 
@@ -119,7 +119,7 @@ class RZ(Parametric):
         target: int,
         param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
-        diagonal: bool = True,
+        diagonal: bool = False,
     ):
         """Initializes RZ.
 
@@ -128,7 +128,13 @@ class RZ(Parametric):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__(ZDIAG if diagonal else "Z", target, param_name, noise=noise, diagonal=diagonal)
+        super().__init__(
+            ZDIAG if diagonal else "Z",
+            target,
+            param_name,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:

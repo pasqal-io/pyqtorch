@@ -110,11 +110,11 @@ def parametric_unitary(
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
 
 
-def _dagger(matrices: torch.Tensor) -> torch.Tensor:  # noqa: E741
+def _dagger(
+    matrices: torch.Tensor, diagonal: bool = False
+) -> torch.Tensor:  # noqa: E741
     return (
-        torch.permute(matrices.conj(), (1, 0, 2))
-        if len(matrices.size()) == 3
-        else matrices.conj()
+        torch.permute(matrices.conj(), (1, 0, 2)) if not diagonal else matrices.conj()
     )
 
 
