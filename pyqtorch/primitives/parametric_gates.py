@@ -119,7 +119,7 @@ class RZ(Parametric):
         target: int,
         param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
-        diagonal: bool = False,
+        diagonal: bool = True,
     ):
         """Initializes RZ.
 

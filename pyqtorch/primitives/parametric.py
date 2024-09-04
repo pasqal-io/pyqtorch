@@ -8,6 +8,7 @@ from torch import Tensor
 
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
+    IDIAG,
     OPERATIONS_DICT,
     _jacobian,
     controlled,
@@ -123,7 +124,9 @@ class Parametric(QuantumOperation):
             noise=noise,
             diagonal=diagonal,
         )
-        self.register_buffer("identity", OPERATIONS_DICT["I"])
+        self.register_buffer(
+            "identity", OPERATIONS_DICT["I"] if not diagonal else IDIAG
+        )
 
     def extra_repr(self) -> str:
         """String representation of the operation.
@@ -172,7 +175,9 @@ class Parametric(QuantumOperation):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
+        mat = parametric_unitary(
+            thetas, self.operation, self.identity, batch_size, self.diagonal
+        )
         return mat
 
     def jacobian(
