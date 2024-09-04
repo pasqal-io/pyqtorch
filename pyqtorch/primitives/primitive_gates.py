@@ -213,8 +213,9 @@ class CZ(ControlledPrimitive):
         control: int | tuple[int, ...],
         target: int,
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = True,
     ):
-        super().__init__("Z", control, target, noise=noise)
+        super().__init__(ZDIAG if diagonal else "Z", control, target, noise=noise, diagonal=diagonal)
 
 
 class Toffoli(ControlledPrimitive):

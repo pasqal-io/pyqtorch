@@ -349,11 +349,11 @@ class QuantumOperation(torch.nn.Module):
         """
         blockmat = self.operator_function(values, embedding)
         if self._qubit_support.qubits != self.qubit_support:
-            blockmat = permute_basis(blockmat, self._qubit_support.qubits, inv=True)
+            blockmat = permute_basis(blockmat, self._qubit_support.qubits, inv=True, diagonal=self.diagonal)
         if full_support is None:
             return blockmat
         else:
-            return expand_operator(blockmat, self.qubit_support, full_support)
+            return expand_operator(blockmat, self.qubit_support, full_support, diagonal=self.diagonal)
 
     def _forward(
         self,
@@ -363,13 +363,14 @@ class QuantumOperation(torch.nn.Module):
     ) -> Tensor:
         if isinstance(state, DensityMatrix):
             return apply_operator_dm(
-                state, self.tensor(values, embedding), self.qubit_support
+                state, self.tensor(values, embedding), self.qubit_support, self.diagonal,
             )
         else:
             return apply_operator(
                 state,
                 self.tensor(values, embedding),
                 self.qubit_support,
+                self.diagonal,
             )
 
     def _noise_forward(
@@ -383,7 +384,7 @@ class QuantumOperation(torch.nn.Module):
             state = density_mat(state)
 
         state = apply_operator_dm(
-            state, self.tensor(values, embedding), self.qubit_support
+            state, self.tensor(values, embedding), self.qubit_support, self.diagonal,
         )
 
         if isinstance(self.noise, dict):

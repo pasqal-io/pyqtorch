@@ -36,6 +36,7 @@ class Parametric(QuantumOperation):
         qubit_support: int | tuple[int, ...] | Support,
         param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = False,
     ):
         """Initializes Parametric.
 
@@ -120,6 +121,7 @@ class Parametric(QuantumOperation):
             qubit_support,
             operator_function=self._construct_parametric_base_op,
             noise=noise,
+            diagonal=diagonal,
         )
         self.register_buffer("identity", OPERATIONS_DICT["I"])
 
@@ -218,6 +220,7 @@ class ControlledParametric(Parametric):
         target: int | Tuple[int, ...],
         param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = False,
     ):
         """Initializes a ControlledParametric.
 
@@ -228,7 +231,7 @@ class ControlledParametric(Parametric):
             param_name: Name of parameters.
         """
         support = Support(target, control)
-        super().__init__(operation, support, param_name, noise=noise)
+        super().__init__(operation, support, param_name, noise=noise, diagonal=diagonal)
 
     def extra_repr(self) -> str:
         """String representation of the operation.
@@ -258,7 +261,7 @@ class ControlledParametric(Parametric):
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
-        mat = controlled(mat, batch_size, len(self.control))
+        mat = controlled(mat, batch_size, len(self.control), self.diagonal)
         return mat
 
     def jacobian(

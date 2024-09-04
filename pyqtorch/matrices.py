@@ -104,8 +104,8 @@ def parametric_unitary(
     sin_t = torch.sin(theta * a).unsqueeze(0).unsqueeze(1)
     sin_t = sin_t.repeat((2, 2, 1))
 
-    batch_imat = identity_mat.unsqueeze(2).repeat(1, 1, batch_size)
-    batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
+    batch_imat = identity_mat.unsqueeze(-1).repeat(1, 1, batch_size)
+    batch_operation_mat = P.unsqueeze(-1).repeat(1, 1, batch_size)
 
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
 
@@ -133,18 +133,35 @@ def _jacobian(
 
 
 def controlled(
-    operation: torch.Tensor, batch_size: int, n_control_qubits: int = 1
+    operation: torch.Tensor,
+    batch_size: int,
+    n_control_qubits: int = 1,
+    diagonal: bool = False,
 ) -> torch.Tensor:
-    _controlled: torch.Tensor = (
-        torch.eye(
-            2 ** (n_control_qubits + 1), dtype=operation.dtype, device=operation.device
+    if diagonal:
+        _controlled: torch.Tensor = (
+            torch.ones(
+                2 ** (n_control_qubits + 1),
+                dtype=operation.dtype,
+                device=operation.device,
+            )
+            .unsqueeze(1)
+            .repeat(1, batch_size)
         )
-        .unsqueeze(2)
-        .repeat(1, 1, batch_size)
-    )
-    _controlled[
-        2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :
-    ] = operation
+        _controlled[2 ** (n_control_qubits + 1) - 2 :, :] = operation
+    else:
+        _controlled = (
+            torch.eye(
+                2 ** (n_control_qubits + 1),
+                dtype=operation.dtype,
+                device=operation.device,
+            )
+            .unsqueeze(2)
+            .repeat(1, 1, batch_size)
+        )
+        _controlled[
+            2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :
+        ] = operation
     return _controlled
 
 

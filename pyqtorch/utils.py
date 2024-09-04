@@ -446,7 +446,7 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
 
 
 def expand_operator(
-    operator: Tensor, qubit_support: tuple[int, ...], full_support: tuple[int, ...]
+    operator: Tensor, qubit_support: tuple[int, ...], full_support: tuple[int, ...], diagonal: bool = False,
 ) -> Tensor:
     """
     Expands an operator acting on a given qubit_support to act on a larger full_support
@@ -461,7 +461,7 @@ def expand_operator(
         )
     device, dtype = operator.device, operator.dtype
 
-    if len(operator.size()) == 3:
+    if not diagonal:
         other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
     else:
         other = IDIAG.clone().to(device=device, dtype=dtype).unsqueeze(1)
@@ -536,7 +536,7 @@ def permute_state(
     return state.permute(perm)
 
 
-def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> Tensor:
+def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False, diagonal: bool = False,) -> Tensor:
     """Takes an operator tensor and permutes the rows and
     columns according to the order of the qubit support.
 
@@ -554,7 +554,7 @@ def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> 
     if all(a == b for a, b in zip(ranked_support, list(range(n_qubits)))):
         return operator
     batch_size = operator.size(-1)
-    if len(operator.size()) == 3:
+    if not diagonal:
         operator = operator.view([2] * 2 * n_qubits + [batch_size])
         perm = list(
             tuple(ranked_support) + tuple(ranked_support + n_qubits) + (2 * n_qubits,)
