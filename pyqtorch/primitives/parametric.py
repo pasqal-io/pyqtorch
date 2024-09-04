@@ -265,7 +265,9 @@ class ControlledParametric(Parametric):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
+        mat = parametric_unitary(
+            thetas, self.operation, self.identity, batch_size, self.diagonal
+        )
         mat = controlled(mat, batch_size, len(self.control), self.diagonal)
         return mat
 
@@ -310,6 +312,7 @@ class ControlledRotationGate(ControlledParametric):
         target: int,
         param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = False,
     ):
         """Initializes a ControlledRotationGate.
 
@@ -319,7 +322,9 @@ class ControlledRotationGate(ControlledParametric):
             qubit_support: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__(operation, control, target, param_name, noise=noise)
+        super().__init__(
+            operation, control, target, param_name, noise=noise, diagonal=diagonal
+        )
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:

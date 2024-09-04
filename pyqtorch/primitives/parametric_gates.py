@@ -9,6 +9,7 @@ from torch import Tensor
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
+    IDIAG,
     ZDIAG,
     controlled,
 )
@@ -167,6 +168,7 @@ class PHASE(Parametric):
         target: int,
         param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = False,
     ):
         """Initializes PHASE.
 
@@ -175,7 +177,9 @@ class PHASE(Parametric):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("I", target, param_name, noise=noise)
+        super().__init__(
+            "I" if not diagonal else IDIAG, target, param_name, noise=noise
+        )
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -333,6 +337,7 @@ class CRZ(ControlledRotationGate):
         target: int,
         param_name: str | int | float | Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = True,
     ):
         """Initializes controlled RZ.
 
@@ -342,7 +347,14 @@ class CRZ(ControlledRotationGate):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("Z", control, target, param_name, noise=noise)
+        super().__init__(
+            ZDIAG if diagonal else "Z",
+            control,
+            target,
+            param_name,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -381,6 +393,7 @@ class CPHASE(ControlledRotationGate):
         target: int,
         param_name: str | int | float | Tensor = "",
         noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        diagonal: bool = True,
     ):
         """Initializes controlled PHASE.
 
@@ -390,7 +403,14 @@ class CPHASE(ControlledRotationGate):
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
         """
-        super().__init__("I", control, target, param_name, noise=noise)
+        super().__init__(
+            IDIAG if diagonal else "I",
+            control,
+            target,
+            param_name,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -428,9 +448,13 @@ class CPHASE(ControlledRotationGate):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
-        mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
-        return controlled(mat, batch_size, len(self.control))
+        if self.diagonal:
+            mat = self.identity.unsqueeze(-1).repeat(1, batch_size)
+            mat[1, :] = torch.exp(1.0j * thetas).unsqueeze(0)
+        else:
+            mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
+            mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
+        return controlled(mat, batch_size, len(self.control), diagonal=self.diagonal)
 
     def jacobian(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
