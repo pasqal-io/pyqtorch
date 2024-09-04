@@ -44,6 +44,7 @@ def calc_mat_vec_wavefunction(
         init_state,
         mat,
         qubit_support,
+        diagonal=block.diagonal if isinstance(block, Primitive) else False
     )
 
 

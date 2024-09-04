@@ -471,7 +471,7 @@ def expand_operator(
     for i in set(full_support) - set(qubit_support):
         qubit_support += (i,)
         operator = torch.kron(operator.contiguous(), other)
-    operator = permute_basis(operator, qubit_support, inv=True)
+    operator = permute_basis(operator, qubit_support, inv=True, diagonal=diagonal)
     return operator
 
 
