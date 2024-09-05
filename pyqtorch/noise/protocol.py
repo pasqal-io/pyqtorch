@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 
 from pyqtorch.utils import StrEnum
 
@@ -15,9 +16,16 @@ class NoiseType(StrEnum):
     GENERALIZED_AMPLITUDE_DAMPING = "GeneralizedAmplitudeDamping"
 
 
+@dataclass
+class NoiseInstance:
+    type: NoiseType
+    error_probability: tuple[float, ...] | float | None
+    target: int | None
+
+
 class NoiseProtocol:
     """
-    Defines a protocol of noisy quantum channels.
+    Define a protocol of noisy quantum channels.
 
     Args:
         protocol: single NoiseType instance or list of NoiseType instances, or
@@ -36,6 +44,8 @@ class NoiseProtocol:
 
         # Single noise instance
         protocol = NoiseProtocol(NoiseType.BITFLIP, error_probability = 0.5)
+
+        # Equivalent to using the respective class method
         protocol = NoiseProtocol.bitflip(error_probability = 0.5)
 
         # Multiples noise instances with same probability
@@ -62,21 +72,25 @@ class NoiseProtocol:
         self._error_probability = error_probability
         self._target = target
 
+        is_protocol_list = isinstance(protocol, list)
+
         if isinstance(protocol, NoiseType):
-            self.noise_instances = [(protocol, error_probability, target)]
-        elif isinstance(protocol, list) and isinstance(protocol[0], NoiseType):
-            self.noise_instances = [(p, error_probability, target) for p in protocol]  # type: ignore [misc]
-        elif isinstance(protocol, list) and isinstance(protocol[0], NoiseProtocol):
+            self.noise_instances = [NoiseInstance(protocol, error_probability, target)]
+        elif is_protocol_list and isinstance(protocol[0], NoiseType):
+            self.noise_instances = [
+                NoiseInstance(p, error_probability, target) for p in protocol  # type: ignore [arg-type]
+            ]
+        elif is_protocol_list and isinstance(protocol[0], NoiseProtocol):
             self.noise_instances = []
             for p in protocol:
                 self.noise_instances.extend(p.noise_instances)  # type: ignore [union-attr]
         else:
-            raise TypeError("Incorrect protocol argument.")
+            raise TypeError(f"Incorrect protocol type: {type(protocol)}.")
 
-        for _, error_probability, _ in self.noise_instances:
-            if error_probability is None:
+        for noise in self.noise_instances:
+            if noise.error_probability is None:
                 raise ValueError(
-                    "This protocol requires a value to the error_probability argument"
+                    f"No error_probability passed to the protocol {noise.type}."
                 )
 
         self.len = len(self.noise_instances)
@@ -86,25 +100,27 @@ class NoiseProtocol:
         if self.len == 1:
             return self._error_probability
         else:
-            return [p[1] for p in self.noise_instances]
+            return [noise.error_probability for noise in self.noise_instances]
 
     @property
     def target(self):
         if self.len == 1:
             return self._target
         else:
-            return [p[2] for p in self.noise_instances]
+            return [noise.target for noise in self.noise_instances]
 
     @property
     def gates(self) -> list:
         gate_list = []
-        for noise, error_probability, target in self.noise_instances:
+        for noise in self.noise_instances:
             try:
-                gate_class = getattr(sys.modules["pyqtorch.noise.gates"], str(noise))
-                gate_list.append((gate_class, error_probability, target))
+                gate_class = getattr(
+                    sys.modules["pyqtorch.noise.gates"], str(noise.type)
+                )
+                gate_list.append((gate_class, noise))
             except AttributeError:
                 raise ValueError(
-                    f"The protocol {str(noise)} has not been implemented in pyq yet."
+                    f"The protocol {str(noise.type)} has not been implemented in pyq yet."
                 )
         return gate_list
 
@@ -138,11 +154,11 @@ class NoiseProtocol:
 
     def __repr__(self) -> str:
         if self.len == 1:
-            noise, error_probability, target = self.noise_instances[0]
-            if target is not None:
-                return f"{str(noise)}(prob: {error_probability}, target: {target})"
+            noise = self.noise_instances[0]
+            if noise.target is not None:
+                return f"{str(noise.type)}(prob: {noise.error_probability}, target: {noise.target})"
             else:
-                return f"{str(noise)}(prob: {error_probability})"
+                return f"{str(noise.type)}(prob: {noise.error_probability})"
         else:
             return f"NoiseProtocol(length = {self.len})"
 

@@ -213,8 +213,8 @@ def random_noisy_unitary_gate(
         SINGLE_GATES + ROTATION_GATES + CONTROLLED_GATES + ROTATION_CONTROL_GATES
     )
     unitary_gate = random.choice(UNITARY_GATES)
-    protocol_gate, error_probability, _ = random_noisy_protocol.gates[0]
-    noise_gate = protocol_gate(target, error_probability)
+    protocol_gates, protocol_info = random_noisy_protocol.gates[0]
+    noise_gate = protocol_gates(target, protocol_info.error_probability)
     if unitary_gate in SINGLE_GATES:
         return (
             unitary_gate(target=target, noise=random_noisy_protocol),  # type: ignore[call-arg]
