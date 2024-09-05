@@ -185,7 +185,9 @@ class Add(Sequence):
             (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
         )
         return reduce(
-            add,
+            lambda t0, t1: (
+                add(t0, t1) if len(t1.size()) == 3 else add(t0, torch.diag_embed(t1))
+            ),
             (op.tensor(values, embedding, full_support) for op in self.operations),
             mat,
         )

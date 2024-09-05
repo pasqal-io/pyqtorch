@@ -117,19 +117,9 @@ def test_param_tensor(
 
 
 @pytest.mark.parametrize("use_full_support", [True, False])
-@pytest.mark.parametrize(
-    "n_qubits",
-    [
-        3,
-    ],
-)
-@pytest.mark.parametrize("batch_size", [1, 3])
-@pytest.mark.parametrize(
-    "compose",
-    [
-        Sequence,
-    ],
-)
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("compose", [Sequence, Add])
 def test_sequence_tensor(
     n_qubits: int,
     batch_size: int,
