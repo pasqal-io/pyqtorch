@@ -10,4 +10,4 @@ from .gates import (
     PhaseDamping,
     PhaseFlip,
 )
-from .protocol import NoiseProtocol, _repr_noise
+from .protocol import NoiseProtocol, NoiseType, _repr_noise

@@ -18,6 +18,7 @@ from pyqtorch.noise import (
     GeneralizedAmplitudeDamping,
     Noise,
     NoiseProtocol,
+    NoiseType,
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
@@ -185,29 +186,17 @@ def random_noise_gate(n_qubits: int) -> Any:
 
 @pytest.fixture
 def random_noisy_protocol() -> Any:
-    NOISE_PROTOCOLS = [
-        NoiseProtocol.BITFLIP,
-        NoiseProtocol.PHASEFLIP,
-        NoiseProtocol.PAULI_CHANNEL,
-        NoiseProtocol.DEPOLARIZING,
-        NoiseProtocol.AMPLITUDE_DAMPING,
-        NoiseProtocol.PHASE_DAMPING,
-        NoiseProtocol.GENERALIZED_AMPLITUDE_DAMPING,
-    ]
-    noise_protocol = random.choice(NOISE_PROTOCOLS)
-    if noise_protocol == NoiseProtocol.PAULI_CHANNEL:
+    noise_type = random.choice(list(NoiseType))
+    if noise_type == NoiseType.PAULI_CHANNEL:
         noise_prob = torch.rand(size=(3,))
         noise_prob = noise_prob / (
             noise_prob.sum(dim=0, keepdim=True) + torch.rand((1,)).item()
         )
-    elif noise_protocol == NoiseProtocol.GENERALIZED_AMPLITUDE_DAMPING:
+    elif noise_type == NoiseType.GENERALIZED_AMPLITUDE_DAMPING:
         noise_prob = torch.rand(size=(2,))
     else:
         noise_prob = torch.rand(size=(1,)).item()
-    return NoiseProtocol(
-        protocol=noise_protocol,
-        options={"error_probability": noise_prob},
-    )
+    return NoiseProtocol(noise_type, noise_prob)
 
 
 @pytest.fixture
@@ -224,8 +213,8 @@ def random_noisy_unitary_gate(
         SINGLE_GATES + ROTATION_GATES + CONTROLLED_GATES + ROTATION_CONTROL_GATES
     )
     unitary_gate = random.choice(UNITARY_GATES)
-    protocol_gate = random_noisy_protocol.protocol_to_gate()
-    noise_gate = protocol_gate(target, random_noisy_protocol.error_probability)
+    protocol_gates, protocol_info = random_noisy_protocol.gates[0]
+    noise_gate = protocol_gates(target, protocol_info.error_probability)
     if unitary_gate in SINGLE_GATES:
         return (
             unitary_gate(target=target, noise=random_noisy_protocol),  # type: ignore[call-arg]
