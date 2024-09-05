@@ -120,7 +120,7 @@ class NoiseProtocol:
                 gate_list.append((gate_class, noise))
             except AttributeError:
                 raise ValueError(
-                    f"The protocol {str(noise.type)} has not been implemented in pyq yet."
+                    f"The protocol {str(noise.type)} has not been implemented in PyQTorch yet."
                 )
         return gate_list
 
