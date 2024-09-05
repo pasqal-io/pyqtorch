@@ -149,21 +149,21 @@ class Sequence(Module):
                 "Expanding tensor operation requires a `full_support` argument "
                 "larger than or equal to the `qubit_support`."
             )
-        mat = torch.eye(2 ** len(full_support), dtype=self.dtype, device=self.device)
-        if self.diagonal:
-            return reduce(
-                lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
+        mat = torch.eye(
+            2 ** len(full_support), dtype=self.dtype, device=self.device
+        ).unsqueeze(2)
+        return reduce(
+            lambda t0, t1: (
+                einsum("ijb,jkb->ikb", t1, t0)
+                if len(t1.size()) == 3
+                else einsum("jb,jkb->jkb", t1, t0)
+            ),
+            (
                 (
                     add_batch_dim(op.tensor(values, embedding, full_support))
-                    for op in self.operations
-                ),
-                mat,
-            )
-        mat = mat.unsqueeze(2)
-        return reduce(
-            lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
-            (
-                add_batch_dim(op.tensor(values, embedding, full_support))
+                    if not op.diagonal
+                    else op.tensor(values, embedding, full_support)
+                )
                 for op in self.operations
             ),
             mat,

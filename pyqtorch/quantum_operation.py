@@ -352,12 +352,11 @@ class QuantumOperation(torch.nn.Module):
             blockmat = permute_basis(
                 blockmat, self._qubit_support.qubits, inv=True, diagonal=self.diagonal
             )
-        if full_support is None:
-            return blockmat
-        else:
-            return expand_operator(
+        if full_support is not None:
+            blockmat = expand_operator(
                 blockmat, self.qubit_support, full_support, diagonal=self.diagonal
             )
+        return blockmat
 
     def _forward(
         self,
