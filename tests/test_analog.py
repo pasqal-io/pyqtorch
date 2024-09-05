@@ -337,7 +337,7 @@ def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
     k_1q = 2 * n_qubits  # Number of 1-qubit terms
     k_2q = n_qubits**2  # Number of 2-qubit terms
     generator, param_list = random_pauli_hamiltonian(
-        n_qubits, k_1q, k_2q, make_param=True
+        n_qubits, k_1q, k_2q, make_param=True, p_param=1.0
     )
 
     tparam = "t"
