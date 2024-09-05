@@ -26,7 +26,7 @@ class Primitive(QuantumOperation):
         operation: Tensor,
         qubit_support: int | tuple[int, ...] | Support,
         generator: Tensor | None = None,
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ) -> None:
         super().__init__(operation, qubit_support, noise=noise)
         self.generator = generator
@@ -74,7 +74,7 @@ class ControlledPrimitive(Primitive):
         operation: str | Tensor,
         control: int | tuple[int, ...],
         target: int | tuple[int, ...],
-        noise: NoiseProtocol | dict[str, NoiseProtocol] | None = None,
+        noise: NoiseProtocol | None = None,
     ):
         support = Support(target, control)
         if isinstance(operation, str):

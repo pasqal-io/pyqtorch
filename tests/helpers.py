@@ -74,6 +74,7 @@ def random_pauli_hamiltonian(
     k_2q: int = 10,
     make_param: bool = False,
     default_scale_coeffs: float | None = None,
+    p_param: float = 0.5,
 ) -> tuple[Sequence, list]:
     """Creates a random Pauli Hamiltonian as a sum of k_1q + k_2q terms.
 
@@ -84,6 +85,7 @@ def random_pauli_hamiltonian(
         make_param (bool, optional): Coefficients as parameters. Defaults to False.
         default_scale_coeffs (float | None, optional): Default value for the parameter
             of Scale operations. Defaults to None.
+        p_param (float): Probability for each term to be chosen to add a parameter.
 
     Returns:
         tuple[Sequence, list]: Hamiltonian and list of parameters.
@@ -100,7 +102,7 @@ def random_pauli_hamiltonian(
         terms.append(Sequence([term[0](supp[0]), term[1](supp[1])]))
     param_list = []
     for i, t in enumerate(terms):
-        if random.random() > 0.5:
+        if random.random() < p_param:
             if make_param:
                 terms[i] = Scale(t, f"p_{i}")
                 param_list.append(f"p_{i}")
