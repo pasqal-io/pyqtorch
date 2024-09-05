@@ -76,8 +76,7 @@ class Scale(Sequence):
             if isinstance(self.param_name, str)
             else self.param_name
         )
-
-        return scale * self.operations[0].forward(state, values)
+        return scale * self.operations[0].forward(state, values, embedding)
 
     def tensor(
         self,
@@ -105,7 +104,7 @@ class Scale(Sequence):
             if isinstance(self.param_name, str)
             else self.param_name
         )
-        return scale * self.operations[0].tensor(values, embedding, full_support=full_support)
+        return scale * self.operations[0].tensor(values, embedding, full_support)
 
     def flatten(self) -> list[Scale]:
         """This method should only be called in the AdjointExpectation,
