@@ -369,7 +369,10 @@ class QuantumOperation(torch.nn.Module):
         )
 
         for noise_class, noise_info in self.noise.gates:  # type: ignore [union-attr]
-            target = self.target if noise_info.target is None else noise_info.target
+            if noise_info.target is None:
+                target = self.target if len(self.target) == 1 else self.target[0]
+            else:
+                target = noise_info.target
             noise_gate = noise_class(
                 target=target, error_probability=noise_info.error_probability
             )
