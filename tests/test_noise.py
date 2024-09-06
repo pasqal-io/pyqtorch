@@ -293,7 +293,7 @@ def test_dm_expectation(n_qubits: int, batch_size: int, make_param: bool) -> Non
 
 @pytest.mark.parametrize("noise_type", [noise for noise in NoiseType])
 @pytest.mark.parametrize("n_qubits", [4, 5])
-@pytest.mark.parametrize("batch_size", [1])
+@pytest.mark.parametrize("batch_size", [1, 5])
 def test_digital_noise_apply(
     n_qubits: int,
     batch_size: int,
