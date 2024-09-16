@@ -106,6 +106,12 @@ class QuantumOperation(torch.nn.Module):
             the QuantumOperation acts on.
         operator_function (Callable | None, optional): Function to generate the base operator
             from operation. If None, we consider returning operation itself.
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
+        diagonal (bool, optional): Specify if the operation is diagonal.
+            For supporting, only pass a 1 or 2-dim operation tensor
+            containing diagonal elements with batchsize.
+
 
     """
 
@@ -115,6 +121,7 @@ class QuantumOperation(torch.nn.Module):
         qubit_support: int | tuple[int, ...] | Support,
         operator_function: Callable | None = None,
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ) -> None:
         """Initializes QuantumOperation
 
@@ -122,6 +129,14 @@ class QuantumOperation(torch.nn.Module):
             operation (Tensor): Tensor used to infer the QuantumOperation.
             qubit_support (int | tuple[int, ...]): List of qubits
                 the QuantumOperation acts on.
+            operator_function (Callable | None, optional): Function to generate the base operator
+                from operation. If None, we consider returning operation itself.
+            noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+                to add in the operation.
+            diagonal (bool, optional): Specify if the operation is diagonal.
+                For supporting, only pass a 1 or 2-dim operation tensor
+                containing diagonal elements with batchsize.
+
 
         Raises:
             ValueError: When operation has incompatible shape

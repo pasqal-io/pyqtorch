@@ -17,6 +17,7 @@ def apply_operator(
     state: Tensor,
     operator: Tensor,
     qubit_support: tuple[int, ...] | list[int],
+    diagonal: bool = False,
 ) -> Tensor:
     """Applies an operator, i.e. a single tensor of shape [2, 2, ...], on a given state
        of shape [2 for _ in range(n_qubits)] for a given set of (target and control) qubits.
@@ -40,10 +41,19 @@ def apply_operator(
     n_qubits = len(state.size()) - 1
     n_support = len(qubit_support)
     n_state_dims = n_qubits + 1
-    operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
+
     in_state_dims = ABC_ARRAY[0:n_state_dims].copy()
-    operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + 2 * n_support + 1].copy()
-    operator_dims[n_support : 2 * n_support] = in_state_dims[qubit_support]
+    if not diagonal:
+        operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
+        operator_dims = ABC_ARRAY[
+            n_state_dims : n_state_dims + 2 * n_support + 1
+        ].copy()
+        operator_dims[n_support : 2 * n_support] = in_state_dims[qubit_support]
+    else:
+        operator = operator.view([2] * n_support + [operator.size(-1)])
+        operator_dims = ABC_ARRAY[n_state_dims : n_state_dims + n_support + 1].copy()
+        operator_dims[:n_support] = in_state_dims[qubit_support]
+
     operator_dims[-1] = in_state_dims[-1]
     out_state_dims = in_state_dims.copy()
     out_state_dims[qubit_support] = operator_dims[0:n_support]
@@ -57,6 +67,7 @@ def apply_operator_permute(
     state: Tensor,
     operator: Tensor,
     qubit_support: tuple[int, ...] | list[int],
+    diagonal: bool = False,
 ) -> Tensor:
     """NOTE: Currently not being used.
 
@@ -83,9 +94,11 @@ def apply_operator_permute(
     )
     state = permute_state(state, support_perm)
     state = state.reshape([2**n_support, 2 ** (n_qubits - n_support), state.size(-1)])
-    result = einsum("ijb,jkb->ikb", operator, state).reshape(
-        [2] * n_qubits + [batch_size]
-    )
+    if not diagonal:
+        einsum_expr = "ijb,jkb->ikb"
+    else:
+        einsum_expr = "jb,jkb->jkb"
+    result = einsum(einsum_expr, operator, state).reshape([2] * n_qubits + [batch_size])
     return permute_state(result, support_perm, inv=True)
 
 
@@ -93,6 +106,7 @@ def apply_operator_dm(
     state: DensityMatrix,
     operator: Tensor,
     qubit_support: tuple[int, ...] | list[int],
+    diagonal: bool = False,
 ) -> Tensor:
     """
     Apply an operator to a density matrix on a given qubit suport, i.e., compute:
@@ -121,17 +135,21 @@ def apply_operator_dm(
     state = permute_basis(state, support_perm)
 
     # There is probably a smart way to represent the lines below in a single einsum...
+    if not diagonal:
+        einsum_expr = "ijb,jkb->ikb"
+    else:
+        einsum_expr = "jb,jkb->jkb"
     state = state.reshape(
         [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
     )
-    state = einsum("ijb,jkb->ikb", operator, state).reshape(
+    state = einsum(einsum_expr, operator, state).reshape(
         [2**n_qubits, 2**n_qubits, batch_size]
     )
     state = _dagger(state).reshape(
         [2**n_support, (2 ** (2 * n_qubits - n_support)), state.size(-1)]
     )
     state = _dagger(
-        einsum("ijb,jkb->ikb", operator, state).reshape(
+        einsum(einsum_expr, operator, state).reshape(
             [2**n_qubits, 2**n_qubits, batch_size]
         )
     )
