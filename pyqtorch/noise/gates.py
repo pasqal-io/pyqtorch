@@ -20,6 +20,8 @@ class Noise(torch.nn.Module):
         error_probability: tuple[float, ...] | float,
     ) -> None:
         super().__init__()
+
+        self.diagonal = False
         self.target: int = target
         self.qubit_support: tuple[int, ...] = qubit_support_as_tuple(self.target)
         for index, tensor in enumerate(kraus):

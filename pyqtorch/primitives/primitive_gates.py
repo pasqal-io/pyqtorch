@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from pyqtorch.matrices import OPERATIONS_DICT
+from pyqtorch.matrices import (
+    IDIAG,
+    NDIAG,
+    OPERATIONS_DICT,
+    SDAGGERDIAG,
+    SDIAG,
+    TDIAG,
+    ZDIAG,
+)
 from pyqtorch.noise import NoiseProtocol
 from pyqtorch.quantum_operation import Support
 from pyqtorch.utils import (
@@ -34,8 +42,14 @@ class Z(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
-        super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
+        super().__init__(
+            ZDIAG if diagonal else OPERATIONS_DICT["Z"],
+            target,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
 
 class I(Primitive):  # noqa: E742
@@ -43,8 +57,14 @@ class I(Primitive):  # noqa: E742
         self,
         target: int,
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
-        super().__init__(OPERATIONS_DICT["I"], target, noise=noise)
+        super().__init__(
+            IDIAG if diagonal else OPERATIONS_DICT["I"],
+            target,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
 
 class H(Primitive):
@@ -61,8 +81,14 @@ class T(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
-        super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
+        super().__init__(
+            TDIAG if diagonal else OPERATIONS_DICT["T"],
+            target,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
 
 class S(Primitive):
@@ -70,9 +96,14 @@ class S(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
         super().__init__(
-            OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"], noise=noise
+            SDIAG if diagonal else OPERATIONS_DICT["S"],
+            target,
+            0.5 * OPERATIONS_DICT["Z"],
+            noise=noise,
+            diagonal=diagonal,
         )
 
 
@@ -81,9 +112,14 @@ class SDagger(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
         super().__init__(
-            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"], noise=noise
+            SDAGGERDIAG if diagonal else OPERATIONS_DICT["SDAGGER"],
+            target,
+            -0.5 * OPERATIONS_DICT["Z"],
+            noise=noise,
+            diagonal=diagonal,
         )
 
 
@@ -115,8 +151,14 @@ class N(Primitive):
         self,
         target: int,
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
-        super().__init__(OPERATIONS_DICT["N"], target, noise=noise)
+        super().__init__(
+            NDIAG if diagonal else OPERATIONS_DICT["N"],
+            target,
+            noise=noise,
+            diagonal=diagonal,
+        )
 
 
 class SWAP(Primitive):
@@ -171,8 +213,11 @@ class CZ(ControlledPrimitive):
         control: int | tuple[int, ...],
         target: int,
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
-        super().__init__("Z", control, target, noise=noise)
+        super().__init__(
+            ZDIAG if diagonal else "Z", control, target, noise=noise, diagonal=diagonal
+        )
 
 
 class Toffoli(ControlledPrimitive):

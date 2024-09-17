@@ -154,6 +154,10 @@ class QuantumOperation(torch.nn.Module):
         self._device = self.operation.device
         self._dtype = self.operation.dtype
 
+        self.diagonal = diagonal
+        if diagonal and len(self.operation.size()) == 3:
+            raise ValueError("The operation dimansion should be less than 3.")
+
         is_primitive = operator_function is None
         dim_nomatch = len(self.qubit_support) != int(log2(operation.shape[0]))
         if is_primitive and dim_nomatch:
@@ -167,7 +171,6 @@ class QuantumOperation(torch.nn.Module):
             self._operator_function = operator_function
 
         self.noise = noise
-        self.diagonal = diagonal
 
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
@@ -306,8 +309,8 @@ class QuantumOperation(torch.nn.Module):
             Tensor: Base operator.
         """
         operation = (
-            self.operation.unsqueeze(2)
-            if len(self.operation.shape) == 2
+            self.operation.unsqueeze(-1)
+            if len(self.operation.shape) <= 2
             else self.operation
         )
         return operation
@@ -346,6 +349,8 @@ class QuantumOperation(torch.nn.Module):
             Tensor: Tensor representation of QuantumOperation.
         """
         blockmat = self.operator_function(values, embedding)
+        if self.diagonal:
+            blockmat = torch.diagonal(blockmat)
         if self._qubit_support.qubits != self.qubit_support:
             blockmat = permute_basis(blockmat, self._qubit_support.qubits, inv=True, diagonal=self.diagonal)
         if full_support is None:
