@@ -15,6 +15,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger, add_batch_dim
+from pyqtorch.primitives.primitive_gates import OPS_DIAGONAL
 from pyqtorch.utils import (
     State,
 )
@@ -45,13 +46,15 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 class Sequence(Module):
     """A generic container for pyqtorch operations"""
 
-    def __init__(self, operations: list[Module]):
+    def __init__(self, operations: list[Module], diagonal: bool = False):
         super().__init__()
 
-        # self.diagonal = all([isinstance(op, OPS_DIAGONAL) for op in operations])
-        # if self.diagonal:
-        #     for op in operations:
-        #         op.to_diagonal_op()
+        self.diagonal = diagonal and all(
+            [isinstance(op, OPS_DIAGONAL) for op in operations]
+        )
+        if self.diagonal:
+            for op in operations:
+                op.to_diagonal_op()
         self.operations = ModuleList(operations)
         self._device = torch_device("cpu")
         self._dtype = complex128
