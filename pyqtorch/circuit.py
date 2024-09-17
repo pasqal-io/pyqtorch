@@ -26,8 +26,8 @@ logger = getLogger(__name__)
 class QuantumCircuit(Sequence):
     """A QuantumCircuit defining a register / number of qubits of the full system."""
 
-    def __init__(self, n_qubits: int, operations: list[Module]):
-        super().__init__(operations)
+    def __init__(self, n_qubits: int, operations: list[Module], diagonal: bool = False):
+        super().__init__(operations, diagonal)
         self.n_qubits = n_qubits
 
     def run(

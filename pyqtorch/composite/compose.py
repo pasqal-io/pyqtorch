@@ -135,9 +135,9 @@ class Add(Sequence):
         operations: List of operations to add up.
     """
 
-    def __init__(self, operations: list[Module]):
+    def __init__(self, operations: list[Module], diagonal: bool = False):
 
-        super().__init__(operations=operations)
+        super().__init__(operations=operations, diagonal=diagonal)
 
     def forward(
         self,
@@ -195,6 +195,7 @@ class Merge(Sequence):
     def __init__(
         self,
         operations: list[Module],
+        diagonal: bool = False,
     ):
         """
         Merge a sequence of single qubit operations acting on the same qubit into a single
@@ -213,7 +214,7 @@ class Merge(Sequence):
         ):
             # We want all operations to act on the same qubit
 
-            super().__init__(operations)
+            super().__init__(operations, diagonal)
             self.qubits = operations[0].qubit_support
         else:
             raise TypeError(

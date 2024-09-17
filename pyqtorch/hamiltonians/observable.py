@@ -29,8 +29,11 @@ class Observable(Add):
     def __init__(
         self,
         operations: list[Module] | Primitive | Sequence,
+        diagonal: bool = False,
     ):
-        super().__init__(operations if isinstance(operations, list) else [operations])
+        super().__init__(
+            operations if isinstance(operations, list) else [operations], diagonal
+        )
 
     def expectation(
         self,
