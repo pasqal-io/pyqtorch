@@ -48,7 +48,10 @@ class Sequence(Module):
     def __init__(self, operations: list[Module]):
         super().__init__()
 
-        self.diagonal = all([op.diagonal for op in operations])
+        # self.diagonal = all([isinstance(op, OPS_DIAGONAL) for op in operations])
+        # if self.diagonal:
+        #     for op in operations:
+        #         op.to_diagonal_op()
         self.operations = ModuleList(operations)
         self._device = torch_device("cpu")
         self._dtype = complex128
