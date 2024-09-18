@@ -351,8 +351,6 @@ class QuantumOperation(torch.nn.Module):
             Tensor: Tensor representation of QuantumOperation.
         """
         blockmat = self.operator_function(values, embedding)
-        if self.diagonal:
-            blockmat = torch.diagonal(blockmat)
         if self._qubit_support.qubits != self.qubit_support:
             blockmat = permute_basis(
                 blockmat, self._qubit_support.qubits, inv=True, diagonal=self.diagonal

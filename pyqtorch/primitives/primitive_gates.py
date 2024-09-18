@@ -51,14 +51,6 @@ class Z(Primitive):
             diagonal=diagonal,
         )
 
-    def to_diagonal_op(self):
-        super().__init__(
-            ZDIAG,
-            self.qubit_support,
-            noise=self.noise,
-            diagonal=True,
-        )
-
 
 class I(Primitive):  # noqa: E742
     def __init__(
@@ -72,14 +64,6 @@ class I(Primitive):  # noqa: E742
             target,
             noise=noise,
             diagonal=diagonal,
-        )
-
-    def to_diagonal_op(self):
-        super().__init__(
-            IDIAG,
-            self.qubit_support,
-            noise=self.noise,
-            diagonal=True,
         )
 
 
@@ -106,14 +90,6 @@ class T(Primitive):
             diagonal=diagonal,
         )
 
-    def to_diagonal_op(self):
-        super().__init__(
-            TDIAG,
-            self.qubit_support,
-            noise=self.noise,
-            diagonal=True,
-        )
-
 
 class S(Primitive):
     def __init__(
@@ -130,14 +106,6 @@ class S(Primitive):
             diagonal=diagonal,
         )
 
-    def to_diagonal_op(self):
-        super().__init__(
-            TDIAG,
-            self.qubit_support,
-            noise=self.noise,
-            diagonal=True,
-        )
-
 
 class SDagger(Primitive):
     def __init__(
@@ -152,15 +120,6 @@ class SDagger(Primitive):
             -0.5 * OPERATIONS_DICT["Z"],
             noise=noise,
             diagonal=diagonal,
-        )
-
-    def to_diagonal_op(self):
-        super().__init__(
-            SDAGGERDIAG,
-            self.qubit_support,
-            -0.5 * OPERATIONS_DICT["Z"],
-            noise=self.noise,
-            diagonal=True,
         )
 
 
@@ -199,14 +158,6 @@ class N(Primitive):
             target,
             noise=noise,
             diagonal=diagonal,
-        )
-
-    def to_diagonal_op(self):
-        super().__init__(
-            NDIAG,
-            self.qubit_support,
-            noise=self.noise,
-            diagonal=True,
         )
 
 
@@ -266,15 +217,6 @@ class CZ(ControlledPrimitive):
     ):
         super().__init__(
             ZDIAG if diagonal else "Z", control, target, noise=noise, diagonal=diagonal
-        )
-
-    def to_diagonal_op(self):
-        super().__init__(
-            ZDIAG,
-            self.control,
-            self.target,
-            noise=self.noise,
-            diagonal=True,
         )
 
 

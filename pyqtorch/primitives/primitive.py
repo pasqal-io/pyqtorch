@@ -9,6 +9,7 @@ from torch import Tensor
 from pyqtorch.matrices import OPERATIONS_DICT, controlled
 from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.quantum_operation import QuantumOperation, Support
+from pyqtorch.utils import is_diag
 
 
 class Primitive(QuantumOperation):
@@ -42,6 +43,16 @@ class Primitive(QuantumOperation):
         if self.generator is not None:
             self.generator.to(*args, **kwargs)
         return self
+
+    def diagonalize_op(self):
+        """Force the operator to be diagonal."""
+        if not self.diagonal and is_diag(self.operation):
+            super().__init__(
+                torch.diagonal(self.operation),
+                self.qubit_support,
+                noise=self.noise,
+                diagonal=True,
+            )
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:

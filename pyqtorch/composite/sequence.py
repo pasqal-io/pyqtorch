@@ -15,7 +15,6 @@ from torch.nn import Module, ModuleList, ParameterDict
 
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger, add_batch_dim
-from pyqtorch.primitives.primitive_gates import OPS_DIAGONAL
 from pyqtorch.utils import (
     State,
 )
@@ -49,13 +48,14 @@ class Sequence(Module):
     def __init__(self, operations: list[Module], diagonal: bool = False):
         super().__init__()
 
-        self.diagonal = diagonal and all(
-            [isinstance(op, OPS_DIAGONAL) for op in operations]
-        )
-        if self.diagonal:
-            for op in operations:
-                op.to_diagonal_op()
         self.operations = ModuleList(operations)
+        self.diagonal = diagonal
+        if diagonal:
+            # making sure that all ops are diagonalized
+            for op in self.flatten():
+                if hasattr(op, "diagonalize_op"):
+                    op.diagonalize_op()
+
         self._device = torch_device("cpu")
         self._dtype = complex128
         if len(self.operations) > 0:

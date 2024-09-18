@@ -35,7 +35,10 @@ class Scale(Sequence):
     """
 
     def __init__(
-        self, operations: Union[Primitive, Sequence, Add], param_name: str | Tensor
+        self,
+        operations: Union[Primitive, Sequence, Add],
+        param_name: str | Tensor,
+        diagonal: bool = False,
     ):
         """
         Initializes a Scale object.
@@ -46,8 +49,14 @@ class Scale(Sequence):
         """
         if not isinstance(operations, (Primitive, Sequence, Add)):
             raise ValueError("Scale only supports a single operation, Sequence or Add.")
-        super().__init__([operations])
+        super().__init__([operations], diagonal)
         self.param_name = param_name
+
+    def diagonalize_op(self):
+        """Force the operator to be diagonal."""
+        if not self.diagonal and hasattr(self.operations[0], "diagonalize_op"):
+            self.diagonal = True
+            self.operations[0].diagonalize_op()
 
     def forward(
         self,

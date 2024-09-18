@@ -23,11 +23,15 @@ from pyqtorch.primitives import (
     OPS_PARAM,
     OPS_PARAM_2Q,
     SWAP,
+    I,
     N,
     Parametric,
     Primitive,
     Projector,
+    S,
+    T,
     Toffoli,
+    Z,
 )
 from pyqtorch.utils import (
     ATOL,
@@ -153,6 +157,50 @@ def test_sequence_tensor(
     psi_expected = calc_mat_vec_wavefunction(
         op_composite, psi_init, values=values, full_support=full_support
     )
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize(
+    "compose",
+    [
+        Sequence,
+    ],
+)
+def test_diag_sequence_tensor(
+    n_qubits: int,
+    batch_size: int,
+    use_full_support: bool,
+    compose: type[Sequence] | type[Add],
+) -> None:
+    op_list = []
+    values: dict = {}
+    op: type[Primitive] | type[Parametric]
+    """
+    Builds a Sequence or Add composition of all possible gates on random qubit
+    supports. Also assigns a Scale of a random value to the non-parametric gates.
+    Tests the forward method (which goes through each gate individually) to the
+    `tensor` method, which builds the full operator matrix and applies it.
+    """
+    for op in [I, Z, T, S]:
+        supp = get_op_support(op, n_qubits)
+        op_concrete = Scale(op(*supp), torch.rand(1))
+        op_list.append(op_concrete)
+    random.shuffle(op_list)
+    psi_init = random_state(n_qubits, batch_size)
+    op_composite_non_diag = compose(op_list, diagonal=False)
+    assert not op_composite_non_diag.diagonal
+    assert not all([op.diagonal for op in op_composite_non_diag.flatten()])
+    psi_expected = op_composite_non_diag(psi_init, values)
+
+    op_composite = compose(op_list, diagonal=True)
+    assert op_composite.diagonal
+    assert all([op.diagonal for op in op_composite.flatten()])
+    psi_star = op_composite(psi_init, values)
+
+    assert psi_star.shape == psi_expected.shape
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
