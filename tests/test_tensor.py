@@ -22,6 +22,8 @@ from pyqtorch.primitives import (
     OPS_DIGITAL,
     OPS_PARAM,
     OPS_PARAM_2Q,
+    PHASE,
+    RZ,
     SWAP,
     I,
     N,
@@ -160,18 +162,16 @@ def test_sequence_tensor(
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize("compose", [Sequence, Add])
 def test_diag_sequence_tensor(
     n_qubits: int,
     batch_size: int,
-    use_full_support: bool,
     compose: type[Sequence] | type[Add],
 ) -> None:
     op_list = []
-    values: dict = {}
+    values = {}
     op: type[Primitive] | type[Parametric]
     """
     Builds a Sequence or Add composition of all possible gates on random qubit
@@ -179,9 +179,15 @@ def test_diag_sequence_tensor(
     Tests the forward method (which goes through each gate individually) to the
     `tensor` method, which builds the full operator matrix and applies it.
     """
-    for op in [I, Z, T, S]:
+    for op in [I, Z, T, S, CZ]:
         supp = get_op_support(op, n_qubits)
         op_concrete = Scale(op(*supp), torch.rand(1))
+        op_list.append(op_concrete)
+    for op in [RZ, PHASE, CRZ, CPHASE]:
+        supp = get_op_support(op, n_qubits)
+        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
+        values.update({param: torch.rand(batch_size) for param in params})
+        op_concrete = op(*supp, *params)
         op_list.append(op_concrete)
     random.shuffle(op_list)
     psi_init = random_state(n_qubits, batch_size)
@@ -189,7 +195,6 @@ def test_diag_sequence_tensor(
     assert not op_composite_non_diag.diagonal
     assert not all([op.diagonal for op in op_composite_non_diag.flatten()])
     psi_expected = op_composite_non_diag(psi_init, values)
-
     op_composite = compose(op_list, diagonal=True)
     assert op_composite.diagonal
     assert all([op.diagonal for op in op_composite.flatten()])
@@ -343,7 +348,7 @@ def test_permute_tensor(n_qubits: int) -> None:
 def test_permute_tensor_parametric(n_qubits: int, batch_size: int) -> None:
     for op in OPS_PARAM_2Q:
         supp, ordered_supp = get_op_support(op, n_qubits, get_ordered=True)
-        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
+        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]  # type: ignore[attr-defined]
         values = {param: torch.rand(batch_size) for param in params}
 
         op_concrete1 = op(*supp, *params)
