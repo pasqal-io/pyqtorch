@@ -47,12 +47,8 @@ class Primitive(QuantumOperation):
     def diagonalize_op(self):
         """Force the operator to be diagonal."""
         if not self.diagonal and is_diag(self.operation):
-            super().__init__(
-                torch.diagonal(self.operation),
-                self.qubit_support,
-                noise=self.noise,
-                diagonal=True,
-            )
+            self.diagonal = True
+            self.operation = torch.diagonal(self.operation)
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
