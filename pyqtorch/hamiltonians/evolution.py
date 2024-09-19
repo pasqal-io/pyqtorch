@@ -93,7 +93,9 @@ def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:
     return bool(torch.prod(diag_check))
 
 
-def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
+def evolve(
+    hamiltonian: Operator, time_evolution: Tensor, diagonal: bool = False
+) -> Operator:
     """Get the evolved operator.
 
     For a hamiltonian :math:`H` and a time evolution :math:`t`, returns :math:`exp(-i H, t)`
@@ -101,11 +103,12 @@ def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
     Arguments:
         hamiltonian: The operator :math:`H` for evolution.
         time_evolution: The evolution time :math:`t`.
+        diagonal: whether hamiltonian is diagonal
 
     Returns:
         The evolution operator.
     """
-    if is_diag_hamiltonian(hamiltonian):
+    if diagonal:
         evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
             (-1, 1)
         )
@@ -424,7 +427,9 @@ class HamiltonianEvolution(Sequence):
                 values[self.time] if isinstance(self.time, str) else self.time
             )  # If `self.time` is a string / hence, a Parameter,
             # we expect the user to pass it in the `values` dict
-            evolved_op = evolve(hamiltonian, time_evolution)
+            evolved_op = evolve(
+                hamiltonian, time_evolution, is_diag_hamiltonian(hamiltonian)
+            )
             nb_cached = len(self._cache_hamiltonian_evo)
 
             # LRU caching
@@ -460,7 +465,7 @@ class HamiltonianEvolution(Sequence):
         )  # If `self.time` is a string / hence, a Parameter,
         # we expect the user to pass it in the `values` dict
         return finitediff(
-            lambda t: evolve(hamiltonian, t),
+            lambda t: evolve(hamiltonian, t, is_diag_hamiltonian(hamiltonian)),
             values[self.param_name].reshape(-1, 1),
             (0,),
         )
