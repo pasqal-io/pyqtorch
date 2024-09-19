@@ -129,7 +129,7 @@ class Parametric(QuantumOperation):
             "identity", OPERATIONS_DICT["I"] if not diagonal else IDIAG
         )
 
-    def diagonalize_op(self):
+    def to_diagonal(self):
         """Force the operator to be diagonal."""
         if not self.diagonal and is_diag(self.operation):
             self.diagonal = True

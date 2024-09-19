@@ -51,10 +51,10 @@ class Sequence(Module):
         self.operations = ModuleList(operations)
         self.diagonal = diagonal
         if diagonal:
-            # making sure that all ops are diagonalized
+            # making sure that ops are diagonalized
             for op in self.flatten():
-                if hasattr(op, "diagonalize_op"):
-                    op.diagonalize_op()
+                if hasattr(op, "to_diagonal"):
+                    op.to_diagonal()
 
         self._device = torch_device("cpu")
         self._dtype = complex128
@@ -90,6 +90,14 @@ class Sequence(Module):
         assert all(
             [isinstance(q, (int, int64)) for q in self._qubit_support]
         )  # TODO fix numpy.int issue
+
+    def to_diagonal(self):
+        if not self.diagonal:
+            for op in self.flatten():
+                print(op, hasattr(op, "to_diagonal"))
+                if hasattr(op, "to_diagonal"):
+                    op.to_diagonal()
+            self.diagonal = True
 
     @property
     def qubit_support(self) -> tuple:

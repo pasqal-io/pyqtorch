@@ -191,17 +191,28 @@ def test_diag_sequence_tensor(
         op_list.append(op_concrete)
     random.shuffle(op_list)
     psi_init = random_state(n_qubits, batch_size)
+
+    # first we get apply the non diagonal version
     op_composite_non_diag = compose(op_list, diagonal=False)
     assert not op_composite_non_diag.diagonal
     assert not all([op.diagonal for op in op_composite_non_diag.flatten()])
     psi_expected = op_composite_non_diag(psi_init, values)
+
+    # then we will compare the diagonal version to previous one
     op_composite = compose(op_list, diagonal=True)
     assert op_composite.diagonal
     assert all([op.diagonal for op in op_composite.flatten()])
     psi_star = op_composite(psi_init, values)
 
-    assert psi_star.shape == psi_expected.shape
+    # finally we check to_diagonal
+    op_composite_non_diag.to_diagonal()
+    assert op_composite_non_diag.diagonal
+    assert all([op.diagonal for op in op_composite_non_diag.flatten()])
+    psi_star2 = op_composite_non_diag(psi_init, values)
+
+    assert psi_star.shape == psi_expected.shape == psi_star2.shape
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+    assert torch.allclose(psi_star2, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("use_full_support", [True, False])

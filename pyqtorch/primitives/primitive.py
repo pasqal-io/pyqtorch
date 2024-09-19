@@ -44,7 +44,7 @@ class Primitive(QuantumOperation):
             self.generator.to(*args, **kwargs)
         return self
 
-    def diagonalize_op(self):
+    def to_diagonal(self):
         """Force the operator to be diagonal."""
         if not self.diagonal and is_diag(self.operation):
             self.diagonal = True

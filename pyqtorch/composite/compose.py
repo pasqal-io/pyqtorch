@@ -52,11 +52,11 @@ class Scale(Sequence):
         super().__init__([operations], diagonal)
         self.param_name = param_name
 
-    def diagonalize_op(self):
+    def to_diagonal(self):
         """Force the operator to be diagonal."""
-        if not self.diagonal and hasattr(self.operations[0], "diagonalize_op"):
+        if not self.diagonal and hasattr(self.operations[0], "to_diagonal"):
             self.diagonal = True
-            self.operations[0].diagonalize_op()
+            self.operations[0].to_diagonal()
 
     def forward(
         self,
