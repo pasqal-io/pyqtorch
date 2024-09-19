@@ -17,7 +17,6 @@ from pyqtorch.primitives import Primitive
 from pyqtorch.quantum_operation import QuantumOperation
 from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
-    ATOL,
     Operator,
     SolverType,
     State,
@@ -25,7 +24,7 @@ from pyqtorch.utils import (
     _round_operator,
     expand_operator,
     finitediff,
-    is_diag,
+    is_diag_batched,
     is_parametric,
 )
 
@@ -70,27 +69,6 @@ class GeneratorType(StrEnum):
     """Generators of type torch.Tensor in which case a qubit_support needs to be passed."""
     SYMBOL = "symbol"
     """Generators which are symbolic, i.e. will be passed via the 'values' dict by the user."""
-
-
-def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:
-    """
-    Returns True if the batched tensors H are diagonal.
-
-    Arguments:
-        H: Input tensors.
-        atol: Tolerance for near-zero values.
-
-    Returns:
-        True if diagonal, else False.
-    """
-    diag_check = torch.tensor(
-        [
-            is_diag(hamiltonian[..., i], atol)
-            for i in range(hamiltonian.shape[BATCH_DIM])
-        ],
-        device=hamiltonian.device,
-    )
-    return bool(torch.prod(diag_check))
 
 
 def evolve(
@@ -173,6 +151,7 @@ class HamiltonianEvolution(Sequence):
                 generator = generator.unsqueeze(2)
             generator = [Primitive(generator, qubit_support)]
             self.generator_type = GeneratorType.TENSOR
+            generator[0].to_diagonal()
 
         elif isinstance(generator, str):
             if qubit_support is None:
@@ -428,7 +407,9 @@ class HamiltonianEvolution(Sequence):
             )  # If `self.time` is a string / hence, a Parameter,
             # we expect the user to pass it in the `values` dict
             evolved_op = evolve(
-                hamiltonian, time_evolution, is_diag_hamiltonian(hamiltonian)
+                hamiltonian,
+                time_evolution,
+                is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
             )
             nb_cached = len(self._cache_hamiltonian_evo)
 
@@ -441,7 +422,9 @@ class HamiltonianEvolution(Sequence):
         if full_support is None:
             return evolved_op
         else:
-            return expand_operator(evolved_op, self.qubit_support, full_support)
+            return expand_operator(
+                evolved_op, self.qubit_support, full_support, self.diagonal
+            )
 
     def jacobian(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
@@ -465,7 +448,9 @@ class HamiltonianEvolution(Sequence):
         )  # If `self.time` is a string / hence, a Parameter,
         # we expect the user to pass it in the `values` dict
         return finitediff(
-            lambda t: evolve(hamiltonian, t, is_diag_hamiltonian(hamiltonian)),
+            lambda t: evolve(
+                hamiltonian, t, is_diag_batched(hamiltonian, batch_dim=BATCH_DIM)
+            ),
             values[self.param_name].reshape(-1, 1),
             (0,),
         )

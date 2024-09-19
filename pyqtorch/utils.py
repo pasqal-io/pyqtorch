@@ -211,7 +211,7 @@ def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
 
 def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     """
-    Returns True if tensor H is diagonal.
+    Returns True if 2D tensor H is diagonal.
 
     Reference: https://stackoverflow.com/questions/43884189/check-if-a-large-matrix-is-diagonal-matrix-in-python
 
@@ -226,6 +226,28 @@ def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     p, q = H.stride()
     offdiag_view = torch.as_strided(H[:, 1:], (m - 1, m), (p + q, q))
     return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)) == 0
+
+
+def is_diag_batched(H: Operator, atol: Tensor = ATOL, batch_dim: int = -1) -> bool:
+    """
+    Returns True if the batched tensors of H are diagonal.
+
+    Arguments:
+        H: Input tensors.
+        atol: Tolerance for near-zero values.
+        batch_dim: batch dimension to go over.
+
+    Returns:
+        True if diagonal, else False.
+    """
+    if len(H.shape) > 2:
+        diag_check = torch.tensor(
+            [is_diag(H[..., i], atol) for i in range(H.shape[batch_dim])],
+            device=H.device,
+        )
+        return bool(torch.prod(diag_check))
+    else:
+        return is_diag(H, atol)
 
 
 def finitediff(

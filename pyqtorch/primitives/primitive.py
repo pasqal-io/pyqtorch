@@ -9,7 +9,7 @@ from torch import Tensor
 from pyqtorch.matrices import OPERATIONS_DICT, controlled
 from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.quantum_operation import QuantumOperation, Support
-from pyqtorch.utils import is_diag
+from pyqtorch.utils import is_diag_batched
 
 
 class Primitive(QuantumOperation):
@@ -46,7 +46,7 @@ class Primitive(QuantumOperation):
 
     def to_diagonal(self):
         """Force the operator to be diagonal."""
-        if not self.diagonal and is_diag(self.operation):
+        if not self.diagonal and is_diag_batched(self.operation):
             self.diagonal = True
             self.operation = torch.diagonal(self.operation)
 
