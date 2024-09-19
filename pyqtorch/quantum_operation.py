@@ -17,6 +17,7 @@ from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
     expand_operator,
+    is_diag_batched,
     permute_basis,
     qubit_support_as_tuple,
 )
@@ -432,3 +433,9 @@ class QuantumOperation(torch.nn.Module):
             return self._noise_forward(state, values, embedding)
         else:
             return self._forward(state, values, embedding)
+
+    def to_diagonal(self):
+        """Force the operator to be diagonal."""
+        if not self.diagonal and is_diag_batched(self.operation):
+            self.diagonal = True
+            self.operation = torch.diagonal(self.operation)

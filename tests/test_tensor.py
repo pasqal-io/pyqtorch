@@ -357,6 +357,9 @@ def test_diaghevo_tensor_tensor(
     assert operator.generator_type == GeneratorType.TENSOR
     # assert operator.diagonal
 
+    # values = {tparam: torch.rand(batch_size)}
+    # psi_star = operator(psi_init, values)
+
 
 @pytest.mark.parametrize("n_qubits", [3, 5])
 def test_permute_tensor(n_qubits: int) -> None:

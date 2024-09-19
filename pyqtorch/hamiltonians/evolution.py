@@ -150,8 +150,8 @@ class HamiltonianEvolution(Sequence):
             if len(generator.shape) < 3:
                 generator = generator.unsqueeze(2)
             generator = [Primitive(generator, qubit_support)]
+            # generator[0].to_diagonal()
             self.generator_type = GeneratorType.TENSOR
-            generator[0].to_diagonal()
 
         elif isinstance(generator, str):
             if qubit_support is None:
@@ -167,6 +167,7 @@ class HamiltonianEvolution(Sequence):
                     "Taking support from generator and ignoring qubit_support input."
                 )
             qubit_support = generator.qubit_support
+            # generator.to_diagonal()
             if is_parametric(generator):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
@@ -212,6 +213,8 @@ class HamiltonianEvolution(Sequence):
         self._cache_hamiltonian_evo: dict[str, Tensor] = dict()
         self.cache_length = cache_length
 
+        self.diagonal = self.generator[0].diagonal if len(generator) > 0 else False
+
     @property
     def generator(self) -> ModuleList:
         """Returns the operations making the generator.
@@ -249,7 +252,7 @@ class HamiltonianEvolution(Sequence):
         if len(hamiltonian.shape) == 3 and (
             hamiltonian.shape[0] != hamiltonian.shape[1]
         ):
-            return torch.transpose(hamiltonian, 0, 2)
+            return torch.transpose(hamiltonian, 0, BATCH_DIM)
         if len(hamiltonian.shape) == 4 and (
             hamiltonian.shape[0] != hamiltonian.shape[1]
         ):

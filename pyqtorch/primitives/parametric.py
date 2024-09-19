@@ -16,7 +16,6 @@ from pyqtorch.matrices import (
 )
 from pyqtorch.noise import NoiseProtocol, _repr_noise
 from pyqtorch.quantum_operation import QuantumOperation, Support
-from pyqtorch.utils import is_diag_batched
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
 
@@ -131,9 +130,8 @@ class Parametric(QuantumOperation):
 
     def to_diagonal(self):
         """Force the operator to be diagonal."""
-        if not self.diagonal and is_diag_batched(self.operation):
-            self.diagonal = True
-            self.operation = torch.diagonal(self.operation)
+        super().to_diagonal()
+        if self.diagonal:
             self.identity = IDIAG
 
     def extra_repr(self) -> str:

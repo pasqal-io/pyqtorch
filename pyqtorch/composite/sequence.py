@@ -94,7 +94,6 @@ class Sequence(Module):
     def to_diagonal(self):
         if not self.diagonal:
             for op in self.flatten():
-                print(op, hasattr(op, "to_diagonal"))
                 if hasattr(op, "to_diagonal"):
                     op.to_diagonal()
             self.diagonal = True
