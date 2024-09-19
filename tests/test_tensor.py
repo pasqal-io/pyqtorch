@@ -337,6 +337,30 @@ def test_hevo_tensor_tensor(
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
+@pytest.mark.parametrize("gen_qubits", [3, 4])
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_diaghevo_tensor_tensor(
+    gen_qubits: int, n_qubits: int, use_full_support: bool, batch_size: int
+) -> None:
+    k_1q = 2 * gen_qubits  # Number of 1-qubit terms
+    k_2q = gen_qubits**2  # Number of 2-qubit terms
+    generator, _ = random_pauli_hamiltonian(gen_qubits, k_1q, k_2q, diagonal=True)
+    psi_init = random_state(n_qubits, batch_size)
+    full_support = tuple(range(n_qubits)) if use_full_support else None
+    # Test the hamiltonian evolution
+    generator_matrix = generator.tensor()
+    supp = tuple(random.sample(range(n_qubits), gen_qubits))
+    tparam = "t"
+    operator = HamiltonianEvolution(generator_matrix, tparam, supp)
+    assert operator.generator_type == GeneratorType.TENSOR
+    values = {tparam: torch.rand(batch_size)}
+    psi_star = operator(psi_init, values)
+    psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
 @pytest.mark.parametrize("n_qubits", [3, 5])
 def test_permute_tensor(n_qubits: int) -> None:
     for op in OPS_2Q.union(OPS_3Q):

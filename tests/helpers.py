@@ -13,9 +13,11 @@ from pyqtorch.primitives import (
     OPS_PARAM_1Q,
     OPS_PARAM_2Q,
     OPS_PAULI,
+    I,
     Parametric,
     Primitive,
     Toffoli,
+    Z,
 )
 
 
@@ -76,6 +78,7 @@ def random_pauli_hamiltonian(
     make_param: bool = False,
     default_scale_coeffs: float | None = None,
     p_param: float = 0.5,
+    diagonal: bool = False,
 ) -> tuple[Sequence, list]:
     """Creates a random Pauli Hamiltonian as a sum of k_1q + k_2q terms.
 
@@ -91,7 +94,7 @@ def random_pauli_hamiltonian(
     Returns:
         tuple[Sequence, list]: Hamiltonian and list of parameters.
     """
-    OPS_PAULI_choice = list(OPS_PAULI)
+    OPS_PAULI_choice = list(OPS_PAULI) if not diagonal else [I, Z]
     one_q_terms: list = random.choices(OPS_PAULI_choice, k=k_1q)
     two_q_terms: list = [random.choices(OPS_PAULI_choice, k=2) for _ in range(k_2q)]
     terms: list = []
