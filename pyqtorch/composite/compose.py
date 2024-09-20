@@ -190,9 +190,13 @@ class Add(Sequence):
                 "Expanding tensor operation requires a `full_support` argument "
                 "larger than or equal to the `qubit_support`."
             )
-        mat = torch.zeros(
-            (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
-        )
+
+        if self.diagonal:
+            mat = torch.zeros((2 ** len(full_support), 1), device=self.device)
+        else:
+            mat = torch.zeros(
+                (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
+            )
         return reduce(
             add,
             (op.tensor(values, embedding, full_support) for op in self.operations),

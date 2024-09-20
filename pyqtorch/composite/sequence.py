@@ -56,6 +56,10 @@ class Sequence(Module):
                 if hasattr(op, "to_diagonal"):
                     op.to_diagonal()
 
+            self.diagonal = all(
+                [op.diagonal and hasattr(op, "to_diagonal") for op in self.flatten()]
+            )
+
         self._device = torch_device("cpu")
         self._dtype = complex128
         if len(self.operations) > 0:
@@ -96,7 +100,9 @@ class Sequence(Module):
             for op in self.flatten():
                 if hasattr(op, "to_diagonal"):
                     op.to_diagonal()
-            self.diagonal = True
+            self.diagonal = all(
+                [op.diagonal and hasattr(op, "to_diagonal") for op in self.flatten()]
+            )
 
     @property
     def qubit_support(self) -> tuple:
@@ -162,17 +168,28 @@ class Sequence(Module):
                 "Expanding tensor operation requires a `full_support` argument "
                 "larger than or equal to the `qubit_support`."
             )
-        mat = torch.eye(
-            2 ** len(full_support), dtype=self.dtype, device=self.device
-        ).unsqueeze(2)
-        return reduce(
-            lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
-            (
-                add_batch_dim(op.tensor(values, embedding, full_support))
-                for op in self.operations
-            ),
-            mat,
-        )
+
+        if not self.diagonal:
+            mat = torch.eye(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(2)
+            return reduce(
+                lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
+                (
+                    add_batch_dim(op.tensor(values, embedding, full_support))
+                    for op in self.operations
+                ),
+                mat,
+            )
+        else:
+            mat = torch.ones(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(1)
+            return reduce(
+                lambda t0, t1: einsum("ib,ib->ib", t1, t0),
+                (op.tensor(values, embedding, full_support) for op in self.operations),
+                mat,
+            )
 
     def dagger(
         self,

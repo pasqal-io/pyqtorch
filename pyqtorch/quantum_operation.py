@@ -157,7 +157,7 @@ class QuantumOperation(torch.nn.Module):
 
         self.diagonal = diagonal
         if diagonal and len(self.operation.size()) == 3:
-            raise ValueError("The operation dimansion should be less than 3.")
+            raise ValueError("The operation dimension should be less than 3.")
 
         is_primitive = operator_function is None
         dim_nomatch = len(self.qubit_support) != int(log2(operation.shape[0]))
@@ -439,3 +439,6 @@ class QuantumOperation(torch.nn.Module):
         if not self.diagonal and is_diag_batched(self.operation):
             self.diagonal = True
             self.operation = torch.diagonal(self.operation)
+            if len(self.operation.size()) == 3:
+                # torch diagonal switch the batchdim to first
+                self.operation = torch.transpose(self.operation, 0, -1)

@@ -313,6 +313,36 @@ def test_hevo_pauli_tensor(
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("make_param", [True, False])
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_diaghevo_pauli_tensor(
+    n_qubits: int, make_param: bool, use_full_support: bool, batch_size: int
+) -> None:
+    k_1q = 2 * n_qubits  # Number of 1-qubit terms
+    k_2q = 0  # Number of 2-qubit terms
+    generator, param_list = random_pauli_hamiltonian(
+        n_qubits, k_1q, k_2q, make_param, diagonal=True
+    )
+    values = {param: torch.rand(batch_size) for param in param_list}
+    psi_init = random_state(n_qubits, batch_size)
+    full_support = tuple(range(n_qubits)) if use_full_support else None
+
+    # Test the hamiltonian evolution
+    tparam = "t"
+    operator = HamiltonianEvolution(generator, tparam)
+    if make_param:
+        assert operator.generator_type == GeneratorType.PARAMETRIC_OPERATION
+    else:
+        assert operator.generator_type == GeneratorType.OPERATION
+    values[tparam] = torch.rand(batch_size)
+
+    psi_star = operator(psi_init, values)
+    psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
 @pytest.mark.parametrize("gen_qubits", [3, 4])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("use_full_support", [True, False])
