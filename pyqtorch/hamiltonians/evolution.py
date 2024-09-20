@@ -134,6 +134,7 @@ class HamiltonianEvolution(Sequence):
         cache_length: int = 1,
         steps: int = 100,
         solver=SolverType.DP5_SE,
+        diagonal: bool = True,
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -172,7 +173,8 @@ class HamiltonianEvolution(Sequence):
                     "Taking support from generator and ignoring qubit_support input."
                 )
             qubit_support = generator.qubit_support
-            generator.to_diagonal()
+            if diagonal:
+                generator.to_diagonal()
             if is_parametric(generator):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION

@@ -80,7 +80,9 @@ def test_adjoint_diff_hamevo(n_qubits: int, n_layers: int) -> None:
     ham = random_pauli_hamiltonian(
         n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
     )[0]
-    ham_op = pyq.HamiltonianEvolution(ham, "t", qubit_support=tuple(range(n_qubits)))
+    ham_op = pyq.HamiltonianEvolution(
+        ham, "t", qubit_support=tuple(range(n_qubits)), diagonal=False
+    )
     ops = [ham_op, cnot] * n_layers
     circ = pyq.QuantumCircuit(n_qubits, ops)
     obs = pyq.Observable(pyq.Z(0))
