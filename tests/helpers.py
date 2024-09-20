@@ -6,6 +6,7 @@ import torch
 
 from pyqtorch.apply import apply_operator, apply_operator_permute
 from pyqtorch.composite import Add, Scale, Sequence
+from pyqtorch.hamiltonians import HamiltonianEvolution
 from pyqtorch.primitives import (
     OPS_1Q,
     OPS_2Q,
@@ -46,7 +47,7 @@ def calc_mat_vec_wavefunction(
         init_state,
         mat,
         qubit_support,
-        diagonal=block.diagonal if hasattr(block, "diagonal") else False,
+        diagonal=False if isinstance(block, HamiltonianEvolution) else block.diagonal,
     )
 
 

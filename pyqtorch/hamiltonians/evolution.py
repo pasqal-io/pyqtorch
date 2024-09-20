@@ -86,11 +86,17 @@ def evolve(
     Returns:
         The evolution operator.
     """
-    if diagonal:
+    if diagonal and len(hamiltonian.size()) == 3:
         evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
             (-1, 1)
         )
         evol_operator = torch.diag_embed(torch.exp(evol_operator))
+    elif diagonal and len(hamiltonian.size()) == 2:
+        evol_operator = torch.transpose(hamiltonian, 0, 1) * (
+            -1j * time_evolution
+        ).view((-1, 1))
+        evol_operator = torch.diag_embed(torch.exp(evol_operator))
+
     else:
         evol_operator = torch.transpose(hamiltonian, 0, -1) * (
             -1j * time_evolution
@@ -150,7 +156,6 @@ class HamiltonianEvolution(Sequence):
             if len(generator.shape) < 3:
                 generator = generator.unsqueeze(2)
             generator = [Primitive(generator, qubit_support)]
-            # generator[0].to_diagonal()
             self.generator_type = GeneratorType.TENSOR
 
         elif isinstance(generator, str):
@@ -167,15 +172,21 @@ class HamiltonianEvolution(Sequence):
                     "Taking support from generator and ignoring qubit_support input."
                 )
             qubit_support = generator.qubit_support
-            # generator.to_diagonal()
+            generator.to_diagonal()
             if is_parametric(generator):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
+                # only obtain once the tensor rep of the generator
                 generator = [
                     Primitive(
-                        generator.tensor(),
+                        (
+                            generator.tensor().squeeze(1)
+                            if generator.diagonal
+                            else generator.tensor()
+                        ),
                         generator.qubit_support,
+                        diagonal=generator.diagonal,
                     )
                 ]
 
@@ -185,7 +196,9 @@ class HamiltonianEvolution(Sequence):
                 f"Received generator of type {type(generator)},\
                             allowed types are: [Tensor, str, Primitive, Sequence]"
             )
-        super().__init__(generator)
+        super().__init__(
+            generator, diagonal=generator[0].diagonal if len(generator) > 0 else False
+        )
         self._qubit_support = qubit_support  # type: ignore
 
         if isinstance(time, str) or isinstance(time, Tensor):
@@ -212,8 +225,6 @@ class HamiltonianEvolution(Sequence):
         # to avoid recomputing hamiltonians and evolution
         self._cache_hamiltonian_evo: dict[str, Tensor] = dict()
         self.cache_length = cache_length
-
-        self.diagonal = self.generator[0].diagonal if len(generator) > 0 else False
 
     @property
     def generator(self) -> ModuleList:
@@ -412,7 +423,7 @@ class HamiltonianEvolution(Sequence):
             evolved_op = evolve(
                 hamiltonian,
                 time_evolution,
-                is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
+                self.diagonal or is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
             )
             nb_cached = len(self._cache_hamiltonian_evo)
 
@@ -426,7 +437,9 @@ class HamiltonianEvolution(Sequence):
             return evolved_op
         else:
             return expand_operator(
-                evolved_op, self.qubit_support, full_support, self.diagonal
+                evolved_op,
+                self.qubit_support,
+                full_support,
             )
 
     def jacobian(
@@ -452,7 +465,9 @@ class HamiltonianEvolution(Sequence):
         # we expect the user to pass it in the `values` dict
         return finitediff(
             lambda t: evolve(
-                hamiltonian, t, is_diag_batched(hamiltonian, batch_dim=BATCH_DIM)
+                hamiltonian,
+                t,
+                self.diagonal or is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
             ),
             values[self.param_name].reshape(-1, 1),
             (0,),
