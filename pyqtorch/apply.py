@@ -33,6 +33,7 @@ def apply_operator(
         state: State to operate on.
         operator: Tensor to contract over 'state'.
         qubit_support: Tuple of qubits on which to apply the 'operator' to.
+        diagonal: Whether operator is diagonal or not.
 
     Returns:
         State after applying 'operator'.
@@ -81,6 +82,7 @@ def apply_operator_permute(
         state: State to operate on.
         operator: Tensor to contract over 'state'.
         qubit_support: Tuple of qubits on which to apply the 'operator' to.
+        diagonal: Whether operator is diagonal or not.
 
     Returns:
         State after applying 'operator'.

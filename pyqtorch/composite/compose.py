@@ -257,6 +257,7 @@ class Merge(Sequence):
             state,
             add_batch_dim(self.tensor(values, embedding), batch_size),
             self.qubits,
+            self.diagonal,
         )
 
     def tensor(
@@ -266,13 +267,40 @@ class Merge(Sequence):
         full_support: tuple[int, ...] | None = None,
     ) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
-        return reduce(
-            lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
-            (
-                op.tensor(values, embedding, full_support)
-                for op in reversed(self.operations)
-            ),
-        )
+
+        if full_support is None:
+            full_support = self.qubit_support
+        elif not set(self.qubit_support).issubset(set(full_support)):
+            raise ValueError(
+                "Expanding tensor operation requires a `full_support` argument "
+                "larger than or equal to the `qubit_support`."
+            )
+
+        if not self.diagonal:
+            mat = torch.eye(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(2)
+
+            return reduce(
+                lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
+                (
+                    op.tensor(values, embedding, full_support)
+                    for op in reversed(self.operations)
+                ),
+                mat,
+            )
+        else:
+            mat = torch.ones(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(1)
+            return reduce(
+                lambda u0, u1: einsum("jb,jb->jb", u0, u1),
+                (
+                    op.tensor(values, embedding, full_support)
+                    for op in reversed(self.operations)
+                ),
+                mat,
+            )
 
 
 def hea(n_qubits: int, depth: int, param_name: str) -> tuple[ModuleList, ParameterDict]:

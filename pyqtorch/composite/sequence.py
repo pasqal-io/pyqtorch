@@ -43,9 +43,22 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 
 
 class Sequence(Module):
-    """A generic container for pyqtorch operations"""
+    """A generic container for pyqtorch operations.
+
+    Attributes:
+        operations (list[Module]): List of operations.
+        diagonal (bool, optional): Whether the operations can be applied as
+            diagonal operators. Defaults to False.
+    """
 
     def __init__(self, operations: list[Module], diagonal: bool = False):
+        """Initializes Sequence.
+
+        Args:
+            operations (list[Module]):  List of operations.
+            diagonal (bool, optional): Whether the operations can be applied as
+                diagonal operators. Defaults to False.
+        """
         super().__init__()
 
         self.operations = ModuleList(operations)
@@ -95,6 +108,7 @@ class Sequence(Module):
         )  # TODO fix numpy.int issue
 
     def to_diagonal(self):
+        """Force operations to be diagonal."""
         if not self.diagonal:
             flatten_ops = self.flatten()
             for op in flatten_ops:

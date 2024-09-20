@@ -61,8 +61,6 @@ class Support:
     ) -> None:
         self.target = qubit_support_as_tuple(target)
         self.control = qubit_support_as_tuple(control) if control is not None else ()
-        # if self.qubits != tuple(set(self.qubits)):
-        #    raise ValueError("One or more qubits are defined both as control and target.")
 
     @classmethod
     def target_all(cls) -> Support:
