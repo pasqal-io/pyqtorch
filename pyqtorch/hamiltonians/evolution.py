@@ -197,9 +197,8 @@ class HamiltonianEvolution(Sequence):
                 f"Received generator of type {type(generator)},\
                             allowed types are: [Tensor, str, Primitive, Sequence]"
             )
-        super().__init__(
-            generator, diagonal=generator[0].diagonal if len(generator) > 0 else False
-        )
+        self.diagonal_generator = generator[0].diagonal if len(generator) > 0 else False
+        super().__init__(generator, diagonal=False)
         self._qubit_support = qubit_support  # type: ignore
 
         if isinstance(time, str) or isinstance(time, Tensor):
@@ -424,7 +423,8 @@ class HamiltonianEvolution(Sequence):
             evolved_op = evolve(
                 hamiltonian,
                 time_evolution,
-                self.diagonal or is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
+                self.diagonal_generator
+                or is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
             )
             nb_cached = len(self._cache_hamiltonian_evo)
 
@@ -464,7 +464,8 @@ class HamiltonianEvolution(Sequence):
             lambda t: evolve(
                 hamiltonian,
                 t,
-                self.diagonal or is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
+                self.diagonal_generator
+                or is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
             ),
             values[self.param_name].reshape(-1, 1),
             (0,),

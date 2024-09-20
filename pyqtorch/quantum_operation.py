@@ -281,6 +281,8 @@ class QuantumOperation(torch.nn.Module):
             Eigenvalues of the related tensor.
         """
         blockmat = self.tensor(values, embedding)
+        if self.diagonal:
+            return blockmat
         return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
 
     @cached_property
