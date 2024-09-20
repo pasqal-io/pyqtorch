@@ -178,6 +178,7 @@ class HamiltonianEvolution(Sequence):
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
                 # only obtain once the tensor rep of the generator
+
                 generator = [
                     Primitive(
                         (
@@ -459,10 +460,6 @@ class HamiltonianEvolution(Sequence):
             values = embedding(values)
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
-        time_evolution: torch.Tensor = (
-            values[self.time] if isinstance(self.time, str) else self.time
-        )  # If `self.time` is a string / hence, a Parameter,
-        # we expect the user to pass it in the `values` dict
         return finitediff(
             lambda t: evolve(
                 hamiltonian,

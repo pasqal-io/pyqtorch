@@ -436,6 +436,7 @@ class QuantumOperation(torch.nn.Module):
 
     def to_diagonal(self):
         """Force the operator to be diagonal."""
+
         if not self.diagonal and is_diag_batched(self.operation):
             self.diagonal = True
             self.operation = torch.diagonal(self.operation)

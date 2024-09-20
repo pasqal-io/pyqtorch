@@ -225,7 +225,7 @@ def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     m = H.shape[0]
     p, q = H.stride()
     offdiag_view = torch.as_strided(H[:, 1:], (m - 1, m), (p + q, q))
-    return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)) == 0
+    return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)).item() == 0
 
 
 def is_diag_batched(H: Operator, atol: Tensor = ATOL, batch_dim: int = -1) -> bool:

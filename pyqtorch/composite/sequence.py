@@ -50,15 +50,14 @@ class Sequence(Module):
 
         self.operations = ModuleList(operations)
         self.diagonal = diagonal
+
+        flatten_ops = self.flatten()
         if diagonal:
             # making sure that ops are diagonalized
-            for op in self.flatten():
-                if hasattr(op, "to_diagonal"):
-                    op.to_diagonal()
+            for op in flatten_ops:
+                op.to_diagonal()
 
-            self.diagonal = all(
-                [op.diagonal and hasattr(op, "to_diagonal") for op in self.flatten()]
-            )
+            self.diagonal = all([op.diagonal for op in flatten_ops])
 
         self._device = torch_device("cpu")
         self._dtype = complex128
@@ -97,12 +96,10 @@ class Sequence(Module):
 
     def to_diagonal(self):
         if not self.diagonal:
-            for op in self.flatten():
-                if hasattr(op, "to_diagonal"):
-                    op.to_diagonal()
-            self.diagonal = all(
-                [op.diagonal and hasattr(op, "to_diagonal") for op in self.flatten()]
-            )
+            flatten_ops = self.flatten()
+            for op in flatten_ops:
+                op.to_diagonal()
+            self.diagonal = all([op.diagonal for op in flatten_ops])
 
     @property
     def qubit_support(self) -> tuple:
@@ -174,7 +171,11 @@ class Sequence(Module):
                 2 ** len(full_support), dtype=self.dtype, device=self.device
             ).unsqueeze(2)
             return reduce(
-                lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
+                lambda t0, t1: (
+                    einsum("ijb,jkb->ikb", t1, t0)
+                    if len(t1.size()) == 3
+                    else einsum("jb,jkb->jkb", t1, t0)
+                ),
                 (
                     add_batch_dim(op.tensor(values, embedding, full_support))
                     for op in self.operations
@@ -186,7 +187,7 @@ class Sequence(Module):
                 2 ** len(full_support), dtype=self.dtype, device=self.device
             ).unsqueeze(1)
             return reduce(
-                lambda t0, t1: einsum("ib,ib->ib", t1, t0),
+                lambda t0, t1: einsum("jb,jb->jb", t1, t0),
                 (op.tensor(values, embedding, full_support) for op in self.operations),
                 mat,
             )

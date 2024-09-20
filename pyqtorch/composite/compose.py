@@ -55,8 +55,8 @@ class Scale(Sequence):
     def to_diagonal(self):
         """Force the operator to be diagonal."""
         if not self.diagonal and hasattr(self.operations[0], "to_diagonal"):
-            self.diagonal = True
             self.operations[0].to_diagonal()
+            self.diagonal = self.operations[0].diagonal
 
     def forward(
         self,
