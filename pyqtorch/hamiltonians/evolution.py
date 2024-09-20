@@ -359,9 +359,11 @@ class HamiltonianEvolution(Sequence):
             reembedded_time_values = embedding.reembed_tparam(
                 embedded_params, torch.as_tensor(t)
             )
-            return (
-                self.generator[0].tensor(reembedded_time_values, embedding).squeeze(2)
-            )
+            gen_tensor = self.generator[0].tensor(reembedded_time_values, embedding)
+            if self.diagonal_generator:
+                return torch.diag_embed(gen_tensor).squeeze()
+            else:
+                return gen_tensor.squeeze(2)
 
         sol = sesolve(
             Ht,
