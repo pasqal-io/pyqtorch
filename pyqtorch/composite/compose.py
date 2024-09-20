@@ -58,7 +58,7 @@ class Scale(Sequence):
 
     def to_diagonal(self):
         """Force the operator to be diagonal."""
-        if not self.diagonal and hasattr(self.operations[0], "to_diagonal"):
+        if not self.diagonal:
             self.operations[0].to_diagonal()
             self.diagonal = self.operations[0].diagonal
 
@@ -302,7 +302,7 @@ class Merge(Sequence):
                 2 ** len(full_support), dtype=self.dtype, device=self.device
             ).unsqueeze(1)
             return reduce(
-                lambda u0, u1: einsum("jb,jb->jb", u0, u1),
+                lambda u0, u1: u0 * u1,
                 (
                     op.tensor(values, embedding, full_support)
                     for op in reversed(self.operations)

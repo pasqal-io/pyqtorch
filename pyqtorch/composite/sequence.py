@@ -201,7 +201,7 @@ class Sequence(Module):
                 2 ** len(full_support), dtype=self.dtype, device=self.device
             ).unsqueeze(1)
             return reduce(
-                lambda t0, t1: einsum("jb,jb->jb", t1, t0),
+                lambda t0, t1: t0 * t1,
                 (op.tensor(values, embedding, full_support) for op in self.operations),
                 mat,
             )
