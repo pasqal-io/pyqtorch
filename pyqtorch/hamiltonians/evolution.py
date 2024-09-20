@@ -21,7 +21,6 @@ from pyqtorch.utils import (
     SolverType,
     State,
     StrEnum,
-    _round_operator,
     expand_operator,
     finitediff,
     is_diag_batched,
@@ -322,7 +321,6 @@ class HamiltonianEvolution(Sequence):
         """
         spectrum = self.eigenvals_generator
         diffs = spectrum - spectrum.T
-        diffs = _round_operator(diffs)
         spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 

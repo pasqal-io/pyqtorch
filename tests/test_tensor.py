@@ -67,6 +67,7 @@ def test_digital_tensor(
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
         op_concrete = op(*supp)
+        op_concrete.to_diagonal()
         psi_init = random_state(n_qubits, batch_size)
         if use_dm:
             psi_star = op_concrete(density_mat(psi_init))
@@ -160,6 +161,33 @@ def test_sequence_tensor(
         op_composite, psi_init, values=values, full_support=full_support
     )
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_diff_eigenvalues_gen_diag(
+    n_qubits: int,
+    batch_size: int,
+):
+    values = {}
+    op_list = []
+    op_list_diag = []
+    for op in [RZ, PHASE, CRZ, CPHASE]:
+        supp = get_op_support(op, n_qubits)
+        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]  # type: ignore[attr-defined]
+        values.update({param: torch.rand(batch_size) for param in params})
+        op_concrete = op(*supp, *params)
+        op_concrete_diag = op(*supp, *params, diagonal=True)
+        op_list.append(op_concrete)
+        op_list_diag.append(op_concrete_diag)
+
+    for op, opdiag in zip(op_list, op_list_diag):
+        assert torch.allclose(
+            op.eigenvals_generator, opdiag.eigenvals_generator, rtol=RTOL, atol=ATOL  # type: ignore[attr-defined]
+        )
+        assert torch.allclose(
+            op.spectral_gap, opdiag.spectral_gap, rtol=RTOL, atol=ATOL  # type: ignore[attr-defined]
+        )
 
 
 @pytest.mark.parametrize("n_qubits", [4, 5])
@@ -343,6 +371,7 @@ def test_diaghevo_pauli_tensor(
 
     psi_star = operator(psi_init, values)
     psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
+    eig_nondiag = operator.generator[0]
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
     jac_1 = operator.jacobian(values)
@@ -352,9 +381,16 @@ def test_diaghevo_pauli_tensor(
 
     psi_star2 = operator(psi_init, values)
     jac_2 = operator.jacobian(values)
+    eig_diag = operator.generator[0]
     assert torch.allclose(psi_star2, psi_expected, rtol=RTOL, atol=ATOL)
-
     assert torch.allclose(jac_1, jac_2, rtol=RTOL, atol=ATOL)
+
+    if not make_param:
+        assert not eig_nondiag.diagonal
+        assert eig_diag.diagonal
+        assert torch.allclose(
+            eig_nondiag.eigenvalues, eig_diag.eigenvalues, rtol=RTOL, atol=ATOL
+        )
 
 
 @pytest.mark.parametrize("gen_qubits", [3, 4])
