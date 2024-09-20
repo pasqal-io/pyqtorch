@@ -8,6 +8,7 @@ from torch import Tensor
 
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
+    IDIAG,
     OPERATIONS_DICT,
     _jacobian,
     controlled,
@@ -36,6 +37,7 @@ class Parametric(QuantumOperation):
         qubit_support: int | tuple[int, ...] | Support,
         param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
         """Initializes Parametric.
 
@@ -120,8 +122,17 @@ class Parametric(QuantumOperation):
             qubit_support,
             operator_function=self._construct_parametric_base_op,
             noise=noise,
+            diagonal=diagonal,
         )
-        self.register_buffer("identity", OPERATIONS_DICT["I"])
+        self.register_buffer(
+            "identity", OPERATIONS_DICT["I"] if not diagonal else IDIAG
+        )
+
+    def to_diagonal(self):
+        """Force the operator to be diagonal."""
+        super().to_diagonal()
+        if self.diagonal:
+            self.identity = IDIAG
 
     def extra_repr(self) -> str:
         """String representation of the operation.
@@ -170,7 +181,9 @@ class Parametric(QuantumOperation):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
+        mat = parametric_unitary(
+            thetas, self.operation, self.identity, batch_size, self.diagonal
+        )
         return mat
 
     def jacobian(
@@ -218,6 +231,7 @@ class ControlledParametric(Parametric):
         target: int | Tuple[int, ...],
         param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
         """Initializes a ControlledParametric.
 
@@ -228,7 +242,7 @@ class ControlledParametric(Parametric):
             param_name: Name of parameters.
         """
         support = Support(target, control)
-        super().__init__(operation, support, param_name, noise=noise)
+        super().__init__(operation, support, param_name, noise=noise, diagonal=diagonal)
 
     def extra_repr(self) -> str:
         """String representation of the operation.
@@ -257,8 +271,10 @@ class ControlledParametric(Parametric):
         """
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
-        mat = controlled(mat, batch_size, len(self.control))
+        mat = parametric_unitary(
+            thetas, self.operation, self.identity, batch_size, self.diagonal
+        )
+        mat = controlled(mat, batch_size, len(self.control), self.diagonal)
         return mat
 
     def jacobian(
@@ -302,6 +318,7 @@ class ControlledRotationGate(ControlledParametric):
         target: int,
         param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
         """Initializes a ControlledRotationGate.
 
@@ -311,7 +328,9 @@ class ControlledRotationGate(ControlledParametric):
             qubit_support: Target qubit.
             param_name: Name of parameters.
         """
-        super().__init__(operation, control, target, param_name, noise=noise)
+        super().__init__(
+            operation, control, target, param_name, noise=noise, diagonal=diagonal
+        )
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:

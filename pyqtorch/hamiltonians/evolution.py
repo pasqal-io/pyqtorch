@@ -17,15 +17,13 @@ from pyqtorch.primitives import Primitive
 from pyqtorch.quantum_operation import QuantumOperation
 from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
-    ATOL,
     Operator,
     SolverType,
     State,
     StrEnum,
-    _round_operator,
     expand_operator,
     finitediff,
-    is_diag,
+    is_diag_batched,
     is_parametric,
 )
 
@@ -72,28 +70,9 @@ class GeneratorType(StrEnum):
     """Generators which are symbolic, i.e. will be passed via the 'values' dict by the user."""
 
 
-def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:
-    """
-    Returns True if the batched tensors H are diagonal.
-
-    Arguments:
-        H: Input tensors.
-        atol: Tolerance for near-zero values.
-
-    Returns:
-        True if diagonal, else False.
-    """
-    diag_check = torch.tensor(
-        [
-            is_diag(hamiltonian[..., i], atol)
-            for i in range(hamiltonian.shape[BATCH_DIM])
-        ],
-        device=hamiltonian.device,
-    )
-    return bool(torch.prod(diag_check))
-
-
-def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
+def evolve(
+    hamiltonian: Operator, time_evolution: Tensor, diagonal: bool = False
+) -> Operator:
     """Get the evolved operator.
 
     For a hamiltonian :math:`H` and a time evolution :math:`t`, returns :math:`exp(-i H, t)`
@@ -101,15 +80,22 @@ def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
     Arguments:
         hamiltonian: The operator :math:`H` for evolution.
         time_evolution: The evolution time :math:`t`.
+        diagonal: Whether the hamiltonian is diagonal or not.
 
     Returns:
         The evolution operator.
     """
-    if is_diag_hamiltonian(hamiltonian):
+    if diagonal and len(hamiltonian.size()) == 3:
         evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
             (-1, 1)
         )
         evol_operator = torch.diag_embed(torch.exp(evol_operator))
+    elif diagonal and len(hamiltonian.size()) == 2:
+        evol_operator = torch.transpose(hamiltonian, 0, 1) * (
+            -1j * time_evolution
+        ).view((-1, 1))
+        evol_operator = torch.diag_embed(torch.exp(evol_operator))
+
     else:
         evol_operator = torch.transpose(hamiltonian, 0, -1) * (
             -1j * time_evolution
@@ -137,6 +123,9 @@ class HamiltonianEvolution(Sequence):
         operations: List of operations.
         cache_length: LRU cache cache_length evolution operators for given set
                     of parameter values.
+        diagonal (bool, optional): Whether the generator's
+            operations can be applied as
+            diagonal operators. Defaults to False.
     """
 
     def __init__(
@@ -147,6 +136,7 @@ class HamiltonianEvolution(Sequence):
         cache_length: int = 1,
         steps: int = 100,
         solver=SolverType.DP5_SE,
+        diagonal: bool = True,
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -156,6 +146,9 @@ class HamiltonianEvolution(Sequence):
             time: The evolution time :math:`t`.
             qubit_support: The qubits the operator acts on.
             generator_parametric: Whether the generator is parametric or not.
+            diagonal (bool, optional): Whether the generator's
+                operations can be applied as
+                diagonal operators. Defaults to False.
         """
 
         self.solver_type = solver
@@ -185,14 +178,23 @@ class HamiltonianEvolution(Sequence):
                     "Taking support from generator and ignoring qubit_support input."
                 )
             qubit_support = generator.qubit_support
+            if diagonal:
+                generator.to_diagonal()
             if is_parametric(generator):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
+                # only obtain once the tensor rep of the generator
+
                 generator = [
                     Primitive(
-                        generator.tensor(),
+                        (
+                            generator.tensor().squeeze(1)
+                            if generator.diagonal
+                            else generator.tensor()
+                        ),
                         generator.qubit_support,
+                        diagonal=generator.diagonal,
                     )
                 ]
 
@@ -202,7 +204,8 @@ class HamiltonianEvolution(Sequence):
                 f"Received generator of type {type(generator)},\
                             allowed types are: [Tensor, str, Primitive, Sequence]"
             )
-        super().__init__(generator)
+        self.diagonal_generator = generator[0].diagonal if len(generator) > 0 else False
+        super().__init__(generator, diagonal=False)
         self._qubit_support = qubit_support  # type: ignore
 
         if isinstance(time, str) or isinstance(time, Tensor):
@@ -267,7 +270,7 @@ class HamiltonianEvolution(Sequence):
         if len(hamiltonian.shape) == 3 and (
             hamiltonian.shape[0] != hamiltonian.shape[1]
         ):
-            return torch.transpose(hamiltonian, 0, 2)
+            return torch.transpose(hamiltonian, 0, BATCH_DIM)
         if len(hamiltonian.shape) == 4 and (
             hamiltonian.shape[0] != hamiltonian.shape[1]
         ):
@@ -318,7 +321,6 @@ class HamiltonianEvolution(Sequence):
         """
         spectrum = self.eigenvals_generator
         diffs = spectrum - spectrum.T
-        diffs = _round_operator(diffs)
         spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 
@@ -355,9 +357,11 @@ class HamiltonianEvolution(Sequence):
             reembedded_time_values = embedding.reembed_tparam(
                 embedded_params, torch.as_tensor(t)
             )
-            return (
-                self.generator[0].tensor(reembedded_time_values, embedding).squeeze(2)
-            )
+            gen_tensor = self.generator[0].tensor(reembedded_time_values, embedding)
+            if self.diagonal_generator:
+                return torch.diag_embed(gen_tensor).squeeze()
+            else:
+                return gen_tensor.squeeze(2)
 
         sol = sesolve(
             Ht,
@@ -424,7 +428,12 @@ class HamiltonianEvolution(Sequence):
                 values[self.time] if isinstance(self.time, str) else self.time
             )  # If `self.time` is a string / hence, a Parameter,
             # we expect the user to pass it in the `values` dict
-            evolved_op = evolve(hamiltonian, time_evolution)
+            evolved_op = evolve(
+                hamiltonian,
+                time_evolution,
+                self.diagonal_generator
+                or is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
+            )
             nb_cached = len(self._cache_hamiltonian_evo)
 
             # LRU caching
@@ -436,7 +445,11 @@ class HamiltonianEvolution(Sequence):
         if full_support is None:
             return evolved_op
         else:
-            return expand_operator(evolved_op, self.qubit_support, full_support)
+            return expand_operator(
+                evolved_op,
+                self.qubit_support,
+                full_support,
+            )
 
     def jacobian(
         self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
@@ -455,12 +468,13 @@ class HamiltonianEvolution(Sequence):
             values = embedding(values)
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
-        time_evolution: torch.Tensor = (
-            values[self.time] if isinstance(self.time, str) else self.time
-        )  # If `self.time` is a string / hence, a Parameter,
-        # we expect the user to pass it in the `values` dict
         return finitediff(
-            lambda t: evolve(hamiltonian, t),
+            lambda t: evolve(
+                hamiltonian,
+                t,
+                self.diagonal_generator
+                or is_diag_batched(hamiltonian, batch_dim=BATCH_DIM),
+            ),
             values[self.param_name].reshape(-1, 1),
             (0,),
         )

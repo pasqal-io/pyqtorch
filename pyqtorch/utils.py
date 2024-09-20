@@ -18,7 +18,7 @@ from torch import Tensor, moveaxis
 from typing_extensions import TypeAlias
 
 import pyqtorch as pyq
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IDIAG, IMAT
 
 State: TypeAlias = Tensor
 Operator: TypeAlias = Tensor
@@ -33,6 +33,10 @@ PSR_ACCEPTANCE = 1e-05
 ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)
+
+
+class DensityMatrix(Tensor):
+    pass
 
 
 def qubit_support_as_tuple(support: int | tuple[int, ...]) -> tuple[int, ...]:
@@ -207,7 +211,7 @@ def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
 
 def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     """
-    Returns True if tensor H is diagonal.
+    Returns True if 2D tensor H is diagonal.
 
     Reference: https://stackoverflow.com/questions/43884189/check-if-a-large-matrix-is-diagonal-matrix-in-python
 
@@ -221,7 +225,29 @@ def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     m = H.shape[0]
     p, q = H.stride()
     offdiag_view = torch.as_strided(H[:, 1:], (m - 1, m), (p + q, q))
-    return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)) == 0
+    return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)).item() == 0
+
+
+def is_diag_batched(H: Operator, atol: Tensor = ATOL, batch_dim: int = -1) -> bool:
+    """
+    Returns True if the batched tensors of H are diagonal.
+
+    Arguments:
+        H: Input tensors.
+        atol: Tolerance for near-zero values.
+        batch_dim: batch dimension to go over.
+
+    Returns:
+        True if diagonal, else False.
+    """
+    if len(H.shape) > 2:
+        diag_check = torch.tensor(
+            [is_diag(H[..., i], atol) for i in range(H.shape[batch_dim])],
+            device=H.device,
+        )
+        return bool(torch.prod(diag_check).item())
+    else:
+        return is_diag(H, atol)
 
 
 def finitediff(
@@ -397,10 +423,6 @@ def param_dict(keys: Sequence[str], values: Sequence[Tensor]) -> dict[str, Tenso
     return {key: val for key, val in zip(keys, values)}
 
 
-class DensityMatrix(Tensor):
-    pass
-
-
 def density_mat(state: Tensor) -> DensityMatrix:
     """
     Computes the density matrix from a pure state vector.
@@ -446,7 +468,10 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
 
 
 def expand_operator(
-    operator: Tensor, qubit_support: tuple[int, ...], full_support: tuple[int, ...]
+    operator: Tensor,
+    qubit_support: tuple[int, ...],
+    full_support: tuple[int, ...],
+    diagonal: bool = False,
 ) -> Tensor:
     """
     Expands an operator acting on a given qubit_support to act on a larger full_support
@@ -460,11 +485,15 @@ def expand_operator(
             "larger than or equal to the `qubit_support`."
         )
     device, dtype = operator.device, operator.dtype
+
+    if not diagonal:
+        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
+    else:
+        other = IDIAG.clone().to(device=device, dtype=dtype).unsqueeze(1)
     for i in set(full_support) - set(qubit_support):
         qubit_support += (i,)
-        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
         operator = torch.kron(operator.contiguous(), other)
-    operator = permute_basis(operator, qubit_support, inv=True)
+    operator = permute_basis(operator, qubit_support, inv=True, diagonal=diagonal)
     return operator
 
 
@@ -532,7 +561,12 @@ def permute_state(
     return state.permute(perm)
 
 
-def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> Tensor:
+def permute_basis(
+    operator: Tensor,
+    qubit_support: tuple,
+    inv: bool = False,
+    diagonal: bool = False,
+) -> Tensor:
     """Takes an operator tensor and permutes the rows and
     columns according to the order of the qubit support.
 
@@ -550,16 +584,22 @@ def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> 
     if all(a == b for a, b in zip(ranked_support, list(range(n_qubits)))):
         return operator
     batch_size = operator.size(-1)
-    operator = operator.view([2] * 2 * n_qubits + [batch_size])
+    if not diagonal:
+        operator = operator.view([2] * 2 * n_qubits + [batch_size])
+        perm = list(
+            tuple(ranked_support) + tuple(ranked_support + n_qubits) + (2 * n_qubits,)
+        )
 
-    perm = list(
-        tuple(ranked_support) + tuple(ranked_support + n_qubits) + (2 * n_qubits,)
-    )
+        if inv:
+            perm = np.argsort(perm).tolist()
 
-    if inv:
-        perm = np.argsort(perm).tolist()
-
-    return operator.permute(perm).reshape([2**n_qubits, 2**n_qubits, batch_size])
+        return operator.permute(perm).reshape([2**n_qubits, 2**n_qubits, batch_size])
+    else:
+        operator = operator.view([2] * n_qubits + [batch_size])
+        perm = list(tuple(ranked_support) + (n_qubits,))
+        if inv:
+            perm = np.argsort(perm).tolist()
+        return operator.permute(perm).reshape([2**n_qubits, batch_size])
 
 
 def random_dm_promotion(

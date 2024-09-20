@@ -23,14 +23,25 @@ class Observable(Add):
 
     Attributes:
         operations: List of operations.
-        n_qubits: Number of qubits it is defined on.
+        diagonal (bool, optional): Whether the operations can be applied as
+            diagonal operators. Defaults to False.
     """
 
     def __init__(
         self,
         operations: list[Module] | Primitive | Sequence,
+        diagonal: bool = False,
     ):
-        super().__init__(operations if isinstance(operations, list) else [operations])
+        """Initializes Observable.
+
+        Args:
+            operations (list[Module] | Primitive | Sequence): List of operations.
+            diagonal (bool, optional): Whether the operations can be applied as
+                diagonal operators. Defaults to False.
+        """
+        super().__init__(
+            operations if isinstance(operations, list) else [operations], diagonal
+        )
 
     def expectation(
         self,

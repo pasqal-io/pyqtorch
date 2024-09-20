@@ -32,10 +32,15 @@ class Scale(Sequence):
     Attributes:
         operations: Operations as a Sequence, Add, or a single Primitive operation.
         param_name: Name of the parameter to multiply operations with.
+        diagonal (bool, optional): Whether the operation can be applied as a
+            diagonal operator. Defaults to False.
     """
 
     def __init__(
-        self, operations: Union[Primitive, Sequence, Add], param_name: str | Tensor
+        self,
+        operations: Union[Primitive, Sequence, Add],
+        param_name: str | Tensor,
+        diagonal: bool = False,
     ):
         """
         Initializes a Scale object.
@@ -43,11 +48,19 @@ class Scale(Sequence):
         Arguments:
             operations: Operations as a Sequence, Add, or a single Primitive operation.
             param_name: Name of the parameter to multiply operations with.
+            diagonal (bool, optional): Whether the operation can be applied as a
+                diagonal operator. Defaults to False.
         """
         if not isinstance(operations, (Primitive, Sequence, Add)):
             raise ValueError("Scale only supports a single operation, Sequence or Add.")
-        super().__init__([operations])
+        super().__init__([operations], diagonal)
         self.param_name = param_name
+
+    def to_diagonal(self):
+        """Force the operator to be diagonal."""
+        if not self.diagonal:
+            self.operations[0].to_diagonal()
+            self.diagonal = self.operations[0].diagonal
 
     def forward(
         self,
@@ -133,11 +146,13 @@ class Add(Sequence):
 
     Attributes:
         operations: List of operations to add up.
+        diagonal (bool, optional): Whether the operation can be applied as a
+            diagonal operator. Defaults to False.
     """
 
-    def __init__(self, operations: list[Module]):
+    def __init__(self, operations: list[Module], diagonal: bool = False):
 
-        super().__init__(operations=operations)
+        super().__init__(operations=operations, diagonal=diagonal)
 
     def forward(
         self,
@@ -181,9 +196,13 @@ class Add(Sequence):
                 "Expanding tensor operation requires a `full_support` argument "
                 "larger than or equal to the `qubit_support`."
             )
-        mat = torch.zeros(
-            (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
-        )
+
+        if self.diagonal:
+            mat = torch.zeros((2 ** len(full_support), 1), device=self.device)
+        else:
+            mat = torch.zeros(
+                (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
+            )
         return reduce(
             add,
             (op.tensor(values, embedding, full_support) for op in self.operations),
@@ -195,6 +214,7 @@ class Merge(Sequence):
     def __init__(
         self,
         operations: list[Module],
+        diagonal: bool = False,
     ):
         """
         Merge a sequence of single qubit operations acting on the same qubit into a single
@@ -202,6 +222,8 @@ class Merge(Sequence):
 
         Arguments:
             operations: A list of single qubit operations.
+            diagonal (bool, optional): Whether the operation can be applied as a
+                diagonal operator. Defaults to False.
 
         """
 
@@ -213,7 +235,7 @@ class Merge(Sequence):
         ):
             # We want all operations to act on the same qubit
 
-            super().__init__(operations)
+            super().__init__(operations, diagonal)
             self.qubits = operations[0].qubit_support
         else:
             raise TypeError(
@@ -243,6 +265,7 @@ class Merge(Sequence):
             state,
             add_batch_dim(self.tensor(values, embedding), batch_size),
             self.qubits,
+            self.diagonal,
         )
 
     def tensor(
@@ -252,13 +275,40 @@ class Merge(Sequence):
         full_support: tuple[int, ...] | None = None,
     ) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
-        return reduce(
-            lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
-            (
-                op.tensor(values, embedding, full_support)
-                for op in reversed(self.operations)
-            ),
-        )
+
+        if full_support is None:
+            full_support = self.qubit_support
+        elif not set(self.qubit_support).issubset(set(full_support)):
+            raise ValueError(
+                "Expanding tensor operation requires a `full_support` argument "
+                "larger than or equal to the `qubit_support`."
+            )
+
+        if not self.diagonal:
+            mat = torch.eye(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(2)
+
+            return reduce(
+                lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
+                (
+                    op.tensor(values, embedding, full_support)
+                    for op in reversed(self.operations)
+                ),
+                mat,
+            )
+        else:
+            mat = torch.ones(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(1)
+            return reduce(
+                lambda u0, u1: u0 * u1,
+                (
+                    op.tensor(values, embedding, full_support)
+                    for op in reversed(self.operations)
+                ),
+                mat,
+            )
 
 
 def hea(n_qubits: int, depth: int, param_name: str) -> tuple[ModuleList, ParameterDict]:

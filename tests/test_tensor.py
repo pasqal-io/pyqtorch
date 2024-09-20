@@ -22,12 +22,18 @@ from pyqtorch.primitives import (
     OPS_DIGITAL,
     OPS_PARAM,
     OPS_PARAM_2Q,
+    PHASE,
+    RZ,
     SWAP,
+    I,
     N,
     Parametric,
     Primitive,
     Projector,
+    S,
+    T,
     Toffoli,
+    Z,
 )
 from pyqtorch.utils import (
     ATOL,
@@ -61,6 +67,7 @@ def test_digital_tensor(
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
         op_concrete = op(*supp)
+        op_concrete.to_diagonal()
         psi_init = random_state(n_qubits, batch_size)
         if use_dm:
             psi_star = op_concrete(density_mat(psi_init))
@@ -154,6 +161,86 @@ def test_sequence_tensor(
         op_composite, psi_init, values=values, full_support=full_support
     )
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_diff_eigenvalues_gen_diag(
+    n_qubits: int,
+    batch_size: int,
+):
+    values = {}
+    op_list = []
+    op_list_diag = []
+    for op in [RZ, PHASE, CRZ, CPHASE]:
+        supp = get_op_support(op, n_qubits)
+        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]  # type: ignore[attr-defined]
+        values.update({param: torch.rand(batch_size) for param in params})
+        op_concrete = op(*supp, *params)
+        op_concrete_diag = op(*supp, *params, diagonal=True)
+        op_list.append(op_concrete)
+        op_list_diag.append(op_concrete_diag)
+
+    for op, opdiag in zip(op_list, op_list_diag):
+        assert torch.allclose(
+            op.eigenvals_generator, opdiag.eigenvals_generator, rtol=RTOL, atol=ATOL  # type: ignore[attr-defined]
+        )
+        assert torch.allclose(
+            op.spectral_gap, opdiag.spectral_gap, rtol=RTOL, atol=ATOL  # type: ignore[attr-defined]
+        )
+
+
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("compose", [Sequence, Add])
+def test_diag_sequence_tensor(
+    n_qubits: int,
+    batch_size: int,
+    compose: type[Sequence] | type[Add],
+) -> None:
+    op_list = []
+    values = {}
+    op: type[Primitive] | type[Parametric]
+    """
+    Builds a Sequence or Add composition of all possible gates on random qubit
+    supports. Also assigns a Scale of a random value to the non-parametric gates.
+    Tests the forward method (which goes through each gate individually) to the
+    `tensor` method, which builds the full operator matrix and applies it.
+    """
+    for op in [I, Z, T, S, CZ]:
+        supp = get_op_support(op, n_qubits)
+        op_concrete = Scale(op(*supp), torch.rand(1))
+        op_list.append(op_concrete)
+    for op in [RZ, PHASE, CRZ, CPHASE]:
+        supp = get_op_support(op, n_qubits)
+        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
+        values.update({param: torch.rand(batch_size) for param in params})
+        op_concrete = op(*supp, *params)
+        op_list.append(op_concrete)
+    random.shuffle(op_list)
+    psi_init = random_state(n_qubits, batch_size)
+
+    # first we get apply the non diagonal version
+    op_composite_non_diag = compose(op_list, diagonal=False)
+    assert not op_composite_non_diag.diagonal
+    assert not all([op.diagonal for op in op_composite_non_diag.flatten()])
+    psi_expected = op_composite_non_diag(psi_init, values)
+
+    # then we will compare the diagonal version to previous one
+    op_composite = compose(op_list, diagonal=True)
+    assert op_composite.diagonal
+    assert all([op.diagonal for op in op_composite.flatten()])
+    psi_star = op_composite(psi_init, values)
+
+    # finally we check to_diagonal
+    op_composite_non_diag.to_diagonal()
+    assert op_composite_non_diag.diagonal
+    assert all([op.diagonal for op in op_composite_non_diag.flatten()])
+    psi_star2 = op_composite_non_diag(psi_init, values)
+
+    assert psi_star.shape == psi_expected.shape == psi_star2.shape
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+    assert torch.allclose(psi_star2, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("use_full_support", [True, False])
@@ -254,6 +341,58 @@ def test_hevo_pauli_tensor(
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("make_param", [True, False])
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_diaghevo_pauli_tensor(
+    n_qubits: int, make_param: bool, use_full_support: bool, batch_size: int
+) -> None:
+    k_1q = 2 * n_qubits  # Number of 1-qubit terms
+    k_2q = 0  # Number of 2-qubit terms
+    generator, param_list = random_pauli_hamiltonian(
+        n_qubits, k_1q, k_2q, make_param, diagonal=True
+    )
+
+    values = {param: torch.rand(batch_size) for param in param_list}
+    psi_init = random_state(n_qubits, batch_size)
+    full_support = tuple(range(n_qubits)) if use_full_support else None
+
+    # Test the hamiltonian evolution
+    tparam = "t"
+    operator = HamiltonianEvolution(generator, tparam, diagonal=False)
+
+    assert not operator.diagonal_generator
+    if make_param:
+        assert operator.generator_type == GeneratorType.PARAMETRIC_OPERATION
+    else:
+        assert operator.generator_type == GeneratorType.OPERATION
+    values[tparam] = torch.rand(batch_size)
+
+    psi_star = operator(psi_init, values)
+    psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
+    eig_nondiag = operator.generator[0]
+    assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+    jac_1 = operator.jacobian(values)
+
+    operator = HamiltonianEvolution(generator, tparam, diagonal=True)
+    assert operator.diagonal_generator
+
+    psi_star2 = operator(psi_init, values)
+    jac_2 = operator.jacobian(values)
+    eig_diag = operator.generator[0]
+    assert torch.allclose(psi_star2, psi_expected, rtol=RTOL, atol=ATOL)
+    assert torch.allclose(jac_1, jac_2, rtol=RTOL, atol=ATOL)
+
+    if not make_param:
+        assert not eig_nondiag.diagonal
+        assert eig_diag.diagonal
+        assert torch.allclose(
+            eig_nondiag.eigenvalues, eig_diag.eigenvalues, rtol=RTOL, atol=ATOL
+        )
+
+
 @pytest.mark.parametrize("gen_qubits", [3, 4])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("use_full_support", [True, False])
@@ -278,6 +417,30 @@ def test_hevo_tensor_tensor(
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
+@pytest.mark.parametrize("gen_qubits", [3, 4])
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_diaghevo_tensor_tensor(
+    gen_qubits: int, n_qubits: int, use_full_support: bool, batch_size: int
+) -> None:
+    k_1q = 2 * gen_qubits  # Number of 1-qubit terms
+    k_2q = gen_qubits**2  # Number of 2-qubit terms
+    generator, _ = random_pauli_hamiltonian(gen_qubits, k_1q, k_2q, diagonal=True)
+    psi_init = random_state(n_qubits, batch_size)
+    full_support = tuple(range(n_qubits)) if use_full_support else None
+    # Test the hamiltonian evolution
+    generator_matrix = generator.tensor()
+    supp = tuple(random.sample(range(n_qubits), gen_qubits))
+    tparam = "t"
+    operator = HamiltonianEvolution(generator_matrix, tparam, supp)
+    assert operator.generator_type == GeneratorType.TENSOR
+    # assert operator.diagonal
+
+    # values = {tparam: torch.rand(batch_size)}
+    # psi_star = operator(psi_init, values)
+
+
 @pytest.mark.parametrize("n_qubits", [3, 5])
 def test_permute_tensor(n_qubits: int) -> None:
     for op in OPS_2Q.union(OPS_3Q):
@@ -300,7 +463,7 @@ def test_permute_tensor(n_qubits: int) -> None:
 def test_permute_tensor_parametric(n_qubits: int, batch_size: int) -> None:
     for op in OPS_PARAM_2Q:
         supp, ordered_supp = get_op_support(op, n_qubits, get_ordered=True)
-        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
+        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]  # type: ignore[attr-defined]
         values = {param: torch.rand(batch_size) for param in params}
 
         op_concrete1 = op(*supp, *params)

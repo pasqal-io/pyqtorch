@@ -43,11 +43,35 @@ def pre_backward_hook(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
 
 
 class Sequence(Module):
-    """A generic container for pyqtorch operations"""
+    """A generic container for pyqtorch operations.
 
-    def __init__(self, operations: list[Module]):
+    Attributes:
+        operations (list[Module]): List of operations.
+        diagonal (bool, optional): Whether the operations can be applied as
+            diagonal operators. Defaults to False.
+    """
+
+    def __init__(self, operations: list[Module], diagonal: bool = False):
+        """Initializes Sequence.
+
+        Args:
+            operations (list[Module]):  List of operations.
+            diagonal (bool, optional): Whether the operations can be applied as
+                diagonal operators. Defaults to False.
+        """
         super().__init__()
+
         self.operations = ModuleList(operations)
+        self.diagonal = diagonal
+
+        flatten_ops = self.flatten()
+        if diagonal:
+            # making sure that ops are diagonalized
+            for op in flatten_ops:
+                op.to_diagonal()
+
+            self.diagonal = all([op.diagonal for op in flatten_ops])
+
         self._device = torch_device("cpu")
         self._dtype = complex128
         if len(self.operations) > 0:
@@ -82,6 +106,14 @@ class Sequence(Module):
         assert all(
             [isinstance(q, (int, int64)) for q in self._qubit_support]
         )  # TODO fix numpy.int issue
+
+    def to_diagonal(self):
+        """Force operations to be diagonal."""
+        if not self.diagonal:
+            flatten_ops = self.flatten()
+            for op in flatten_ops:
+                op.to_diagonal()
+            self.diagonal = all([op.diagonal for op in flatten_ops])
 
     @property
     def qubit_support(self) -> tuple:
@@ -147,21 +179,36 @@ class Sequence(Module):
                 "Expanding tensor operation requires a `full_support` argument "
                 "larger than or equal to the `qubit_support`."
             )
-        mat = torch.eye(
-            2 ** len(full_support), dtype=self.dtype, device=self.device
-        ).unsqueeze(2)
-        return reduce(
-            lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
-            (
-                add_batch_dim(op.tensor(values, embedding, full_support))
-                for op in self.operations
-            ),
-            mat,
-        )
+
+        if not self.diagonal:
+            mat = torch.eye(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(2)
+            return reduce(
+                lambda t0, t1: (
+                    einsum("ijb,jkb->ikb", t1, t0)
+                    if len(t1.size()) == 3
+                    else einsum("jb,jkb->jkb", t1, t0)
+                ),
+                (
+                    add_batch_dim(op.tensor(values, embedding, full_support))
+                    for op in self.operations
+                ),
+                mat,
+            )
+        else:
+            mat = torch.ones(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(1)
+            return reduce(
+                lambda t0, t1: t0 * t1,
+                (op.tensor(values, embedding, full_support) for op in self.operations),
+                mat,
+            )
 
     def dagger(
         self,
         values: dict[str, Tensor] | Tensor = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
-        return _dagger(self.tensor(values, embedding))
+        return _dagger(self.tensor(values, embedding), self.diagonal)
