@@ -81,7 +81,7 @@ def evolve(
     Arguments:
         hamiltonian: The operator :math:`H` for evolution.
         time_evolution: The evolution time :math:`t`.
-        diagonal: whether hamiltonian is diagonal
+        diagonal: Whether the hamiltonian is diagonal or not.
 
     Returns:
         The evolution operator.
@@ -124,6 +124,9 @@ class HamiltonianEvolution(Sequence):
         operations: List of operations.
         cache_length: LRU cache cache_length evolution operators for given set
                     of parameter values.
+        diagonal (bool, optional): Whether the generator's
+            operations can be applied as
+            diagonal operators. Defaults to False.
     """
 
     def __init__(
@@ -144,6 +147,9 @@ class HamiltonianEvolution(Sequence):
             time: The evolution time :math:`t`.
             qubit_support: The qubits the operator acts on.
             generator_parametric: Whether the generator is parametric or not.
+            diagonal (bool, optional): Whether the generator's
+                operations can be applied as
+                diagonal operators. Defaults to False.
         """
 
         self.solver_type = solver

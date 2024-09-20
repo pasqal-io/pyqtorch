@@ -19,6 +19,9 @@ class Primitive(QuantumOperation):
         operation (Tensor): Matrix U.
         qubit_support: List of qubits the QuantumOperation acts on.
         generator (Tensor): A tensor G s.t. U = exp(-iG).
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
+        diagonal (bool, optional): Specify if the operation is diagonal.
     """
 
     def __init__(
@@ -68,6 +71,9 @@ class ControlledPrimitive(Primitive):
         operation (Tensor): Unitary tensor U.
         control (int | tuple[int, ...]): List of qubits acting as controls.
         target (int | tuple[int, ...]): List of qubits operations acts on.
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
+        diagonal (bool, optional): Specify if the operation is diagonal.
     """
 
     def __init__(

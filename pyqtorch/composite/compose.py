@@ -32,6 +32,8 @@ class Scale(Sequence):
     Attributes:
         operations: Operations as a Sequence, Add, or a single Primitive operation.
         param_name: Name of the parameter to multiply operations with.
+        diagonal (bool, optional): Whether the operation can be applied as a
+            diagonal operator. Defaults to False.
     """
 
     def __init__(
@@ -46,6 +48,8 @@ class Scale(Sequence):
         Arguments:
             operations: Operations as a Sequence, Add, or a single Primitive operation.
             param_name: Name of the parameter to multiply operations with.
+            diagonal (bool, optional): Whether the operation can be applied as a
+                diagonal operator. Defaults to False.
         """
         if not isinstance(operations, (Primitive, Sequence, Add)):
             raise ValueError("Scale only supports a single operation, Sequence or Add.")
@@ -142,6 +146,8 @@ class Add(Sequence):
 
     Attributes:
         operations: List of operations to add up.
+        diagonal (bool, optional): Whether the operation can be applied as a
+            diagonal operator. Defaults to False.
     """
 
     def __init__(self, operations: list[Module], diagonal: bool = False):
@@ -216,6 +222,8 @@ class Merge(Sequence):
 
         Arguments:
             operations: A list of single qubit operations.
+            diagonal (bool, optional): Whether the operation can be applied as a
+                diagonal operator. Defaults to False.
 
         """
 

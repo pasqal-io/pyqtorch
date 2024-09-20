@@ -119,6 +119,7 @@ def apply_operator_dm(
         state: State to operate on.
         operator: Tensor to contract over 'state'.
         qubit_support: Tuple of qubits on which to apply the 'operator' to.
+        diagonal: Whether operator is diagonal or not.
 
     Returns:
         DensityMatrix: The resulting density matrix after applying the operator.

@@ -113,6 +113,7 @@ class RZ(Parametric):
     Attributes:
         param_name: Name of parameters.
         parse_values: Method defining how to handle the values dictionary input.
+        diagonal: If true, the diagonal form of the operator is applied.
     """
 
     def __init__(
@@ -128,6 +129,7 @@ class RZ(Parametric):
             target: Target qubit.
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
+            diagonal: If true, the diagonal form of the operator is applied.
         """
         super().__init__(
             ZDIAG if diagonal else "Z",
@@ -161,6 +163,7 @@ class PHASE(Parametric):
     Attributes:
         param_name: Name of parameters.
         parse_values: Method defining how to handle the values dictionary input.
+        diagonal: If true, the diagonal form of the operator is applied.
     """
 
     def __init__(
@@ -176,6 +179,7 @@ class PHASE(Parametric):
             target: Target qubit.
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
+            diagonal: If true, the diagonal form of the operator is applied.
         """
         super().__init__(
             "I" if not diagonal else IDIAG, target, param_name, noise=noise
@@ -350,6 +354,7 @@ class CRZ(ControlledRotationGate):
             target: Target qubit.
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
+            diagonal: If true, the diagonal form of the operator is applied.
         """
         super().__init__(
             ZDIAG if diagonal else "Z",
@@ -406,6 +411,7 @@ class CPHASE(ControlledRotationGate):
             target: Target qubit.
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
+            diagonal: If true, the diagonal form of the operator is applied.
         """
         super().__init__(
             IDIAG if diagonal else "I",
