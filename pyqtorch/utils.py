@@ -245,7 +245,7 @@ def is_diag_batched(H: Operator, atol: Tensor = ATOL, batch_dim: int = -1) -> bo
             [is_diag(H[..., i], atol) for i in range(H.shape[batch_dim])],
             device=H.device,
         )
-        return bool(torch.prod(diag_check))
+        return bool(torch.prod(diag_check).item())
     else:
         return is_diag(H, atol)
 
