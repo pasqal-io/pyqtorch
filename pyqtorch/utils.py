@@ -752,8 +752,7 @@ def is_parametric(operation: pyq.Sequence) -> bool:
     for m in operation.modules():
         if isinstance(m, (pyq.Scale, Parametric)):
             params.append(m.param_name)
-
     res = False
-    if any(isinstance(p, str) for p in params):
+    if any(isinstance(p, (str, pyq.ConcretizedCallable)) for p in params):
         res = True
     return res

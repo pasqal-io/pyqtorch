@@ -5,6 +5,7 @@ from logging import getLogger
 from typing import Any, Tuple
 
 from numpy.typing import ArrayLike, DTypeLike
+from torch import Tensor
 
 logger = getLogger(__name__)
 
@@ -74,8 +75,8 @@ class ConcretizedCallable:
 
     def __init__(
         self,
-        call_name: str,
-        abstract_args: list[str | float | int | complex | ConcretizedCallable],
+        call_name: str = "",
+        abstract_args: list[str | float | int | complex | ConcretizedCallable] = ["x"],
         instruction_mapping: dict[str, Tuple[str, str]] = dict(),
         engine_name: str = "torch",
         device: str = "cpu",
@@ -115,13 +116,32 @@ class ConcretizedCallable:
         for symbol_or_numeric in self.abstract_args:
             if isinstance(symbol_or_numeric, ConcretizedCallable):
                 arraylike_args.append(symbol_or_numeric(inputs))
-            if isinstance(symbol_or_numeric, (float, int)):
+            if isinstance(symbol_or_numeric, (float, int, Tensor)):
                 arraylike_args.append(
                     self.arraylike_fn(symbol_or_numeric, device=self.device)
                 )
             elif isinstance(symbol_or_numeric, str):
                 arraylike_args.append(inputs[symbol_or_numeric])
         return self.engine_call(*arraylike_args)  # type: ignore[misc]
+
+    @classmethod
+    def _get_independent_args(cls, cc: ConcretizedCallable) -> set:
+        out: set = set()
+        if len(cc.abstract_args) == 1 and isinstance(cc.abstract_args[0], str):
+            return set([cc.abstract_args[0]])
+        else:
+            for arg in cc.abstract_args:
+                if isinstance(arg, ConcretizedCallable):
+                    res = cls._get_independent_args(arg)
+                    out = out.union(res)
+                else:
+                    if isinstance(arg, str):
+                        out.add(arg)
+        return out
+
+    @property
+    def independent_args(self) -> list:
+        return list(self._get_independent_args(self))
 
     def __call__(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
         return self.evaluate(inputs)
@@ -175,6 +195,9 @@ class ConcretizedCallable:
         self, other: str | int | float | ConcretizedCallable
     ) -> ConcretizedCallable:
         return ConcretizedCallable("div", [other, self])
+
+    def __repr__(self) -> str:
+        return f"{self.call_name}({self.abstract_args})"
 
     def __neg__(self) -> ConcretizedCallable:
         return -1 * self

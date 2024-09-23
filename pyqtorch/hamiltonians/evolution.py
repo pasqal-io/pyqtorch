@@ -12,7 +12,8 @@ from torch.nn import ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
-from pyqtorch.embed import Embedding
+from pyqtorch.composite import Scale
+from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.primitives import Primitive
 from pyqtorch.quantum_operation import QuantumOperation
 from pyqtorch.time_dependent.sesolve import sesolve
@@ -142,9 +143,10 @@ class HamiltonianEvolution(Sequence):
     def __init__(
         self,
         generator: TGenerator,
-        time: Tensor | str,
+        time: Tensor | str | ConcretizedCallable,
         qubit_support: Tuple[int, ...] | None = None,
         cache_length: int = 1,
+        duration: float | Tensor = 1.0,
         steps: int = 100,
         solver=SolverType.DP5_SE,
     ):
@@ -160,6 +162,19 @@ class HamiltonianEvolution(Sequence):
 
         self.solver_type = solver
         self.steps = steps
+        self.duration = duration
+        self.is_time_dependent = None
+
+        if (
+            isinstance(time, str)
+            or isinstance(time, Tensor)
+            or isinstance(time, ConcretizedCallable)
+        ):
+            self.time = time
+        else:
+            raise ValueError("time should be passed as str or tensor.")
+
+        self.has_time_param = self._has_time_param(generator)
 
         if isinstance(generator, Tensor):
             if qubit_support is None:
@@ -185,6 +200,7 @@ class HamiltonianEvolution(Sequence):
                     "Taking support from generator and ignoring qubit_support input."
                 )
             qubit_support = generator.qubit_support
+
             if is_parametric(generator):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
@@ -204,11 +220,6 @@ class HamiltonianEvolution(Sequence):
             )
         super().__init__(generator)
         self._qubit_support = qubit_support  # type: ignore
-
-        if isinstance(time, str) or isinstance(time, Tensor):
-            self.time = time
-        else:
-            raise ValueError("time should be passed as str or tensor.")
 
         logger.debug("Hamiltonian Evolution initialized")
         if logger.isEnabledFor(logging.DEBUG):
@@ -245,6 +256,22 @@ class HamiltonianEvolution(Sequence):
     @property
     def param_name(self) -> Tensor | str:
         return self.time
+
+    def _has_time_param(self, generator: TGenerator) -> bool:
+        from pyqtorch.primitives import Parametric
+
+        res = False
+        if isinstance(self.time, (Tensor)):
+            return res
+        else:
+            if isinstance(generator, Sequence):
+                for m in generator.modules():
+                    if isinstance(m, (Scale, Parametric)):
+                        if self.time in getattr(m.param_name, "independent_args", []):
+                            res = True
+                        elif m.param_name == self.time:
+                            res = True
+        return res
 
     def _symbolic_generator(
         self,
@@ -341,20 +368,27 @@ class HamiltonianEvolution(Sequence):
     ) -> State:
         n_qubits = len(state.shape) - 1
         batch_size = state.shape[-1]
-        t_grid = torch.linspace(0, float(self.time), self.steps)
+        t_grid = torch.linspace(0, float(self.duration), self.steps)
 
-        values.update({embedding.tparam_name: torch.tensor(0.0)})  # type: ignore [dict-item]
-        embedded_params = embedding(values)
+        if embedding is not None:
+            values.update({embedding.tparam_name: torch.tensor(0.0)})  # type: ignore [dict-item]
+            embedded_params = embedding(values)
+        else:
+            embedded_params = values
 
         def Ht(t: torch.Tensor) -> torch.Tensor:
             """Accepts a value 't' for time and returns
             a (2**n_qubits, 2**n_qubits) Hamiltonian evaluated at time 't'.
             """
-            # We use the origial embedded params and return a new dict
+            # We use the original embedded params and return a new dict
             # where we reembedded all parameters depending on time with value 't'
-            reembedded_time_values = embedding.reembed_tparam(
-                embedded_params, torch.as_tensor(t)
-            )
+            if embedding is not None:
+                reembedded_time_values = embedding.reembed_tparam(
+                    embedded_params, torch.as_tensor(t)
+                )
+            else:
+                values[self.time] = torch.as_tensor(t)
+                reembedded_time_values = values
             return (
                 self.generator[0].tensor(reembedded_time_values, embedding).squeeze(2)
             )
@@ -388,8 +422,10 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The transformed state.
         """
-        if embedding is not None and getattr(embedding, "tparam_name", None):
-            return self._forward_time(state, values, embedding)
+        if self.has_time_param or (
+            embedding is not None and getattr(embedding, "tparam_name", None)
+        ):
+            return self._forward_time(state, values, embedding)  # type: ignore [arg-type]
 
         else:
             return self._forward(state, values, embedding)
@@ -420,10 +456,18 @@ class HamiltonianEvolution(Sequence):
             evolved_op = self._cache_hamiltonian_evo[values_cache_key]
         else:
             hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
-            time_evolution: torch.Tensor = (
-                values[self.time] if isinstance(self.time, str) else self.time
-            )  # If `self.time` is a string / hence, a Parameter,
-            # we expect the user to pass it in the `values` dict
+            # time_evolution: torch.Tensor = (
+            #     values[self.time] if isinstance(self.time, str) else self.time
+            # )  # If `self.time` is a string / hence, a Parameter,
+            # # we expect the user to pass it in the `values` dict
+
+            if isinstance(self.time, str):
+                time_evolution = values[self.time]
+            elif isinstance(self.time, ConcretizedCallable):
+                time_evolution = self.time(values)
+            else:
+                time_evolution = self.time
+
             evolved_op = evolve(hamiltonian, time_evolution)
             nb_cached = len(self._cache_hamiltonian_evo)
 
