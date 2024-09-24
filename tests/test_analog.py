@@ -319,7 +319,8 @@ def test_timedependent(
     )
     hamiltonian_evolution = pyq.HamiltonianEvolution(
         generator=hamevo_generator,
-        time=torch.as_tensor(duration),
+        time=tparam,
+        duration=duration,
         steps=n_steps,
         solver=ode_solver,
     )

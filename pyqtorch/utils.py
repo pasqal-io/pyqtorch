@@ -218,9 +218,7 @@ def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     Returns:
         True if diagonal, else False.
     """
-    m = H.shape[0]
-    p, q = H.stride()
-    offdiag_view = torch.as_strided(H[:, 1:], (m - 1, m), (p + q, q))
+    offdiag_view = H - torch.diag(torch.diag(H))
     return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)) == 0
 
 
