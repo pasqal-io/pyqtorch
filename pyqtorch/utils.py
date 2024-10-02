@@ -754,3 +754,10 @@ def is_parametric(operation: pyq.Sequence) -> bool:
     if any(isinstance(p, (str, pyq.ConcretizedCallable)) for p in params):
         res = True
     return res
+
+
+def heaviside(x: Tensor, _: Tensor) -> Tensor:
+    b = torch.zeros(2)
+    b[0] = x - 0.0
+    a = torch.clamp(1000 * torch.max(b), torch.tensor(0.0), torch.tensor(1.0))
+    return a

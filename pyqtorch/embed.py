@@ -22,7 +22,7 @@ DEFAULT_JAX_MAPPING = {
     "sub": ("jax.numpy", "subtract"),
     "div": ("jax.numpy", "divide"),
 }
-DEFAULT_TORCH_MAPPING: dict = dict()
+DEFAULT_TORCH_MAPPING = {"hs": ("pyqtorch.utils", "heaviside")}
 DEFAULT_NUMPY_MAPPING = {
     "mul": ("numpy", "multiply"),
     "sub": ("numpy", "subtract"),
