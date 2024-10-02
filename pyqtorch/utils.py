@@ -757,7 +757,6 @@ def is_parametric(operation: pyq.Sequence) -> bool:
 
 
 def heaviside(x: Tensor, _: Tensor) -> Tensor:
-    b = torch.zeros(2)
-    b[0] = x - 0.0
-    a = torch.clamp(1000 * torch.max(b), torch.tensor(0.0), torch.tensor(1.0))
-    return a
+    a = torch.zeros(2)
+    a[0] = x
+    return torch.clamp(1000 * torch.max(a), torch.tensor(0.0), torch.tensor(1.0))
