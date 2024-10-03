@@ -456,10 +456,6 @@ class HamiltonianEvolution(Sequence):
             evolved_op = self._cache_hamiltonian_evo[values_cache_key]
         else:
             hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
-            # time_evolution: torch.Tensor = (
-            #     values[self.time] if isinstance(self.time, str) else self.time
-            # )  # If `self.time` is a string / hence, a Parameter,
-            # # we expect the user to pass it in the `values` dict
 
             if isinstance(self.time, str):
                 time_evolution = values[self.time]

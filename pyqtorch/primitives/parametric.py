@@ -6,7 +6,7 @@ from typing import Any, Tuple
 import torch
 from torch import Tensor
 
-from pyqtorch.embed import ConcretizedCallable, Embedding
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import (
     OPERATIONS_DICT,
     _jacobian,
@@ -34,7 +34,7 @@ class Parametric(QuantumOperation):
         self,
         generator: str | Tensor,
         qubit_support: int | tuple[int, ...] | Support,
-        param_name: str | int | float | torch.Tensor | ConcretizedCallable = "",
+        param_name: str | int | float | torch.Tensor = "",
         noise: NoiseProtocol | None = None,
     ):
         """Initializes Parametric.
@@ -105,20 +105,6 @@ class Parametric(QuantumOperation):
                 torch.tensor(self.param_name, device=self.device, dtype=self.dtype)
             )
 
-        def parse_concretized_callable(
-            values: dict[str, Tensor] | Tensor = dict(),
-            embedding: Embedding | None = None,
-        ) -> Tensor:
-            """Evaluate ConcretizedCallable object with given values.
-
-            Arguments:
-                values: A dict containing param_name:torch.Tensor pairs
-            Returns:
-                A Torch Tensor with which to evaluate the Parametric Gate.
-            """
-            # self.param_name will be a torch.Tensor
-            return Parametric._expand_values(self.param_name(values))  # type: ignore [operator]
-
         if param_name == "":
             self.parse_values = parse_tensor
             self.param_name = self.param_name
@@ -126,8 +112,6 @@ class Parametric(QuantumOperation):
             self.parse_values = parse_values
         elif isinstance(param_name, (float, int, torch.Tensor)):
             self.parse_values = parse_constant
-        elif isinstance(param_name, ConcretizedCallable):
-            self.parse_values = parse_concretized_callable
 
         # Parametric is defined by generator operation and a function
         # The function will use parsed parameter values to compute the unitary
