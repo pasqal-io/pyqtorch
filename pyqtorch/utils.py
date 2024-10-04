@@ -744,19 +744,45 @@ class SolverType(StrEnum):
 
 
 def is_parametric(operation: pyq.Sequence) -> bool:
+    """Check if operation is parametric.
+
+    Args:
+        operation (pyq.Sequence): checked operation
+
+    Returns:
+        bool: True if operation is parametric, False otherwise
+    """
+
     from pyqtorch.primitives import Parametric
 
-    params = []
+    res = False
     for m in operation.modules():
         if isinstance(m, (pyq.Scale, Parametric)):
-            params.append(m.param_name)
-    res = False
-    if any(isinstance(p, (str, pyq.ConcretizedCallable)) for p in params):
-        res = True
+            if isinstance(m.param_name, (str, pyq.ConcretizedCallable)):
+                res = True
+                break
     return res
 
 
-def heaviside(x: Tensor, _: Tensor) -> Tensor:
-    a = torch.zeros(2)
-    a[0] = x
-    return torch.clamp(1000 * torch.max(a), torch.tensor(0.0), torch.tensor(1.0))
+def heaviside(x: Tensor, _: Any = None, slope: float = 1000.0) -> Tensor:
+    """Torch autograd-compatible Heaviside function implementation.
+
+    Args:
+        x (Tensor): function argument
+        _ (Any): unused argument left for signature compatibility reasons
+        slope (float, optional): slope of Heaviside function (theoretically should be $infty$).
+                                 Defaults to 1000.0.
+
+    Returns:
+        Tensor: function value
+    """
+
+    if x.ndim > 1:
+        raise ValueError("Argument tensor must be 0-d or 1-d.")
+
+    shape = (1, 2) if x.ndim == 0 else (len(x), 2)
+    a = torch.zeros(shape)
+    a[:, 0] = x
+    return torch.clamp(
+        slope * torch.max(a, dim=1)[0], torch.tensor(0.0), torch.tensor(1.0)
+    )

@@ -174,6 +174,10 @@ class HamiltonianEvolution(Sequence):
         else:
             raise ValueError("time should be passed as str or tensor.")
 
+        print()
+        print("generator:")
+        print(generator)
+
         self.has_time_param = self._has_time_param(generator)
 
         if isinstance(generator, Tensor):
@@ -261,15 +265,20 @@ class HamiltonianEvolution(Sequence):
         from pyqtorch.primitives import Parametric
 
         res = False
-        if isinstance(self.time, (Tensor)):
+        if isinstance(self.time, Tensor):
             return res
         else:
-            if isinstance(generator, Sequence):
+            print("---- genrator:", generator, type(generator))
+            if isinstance(generator, (Sequence, QuantumOperation)):
                 for m in generator.modules():
+                    print("module:")
+                    print(m)
                     if isinstance(m, (Scale, Parametric)):
                         if self.time in getattr(m.param_name, "independent_args", []):
+                            # param_name is a ConcretizedCallable object
                             res = True
                         elif m.param_name == self.time:
+                            # param_name is a string
                             res = True
         return res
 
