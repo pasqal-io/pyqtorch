@@ -9,6 +9,7 @@ import torch
 from torch import Tensor
 
 import pyqtorch as pyq
+from pyqtorch import ConcretizedCallable
 from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
@@ -339,4 +340,20 @@ def test_parametric_constantparam(gate: Parametric) -> None:
     assert torch.allclose(
         gate(target, "theta")(state, {"theta": param_val}),
         gate(target, param_val)(state),
+    )
+
+
+@pytest.mark.parametrize("gate", [pyq.RX, pyq.RY, pyq.RZ])
+def test_parametric_callableparam(gate: Parametric) -> None:
+    n_qubits = 4
+    max_batch_size = 10
+    target = torch.randint(0, n_qubits, (1,)).item()
+    size = torch.randint(1, max_batch_size, (1,)).item()
+    param_val_x = torch.rand(size)
+    param_val_y = torch.rand(size)
+    state = pyq.random_state(n_qubits)
+    param = ConcretizedCallable("add", ["x", "y"])
+    assert torch.allclose(
+        gate(target, param)(state, {"x": param_val_x, "y": param_val_y}),
+        gate(target, param_val_x + param_val_y)(state),
     )
