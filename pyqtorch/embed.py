@@ -93,6 +93,16 @@ class ConcretizedCallable:
         self._dtype = dtype
         self.engine_call = None
         engine = None
+        if not all(
+            [
+                isinstance(arg, (str, float, int, complex, Tensor, ConcretizedCallable))
+                for arg in abstract_args
+            ]
+        ):
+            raise TypeError(
+                "Only str, float, int, complex, Tensor or ConcretizedCallable type elements \
+                are supported for abstract_args"
+            )
         try:
             engine_name, fn_name = ARRAYLIKE_FN_MAP[engine_name]
             engine = import_module(engine_name)

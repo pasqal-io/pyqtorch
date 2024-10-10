@@ -49,6 +49,11 @@ class Parametric(QuantumOperation):
         generator_operation = (
             OPERATIONS_DICT[generator] if isinstance(generator, str) else generator
         )
+        if not isinstance(param_name, (str, int, float, Tensor, ConcretizedCallable)):
+            raise TypeError(
+                "Only str, int, float, Tensor or ConcretizedCallable types \
+                are supported for param_name"
+            )
         self.param_name = param_name
 
         def parse_values(
@@ -116,7 +121,7 @@ class Parametric(QuantumOperation):
             Returns:
                 A Torch Tensor with which to evaluate the Parametric Gate.
             """
-            # self.param_name will be a torch.Tensor
+            # self.param_name will be a ConcretizedCallable
             return Parametric._expand_values(self.param_name(values))  # type: ignore [operator]
 
         if param_name == "":

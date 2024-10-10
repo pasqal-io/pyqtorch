@@ -165,14 +165,12 @@ class HamiltonianEvolution(Sequence):
         self.duration = duration
         self.is_time_dependent = None
 
-        if (
-            isinstance(time, str)
-            or isinstance(time, Tensor)
-            or isinstance(time, ConcretizedCallable)
-        ):
+        if isinstance(time, (str, Tensor, ConcretizedCallable)):
             self.time = time
         else:
-            raise ValueError("time should be passed as str or tensor.")
+            raise ValueError(
+                "time should be passed as str, Tensor or ConcretizedCallable."
+            )
 
         self.has_time_param = self._has_time_param(generator)
 

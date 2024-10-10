@@ -130,8 +130,8 @@ class AdjointExpectation(Function):
                         grad_out * 2 * inner_prod(ctx.projected_state, mu).real
                     )
 
-                if values[op.param_name].requires_grad:
-                    grads_dict[op.param_name] = grad_out * 2 * -values[op.param_name]
+                if values[op.param_name].requires_grad:  # type: ignore [index]
+                    grads_dict[op.param_name] = grad_out * 2 * -values[op.param_name]  # type: ignore [index]
                 ctx.projected_state = apply_operator(
                     ctx.projected_state,
                     op.dagger(values, ctx.embedding),

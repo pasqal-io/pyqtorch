@@ -37,7 +37,7 @@ class Scale(Sequence):
     def __init__(
         self,
         operations: Union[Primitive, Sequence, Add],
-        param_name: str | Tensor,
+        param_name: str | float | int | Tensor | ConcretizedCallable,
     ):
         """
         Initializes a Scale object.
@@ -48,6 +48,11 @@ class Scale(Sequence):
         """
         if not isinstance(operations, (Primitive, Sequence, Add)):
             raise ValueError("Scale only supports a single operation, Sequence or Add.")
+        if not isinstance(param_name, (str, int, float, Tensor, ConcretizedCallable)):
+            raise TypeError(
+                "Only str, int, float, Tensor or ConcretizedCallable types \
+                are supported for param_name"
+            )
         super().__init__([operations])
         self.param_name = param_name
 
@@ -127,7 +132,7 @@ class Scale(Sequence):
             Converted Scale.
         """
         super().to(*args, **kwargs)
-        if not isinstance(self.param_name, str):
+        if not isinstance(self.param_name, (str, float, int)):
             self.param_name = self.param_name.to(*args, **kwargs)
 
         return self
