@@ -409,6 +409,13 @@ def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
             "x",
             True,
         ),
+        (
+            Add(
+                [Scale(X(1), ConcretizedCallable("add", ["y", "x"])), Scale(X(1), "z")]
+            ),
+            "t",
+            False,
+        ),
     ],
 )
 def test_hamevo_is_time_dependent_generator(generator, time_param, result) -> None:
