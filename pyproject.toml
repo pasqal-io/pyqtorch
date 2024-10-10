@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "pyqtorch"
 description = "An efficient, large-scale emulator designed for quantum machine learning, seamlessly integrated with a PyTorch backend. Please refer to https://pyqtorch.readthedocs.io/en/latest/ for setup and usage info, along with the full documentation."
 readme = "README.md"
-version = "1.4.9"
+version = "1.5.0"
 requires-python = ">=3.8,<3.13"
 license = { text = "Apache 2.0" }
 keywords = ["quantum"]
@@ -117,7 +117,7 @@ serve = "mkdocs serve --dev-addr localhost:8000"
 
 [tool.ruff]
 lint.select = ["E", "F", "I", "Q"]
-lint.extend-ignore = ["F841"]
+lint.extend-ignore = ["F841", "E731"]
 line-length = 100
 
 [tool.ruff.lint.isort]

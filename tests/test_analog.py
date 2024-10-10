@@ -8,6 +8,7 @@ import torch
 from helpers import calc_mat_vec_wavefunction, random_pauli_hamiltonian
 
 import pyqtorch as pyq
+from pyqtorch import RX, Add, ConcretizedCallable, HamiltonianEvolution, Scale, X
 from pyqtorch.composite import Sequence
 from pyqtorch.hamiltonians import GeneratorType
 from pyqtorch.matrices import (
@@ -319,7 +320,8 @@ def test_timedependent(
     )
     hamiltonian_evolution = pyq.HamiltonianEvolution(
         generator=hamevo_generator,
-        time=torch.as_tensor(duration),
+        time=tparam,
+        duration=duration,
         steps=n_steps,
         solver=ode_solver,
     )
@@ -388,3 +390,34 @@ def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
     apply_hamevo_and_compare_expected(psi, values)
     assert len(hamevo._cache_hamiltonian_evo) == 2
     assert values_cache_key in previous_cache_keys
+
+
+@pytest.mark.parametrize(
+    "generator, time_param, result",
+    [
+        (RX(0, "x"), "x", True),
+        (RX(1, 0.5), "y", False),
+        (RX(0, "x"), "y", False),
+        (RX(0, "x"), torch.tensor(0.5), False),
+        (RX(0, torch.tensor(0.5)), torch.tensor(0.5), False),
+        (Scale(X(1), "y"), "y", True),
+        (Scale(X(1), 0.2), "x", False),
+        (
+            Add(
+                [Scale(X(1), ConcretizedCallable("mul", ["y", "x"])), Scale(X(1), "z")]
+            ),
+            "x",
+            True,
+        ),
+        (
+            Add(
+                [Scale(X(1), ConcretizedCallable("add", ["y", "x"])), Scale(X(1), "z")]
+            ),
+            "t",
+            False,
+        ),
+    ],
+)
+def test_hamevo_is_time_dependent_generator(generator, time_param, result) -> None:
+    hamevo = HamiltonianEvolution(generator, time_param)
+    assert hamevo.has_time_param == result

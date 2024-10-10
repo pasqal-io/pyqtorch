@@ -10,7 +10,7 @@ import torch.autograd.gradcheck
 from torch.nn import Module
 
 import pyqtorch as pyq
-from pyqtorch.embed import ConcretizedCallable, Embedding
+from pyqtorch.embed import ConcretizedCallable, Embedding, cos, log, sin, sqrt
 from pyqtorch.primitives import Primitive
 from pyqtorch.utils import ATOL_embedding
 
@@ -226,3 +226,8 @@ def test_reembedding_forward() -> None:
     )
     wf = custom(state=pyq.zero_state(2), values={"t": torch.rand(1)}, embedding=embed)
     assert not torch.any(torch.isnan(wf))
+
+
+def test_get_independent_args() -> None:
+    expr: ConcretizedCallable = sqrt(sin("x")) + cos("r") * (1.0 / log("z") * "y")
+    assert set(expr.independent_args) == {"x", "y", "z", "r"}

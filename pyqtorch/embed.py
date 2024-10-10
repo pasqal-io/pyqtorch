@@ -5,6 +5,7 @@ from logging import getLogger
 from typing import Any, Tuple
 
 from numpy.typing import ArrayLike, DTypeLike
+from torch import Tensor
 
 logger = getLogger(__name__)
 
@@ -21,7 +22,7 @@ DEFAULT_JAX_MAPPING = {
     "sub": ("jax.numpy", "subtract"),
     "div": ("jax.numpy", "divide"),
 }
-DEFAULT_TORCH_MAPPING: dict = dict()
+DEFAULT_TORCH_MAPPING = {"hs": ("pyqtorch.utils", "heaviside")}
 DEFAULT_NUMPY_MAPPING = {
     "mul": ("numpy", "multiply"),
     "sub": ("numpy", "subtract"),
@@ -74,8 +75,8 @@ class ConcretizedCallable:
 
     def __init__(
         self,
-        call_name: str,
-        abstract_args: list[str | float | int],
+        call_name: str = "",
+        abstract_args: list[str | float | int | complex | ConcretizedCallable] = ["x"],
         instruction_mapping: dict[str, Tuple[str, str]] = dict(),
         engine_name: str = "torch",
         device: str = "cpu",
@@ -92,6 +93,16 @@ class ConcretizedCallable:
         self._dtype = dtype
         self.engine_call = None
         engine = None
+        if not all(
+            [
+                isinstance(arg, (str, float, int, complex, Tensor, ConcretizedCallable))
+                for arg in abstract_args
+            ]
+        ):
+            raise TypeError(
+                "Only str, float, int, complex, Tensor or ConcretizedCallable type elements \
+                are supported for abstract_args"
+            )
         try:
             engine_name, fn_name = ARRAYLIKE_FN_MAP[engine_name]
             engine = import_module(engine_name)
@@ -113,7 +124,9 @@ class ConcretizedCallable:
     def evaluate(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
         arraylike_args = []
         for symbol_or_numeric in self.abstract_args:
-            if isinstance(symbol_or_numeric, (float, int)):
+            if isinstance(symbol_or_numeric, ConcretizedCallable):
+                arraylike_args.append(symbol_or_numeric(inputs))
+            if isinstance(symbol_or_numeric, (float, int, Tensor)):
                 arraylike_args.append(
                     self.arraylike_fn(symbol_or_numeric, device=self.device)
                 )
@@ -121,8 +134,83 @@ class ConcretizedCallable:
                 arraylike_args.append(inputs[symbol_or_numeric])
         return self.engine_call(*arraylike_args)  # type: ignore[misc]
 
+    @classmethod
+    def _get_independent_args(cls, cc: ConcretizedCallable) -> set:
+        out: set = set()
+        if len(cc.abstract_args) == 1 and isinstance(cc.abstract_args[0], str):
+            return set([cc.abstract_args[0]])
+        else:
+            for arg in cc.abstract_args:
+                if isinstance(arg, ConcretizedCallable):
+                    res = cls._get_independent_args(arg)
+                    out = out.union(res)
+                else:
+                    if isinstance(arg, str):
+                        out.add(arg)
+        return out
+
+    @property
+    def independent_args(self) -> list:
+        return list(self._get_independent_args(self))
+
     def __call__(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
         return self.evaluate(inputs)
+
+    def __mul__(
+        self, other: str | int | float | complex | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("mul", [self, other])
+
+    def __rmul__(
+        self, other: str | int | float | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("mul", [other, self])
+
+    def __add__(
+        self, other: str | int | float | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("add", [self, other])
+
+    def __radd__(
+        self, other: str | int | float | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("add", [other, self])
+
+    def __sub__(
+        self, other: str | int | float | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("sub", [self, other])
+
+    def __rsub__(
+        self, other: str | int | float | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("sub", [other, self])
+
+    def __pow__(
+        self, other: str | int | float | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("pow", [self, other])
+
+    def __rpow__(
+        self, other: str | int | float | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("pow", [other, self])
+
+    def __truediv__(
+        self, other: str | int | float | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("div", [self, other])
+
+    def __rtruediv__(
+        self, other: str | int | float | ConcretizedCallable
+    ) -> ConcretizedCallable:
+        return ConcretizedCallable("div", [other, self])
+
+    def __repr__(self) -> str:
+        return f"{self.call_name}({self.abstract_args})"
+
+    def __neg__(self) -> ConcretizedCallable:
+        return -1 * self
 
     @property
     def device(self) -> str:
@@ -148,6 +236,30 @@ def init_param(
         return engine.rand(1, requires_grad=trainable, device=device)
     elif engine_name == "numpy":
         return engine.random.uniform(0, 1)
+
+
+def sin(x: str | ConcretizedCallable):
+    return ConcretizedCallable("sin", [x])
+
+
+def cos(x: str | ConcretizedCallable):
+    return ConcretizedCallable("cos", [x])
+
+
+def log(x: str | ConcretizedCallable):
+    return ConcretizedCallable("log", [x])
+
+
+def tan(x: str | ConcretizedCallable):
+    return ConcretizedCallable("tan", [x])
+
+
+def tanh(x: str | ConcretizedCallable):
+    return ConcretizedCallable("tanh", [x])
+
+
+def sqrt(x: str | ConcretizedCallable):
+    return ConcretizedCallable("sqrt", [x])
 
 
 class Embedding:
