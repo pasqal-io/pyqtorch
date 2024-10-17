@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+import math
 from collections import Counter
-
-import torch
 
 
 def shannon_entropy(counter: Counter) -> float:
-    return float(-torch.sum([count * torch.log(count) for count in counter.values()]))
+    return float(-sum([count * math.log(count) for count in counter.values()]))
 
 
 def js_divergence(counter_p: Counter, counter_q: Counter) -> float:
@@ -24,8 +23,8 @@ def js_divergence(counter_p: Counter, counter_q: Counter) -> float:
         float: The Jensen-Shannon divergence between counter_p and counter_q.
     """
     # Normalise counters
-    normalisation_p = torch.sum([count for count in counter_p.values()])
-    normalisation_q = torch.sum([count for count in counter_q.values()])
+    normalisation_p = sum([count for count in counter_p.values()])
+    normalisation_q = sum([count for count in counter_q.values()])
     counter_p = Counter({k: v / normalisation_p for k, v in counter_p.items()})
     counter_q = Counter({k: v / normalisation_q for k, v in counter_q.items()})
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from collections import Counter
 
 import pytest
@@ -49,3 +50,28 @@ def test_bitstring_corruption_all_bitflips(
         torch.ones(1),
         atol=1e-3,
     )
+
+
+@pytest.mark.parametrize(
+    "counters, n_qubits",
+    [
+        (
+            [Counter({"00": 27, "01": 23, "10": 24, "11": 26})],
+            2,
+        ),
+        (
+            [Counter({"001": 27, "010": 23, "101": 24, "110": 26})],
+            3,
+        ),
+    ],
+)
+def test_bitstring_corruption_mixed_bitflips(counters: list, n_qubits: int) -> None:
+    n_shots = 100
+    error_probability = random.random()
+    noise_matrix = create_noise_matrix(WhiteNoise.UNIFORM, n_shots, n_qubits)
+    err_idx = torch.as_tensor(noise_matrix < error_probability)
+    sample = sample_to_matrix(counters[0])
+    corrupted_counters = [bs_corruption(err_idx=err_idx, sample=sample)]
+    for noiseless, noisy in zip(counters, corrupted_counters):
+        assert sum(noisy.values()) == n_shots
+        assert js_divergence(noiseless, noisy) >= 0.0
