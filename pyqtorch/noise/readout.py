@@ -74,7 +74,7 @@ def sample_to_matrix(sample: dict) -> Tensor:
     A helper function that maps a sample dict to a bit string array.
 
     Args:
-        sample: A dictionary with bit stings as keys and values
+        sample: A dictionary with bitstrings as keys and values
         as their counts.
 
     Returns: A torch.Tensor of bit strings n_shots x n_qubits.
@@ -196,6 +196,16 @@ class ReadoutNoise:
             ), "The error probabilities matrix needs to be n_qubits x n_qubits."
         self.noise_matrix = noise_matrix
 
+    def create_noise_matrix(self, n_shots: int) -> Tensor:
+        if self.noise_matrix is None:
+            # assumes that all bits can be flipped independently of each other
+            noise_matrix = create_noise_matrix(
+                self.noise_distribution, n_shots, self.n_qubits
+            )
+        else:
+            noise_matrix = self.noise_matrix
+        return noise_matrix
+
     def apply(self, counters: list[Counter], n_shots: int = 1000) -> list[Counter]:
         """Implements a simple readout error model for position-independent bit string.
 
@@ -206,15 +216,7 @@ class ReadoutNoise:
         Returns:
             list[Counter]: Samples of corrupted bit strings.
         """
-
-        if self.noise_matrix is None:
-            # assumes that all bits can be flipped independently of each other
-            noise_matrix = create_noise_matrix(
-                self.noise_distribution, n_shots, self.n_qubits
-            )
-        else:
-            noise_matrix = self.noise_matrix
-
+        noise_matrix = self.create_noise_matrix(n_shots)
         err_idx = torch.as_tensor(noise_matrix < self.error_probability)
 
         corrupted_bitstrings = []
