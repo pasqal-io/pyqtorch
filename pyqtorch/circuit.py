@@ -11,6 +11,7 @@ from torch.nn import Module, ParameterDict
 
 from pyqtorch.composite import Sequence
 from pyqtorch.embed import Embedding
+from pyqtorch.noise import ReadoutNoise
 from pyqtorch.utils import (
     DensityMatrix,
     DropoutMode,
@@ -24,11 +25,32 @@ logger = getLogger(__name__)
 
 
 class QuantumCircuit(Sequence):
-    """A QuantumCircuit defining a register / number of qubits of the full system."""
+    """A QuantumCircuit defining a register / number of qubits of the full system.
 
-    def __init__(self, n_qubits: int, operations: list[Module]):
+    Attributes:
+        n_qubits (int): Number of qubits.
+        operations (list[Module]): List of operations.
+        readout_noise (ReadoutNoise | None, optional): Readout noise
+            applied to samples. Defaults to None.
+    """
+
+    def __init__(
+        self,
+        n_qubits: int,
+        operations: list[Module],
+        readout_noise: ReadoutNoise | None = None,
+    ):
+        """Initializes QuantumCircuit.
+
+        Args:
+            n_qubits (int): Number of qubits.
+            operations (list[Module]): List of operations.
+            readout_noise (ReadoutNoise | None, optional): Readout noise
+                applied to samples. Defaults to None.
+        """
         super().__init__(operations)
         self.n_qubits = n_qubits
+        self.readout_noise = readout_noise
 
     def run(
         self,
@@ -80,9 +102,13 @@ class QuantumCircuit(Sequence):
                 probs = torch.abs(torch.pow(state, 2))
 
             probs = torch.pow(torch.abs(state), 2)
-            return list(
+            counters = list(
                 map(lambda p: sample_multinomial(p, self.n_qubits, n_shots), probs)
             )
+            if self.readout_noise is None:
+                return counters
+
+            return self.readout_noise.apply(counters, n_shots)
 
 
 class DropoutQuantumCircuit(QuantumCircuit):
@@ -96,10 +122,11 @@ class DropoutQuantumCircuit(QuantumCircuit):
         self,
         n_qubits: int,
         operations: list[Module],
+        readout_noise: ReadoutNoise | None = None,
         dropout_mode: DropoutMode = DropoutMode.ROTATIONAL,
         dropout_prob: float = 0.06,
     ):
-        super().__init__(n_qubits, operations)
+        super().__init__(n_qubits, operations, readout_noise)
         self.dropout_mode = dropout_mode
         self.dropout_prob = dropout_prob
 

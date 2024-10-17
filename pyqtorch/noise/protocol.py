@@ -14,6 +14,7 @@ class NoiseType(StrEnum):
     AMPLITUDE_DAMPING = "AmplitudeDamping"
     PHASE_DAMPING = "PhaseDamping"
     GENERALIZED_AMPLITUDE_DAMPING = "GeneralizedAmplitudeDamping"
+    READOUT = "Readout"
 
 
 @dataclass
@@ -151,6 +152,10 @@ class NoiseProtocol:
     @classmethod
     def generalized_amplitude_damping(cls, *args, **kwargs) -> NoiseProtocol:
         return cls(NoiseType.GENERALIZED_AMPLITUDE_DAMPING, *args, **kwargs)
+
+    @classmethod
+    def readout(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(NoiseType.READOUT, *args, **kwargs)
 
     def __repr__(self) -> str:
         if self.len == 1:
