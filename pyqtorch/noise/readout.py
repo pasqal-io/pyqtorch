@@ -196,7 +196,21 @@ class ReadoutNoise:
             ), "The error probabilities matrix needs to be n_qubits x n_qubits."
         self.noise_matrix = noise_matrix
 
-    def create_noise_matrix(self, n_shots: int) -> Tensor:
+    def create_noise_matrix(
+        self, n_shots: int, return_confusion: bool = False
+    ) -> Tensor | tuple[Tensor]:
+        """Create a noise matrix from a noise distribution if noise_matrix is None.
+
+        Also possibly return the confusion matrices if needed.
+
+        Args:
+            n_shots (int): Number of shots.
+            return_confusion (bool, optional): If True,
+             return the confusion matrices. Defaults to False.
+
+        Returns:
+            Tensor | tuple[Tensor]: The noise matrix and possibly the confusion ones too.
+        """
         if self.noise_matrix is None:
             # assumes that all bits can be flipped independently of each other
             noise_matrix = create_noise_matrix(
@@ -204,6 +218,11 @@ class ReadoutNoise:
             )
         else:
             noise_matrix = self.noise_matrix
+        if return_confusion:
+            confusion_matrices = create_confusion_matrices(
+                noise_matrix=noise_matrix, error_probability=self.error_probability
+            )
+            return noise_matrix, confusion_matrices
         return noise_matrix
 
     def apply(self, counters: list[Counter], n_shots: int = 1000) -> list[Counter]:
@@ -216,8 +235,8 @@ class ReadoutNoise:
         Returns:
             list[Counter]: Samples of corrupted bit strings.
         """
-        noise_matrix = self.create_noise_matrix(n_shots)
-        err_idx = torch.as_tensor(noise_matrix < self.error_probability)
+        noise_matrix = self.create_noise_matrix(n_shots, False)
+        err_idx = torch.as_tensor(noise_matrix < self.error_probability)  # type: ignore[operator]
 
         corrupted_bitstrings = []
         for counter in counters:
