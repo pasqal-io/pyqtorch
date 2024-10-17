@@ -6,12 +6,15 @@ from collections import Counter
 import pytest
 import torch
 
+from pyqtorch import QuantumCircuit, X
+from pyqtorch.noise import ReadoutNoise
 from pyqtorch.noise.readout import (
     WhiteNoise,
     bs_corruption,
     create_noise_matrix,
     sample_to_matrix,
 )
+from pyqtorch.primitives import Primitive
 from pyqtorch.utils_distributions import js_divergence
 
 
@@ -75,3 +78,36 @@ def test_bitstring_corruption_mixed_bitflips(counters: list, n_qubits: int) -> N
     for noiseless, noisy in zip(counters, corrupted_counters):
         assert sum(noisy.values()) == n_shots
         assert js_divergence(noiseless, noisy) >= 0.0
+
+
+@pytest.mark.flaky(max_runs=5)
+@pytest.mark.parametrize(
+    "error_probability, n_shots, list_ops",
+    [
+        (0.1, 100, [X(0), X(1)]),
+    ],
+)
+def test_readout_error_quantum_model(
+    error_probability: float,
+    n_shots: int,
+    list_ops: list[Primitive],
+) -> None:
+
+    n_qubits = max([max(op.target) for op in list_ops]) + 1
+    noiseless_samples: list[Counter] = QuantumCircuit(n_qubits, list_ops).sample(
+        n_shots=n_shots
+    )
+
+    readout = ReadoutNoise(n_qubits, error_probability=error_probability, seed=0)
+    noisy_samples: list[Counter] = QuantumCircuit(n_qubits, list_ops, readout).sample(
+        n_shots=n_shots
+    )
+
+    for noiseless, noisy in zip(noiseless_samples, noisy_samples):
+        assert sum(noiseless.values()) == sum(noisy.values()) == n_shots
+        assert js_divergence(noiseless, noisy) > 0.0
+        assert torch.allclose(
+            torch.tensor(1.0 - js_divergence(noiseless, noisy)),
+            torch.ones(1) - error_probability,
+            atol=1e-1,
+        )

@@ -163,8 +163,8 @@ class ReadoutNoise:
     def __init__(
         self,
         n_qubits: int,
-        seed: int | None = None,
         error_probability: float | None = None,
+        seed: int | None = None,
         noise_distribution: torch.distributions = WhiteNoise.UNIFORM,
         noise_matrix: Tensor | None = None,
     ) -> None:
