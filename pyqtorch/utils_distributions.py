@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-import torch
 from collections import Counter
+
+import torch
+
 
 def shannon_entropy(counter: Counter) -> float:
     return float(-torch.sum([count * torch.log(count) for count in counter.values()]))
+
 
 def js_divergence(counter_p: Counter, counter_q: Counter) -> float:
     """
@@ -27,7 +30,9 @@ def js_divergence(counter_p: Counter, counter_q: Counter) -> float:
     counter_q = Counter({k: v / normalisation_q for k, v in counter_q.items()})
 
     average_proba_counter = counter_p + counter_q
-    average_proba_counter = Counter({k: v / 2.0 for k, v in average_proba_counter.items()})
+    average_proba_counter = Counter(
+        {k: v / 2.0 for k, v in average_proba_counter.items()}
+    )
     average_entropy = shannon_entropy(average_proba_counter)
 
     entropy_p = shannon_entropy(counter_p)

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from collections import Counter
+from enum import Enum
 
 import torch
 from torch import Tensor
-from enum import Enum
 from torch.distributions import normal, poisson, uniform
+
 
 class WhiteNoise(Enum):
     """White noise distributions."""
@@ -140,14 +141,16 @@ def create_confusion_matrices(noise_matrix: Tensor, error_probability: float) ->
         column_tensor = noise_matrix[:, i]
         flip_proba = column_tensor[column_tensor < error_probability].mean().item()
         confusion_matrix = torch.tensor(
-            [[1.0 - flip_proba, flip_proba], [flip_proba, 1.0 - flip_proba]], dtype=torch.float64
+            [[1.0 - flip_proba, flip_proba], [flip_proba, 1.0 - flip_proba]],
+            dtype=torch.float64,
         )
         confusion_matrices.append(confusion_matrix)
     return torch.stack(confusion_matrices)
 
+
 class ReadoutNoise:
-    """ Simulate errors when sampling from a circuit.
-    
+    """Simulate errors when sampling from a circuit.
+
     Attributes:
         n_qubits (int): Number of qubits.
         seed (int | None, optional): Random seed value. Defaults to None.
@@ -158,13 +161,13 @@ class ReadoutNoise:
     """
 
     def __init__(
-            self, 
-            n_qubits: int, 
-            seed: int | None = None, 
-            error_probability: float | None = None, 
-            noise_distribution: torch.distributions = WhiteNoise.UNIFORM, 
-            noise_matrix: Tensor | None = None
-        ) -> None:
+        self,
+        n_qubits: int,
+        seed: int | None = None,
+        error_probability: float | None = None,
+        noise_distribution: torch.distributions = WhiteNoise.UNIFORM,
+        noise_matrix: Tensor | None = None,
+    ) -> None:
         """Initializes ReadoutNoise.
 
         Args:
@@ -172,15 +175,17 @@ class ReadoutNoise:
             seed (int | None, optional): Random seed value. Defaults to None.
             error_probability (float | None, optional): Uniform error probability of wrong
               readout at any position in the bit strings. Defaults to None.
-            noise_distribution (str, optional): Noise distribution type. Defaults to WhiteNoise.UNIFORM.
-            noise_matrix (Tensor | None, optional): An input noise matrix if known. Defaults to None.
+            noise_distribution (str, optional): Noise distribution type.
+              Defaults to WhiteNoise.UNIFORM.
+            noise_matrix (Tensor | None, optional): An input noise matrix if known.
+              Defaults to None.
         """
         self.n_qubits = n_qubits
         self.seed = seed
         self.error_probability = error_probability if error_probability else 0.1
-        self.noise_distribution = noise_distribution     
-        if not noise_matrix is None:
-            
+        self.noise_distribution = noise_distribution
+        if noise_matrix is not None:
+
             # check noise_matrix shape and values
             assert (
                 noise_matrix.shape[0] == noise_matrix.shape[1]
@@ -204,10 +209,12 @@ class ReadoutNoise:
 
         if self.noise_matrix is None:
             # assumes that all bits can be flipped independently of each other
-            noise_matrix = create_noise_matrix(self.noise_distribution, n_shots, self.n_qubits)
+            noise_matrix = create_noise_matrix(
+                self.noise_distribution, n_shots, self.n_qubits
+            )
         else:
             noise_matrix = self.noise_matrix
-        
+
         err_idx = torch.as_tensor(noise_matrix < self.error_probability)
 
         corrupted_bitstrings = []

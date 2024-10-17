@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from collections import Counter
+
 import pytest
 import torch
 
-from collections import Counter
-from pyqtorch.noise.readout import create_noise_matrix, WhiteNoise, sample_to_matrix, bs_corruption
+from pyqtorch.noise.readout import (
+    WhiteNoise,
+    bs_corruption,
+    create_noise_matrix,
+    sample_to_matrix,
+)
 from pyqtorch.utils_distributions import js_divergence
 
 
@@ -26,7 +32,10 @@ from pyqtorch.utils_distributions import js_divergence
     ],
 )
 def test_bitstring_corruption_all_bitflips(
-    error_probability: float, counters: list, exp_corrupted_counters: list, n_qubits: int
+    error_probability: float,
+    counters: list,
+    exp_corrupted_counters: list,
+    n_qubits: int,
 ) -> None:
     n_shots = 100
     noise_matrix = create_noise_matrix(WhiteNoise.UNIFORM, n_shots, n_qubits)
