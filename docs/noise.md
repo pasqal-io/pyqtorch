@@ -1,3 +1,5 @@
+## Digital Noise
+
 In the description of closed quantum systems, a pure state vector is used to represent the complete quantum state. Thus, pure quantum states are represented by state vectors $|\psi \rangle $.
 
 However, this description is not sufficient to study open quantum systems. When the system interacts with its environment, quantum systems can be in a mixed state, where quantum information is no longer entirely contained in a single state vector but is distributed probabilistically.
@@ -119,4 +121,38 @@ def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
     fig.savefig(buffer, format="svg")  # markdown-exec: hide
     return buffer.getvalue()  # markdown-exec: hide
 print(fig_to_html(plt.gcf())) # markdown-exec: hide
+```
+
+
+## Readout errors
+
+Another source of noise can be added when performing measurements. This is typically described using confusion matrices of the form:
+
+$$
+T(x|x')=\delta_{xx'}
+$$
+
+where $x$ represent a bitstring.
+
+```python exec="on" source="material-block"
+import torch
+import pyqtorch as pyq
+from pyqtorch.noise.readout import ReadoutNoise
+
+rx = pyq.RX(0, param_name="theta")
+y = pyq.Y(0)
+cnot = pyq.CNOT(0, 1)
+ops = [rx, y, cnot]
+n_qubits = 2
+circ = pyq.QuantumCircuit(n_qubits, ops)
+state = pyq.random_state(n_qubits)
+theta = torch.rand(1, requires_grad=True)
+obs = pyq.Observable(pyq.Z(0))
+
+noiseless_expectation = pyq.expectation(circ, state, {"theta": theta}, observable=obs)
+readobj = ReadoutNoise(n_qubits, 0)
+noisycirc = pyq.QuantumCircuit(n_qubits, ops, readobj)
+noisy_expectation = pyq.expectation(noisycirc, state, {"theta": theta}, observable=obs, n_shots=1000)
+print("Noiseless expectation ", noiseless_expectation.item())
+print("Noisy expectation ", noisy_expectation.item())
 ```
