@@ -1,8 +1,8 @@
-In the description of closed quantum systems, a pure state vector is used to represent the complete quantum state. Thus, pure quantum states are represented by state vectors $\ket{\psi}$.
+In the description of closed quantum systems, a pure state vector is used to represent the complete quantum state. Thus, pure quantum states are represented by state vectors $|\psi \rangle $.
 
 However, this description is not sufficient to study open quantum systems. When the system interacts with its environment, quantum systems can be in a mixed state, where quantum information is no longer entirely contained in a single state vector but is distributed probabilistically.
 
-To address these more general cases, we consider a probabilistic combination $p_i$ of possible pure states $\ket{\psi_i}$. Thus, the system is described by a density matrix $\rho$ defined as follows:
+To address these more general cases, we consider a probabilistic combination $p_i$ of possible pure states $|\psi_i \rangle$. Thus, the system is described by a density matrix $\rho$ defined as follows:
 
 $$
 \rho = \sum_i p_i |\psi_i\rangle \langle \psi_i|
