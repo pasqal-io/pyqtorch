@@ -19,31 +19,14 @@ Where $K_i$ are the Kraus operators, and satisfy the property $\sum_i K_i K^{\da
 
 Thus, `pyqtorch` implements a large selection of single qubit noise gates such as:
 
-* The bit flip channel defined as:
-    $$
-        \textbf{BitFlip}(\rho) =(1-p) \rho + p X \rho X^{\dagger}
-    $$
-* The phase flip channel defined as:
-    $$
-        \textbf{PhaseFlip}(\rho) = (1-p) \rho + p Z \rho Z^{\dagger}
-    $$
-* The depolarizing channel defined as:
-    $$
-        \textbf{Depolarizing}(\rho) = (1-p) \rho + \frac{p}{3} (X \rho X^{\dagger}
-            + Y \rho Y^{\dagger}
-            + Z \rho Z^{\dagger})
-    $$
-* The pauli channel defined as:
-    $$
-        \textbf{PauliChannel}(\rho) = (1-p_x-p_y-p_z) \rho
+- The bit flip channel defined as: $\textbf{BitFlip}(\rho) =(1-p) \rho + p X \rho X^{\dagger}$
+- The phase flip channel defined as: $\textbf{PhaseFlip}(\rho) = (1-p) \rho + p Z \rho Z^{\dagger}$
+- The depolarizing channel defined as: $\textbf{Depolarizing}(\rho) = (1-p) \rho + \frac{p}{3} (X \rho X^{\dagger} + Y \rho Y^{\dagger} + Z \rho Z^{\dagger})$
+- The pauli channel defined as: $\textbf{PauliChannel}(\rho) = (1-p_x-p_y-p_z) \rho
             + p_x X \rho X^{\dagger}
             + p_y Y \rho Y^{\dagger}
-            + p_z Z \rho Z^{\dagger}
-    $$
-* The amplitude damping channel defined as:
-    $$
-        \textbf{AmplitudeDamping}(\rho) =  K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}
-    $$
+            + p_z Z \rho Z^{\dagger}$
+- The amplitude damping channel defined as: $\textbf{AmplitudeDamping}(\rho) =  K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}$
     with:
     $\begin{equation*}
     K_{0} \ =\begin{pmatrix}
@@ -54,10 +37,7 @@ Thus, `pyqtorch` implements a large selection of single qubit noise gates such a
     0 & 0
     \end{pmatrix}
     \end{equation*}$
-* The phase damping channel defined as:
-    $$
-        \textbf{PhaseDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}
-    $$
+- The phase damping channel defined as: $\textbf{PhaseDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}$
     with:
     $\begin{equation*}
     K_{0} \ =\begin{pmatrix}
@@ -68,11 +48,7 @@ Thus, `pyqtorch` implements a large selection of single qubit noise gates such a
     0 & \sqrt{\ \gamma }
     \end{pmatrix}
     \end{equation*}$
-* The generalize amplitude damping channel is defined as:
-    $$
-        \textbf{GeneralizedAmplitudeDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}
-            + K_2 \rho K_2^{\dagger} + K_3 \rho K_3^{\dagger}
-    $$
+* The generalize amplitude damping channel is defined as: $\textbf{GeneralizedAmplitudeDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger} + K_2 \rho K_2^{\dagger} + K_3 \rho K_3^{\dagger}$
     with:
 $\begin{cases}
 K_{0} \ =\sqrt{p} \ \begin{pmatrix}
