@@ -113,7 +113,10 @@ def overlap(bra: Tensor, ket: Tensor) -> Tensor:
 def counts_to_orderedcounter(
     binary_count: Tensor, length_bitstring: int
 ) -> OrderedCounter:
-    """Convert counts (from torch.bincount) to an OrderedCounter
+    """Convert counts (from torch.bincount) to an OrderedCounter.
+
+    Note the output of torch.bincount is ordered
+    and having an OrderedCounter can be convenient.
 
     Args:
         binary_count (Tensor): Counts per bitstring as Tensor.

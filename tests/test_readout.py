@@ -6,7 +6,7 @@ from collections import Counter
 import pytest
 import torch
 
-from pyqtorch import QuantumCircuit, X
+from pyqtorch import QuantumCircuit, X, expectation, zero_state
 from pyqtorch.noise import ReadoutNoise
 from pyqtorch.noise.readout import (
     WhiteNoise,
@@ -102,14 +102,12 @@ def test_readout_error_quantum_model(
 ) -> None:
 
     n_qubits = max([max(op.target) for op in list_ops]) + 1
-    noiseless_samples: list[Counter] = QuantumCircuit(n_qubits, list_ops).sample(
-        n_shots=n_shots
-    )
+    noiseless_qc = QuantumCircuit(n_qubits, list_ops)
+    noiseless_samples = noiseless_qc.sample(n_shots=n_shots)
 
     readout = ReadoutNoise(n_qubits, error_probability=error_probability, seed=0)
-    noisy_samples: list[Counter] = QuantumCircuit(n_qubits, list_ops, readout).sample(
-        n_shots=n_shots
-    )
+    noisy_qc = QuantumCircuit(n_qubits, list_ops, readout)
+    noisy_samples = noisy_qc.sample(n_shots=n_shots)
 
     for noiseless, noisy in zip(noiseless_samples, noisy_samples):
         assert sum(noiseless.values()) == sum(noisy.values()) == n_shots
@@ -119,3 +117,8 @@ def test_readout_error_quantum_model(
             torch.ones(1) - error_probability,
             atol=1e-1,
         )
+
+    initstate = zero_state(n_qubits)
+    assert expectation(noiseless_qc, initstate, n_shots=n_shots) != expectation(
+        noisy_qc, initstate, n_shots=n_shots
+    )
