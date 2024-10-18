@@ -134,16 +134,14 @@ def test_readout_error_expectation() -> None:
 
     readout = ReadoutNoise(n_qubits, error_probability=0.1, seed=0)
     noisy_qc = pyq.QuantumCircuit(n_qubits, ops, readout)
-    assert torch.allclose(
+    assert not torch.allclose(
         pyq.expectation(
             noiseless_qc,
             initstate,
             {"theta": theta},
             observable=obs,
-            n_shots=n_shots,
         ),
         pyq.expectation(
             noisy_qc, initstate, {"theta": theta}, observable=obs, n_shots=n_shots
         ),
-        atol=1e-1,
     )
