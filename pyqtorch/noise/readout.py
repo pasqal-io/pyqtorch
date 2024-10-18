@@ -7,6 +7,8 @@ import torch
 from torch import Tensor
 from torch.distributions import normal, poisson, uniform
 
+from pyqtorch.utils import OrderedCounter, counts_to_orderedcounter
+
 
 class WhiteNoise(Enum):
     """White noise distributions."""
@@ -226,41 +228,36 @@ class ReadoutNoise:
         return noise_matrix
 
     def apply(
-        self, counters: list[Counter] | list[Tensor], n_shots: int = 1000
-    ) -> list[Counter]:
-        """Implements a simple readout error model for position-independent bit string.
+        self, counters: list[Counter | OrderedCounter] | Tensor, n_shots: int = 1000
+    ) -> list[Counter] | Tensor:
+        """_summary_
 
         Args:
-            counters (list[Counter]): Samples of bit string as Counters.
+            counters (list[Counter  |  OrderedCounter] | Tensor): Samples of bit string as Counters.
             n_shots (int, optional): Number of shots to sample. Defaults to 1000.
 
         Returns:
-            list[Counter]: Samples of corrupted bit strings.
+            list[Counter] | Tensor: Samples of corrupted bit strings
         """
         noise_matrix = self.create_noise_matrix(n_shots, False)
         err_idx = torch.as_tensor(noise_matrix < self.error_probability)  # type: ignore[operator]
 
         corrupted_bitstrings = []
-        if isinstance(counters[0], Counter):
-            for counter in counters:
+        if isinstance(counters, Tensor):
+            for bincount in counters:
+                counter = counts_to_orderedcounter(bincount, self.n_qubits)
+                sample = sample_to_matrix(counter)
+                corrupted_counter = bs_corruption(err_idx=err_idx, sample=sample)
+                corrupted_bincount = torch.zeros_like(bincount)
+                for bitstring, count in corrupted_counter.items():
+                    idx = int(bitstring, 2)
+                    corrupted_bincount[idx] = count
+                corrupted_bitstrings.append(corrupted_bincount)
+            corrupted_bitstrings = torch.stack(corrupted_bitstrings)
+        else:
+            for counter in counters:  # type: ignore[assignment]
                 sample = sample_to_matrix(counter)
                 corrupted_bitstrings.append(
                     bs_corruption(err_idx=err_idx, sample=sample)
                 )
-        else:
-            print("corrupt")
-            for bincount in counters:
-                print(bincount)
-                counter = Counter(
-                    {
-                        format(k, "0{}b".format(self.n_qubits)): count.item()
-                        for k, count in enumerate(bincount)
-                        if count > 0
-                    }
-                )
-                sample = sample_to_matrix(counter)
-                corrupted_counter = bs_corruption(err_idx=err_idx, sample=sample)
-                print(corrupted_counter)
-                corrupted_bitstrings.append(sample_to_matrix(corrupted_counter))
-            corrupted_bitstrings = torch.stack(corrupted_bitstrings)
         return corrupted_bitstrings
