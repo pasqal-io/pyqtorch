@@ -225,7 +225,9 @@ class ReadoutNoise:
             return noise_matrix, confusion_matrices
         return noise_matrix
 
-    def apply(self, counters: list[Counter], n_shots: int = 1000) -> list[Counter]:
+    def apply(
+        self, counters: list[Counter] | list[Tensor], n_shots: int = 1000
+    ) -> list[Counter]:
         """Implements a simple readout error model for position-independent bit string.
 
         Args:
@@ -239,7 +241,26 @@ class ReadoutNoise:
         err_idx = torch.as_tensor(noise_matrix < self.error_probability)  # type: ignore[operator]
 
         corrupted_bitstrings = []
-        for counter in counters:
-            sample = sample_to_matrix(counter)
-            corrupted_bitstrings.append(bs_corruption(err_idx=err_idx, sample=sample))
+        if isinstance(counters[0], Counter):
+            for counter in counters:
+                sample = sample_to_matrix(counter)
+                corrupted_bitstrings.append(
+                    bs_corruption(err_idx=err_idx, sample=sample)
+                )
+        else:
+            print("corrupt")
+            for bincount in counters:
+                print(bincount)
+                counter = Counter(
+                    {
+                        format(k, "0{}b".format(self.n_qubits)): count.item()
+                        for k, count in enumerate(bincount)
+                        if count > 0
+                    }
+                )
+                sample = sample_to_matrix(counter)
+                corrupted_counter = bs_corruption(err_idx=err_idx, sample=sample)
+                print(corrupted_counter)
+                corrupted_bitstrings.append(sample_to_matrix(corrupted_counter))
+            corrupted_bitstrings = torch.stack(corrupted_bitstrings)
         return corrupted_bitstrings

@@ -176,6 +176,10 @@ def sampled_expectation(
         randomness="different",
     )
     batch_samples = batch_sample_multinomial(probs)
+    print(batch_samples)
+    if circuit.readout_noise is not None:
+        batch_samples = circuit.readout_noise.apply(batch_samples, n_shots)
+        print(batch_samples)
     normalized_samples = torch.div(
         batch_samples, torch.tensor(n_shots, dtype=probs.dtype)
     )
