@@ -95,7 +95,7 @@ def test_raise_errors_Readout():
         (0.1, 100, [X(0), X(1)]),
     ],
 )
-def test_readout_error_quantum_model(
+def test_readout_error_quantum_circuit(
     error_probability: float,
     n_shots: int,
     list_ops: list[Primitive],
