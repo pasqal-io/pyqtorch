@@ -227,6 +227,29 @@ class ReadoutNoise:
             return noise_matrix, confusion_matrices
         return noise_matrix
 
+    def apply_on_probas(self, batch_probs: Tensor, n_shots: int = 1000) -> Tensor:
+        """Apply confusion matrix on probabilities.
+
+        Args:
+            batch_probs (Tensor): Batch of probability vectors.
+            n_shots (int, optional): Number of shots. Defaults to 1000.
+
+        Returns:
+            Tensor: Corrupted probabilities.
+        """
+        # Create binary representations
+        indices = torch.arange(2**self.n_qubits, device=batch_probs.device)
+        input_bits = (indices[:, None] >> torch.arange(self.n_qubits - 1, -1, -1)) & 1
+        output_bits = input_bits.clone()
+
+        # Get transition probabilities for each bit position
+        _, confusion_matrices = self.create_noise_matrix(n_shots, True)  # type: ignore[misc]
+        bit_transitions = confusion_matrices[
+            None, None, :, input_bits[:, None, :], output_bits[None, :, :]
+        ]
+        transition_matrix = torch.prod(bit_transitions, dim=2)
+        return torch.matmul(batch_probs, transition_matrix)
+
     def apply(
         self, counters: list[Counter | OrderedCounter] | Tensor, n_shots: int = 1000
     ) -> list[Counter] | Tensor:

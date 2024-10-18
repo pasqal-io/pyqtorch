@@ -6,7 +6,7 @@ from collections import Counter
 import pytest
 import torch
 
-from pyqtorch import QuantumCircuit, X, expectation, zero_state
+import pyqtorch as pyq
 from pyqtorch.noise import ReadoutNoise
 from pyqtorch.noise.readout import (
     WhiteNoise,
@@ -92,7 +92,7 @@ def test_raise_errors_Readout():
 @pytest.mark.parametrize(
     "error_probability, n_shots, list_ops",
     [
-        (0.1, 100, [X(0), X(1)]),
+        (0.1, 100, [pyq.X(0), pyq.X(1)]),
     ],
 )
 def test_readout_error_quantum_circuit(
@@ -102,11 +102,11 @@ def test_readout_error_quantum_circuit(
 ) -> None:
 
     n_qubits = max([max(op.target) for op in list_ops]) + 1
-    noiseless_qc = QuantumCircuit(n_qubits, list_ops)
+    noiseless_qc = pyq.QuantumCircuit(n_qubits, list_ops)
     noiseless_samples = noiseless_qc.sample(n_shots=n_shots)
 
     readout = ReadoutNoise(n_qubits, error_probability=error_probability, seed=0)
-    noisy_qc = QuantumCircuit(n_qubits, list_ops, readout)
+    noisy_qc = pyq.QuantumCircuit(n_qubits, list_ops, readout)
     noisy_samples = noisy_qc.sample(n_shots=n_shots)
 
     for noiseless, noisy in zip(noiseless_samples, noisy_samples):
@@ -118,7 +118,32 @@ def test_readout_error_quantum_circuit(
             atol=1e-1,
         )
 
-    initstate = zero_state(n_qubits)
-    assert expectation(noiseless_qc, initstate, n_shots=n_shots) != expectation(
-        noisy_qc, initstate, n_shots=n_shots
+
+def test_readout_error_expectation() -> None:
+
+    n_shots = 100
+    rx = pyq.RX(0, param_name="theta")
+    y = pyq.Y(0)
+    cnot = pyq.CNOT(0, 1)
+    ops = [rx, y, cnot]
+    n_qubits = 2
+    noiseless_qc = pyq.QuantumCircuit(n_qubits, ops)
+    initstate = pyq.random_state(n_qubits)
+    theta = torch.rand(1, requires_grad=True)
+    obs = pyq.Observable(pyq.Z(0))
+
+    readout = ReadoutNoise(n_qubits, error_probability=0.1, seed=0)
+    noisy_qc = pyq.QuantumCircuit(n_qubits, ops, readout)
+    assert torch.allclose(
+        pyq.expectation(
+            noiseless_qc,
+            initstate,
+            {"theta": theta},
+            observable=obs,
+            n_shots=n_shots,
+        ),
+        pyq.expectation(
+            noisy_qc, initstate, {"theta": theta}, observable=obs, n_shots=n_shots
+        ),
+        atol=1e-1,
     )
