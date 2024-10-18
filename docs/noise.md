@@ -1,8 +1,10 @@
-In the description of closed quantum systems, a pure state vector is used to represent the complete quantum state. Thus, pure quantum states are represented by state vectors $\ket{\psi}$.
+## Digital Noise
+
+In the description of closed quantum systems, a pure state vector is used to represent the complete quantum state. Thus, pure quantum states are represented by state vectors $|\psi \rangle $.
 
 However, this description is not sufficient to study open quantum systems. When the system interacts with its environment, quantum systems can be in a mixed state, where quantum information is no longer entirely contained in a single state vector but is distributed probabilistically.
 
-To address these more general cases, we consider a probabilistic combination $p_i$ of possible pure states $\ket{\psi_i}$. Thus, the system is described by a density matrix $\rho$ defined as follows:
+To address these more general cases, we consider a probabilistic combination $p_i$ of possible pure states $|\psi_i \rangle$. Thus, the system is described by a density matrix $\rho$ defined as follows:
 
 $$
 \rho = \sum_i p_i |\psi_i\rangle \langle \psi_i|
@@ -19,31 +21,14 @@ Where $K_i$ are the Kraus operators, and satisfy the property $\sum_i K_i K^{\da
 
 Thus, `pyqtorch` implements a large selection of single qubit noise gates such as:
 
-* The bit flip channel defined as:
-    $$
-        \textbf{BitFlip}(\rho) =(1-p) \rho + p X \rho X^{\dagger}
-    $$
-* The phase flip channel defined as:
-    $$
-        \textbf{PhaseFlip}(\rho) = (1-p) \rho + p Z \rho Z^{\dagger}
-    $$
-* The depolarizing channel defined as:
-    $$
-        \textbf{Depolarizing}(\rho) = (1-p) \rho + \frac{p}{3} (X \rho X^{\dagger}
-            + Y \rho Y^{\dagger}
-            + Z \rho Z^{\dagger})
-    $$
-* The pauli channel defined as:
-    $$
-        \textbf{PauliChannel}(\rho) = (1-p_x-p_y-p_z) \rho
+- The bit flip channel defined as: $\textbf{BitFlip}(\rho) =(1-p) \rho + p X \rho X^{\dagger}$
+- The phase flip channel defined as: $\textbf{PhaseFlip}(\rho) = (1-p) \rho + p Z \rho Z^{\dagger}$
+- The depolarizing channel defined as: $\textbf{Depolarizing}(\rho) = (1-p) \rho + \frac{p}{3} (X \rho X^{\dagger} + Y \rho Y^{\dagger} + Z \rho Z^{\dagger})$
+- The pauli channel defined as: $\textbf{PauliChannel}(\rho) = (1-p_x-p_y-p_z) \rho
             + p_x X \rho X^{\dagger}
             + p_y Y \rho Y^{\dagger}
-            + p_z Z \rho Z^{\dagger}
-    $$
-* The amplitude damping channel defined as:
-    $$
-        \textbf{AmplitudeDamping}(\rho) =  K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}
-    $$
+            + p_z Z \rho Z^{\dagger}$
+- The amplitude damping channel defined as: $\textbf{AmplitudeDamping}(\rho) =  K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}$
     with:
     $\begin{equation*}
     K_{0} \ =\begin{pmatrix}
@@ -54,10 +39,7 @@ Thus, `pyqtorch` implements a large selection of single qubit noise gates such a
     0 & 0
     \end{pmatrix}
     \end{equation*}$
-* The phase damping channel defined as:
-    $$
-        \textbf{PhaseDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}
-    $$
+- The phase damping channel defined as: $\textbf{PhaseDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}$
     with:
     $\begin{equation*}
     K_{0} \ =\begin{pmatrix}
@@ -68,11 +50,7 @@ Thus, `pyqtorch` implements a large selection of single qubit noise gates such a
     0 & \sqrt{\ \gamma }
     \end{pmatrix}
     \end{equation*}$
-* The generalize amplitude damping channel is defined as:
-    $$
-        \textbf{GeneralizedAmplitudeDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger}
-            + K_2 \rho K_2^{\dagger} + K_3 \rho K_3^{\dagger}
-    $$
+* The generalize amplitude damping channel is defined as: $\textbf{GeneralizedAmplitudeDamping}(\rho) = K_0 \rho K_0^{\dagger} + K_1 \rho K_1^{\dagger} + K_2 \rho K_2^{\dagger} + K_3 \rho K_3^{\dagger}$
     with:
 $\begin{cases}
 K_{0} \ =\sqrt{p} \ \begin{pmatrix}
@@ -143,4 +121,38 @@ def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
     fig.savefig(buffer, format="svg")  # markdown-exec: hide
     return buffer.getvalue()  # markdown-exec: hide
 print(fig_to_html(plt.gcf())) # markdown-exec: hide
+```
+
+
+## Readout errors
+
+Another source of noise can be added when performing measurements. This is typically described using confusion matrices of the form:
+
+$$
+T(x|x')=\delta_{xx'}
+$$
+
+where $x$ represent a bitstring.
+
+```python exec="on" source="material-block"
+import torch
+import pyqtorch as pyq
+from pyqtorch.noise.readout import ReadoutNoise
+
+rx = pyq.RX(0, param_name="theta")
+y = pyq.Y(0)
+cnot = pyq.CNOT(0, 1)
+ops = [rx, y, cnot]
+n_qubits = 2
+circ = pyq.QuantumCircuit(n_qubits, ops)
+state = pyq.random_state(n_qubits)
+theta = torch.rand(1, requires_grad=True)
+obs = pyq.Observable(pyq.Z(0))
+
+noiseless_expectation = pyq.expectation(circ, state, {"theta": theta}, observable=obs)
+readobj = ReadoutNoise(n_qubits, 0)
+noisycirc = pyq.QuantumCircuit(n_qubits, ops, readobj)
+noisy_expectation = pyq.expectation(noisycirc, state, {"theta": theta}, observable=obs, n_shots=1000)
+print("Noiseless expectation ", noiseless_expectation.item())
+print("Noisy expectation ", noisy_expectation.item())
 ```

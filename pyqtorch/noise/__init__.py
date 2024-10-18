@@ -11,3 +11,4 @@ from .gates import (
     PhaseFlip,
 )
 from .protocol import NoiseProtocol, NoiseType, _repr_noise
+from .readout import ReadoutNoise, WhiteNoise

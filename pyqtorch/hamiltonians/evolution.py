@@ -156,7 +156,9 @@ class HamiltonianEvolution(Sequence):
         Arguments:
             generator: The generator :math:`H`.
             time: The evolution time :math:`t`.
-            qubit_support: The qubits the operator acts on.
+            qubit_support: The qubits the operator acts on. If generator is a quantum
+                operation or sequence of operations,
+                it will be inferred from the generator.
             generator_parametric: Whether the generator is parametric or not.
         """
 
@@ -193,10 +195,6 @@ class HamiltonianEvolution(Sequence):
             self.generator_symbol = generator
             generator = []
         elif isinstance(generator, (QuantumOperation, Sequence)):
-            if qubit_support is not None:
-                logger.warning(
-                    "Taking support from generator and ignoring qubit_support input."
-                )
             qubit_support = generator.qubit_support
 
             if is_parametric(generator):
@@ -495,10 +493,6 @@ class HamiltonianEvolution(Sequence):
             values = embedding(values)
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
-        time_evolution: torch.Tensor = (
-            values[self.time] if isinstance(self.time, str) else self.time
-        )  # If `self.time` is a string / hence, a Parameter,
-        # we expect the user to pass it in the `values` dict
         return finitediff(
             lambda t: evolve(hamiltonian, t),
             values[self.param_name].reshape(-1, 1),

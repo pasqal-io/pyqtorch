@@ -12,7 +12,7 @@ nav:
     - Differentiation: differentiation.md
     - Use Arbitrary Expressions as Gate Parameters via Embedding: embed.md
     - Analog Operations: analog.md
-    - Digital noisy simulation: noise.md
+    - Noisy simulation: noise.md
     - Quantum Dropout: dropout.md
     - CUDA Profiling and debugging: cuda_debugging.md
     - Time-dependent simulation: time_dependent.md
