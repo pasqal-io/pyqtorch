@@ -167,6 +167,7 @@ class ReadoutNoise:
         error_probability (float | None, optional): Uniform error probability of wrong
             readout at any position in the bit strings. Defaults to None.
         noise_distribution (str, optional): Noise distribution type. Defaults to WhiteNoise.UNIFORM.
+        confusion_matrices (Tensor | None): Confusion matrices that can be used for error miigation.
     """
 
     def __init__(
@@ -190,6 +191,7 @@ class ReadoutNoise:
         self.seed = seed
         self.error_probability = error_probability if error_probability else 0.1
         self.noise_distribution = noise_distribution
+        self.confusion_matrices = None
 
     def create_noise_matrix(
         self, n_shots: int, return_confusion: bool = False
@@ -216,6 +218,7 @@ class ReadoutNoise:
             confusion_matrices = create_confusion_matrices(
                 noise_matrix=noise_matrix, error_probability=self.error_probability
             )
+            self.confusion_matrices = confusion_matrices
             return noise_matrix, confusion_matrices
         return noise_matrix
 
