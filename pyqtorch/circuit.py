@@ -108,7 +108,7 @@ class QuantumCircuit(Sequence):
             if self.readout_noise is None:
                 return counters
 
-            return self.readout_noise.apply(counters, n_shots)
+            return self.readout_noise.apply_on_counts(counters, n_shots)
 
 
 class DropoutQuantumCircuit(QuantumCircuit):

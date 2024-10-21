@@ -270,10 +270,10 @@ class ReadoutNoise:
         output_probs = torch.matmul(batch_probs, transition_matrix.T)
         return output_probs
 
-    def apply(
+    def apply_on_counts(
         self, counters: list[Counter | OrderedCounter] | Tensor, n_shots: int = 1000
     ) -> list[Counter] | Tensor:
-        """_summary_
+        """Apply readout on counters represented as Counters or Tensors.
 
         Args:
             counters (list[Counter  |  OrderedCounter] | Tensor): Samples of bit string as Counters.
