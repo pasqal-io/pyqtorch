@@ -16,7 +16,7 @@ from pyqtorch.noise.readout import (
 )
 from pyqtorch.primitives import Primitive
 from pyqtorch.utils import sample_multinomial
-from pyqtorch.utils_distributions import js_divergence
+from pyqtorch.utils_distributions import js_divergence, js_divergence_counters
 
 
 @pytest.mark.parametrize(
@@ -50,7 +50,7 @@ def test_bitstring_corruption_all_bitflips(
     assert sum(corrupted_counters[0].values()) == n_shots
     assert corrupted_counters == exp_corrupted_counters
     assert torch.allclose(
-        torch.tensor(1.0 - js_divergence(corrupted_counters[0], counters[0])),
+        torch.tensor(1.0 - js_divergence_counters(corrupted_counters[0], counters[0])),
         torch.ones(1),
         atol=1e-3,
     )
@@ -78,7 +78,7 @@ def test_bitstring_corruption_mixed_bitflips(counters: list, n_qubits: int) -> N
     corrupted_counters = [bs_corruption(err_idx=err_idx, sample=sample)]
     for noiseless, noisy in zip(counters, corrupted_counters):
         assert sum(noisy.values()) == n_shots
-        assert js_divergence(noiseless, noisy) >= 0.0
+        assert js_divergence_counters(noiseless, noisy) >= 0.0
 
 
 def test_raise_errors_Readout():
@@ -112,9 +112,9 @@ def test_readout_error_quantum_circuit(
 
     for noiseless, noisy in zip(noiseless_samples, noisy_samples):
         assert sum(noiseless.values()) == sum(noisy.values()) == n_shots
-        assert js_divergence(noiseless, noisy) > 0.0
+        assert js_divergence_counters(noiseless, noisy) > 0.0
         assert torch.allclose(
-            torch.tensor(1.0 - js_divergence(noiseless, noisy)),
+            torch.tensor(1.0 - js_divergence_counters(noiseless, noisy)),
             torch.ones(1) - error_probability,
             atol=1e-1,
         )
@@ -170,22 +170,10 @@ def test_readout_apply_probas() -> None:
         randomness="different",
     )
 
-    p = batch_sample_multinomial(probas) / n_shots
-    q = batch_sample_multinomial(out_probas) / n_shots
+    p = batch_sample_multinomial(probas).squeeze(0) / n_shots
+    q = batch_sample_multinomial(out_probas).squeeze(0) / n_shots
 
-    # Clamp values to avoid log(0)
-    p = torch.clamp(p, min=1e-6)
-    q = torch.clamp(q, min=1e-6)
-
-    # Calculate the middle point distribution
-    m = 0.5 * (p + q)
-
-    # Calculate KL divergence for both distributions with respect to m
-    kl_p_m = torch.sum(p * torch.log2(p / m), dim=-1)
-    kl_q_m = torch.sum(q * torch.log2(q / m), dim=-1)
-
-    # Jensen-Shannon divergence is the average of the two KL divergences
-    jsd = 0.5 * (kl_p_m + kl_q_m)
+    jsd = js_divergence(p, q)
     assert jsd > 0.0
 
     assert torch.allclose(

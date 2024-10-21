@@ -3,12 +3,15 @@ from __future__ import annotations
 import math
 from collections import Counter
 
+import torch
+from torch import Tensor
+
 
 def shannon_entropy(counter: Counter) -> float:
     return float(-sum([count * math.log(count) for count in counter.values()]))
 
 
-def js_divergence(counter_p: Counter, counter_q: Counter) -> float:
+def js_divergence_counters(counter_p: Counter, counter_q: Counter) -> float:
     """
     Compute the Jensen-Shannon divergence between two probability distributions.
 
@@ -37,3 +40,32 @@ def js_divergence(counter_p: Counter, counter_q: Counter) -> float:
     entropy_p = shannon_entropy(counter_p)
     entropy_q = shannon_entropy(counter_q)
     return float(average_entropy - (entropy_p + entropy_q) / 2.0)
+
+
+def js_divergence(
+    proba_mass_P: Tensor, proba_mass_Q: Tensor, epsilon: float = 1e-6
+) -> Tensor:
+    """Compute the Jensen-Shannon divergence between two probability distributions.
+
+    Args:
+        proba_mass_P (Tensor): Probability mass function P
+        proba_mass_Q (Tensor): Probability mass function Q
+        epsilon (float, optional): Small number to avoid 0 division. Defaults to 1e-6.
+
+    Returns:
+        Tensor: The Jensen-Shannon divergence between P and Q.
+    """
+
+    # Clamp values to avoid log(0)
+    proba_mass_P = torch.clamp(proba_mass_P, min=epsilon)
+    proba_mass_Q = torch.clamp(proba_mass_Q, min=epsilon)
+
+    # Calculate the middle point distribution
+    m = 0.5 * (proba_mass_P + proba_mass_Q)
+
+    # Calculate KL divergence for both distributions with respect to m
+    kl_p_m = torch.sum(proba_mass_P * torch.log2(proba_mass_P / m), dim=-1)
+    kl_q_m = torch.sum(proba_mass_Q * torch.log2(proba_mass_Q / m), dim=-1)
+
+    # Jensen-Shannon divergence is the average of the two KL divergences
+    return 0.5 * (kl_p_m + kl_q_m)
