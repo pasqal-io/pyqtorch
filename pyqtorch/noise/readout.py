@@ -213,8 +213,11 @@ class ReadoutNoise:
         Returns:
             Tensor | tuple[Tensor]: The noise matrix and possibly the confusion ones too.
         """
+
         if self.noise_matrix is None:
             # assumes that all bits can be flipped independently of each other
+            if self.seed is not None:
+                torch.manual_seed(self.seed)
             noise_matrix = create_noise_matrix(
                 self.noise_distribution, n_shots, self.n_qubits
             )
@@ -237,18 +240,35 @@ class ReadoutNoise:
         Returns:
             Tensor: Corrupted probabilities.
         """
+
         # Create binary representations
-        indices = torch.arange(2**self.n_qubits, device=batch_probs.device)
-        input_bits = (indices[:, None] >> torch.arange(self.n_qubits - 1, -1, -1)) & 1
-        output_bits = input_bits.clone()
+        n_states = batch_probs.shape[1]
+
+        # Create binary representation of all states
+        state_indices = torch.arange(n_states, device=batch_probs.device)
+        binary_repr = (
+            state_indices.unsqueeze(1)
+            >> torch.arange(self.n_qubits - 1, -1, -1, device=batch_probs.device)
+        ) & 1
+
+        # Get input and output bits for all qubits at once
+        input_bits = binary_repr.unsqueeze(0).expand(n_states, -1, -1)
+        output_bits = binary_repr.unsqueeze(1).expand(-1, n_states, -1)
 
         # Get transition probabilities for each bit position
         _, confusion_matrices = self.create_noise_matrix(n_shots, True)  # type: ignore[misc]
-        bit_transitions = confusion_matrices[
-            None, None, :, input_bits[:, None, :], output_bits[None, :, :]
+
+        # Index into confusion matrix for all qubits at once
+        # Shape: (n_states_out, n_states_in, n_qubits)
+        qubit_transitions = confusion_matrices[
+            torch.arange(self.n_qubits, device=batch_probs.device),
+            output_bits,
+            input_bits,
         ]
-        transition_matrix = torch.prod(bit_transitions, dim=2)
-        return torch.matmul(batch_probs, transition_matrix)
+        transition_matrix = torch.prod(qubit_transitions, dim=-1)
+
+        output_probs = torch.matmul(batch_probs, transition_matrix.T)
+        return output_probs
 
     def apply(
         self, counters: list[Counter | OrderedCounter] | Tensor, n_shots: int = 1000
