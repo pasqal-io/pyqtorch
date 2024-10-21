@@ -145,3 +145,11 @@ def test_readout_error_expectation() -> None:
             noisy_qc, initstate, {"theta": theta}, observable=obs, n_shots=n_shots
         ),
     )
+
+def test_readout_apply_probas() -> None:
+    probas = torch.tensor([[0.4, 0.3, 0.2, 0.1]], dtype=torch.double)
+    readobj = ReadoutNoise(2, seed=0)
+    out_probas = readobj.apply_on_probas(probas)
+
+    assert torch.allclose(out_probas, torch.tensor([[0.3860, 0.2957, 0.2043, 0.1140]], dtype=torch.float64), atol=1e-4
+)
