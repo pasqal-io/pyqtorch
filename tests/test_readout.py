@@ -15,6 +15,7 @@ from pyqtorch.noise.readout import (
     sample_to_matrix,
 )
 from pyqtorch.primitives import Primitive
+from pyqtorch.utils import sample_multinomial
 from pyqtorch.utils_distributions import js_divergence
 
 
@@ -149,6 +150,8 @@ def test_readout_error_expectation() -> None:
 
 @pytest.mark.flaky(max_runs=5)
 def test_readout_apply_probas() -> None:
+    n_qubits = 2
+    n_shots = 1000
     probas = torch.tensor([[0.4, 0.3, 0.2, 0.1]], dtype=torch.double)
     readobj = ReadoutNoise(2, seed=0)
     out_probas = readobj.apply_on_probas(probas)
@@ -158,4 +161,35 @@ def test_readout_apply_probas() -> None:
         out_probas,
         torch.tensor([[0.3860, 0.2957, 0.2043, 0.1140]], dtype=torch.float64),
         atol=1e-4,
+    )
+
+    batch_sample_multinomial = torch.func.vmap(
+        lambda p: sample_multinomial(
+            p, n_qubits, n_shots, return_counter=False, minlength=probas.shape[-1]
+        ),
+        randomness="different",
+    )
+
+    p = batch_sample_multinomial(probas) / n_shots
+    q = batch_sample_multinomial(out_probas) / n_shots
+
+    # Clamp values to avoid log(0)
+    p = torch.clamp(p, min=1e-6)
+    q = torch.clamp(q, min=1e-6)
+
+    # Calculate the middle point distribution
+    m = 0.5 * (p + q)
+
+    # Calculate KL divergence for both distributions with respect to m
+    kl_p_m = torch.sum(p * torch.log2(p / m), dim=-1)
+    kl_q_m = torch.sum(q * torch.log2(q / m), dim=-1)
+
+    # Jensen-Shannon divergence is the average of the two KL divergences
+    jsd = 0.5 * (kl_p_m + kl_q_m)
+    assert jsd > 0.0
+
+    assert torch.allclose(
+        torch.ones(1) - jsd,
+        torch.ones(1) - readobj.error_probability,
+        atol=1e-1,
     )
