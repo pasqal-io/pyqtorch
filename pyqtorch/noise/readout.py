@@ -153,13 +153,20 @@ def create_confusion_matrices(noise_matrix: Tensor, error_probability: float) ->
 class ReadoutNoise:
     """Simulate errors when sampling from a circuit.
 
+    The model is simple as all bits are considered independent
+    and are corrupted with an equal `error_probability`.
+
+    The simulation is done by drawing samples from a `noise_distribution`.
+    These samples are then compared to `error_probability` to specify
+    which bits are corrupted.
+
+
     Attributes:
         n_qubits (int): Number of qubits.
         seed (int | None, optional): Random seed value. Defaults to None.
         error_probability (float | None, optional): Uniform error probability of wrong
             readout at any position in the bit strings. Defaults to None.
         noise_distribution (str, optional): Noise distribution type. Defaults to WhiteNoise.UNIFORM.
-        noise_matrix (Tensor | None, optional): An input noise matrix if known. Defaults to None.
     """
 
     def __init__(
@@ -168,7 +175,6 @@ class ReadoutNoise:
         error_probability: float | None = None,
         seed: int | None = None,
         noise_distribution: torch.distributions = WhiteNoise.UNIFORM,
-        noise_matrix: Tensor | None = None,
     ) -> None:
         """Initializes ReadoutNoise.
 
@@ -176,53 +182,36 @@ class ReadoutNoise:
             n_qubits (int): Number of qubits.
             seed (int | None, optional): Random seed value. Defaults to None.
             error_probability (float | None, optional): Uniform error probability of wrong
-              readout at any position in the bit strings. Defaults to None.
+              readout at any position in the bit strings. Defaults to 0.1 if None.
             noise_distribution (str, optional): Noise distribution type.
               Defaults to WhiteNoise.UNIFORM.
-            noise_matrix (Tensor | None, optional): An input noise matrix if known.
-              Defaults to None.
         """
         self.n_qubits = n_qubits
         self.seed = seed
         self.error_probability = error_probability if error_probability else 0.1
         self.noise_distribution = noise_distribution
-        if noise_matrix is not None:
-
-            # check noise_matrix shape and values
-            assert (
-                noise_matrix.shape[0] == noise_matrix.shape[1]
-            ), "The error probabilities matrix needs to be square."
-            assert noise_matrix.shape == (
-                self.n_qubits,
-                self.n_qubits,
-            ), "The error probabilities matrix needs to be n_qubits x n_qubits."
-        self.noise_matrix = noise_matrix
 
     def create_noise_matrix(
         self, n_shots: int, return_confusion: bool = False
     ) -> Tensor | tuple[Tensor]:
-        """Create a noise matrix from a noise distribution if noise_matrix is None.
+        """Create a noise matrix from a noise distribution.
 
         Also possibly return the confusion matrices if needed.
 
         Args:
             n_shots (int): Number of shots.
             return_confusion (bool, optional): If True,
-             return the confusion matrices. Defaults to False.
+            return the confusion matrices. Defaults to False.
 
         Returns:
             Tensor | tuple[Tensor]: The noise matrix and possibly the confusion ones too.
         """
 
-        if self.noise_matrix is None:
-            # assumes that all bits can be flipped independently of each other
-            if self.seed is not None:
-                torch.manual_seed(self.seed)
-            noise_matrix = create_noise_matrix(
-                self.noise_distribution, n_shots, self.n_qubits
-            )
-        else:
-            noise_matrix = self.noise_matrix
+        if self.seed is not None:
+            torch.manual_seed(self.seed)
+        noise_matrix = create_noise_matrix(
+            self.noise_distribution, n_shots, self.n_qubits
+        )
         if return_confusion:
             confusion_matrices = create_confusion_matrices(
                 noise_matrix=noise_matrix, error_probability=self.error_probability

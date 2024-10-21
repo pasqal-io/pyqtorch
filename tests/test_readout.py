@@ -81,14 +81,6 @@ def test_bitstring_corruption_mixed_bitflips(counters: list, n_qubits: int) -> N
         assert js_divergence_counters(noiseless, noisy) >= 0.0
 
 
-def test_raise_errors_Readout():
-    with pytest.raises(AssertionError):
-        ReadoutNoise(2, 0.1, noise_matrix=torch.eye(2).unsqueeze(0))
-
-    with pytest.raises(AssertionError):
-        ReadoutNoise(2, 0.1, noise_matrix=torch.eye(4))
-
-
 @pytest.mark.flaky(max_runs=5)
 @pytest.mark.parametrize(
     "error_probability, n_shots, list_ops",
