@@ -169,6 +169,9 @@ def sampled_expectation(
     )
     eigvec_state_prod = torch.flatten(eigvec_state_prod, start_dim=0, end_dim=-2).t()
     probs = torch.pow(torch.abs(eigvec_state_prod), 2)
+    if circuit.readout_noise is not None:
+        batch_samples = circuit.readout_noise.apply_on_probas(probs, n_shots)
+
     batch_sample_multinomial = torch.func.vmap(
         lambda p: sample_multinomial(
             p, n_qubits, n_shots, return_counter=False, minlength=probs.shape[-1]
@@ -176,12 +179,13 @@ def sampled_expectation(
         randomness="different",
     )
     batch_samples = batch_sample_multinomial(probs)
+
     normalized_samples = torch.div(
         batch_samples, torch.tensor(n_shots, dtype=probs.dtype)
     )
     normalized_samples.requires_grad = True
     expectations = torch.einsum(
-        "i,ji ->j", eigvals.to(dtype=normalized_samples.dtype), normalized_samples  # type: ignore[union-attr]
+        "i,ji ->j", eigvals.to(dtype=normalized_samples.dtype), normalized_samples
     )
     return expectations
 

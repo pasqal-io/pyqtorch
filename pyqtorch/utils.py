@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections import Counter
+from collections import Counter, OrderedDict
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache, partial, wraps
@@ -33,6 +33,10 @@ PSR_ACCEPTANCE = 1e-05
 ABC_ARRAY: NDArray = array(list(ABC))
 
 logger = getLogger(__name__)
+
+
+class OrderedCounter(Counter, OrderedDict):  # type: ignore [misc]
+    pass
 
 
 def qubit_support_as_tuple(support: int | tuple[int, ...]) -> tuple[int, ...]:
@@ -106,13 +110,39 @@ def overlap(bra: Tensor, ket: Tensor) -> Tensor:
     return torch.pow(inner_prod(bra, ket).real, 2)
 
 
+def counts_to_orderedcounter(
+    binary_count: Tensor, length_bitstring: int
+) -> OrderedCounter:
+    """Convert counts (from torch.bincount) to an OrderedCounter.
+
+    Note the output of torch.bincount is ordered
+    and having an OrderedCounter can be convenient.
+
+    Args:
+        binary_count (Tensor): Counts per bitstring as Tensor.
+        length_bitstring (int): Length of the bitstring.
+
+    Returns:
+        OrderedCounter: Ordered counter of bitstrings
+    """
+    return OrderedCounter(
+        OrderedDict(
+            [
+                (format(k, "0{}b".format(length_bitstring)), count.item())
+                for k, count in enumerate(binary_count)
+                if count > 0
+            ]
+        )
+    )
+
+
 def sample_multinomial(
     probs: Tensor,
     length_bitstring: int,
     n_samples: int,
     return_counter: bool = True,
     minlength: int = 0,
-) -> Counter | Tensor:
+) -> OrderedCounter | Tensor:
     """Sample bitstrings from a probability distribution.
 
     Args:
@@ -120,12 +150,12 @@ def sample_multinomial(
         length_bitstring (int): Maximal length of bitstring.
         n_samples (int): Number of samples to extract.
         instead of ratios.
-        return_counter (bool): If True, return Counter object.
+        return_counter (bool): If True, return OrderedCounter object.
             Otherwise, the result of torch.bincount is returned.
         minlength (int): minimum number of bins. Should be non-negative.
 
     Returns:
-        Counter: Sampled bitstrings with their frequencies or probabilities.
+        OrderedCounter | Tensor: Sampled bitstrings with their frequencies or probabilities.
     """
 
     bincount_output = torch.bincount(
@@ -134,13 +164,7 @@ def sample_multinomial(
     )
 
     if return_counter:
-        return Counter(
-            {
-                format(k, "0{}b".format(length_bitstring)): count.item()
-                for k, count in enumerate(bincount_output)
-                if count > 0
-            }
-        )
+        return counts_to_orderedcounter(bincount_output, length_bitstring)
     return bincount_output
 
 
