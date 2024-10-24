@@ -182,7 +182,9 @@ class PHASE(Parametric):
         return torch.tensor([[0.0], [2.0]], dtype=self.dtype, device=self.device)
 
     def _construct_parametric_base_op(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+        self,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Get the corresponding unitary.
@@ -194,6 +196,7 @@ class PHASE(Parametric):
         Returns:
             The unitary representation.
         """
+        values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         batch_mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
@@ -201,7 +204,9 @@ class PHASE(Parametric):
         return batch_mat
 
     def jacobian(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+        self,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
@@ -212,6 +217,7 @@ class PHASE(Parametric):
         Returns:
             The unitary representation of the jacobian.
         """
+        values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_mat = (
             torch.zeros((2, 2), dtype=self.identity.dtype)
@@ -406,7 +412,9 @@ class CPHASE(ControlledRotationGate):
         ).reshape(-1, 1)
 
     def _construct_parametric_base_op(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+        self,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Get the corresponding unitary.
@@ -418,6 +426,7 @@ class CPHASE(ControlledRotationGate):
         Returns:
             The unitary representation.
         """
+        values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
@@ -425,7 +434,9 @@ class CPHASE(ControlledRotationGate):
         return controlled(mat, batch_size, len(self.control))
 
     def jacobian(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+        self,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
@@ -436,6 +447,7 @@ class CPHASE(ControlledRotationGate):
         Returns:
             The unitary representation of the jacobian.
         """
+        values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         n_control = len(self.control)
@@ -535,7 +547,9 @@ class U(Parametric):
         return pauli_singleq_eigenvalues.to(device=self.device, dtype=self.dtype)
 
     def _construct_parametric_base_op(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+        self,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Get the corresponding unitary.
@@ -549,6 +563,7 @@ class U(Parametric):
         """
         if embedding is not None:
             raise NotImplementedError()
+        values = values or dict()
         phi, theta, omega = list(
             map(
                 lambda t: t.unsqueeze(0) if len(t.size()) == 0 else t,
@@ -569,7 +584,9 @@ class U(Parametric):
         return a - b + c + d
 
     def jacobian(
-        self, values: dict[str, Tensor] = {}, embedding: Embedding | None = None
+        self,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
@@ -599,7 +616,9 @@ class U(Parametric):
             RZ(target, self.omega),
         ]
 
-    def jacobian_decomposed(self, values: dict[str, Tensor] = dict()) -> list[Tensor]:
+    def jacobian_decomposed(
+        self, values: dict[str, Tensor] | None = None
+    ) -> list[Tensor]:
         """
         Get the corresponding unitary decomposition of the jacobian.
 
@@ -612,6 +631,7 @@ class U(Parametric):
         Raises:
             NotImplementedError
         """
+        values = values or dict()
         return [op.jacobian(values) for op in self.digital_decomposition()]
 
 

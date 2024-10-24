@@ -16,7 +16,7 @@ def mesolve(
     L: list[Tensor],
     tsave: list | Tensor,
     solver: SolverType,
-    options: dict[str, Any] = {},
+    options: dict[str, Any] | None = None,
 ) -> Result:
     """Solve time-dependent Lindblad master equation.
 
@@ -26,12 +26,13 @@ def mesolve(
         L (list[Tensor]): list of jump operators
         tsave (Tensor): tensor containing simulation time instants
         solver (SolverType): name of the solver to use
-        options (dict[str, Any], optional): additional options passed to the solver. Defaults to {}.
+        options (dict[str, Any], optional): additional options passed to the solver.
+            Defaults to None.
 
     Returns:
         Result: dataclass containing the simulated density matrices at each time moment
     """
-
+    options = options or dict()
     L = torch.stack(L)
     if psi0.size(-2) == 1:
         rho0 = psi0.mH @ psi0

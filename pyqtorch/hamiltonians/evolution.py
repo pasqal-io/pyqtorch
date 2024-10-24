@@ -300,7 +300,7 @@ class HamiltonianEvolution(Sequence):
         return hamiltonian
 
     def _tensor_generator(
-        self, values: dict = dict(), embedding: Embedding | None = None
+        self, values: dict | None = None, embedding: Embedding | None = None
     ) -> Operator:
         """Returns the generator for the TENSOR, OPERATION and PARAMETRIC_OPERATION cases.
 
@@ -310,7 +310,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        return self.generator[0].tensor(values, embedding)
+        return self.generator[0].tensor(values or dict(), embedding)
 
     @property
     def create_hamiltonian(self) -> Callable[[dict], Operator]:
@@ -350,9 +350,10 @@ class HamiltonianEvolution(Sequence):
     def _forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict = dict(),
+        values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
+        values = values or dict()
         evolved_op = self.tensor(values, embedding)
         return apply_operator(
             state=state, operator=evolved_op, qubit_support=self.qubit_support
@@ -361,9 +362,10 @@ class HamiltonianEvolution(Sequence):
     def _forward_time(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict = dict(),
+        values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding = Embedding(),
     ) -> State:
+        values = values or dict()
         n_qubits = len(state.shape) - 1
         batch_size = state.shape[-1]
         t_grid = torch.linspace(0, float(self.duration), self.steps)
@@ -406,7 +408,7 @@ class HamiltonianEvolution(Sequence):
     def forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict = dict(),
+        values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
         """
@@ -420,6 +422,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The transformed state.
         """
+        values = values or dict()
         if self.has_time_param or (
             embedding is not None and getattr(embedding, "tparam_name", None)
         ):
@@ -430,7 +433,7 @@ class HamiltonianEvolution(Sequence):
 
     def tensor(
         self,
-        values: dict = dict(),
+        values: dict | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Operator:
@@ -445,7 +448,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The unitary representation.
         """
-
+        values = values or dict()
         if embedding is not None:
             values = embedding(values)
 
@@ -477,7 +480,9 @@ class HamiltonianEvolution(Sequence):
             return expand_operator(evolved_op, self.qubit_support, full_support)
 
     def jacobian(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+        self,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
@@ -488,7 +493,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The unitary representation of the jacobian.
         """
-
+        values = values or dict()
         if embedding is not None:
             values = embedding(values)
 
