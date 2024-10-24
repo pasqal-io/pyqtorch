@@ -44,7 +44,7 @@ class Noise(torch.nn.Module):
     def forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
         """
@@ -65,6 +65,7 @@ class Noise(torch.nn.Module):
         Raises:
             TypeError: If the input `state` or `kraus_list` is not a Tensor.
         """
+        values = values or dict()
         if not isinstance(state, DensityMatrix):
             state = density_mat(state)
         rho_evols: list[Tensor] = []

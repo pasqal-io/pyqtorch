@@ -57,7 +57,7 @@ class Parametric(QuantumOperation):
         self.param_name = param_name
 
         def parse_values(
-            values: dict[str, Tensor] | Tensor = dict(),
+            values: dict[str, Tensor] | Tensor | None = None,
             embedding: Embedding | None = None,
         ) -> Tensor:
             """The legacy way of using parametric gates:
@@ -71,14 +71,14 @@ class Parametric(QuantumOperation):
             Returns:
                 A Torch Tensor denoting values for the `param_name`.
             """
-
+            values = values or dict()
             if embedding is not None:
                 values = embedding(values)
 
             return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 
         def parse_tensor(
-            values: dict[str, Tensor] | Tensor = dict(),
+            values: dict[str, Tensor] | Tensor | None = None,
             embedding: Embedding | None = None,
         ) -> Tensor:
             """Functional version of the Parametric gate:
@@ -90,11 +90,12 @@ class Parametric(QuantumOperation):
             Returns:
                 A Torch Tensor with which to evaluate the Parametric Gate.
             """
+            values = values or dict()
             # self.param_name will be ""
             return Parametric._expand_values(values)
 
         def parse_constant(
-            values: dict[str, Tensor] | Tensor = dict(),
+            values: dict[str, Tensor] | Tensor | None = None,
             embedding: Embedding | None = None,
         ) -> Tensor:
             """Fix a the parameter of a Parametric Gate to a numeric constant
@@ -105,13 +106,14 @@ class Parametric(QuantumOperation):
             Returns:
                 A Torch Tensor with which to evaluate the Parametric Gate.
             """
+            values = values or dict()
             # self.param_name will be a torch.Tensor
             return Parametric._expand_values(
                 torch.tensor(self.param_name, device=self.device, dtype=self.dtype)
             )
 
         def parse_concretized_callable(
-            values: dict[str, Tensor] | Tensor = dict(),
+            values: dict[str, Tensor] | Tensor | None = None,
             embedding: Embedding | None = None,
         ) -> Tensor:
             """Evaluate ConcretizedCallable object with given values.
@@ -122,6 +124,7 @@ class Parametric(QuantumOperation):
                 A Torch Tensor with which to evaluate the Parametric Gate.
             """
             # self.param_name will be a ConcretizedCallable
+            values = values or dict()
             return Parametric._expand_values(self.param_name(values))  # type: ignore [operator]
 
         if param_name == "":
@@ -176,7 +179,7 @@ class Parametric(QuantumOperation):
 
     def _construct_parametric_base_op(
         self,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
         """
@@ -189,6 +192,7 @@ class Parametric(QuantumOperation):
         Returns:
             The unitary representation.
         """
+        values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
@@ -196,7 +200,7 @@ class Parametric(QuantumOperation):
 
     def jacobian(
         self,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
         """
@@ -208,6 +212,7 @@ class Parametric(QuantumOperation):
         Returns:
             The unitary representation of the jacobian.
         """
+        values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         return _jacobian(thetas, self.operation, self.identity, batch_size)
@@ -263,7 +268,9 @@ class ControlledParametric(Parametric):
         )
 
     def _construct_parametric_base_op(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+        self,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Get the corresponding unitary with parsed values and kronned identities
@@ -276,6 +283,7 @@ class ControlledParametric(Parametric):
         Returns:
             The unitary representation.
         """
+        values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         mat = parametric_unitary(thetas, self.operation, self.identity, batch_size)
@@ -283,7 +291,9 @@ class ControlledParametric(Parametric):
         return mat
 
     def jacobian(
-        self, values: dict[str, Tensor] = dict(), embedding: Embedding | None = None
+        self,
+        values: dict[str, Tensor] | None = None,
+        embedding: Embedding | None = None,
     ) -> Tensor:
         """
         Get the corresponding unitary of the jacobian.
@@ -294,6 +304,7 @@ class ControlledParametric(Parametric):
         Returns:
             The unitary representation of the jacobian.
         """
+        values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         n_control = len(self.control)

@@ -14,7 +14,7 @@ def sesolve(
     psi0: Tensor,
     tsave: Tensor,
     solver: SolverType,
-    options: dict[str, Any] = {},
+    options: dict[str, Any] | None = None,
 ) -> Result:
     """Solve time-dependent Schrodinger equation.
 
@@ -23,12 +23,13 @@ def sesolve(
         psi0 (Tensor): initial state of the system
         tsave (Tensor): tensor containing simulation time instants
         solver (SolverType): name of the solver to use
-        options (dict[str, Any], optional): additional options passed to the solver. Defaults to {}.
+        options (dict[str, Any], optional): additional options passed to the solver.
+            Defaults to None.
 
     Returns:
         Result: dataclass containing the simulated states at each time moment
     """
-
+    options = options or dict()
     # instantiate appropriate solver
     if solver == SolverType.DP5_SE:
         opt = AdaptiveSolverOptions(**options)

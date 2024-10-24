@@ -23,7 +23,7 @@ from pyqtorch.primitives import (
 def calc_mat_vec_wavefunction(
     block: Primitive | Sequence,
     init_state: torch.Tensor,
-    values: dict = dict(),
+    values: dict | None = None,
     full_support: tuple | None = None,
     use_permute: bool = False,
 ) -> torch.Tensor:

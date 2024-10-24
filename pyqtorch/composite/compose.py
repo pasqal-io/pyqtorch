@@ -59,7 +59,7 @@ class Scale(Sequence):
     def forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict = dict(),
+        values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
         """
@@ -72,7 +72,7 @@ class Scale(Sequence):
         Returns:
             The transformed state.
         """
-
+        values = values or dict()
         if embedding is not None:
             values = embedding(values)
 
@@ -87,7 +87,7 @@ class Scale(Sequence):
 
     def tensor(
         self,
-        values: dict[str, Tensor] = dict(),
+        values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Operator:
@@ -102,7 +102,7 @@ class Scale(Sequence):
         Returns:
             The unitary representation.
         """
-
+        values = values or dict()
         if embedding is not None:
             values = embedding(values)
 
@@ -153,7 +153,7 @@ class Add(Sequence):
     def forward(
         self,
         state: State,
-        values: dict[str, Tensor] | ParameterDict = dict(),
+        values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
         """
@@ -166,11 +166,12 @@ class Add(Sequence):
         Returns:
             The transformed state.
         """
+        values = values or dict()
         return reduce(add, (op(state, values, embedding) for op in self.operations))
 
     def tensor(
         self,
-        values: dict = dict(),
+        values: dict | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Tensor:
@@ -185,6 +186,7 @@ class Add(Sequence):
         Returns:
             The unitary representation.
         """
+        values = values or dict()
         if full_support is None:
             full_support = self.qubit_support
         elif not set(self.qubit_support).issubset(set(full_support)):
@@ -234,10 +236,11 @@ class Merge(Sequence):
     def forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] = dict(),
+        values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
         batch_size = state.shape[-1]
+        values = values or dict()
         if values:
             batch_size = max(
                 batch_size,
@@ -258,11 +261,12 @@ class Merge(Sequence):
 
     def tensor(
         self,
-        values: dict[str, Tensor] = dict(),
+        values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
+        values = values or dict()
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
             (

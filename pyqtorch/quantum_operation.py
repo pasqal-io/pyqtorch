@@ -248,7 +248,7 @@ class QuantumOperation(torch.nn.Module):
     @cached_property
     def eigenvalues(
         self,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
         """Get eigenvalues of the tensor of QuantumOperation.
@@ -260,7 +260,7 @@ class QuantumOperation(torch.nn.Module):
         Returns:
             Eigenvalues of the related tensor.
         """
-        blockmat = self.tensor(values, embedding)
+        blockmat = self.tensor(values or dict(), embedding)
         return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
 
     @cached_property
@@ -277,7 +277,7 @@ class QuantumOperation(torch.nn.Module):
 
     def _default_operator_function(
         self,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
         """Default operator_function simply returns the operation.
@@ -298,7 +298,7 @@ class QuantumOperation(torch.nn.Module):
 
     def dagger(
         self,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
         """Apply the dagger to operator.
@@ -310,11 +310,11 @@ class QuantumOperation(torch.nn.Module):
         Returns:
             Tensor: conjugate transpose operator.
         """
-        return _dagger(self.operator_function(values, embedding))
+        return _dagger(self.operator_function(values or dict(), embedding))
 
     def tensor(
         self,
-        values: dict[str, Tensor] = dict(),
+        values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Tensor:
@@ -329,6 +329,7 @@ class QuantumOperation(torch.nn.Module):
         Returns:
             Tensor: Tensor representation of QuantumOperation.
         """
+        values = values or dict()
         blockmat = self.operator_function(values, embedding)
         if self._qubit_support.qubits != self.qubit_support:
             blockmat = permute_basis(blockmat, self._qubit_support.qubits, inv=True)
@@ -340,9 +341,10 @@ class QuantumOperation(torch.nn.Module):
     def _forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
+        values = values or dict()
         if isinstance(state, DensityMatrix):
             return apply_operator_dm(
                 state, self.tensor(values, embedding), self.qubit_support
@@ -357,10 +359,10 @@ class QuantumOperation(torch.nn.Module):
     def _noise_forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
-
+        values = values or dict()
         if not isinstance(state, DensityMatrix):
             state = density_mat(state)
 
@@ -383,7 +385,7 @@ class QuantumOperation(torch.nn.Module):
     def forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
         """Apply the operation on input state or density matrix.
@@ -396,6 +398,7 @@ class QuantumOperation(torch.nn.Module):
         Returns:
             Tensor: _description_
         """
+        values = values or dict()
         if self.noise:
             return self._noise_forward(state, values, embedding)
         else:

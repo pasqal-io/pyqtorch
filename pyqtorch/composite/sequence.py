@@ -103,9 +103,10 @@ class Sequence(Module):
     def forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict = dict(),
+        values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
+        values = values or dict()
         for op in self.operations:
             state = op(state, values, embedding)
         return state
@@ -136,7 +137,7 @@ class Sequence(Module):
 
     def tensor(
         self,
-        values: dict[str, Tensor] = dict(),
+        values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Tensor:
@@ -150,6 +151,7 @@ class Sequence(Module):
         mat = torch.eye(
             2 ** len(full_support), dtype=self.dtype, device=self.device
         ).unsqueeze(2)
+        values = values or dict()
         return reduce(
             lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
             (
@@ -161,7 +163,8 @@ class Sequence(Module):
 
     def dagger(
         self,
-        values: dict[str, Tensor] | Tensor = dict(),
+        values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
+        values = values or dict()
         return _dagger(self.tensor(values, embedding))

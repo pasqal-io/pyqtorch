@@ -194,9 +194,10 @@ def test_reembedding_forward() -> None:
         def forward(
             self,
             state: torch.Tensor,
-            values: dict[str, torch.Tensor] = dict(),
+            values: dict[str, torch.Tensor] | None = None,
             embedding: Embedding | None = None,
         ) -> torch.Tensor:
+            values = values or dict()
             return reduce(
                 add,
                 [

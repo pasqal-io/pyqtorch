@@ -35,7 +35,7 @@ class Observable(Add):
     def expectation(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict = dict(),
+        values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
         """Calculate the inner product :math:`\\langle\\bra|O\\ket\\rangle`
@@ -47,7 +47,7 @@ class Observable(Add):
         Returns:
             The expectation value.
         """
-
+        values = values or dict()
         if isinstance(state, DensityMatrix):
             n_qubits = int(log2(state.size()[0]))
             obs_rho = operator_product(

@@ -77,11 +77,12 @@ class ConcretizedCallable:
         self,
         call_name: str = "",
         abstract_args: list[str | float | int | complex | ConcretizedCallable] = ["x"],
-        instruction_mapping: dict[str, Tuple[str, str]] = dict(),
+        instruction_mapping: dict[str, Tuple[str, str]] | None = None,
         engine_name: str = "torch",
         device: str = "cpu",
         dtype: Any = None,
     ) -> None:
+        instruction_mapping = instruction_mapping or dict()
         instruction_mapping = {
             **instruction_mapping,
             **DEFAULT_INSTRUCTION_MAPPING[engine_name],
@@ -121,8 +122,9 @@ class ConcretizedCallable:
                 + f" not in instruction_mapping {instruction_mapping} due to {e}."
             )
 
-    def evaluate(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
+    def evaluate(self, inputs: dict[str, ArrayLike] | None = None) -> ArrayLike:
         arraylike_args = []
+        inputs = inputs or dict()
         for symbol_or_numeric in self.abstract_args:
             if isinstance(symbol_or_numeric, ConcretizedCallable):
                 arraylike_args.append(symbol_or_numeric(inputs))
@@ -153,7 +155,7 @@ class ConcretizedCallable:
     def independent_args(self) -> list:
         return list(self._get_independent_args(self))
 
-    def __call__(self, inputs: dict[str, ArrayLike] = dict()) -> ArrayLike:
+    def __call__(self, inputs: dict[str, ArrayLike] | None = None) -> ArrayLike:
         return self.evaluate(inputs)
 
     def __mul__(
@@ -319,12 +321,12 @@ class Embedding:
         self,
         vparam_names: list[str] = [],
         fparam_names: list[str] = [],
-        var_to_call: dict[str, ConcretizedCallable] = dict(),
+        var_to_call: dict[str, ConcretizedCallable] | None = None,
         tparam_name: str | None = None,
         engine_name: str = "torch",
         device: str = "cpu",
     ) -> None:
-
+        var_to_call = var_to_call or dict()
         self.vparams = {
             vp: init_param(engine_name, trainable=True, device=device)
             for vp in vparam_names
@@ -344,12 +346,13 @@ class Embedding:
 
     def embed_all(
         self,
-        inputs: dict[str, ArrayLike] = dict(),
+        inputs: dict[str, ArrayLike] | None = None,
     ) -> dict[str, ArrayLike]:
         """The standard embedding of all intermediate and leaf parameters.
         Include the root_params, i.e., the vparams and fparams original values
         to be reused in computations.
         """
+        inputs = inputs or dict()
         for intermediate_or_leaf_var, engine_callable in self.var_to_call.items():
             # We mutate the original inputs dict and include intermediates and leaves.
             if not self._tracked_vars_identified:
@@ -388,10 +391,12 @@ class Embedding:
             ](embedded_params)
         return embedded_params
 
-    def __call__(self, inputs: dict[str, ArrayLike] = dict()) -> dict[str, ArrayLike]:
+    def __call__(
+        self, inputs: dict[str, ArrayLike] | None = None
+    ) -> dict[str, ArrayLike]:
         """Functional version of legacy embedding: Return a new dictionary\
         with all embedded parameters."""
-        return self.embed_all(inputs)
+        return self.embed_all(inputs or dict())
 
     @property
     def dtype(self) -> DTypeLike:

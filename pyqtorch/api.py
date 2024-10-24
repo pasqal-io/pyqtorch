@@ -24,7 +24,7 @@ logger = getLogger(__name__)
 def run(
     circuit: QuantumCircuit,
     state: Tensor = None,
-    values: dict[str, Tensor] = dict(),
+    values: dict[str, Tensor] | None = None,
     embedding: Embedding | None = None,
 ) -> Tensor:
     """Sequentially apply each operation in `circuit` to an input state `state`
@@ -53,6 +53,7 @@ def run(
     run(circ, state, {'theta': rand(1)})
     ```
     """
+    values = values or dict()
     logger.debug(f"Running circuit {circuit} on state {state} and values {values}.")
     return circuit.run(state=state, values=values, embedding=embedding)
 
@@ -60,7 +61,7 @@ def run(
 def sample(
     circuit: QuantumCircuit,
     state: Tensor = None,
-    values: dict[str, Tensor] = dict(),
+    values: dict[str, Tensor] | None = None,
     n_shots: int = 1000,
     embedding: Embedding | None = None,
 ) -> list[Counter]:
@@ -92,6 +93,7 @@ def sample(
     sample(circ, state, {'theta': rand(1)}, n_shots=1000)[0]
     ```
     """
+    values = values or dict()
     logger.debug(
         f"Sampling circuit {circuit} on state {state} and values {values} with n_shots {n_shots}."
     )
@@ -104,7 +106,7 @@ def analytical_expectation(
     circuit: QuantumCircuit,
     state: Tensor,
     observable: Observable,
-    values: dict[str, Tensor] = dict(),
+    values: dict[str, Tensor] | None = None,
     embedding: Embedding | None = None,
 ) -> Tensor:
     """Compute the analytical expectation value.
@@ -124,6 +126,7 @@ def analytical_expectation(
     Returns:
         Tensor: Expectation value.
     """
+    values = values or dict()
     state = run(circuit, state, values, embedding=embedding)
     return observable.expectation(state, values, embedding=embedding)
 
@@ -132,7 +135,7 @@ def sampled_expectation(
     circuit: QuantumCircuit,
     state: Tensor,
     observable: Observable,
-    values: dict[str, Tensor] = dict(),
+    values: dict[str, Tensor] | None = None,
     embedding: Embedding | None = None,
     n_shots: int = 1,
 ) -> Tensor:
@@ -152,6 +155,7 @@ def sampled_expectation(
     Returns:
         Tensor: Expectation value.
     """
+    values = values or dict()
     state = run(circuit, state, values, embedding=embedding)
     n_qubits = circuit.n_qubits
 
@@ -193,7 +197,7 @@ def sampled_expectation(
 def expectation(
     circuit: QuantumCircuit,
     state: Tensor = None,
-    values: dict[str, Tensor] = dict(),
+    values: dict[str, Tensor] | None = None,
     observable: Observable = None,  # type: ignore[assignment]
     diff_mode: DiffMode = DiffMode.AD,
     n_shots: int | None = None,
@@ -233,7 +237,7 @@ def expectation(
     dfdtheta= grad(expval, theta, ones_like(expval))[0]
     ```
     """
-
+    values = values or dict()
     if embedding is not None and diff_mode != DiffMode.AD:
         raise NotImplementedError("Only diff_mode AD supports embedding")
     logger.debug(

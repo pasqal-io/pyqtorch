@@ -80,10 +80,11 @@ class QuantumCircuit(Sequence):
     def sample(
         self,
         state: Tensor = None,
-        values: dict[str, Tensor] = dict(),
+        values: dict[str, Tensor] | None = None,
         n_shots: int = 1000,
         embedding: Embedding | None = None,
     ) -> list[Counter]:
+        values = values or dict()
         if n_shots < 1:
             raise ValueError(
                 f"You can only call sample with a non-negative value for `n_shots`. Got {n_shots}."
