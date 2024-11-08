@@ -292,6 +292,7 @@ def test_hamevo_endianness_cnot() -> None:
     assert torch.allclose(wf_cnot, wf_hamevo, rtol=RTOL, atol=ATOL)
 
 
+@pytest.mark.parametrize("duration", [torch.rand(1), "duration"])
 @pytest.mark.parametrize("ode_solver", [SolverType.DP5_SE, SolverType.KRYLOV_SE])
 def test_timedependent(
     tparam: str,
@@ -307,8 +308,10 @@ def test_timedependent(
 
     psi_start = random_state(2)
 
+    dur_val = duration if isinstance(duration, torch.Tensor) else torch.rand(1)
+
     # simulate with time-dependent solver
-    t_points = torch.linspace(0, duration, n_steps)
+    t_points = torch.linspace(0, dur_val[0], n_steps)
     psi_solver = pyq.sesolve(
         torch_hamiltonian, psi_start.reshape(-1, 1), t_points, ode_solver
     ).states[-1]
@@ -325,7 +328,7 @@ def test_timedependent(
         steps=n_steps,
         solver=ode_solver,
     )
-    values = {"y": param_y}
+    values = {"y": param_y, "duration": dur_val}
     psi_hamevo = hamiltonian_evolution(
         state=psi_start, values=values, embedding=embedding
     ).reshape(-1, 1)
@@ -420,4 +423,4 @@ def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
 )
 def test_hamevo_is_time_dependent_generator(generator, time_param, result) -> None:
     hamevo = HamiltonianEvolution(generator, time_param)
-    assert hamevo.has_time_param == result
+    assert hamevo.is_time_dependent == result

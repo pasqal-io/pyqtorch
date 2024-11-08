@@ -119,6 +119,8 @@ def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
     return torch.transpose(evol_operator, 0, -1)
 
 
+# FIXME: Review HamiltonianEvolution inheriting from Sequence.
+# Probably makes more sense to inherit from Parametric.
 class HamiltonianEvolution(Sequence):
     """
     The HamiltonianEvolution corresponds to :math:`t`, returns :math:`exp(-i H, t)` where
@@ -146,7 +148,7 @@ class HamiltonianEvolution(Sequence):
         time: Tensor | str | ConcretizedCallable,
         qubit_support: Tuple[int, ...] | None = None,
         cache_length: int = 1,
-        duration: float | Tensor = 1.0,
+        duration: Tensor | str | float | None = None,
         steps: int = 100,
         solver=SolverType.DP5_SE,
     ):
@@ -165,16 +167,20 @@ class HamiltonianEvolution(Sequence):
         self.solver_type = solver
         self.steps = steps
         self.duration = duration
-        self.is_time_dependent = None
+
+        if isinstance(duration, (str, float, Tensor)) or duration is None:
+            self.duration = duration
+        else:
+            raise ValueError(
+                "Optional argument `duration` should be passed as str, float or Tensor."
+            )
 
         if isinstance(time, (str, Tensor, ConcretizedCallable)):
             self.time = time
         else:
             raise ValueError(
-                "time should be passed as str, Tensor or ConcretizedCallable."
+                "Argument `time` should be passed as str, Tensor or ConcretizedCallable."
             )
-
-        self.has_time_param = self._has_time_param(generator)
 
         if isinstance(generator, Tensor):
             if qubit_support is None:
@@ -246,6 +252,10 @@ class HamiltonianEvolution(Sequence):
         """
         return self.operations
 
+    @cached_property
+    def is_time_dependent(self) -> bool:
+        return self._is_time_dependent(self.generator)
+
     def flatten(self) -> ModuleList:
         return ModuleList([self])
 
@@ -253,14 +263,14 @@ class HamiltonianEvolution(Sequence):
     def param_name(self) -> Tensor | str:
         return self.time
 
-    def _has_time_param(self, generator: TGenerator) -> bool:
+    def _is_time_dependent(self, generator: TGenerator) -> bool:
         from pyqtorch.primitives import Parametric
 
         res = False
         if isinstance(self.time, Tensor):
             return res
         else:
-            if isinstance(generator, (Sequence, QuantumOperation)):
+            if isinstance(generator, (Sequence, QuantumOperation, ModuleList)):
                 for m in generator.modules():
                     if isinstance(m, (Scale, Parametric)):
                         if self.time in getattr(m.param_name, "independent_args", []):
@@ -368,8 +378,10 @@ class HamiltonianEvolution(Sequence):
         values = values or dict()
         n_qubits = len(state.shape) - 1
         batch_size = state.shape[-1]
-        t_grid = torch.linspace(0, float(self.duration), self.steps)
-
+        duration = (
+            values[self.duration] if isinstance(self.duration, str) else self.duration
+        )
+        t_grid = torch.linspace(0, float(duration), self.steps)
         if embedding is not None:
             values.update({embedding.tparam_name: torch.tensor(0.0)})  # type: ignore [dict-item]
             embedded_params = embedding(values)
@@ -390,7 +402,13 @@ class HamiltonianEvolution(Sequence):
                 values[self.time] = torch.as_tensor(t)
                 reembedded_time_values = values
             return (
-                self.generator[0].tensor(reembedded_time_values, embedding).squeeze(2)
+                self.generator[0]
+                .tensor(
+                    reembedded_time_values,
+                    embedding,
+                    full_support=tuple(range(n_qubits)),
+                )
+                .squeeze(2)
             )
 
         sol = sesolve(
@@ -423,7 +441,7 @@ class HamiltonianEvolution(Sequence):
             The transformed state.
         """
         values = values or dict()
-        if self.has_time_param or (
+        if self.is_time_dependent or (
             embedding is not None and getattr(embedding, "tparam_name", None)
         ):
             return self._forward_time(state, values, embedding)  # type: ignore [arg-type]
