@@ -172,7 +172,7 @@ class HamiltonianEvolution(Sequence):
             self.duration = duration
         else:
             raise ValueError(
-                "Optional argument `duration` should be passed as str or Tensor."
+                "Optional argument `duration` should be passed as str, float or Tensor."
             )
 
         if isinstance(time, (str, Tensor, ConcretizedCallable)):
