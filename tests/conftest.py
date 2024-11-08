@@ -403,7 +403,7 @@ def damping_gates_prob_0(random_damping_gate: Noise, target: int) -> Any:
 
 @pytest.fixture
 def duration() -> float:
-    return float(torch.rand(1))
+    return torch.rand(1)
 
 
 @pytest.fixture
