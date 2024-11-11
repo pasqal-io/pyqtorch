@@ -16,6 +16,7 @@ from pyqtorch.composite import Scale
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.primitives import Primitive
 from pyqtorch.quantum_operation import QuantumOperation
+from pyqtorch.time_dependent.mesolve import mesolve
 from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
     ATOL,
@@ -140,6 +141,11 @@ class HamiltonianEvolution(Sequence):
         operations: List of operations.
         cache_length: LRU cache cache_length evolution operators for given set
                     of parameter values.
+        duration: Total duration for evolving when using a solver.
+        steps: Number of steps to use when using solver.
+        solver: Time-dependent Lindblad master equation solver.
+        noise_operators: List of tensors or Kraus oeprators adding analog noise
+            when solving with a Shrodinger equation solver.
     """
 
     def __init__(
@@ -151,6 +157,7 @@ class HamiltonianEvolution(Sequence):
         duration: Tensor | str | float | None = None,
         steps: int = 100,
         solver=SolverType.DP5_SE,
+        noise_operators: list[Tensor] = list(),
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -161,7 +168,13 @@ class HamiltonianEvolution(Sequence):
             qubit_support: The qubits the operator acts on. If generator is a quantum
                 operation or sequence of operations,
                 it will be inferred from the generator.
-            generator_parametric: Whether the generator is parametric or not.
+            cache_length: LRU cache cache_length evolution operators for given set
+                    of parameter values.
+            duration: Total duration for evolving when using a solver.
+            steps: Number of steps to use when using solver.
+            solver: Time-dependent Lindblad master equation solver.
+            noise_operators: List of tensors or Kraus oeprators adding analog noise
+                when solving with a Shrodinger equation solver.
         """
 
         self.solver_type = solver
@@ -242,6 +255,8 @@ class HamiltonianEvolution(Sequence):
         # to avoid recomputing hamiltonians and evolution
         self._cache_hamiltonian_evo: dict[str, Tensor] = dict()
         self.cache_length = cache_length
+
+        self.noise_operators: list[Tensor] = noise_operators
 
     @property
     def generator(self) -> ModuleList:
@@ -411,17 +426,28 @@ class HamiltonianEvolution(Sequence):
                 .squeeze(2)
             )
 
-        sol = sesolve(
-            Ht,
-            torch.flatten(state, start_dim=0, end_dim=-2),
-            t_grid,
-            self.solver_type,
-        )
+        if len(self.noise_operators) == 0:
+            sol = sesolve(
+                Ht,
+                torch.flatten(state, start_dim=0, end_dim=-2),
+                t_grid,
+                self.solver_type,
+            )
 
-        # Retrieve the last state of shape (2**n_qubits, batch_size)
-        state = sol.states[-1]
+            # Retrieve the last state of shape (2**n_qubits, batch_size)
+            state = sol.states[-1]
 
-        return state.reshape([2] * n_qubits + [batch_size])
+            return state.reshape([2] * n_qubits + [batch_size])
+        else:
+            sol = mesolve(
+                Ht,
+                torch.flatten(state, start_dim=0, end_dim=-2),
+                self.noise_operators,
+                t_grid,
+                self.solver_type,
+            )
+            state = sol.states[-1]
+            return state.reshape([2] * n_qubits * 2 + [batch_size])
 
     def forward(
         self,
