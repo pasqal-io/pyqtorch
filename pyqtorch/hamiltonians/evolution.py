@@ -29,6 +29,8 @@ from pyqtorch.utils import (
     finitediff,
     is_diag,
     is_parametric,
+    DensityMatrix,
+    density_mat,
 )
 
 BATCH_DIM = 2
@@ -439,6 +441,8 @@ class HamiltonianEvolution(Sequence):
 
             return state.reshape([2] * n_qubits + [batch_size])
         else:
+            if not isinstance(state, DensityMatrix):
+                state = density_mat(state)
             sol = mesolve(
                 Ht,
                 torch.flatten(state, start_dim=0, end_dim=-2),
