@@ -188,6 +188,7 @@ class ReadoutNoise(ReadoutInterface):
         error_probability: float | None = None,
         seed: int | None = None,
         noise_distribution: torch.distributions = WhiteNoise.UNIFORM,
+        confusion_matrix: Tensor | None = None,
     ) -> None:
         """Initializes ReadoutNoise.
 
@@ -198,12 +199,21 @@ class ReadoutNoise(ReadoutInterface):
               readout at any position in the bit strings. Defaults to 0.1 if None.
             noise_distribution (str, optional): Noise distribution type.
               Defaults to WhiteNoise.UNIFORM.
+            confusion_matrix (Tensor, optional): The confusion matrix if available.
+
         """
         self.n_qubits = n_qubits
         self.seed = seed
         self.error_probability = error_probability if error_probability else 0.1
         self.noise_distribution = noise_distribution
+
         self.confusion_matrix: Tensor = torch.empty((self.n_qubits, 2, 2))
+        if confusion_matrix is not None:
+            if confusion_matrix.size() != (self.n_qubits, 2, 2):
+                raise ValueError(
+                    f"The confusion matrix should be of size {(self.n_qubits, 2, 2)}"
+                )
+            self.confusion_matrix = confusion_matrix
 
     def create_noise_matrix(self, n_shots: int) -> Tensor:
         """Create a noise matrix from a noise distribution.
@@ -222,6 +232,7 @@ class ReadoutNoise(ReadoutInterface):
         noise_matrix = create_noise_matrix(
             self.noise_distribution, n_shots, self.n_qubits
         )
+
         confusion_matrices = create_confusion_matrices(
             noise_matrix=noise_matrix, error_probability=self.error_probability
         )
@@ -254,7 +265,8 @@ class ReadoutNoise(ReadoutInterface):
         output_bits = binary_repr.unsqueeze(1).expand(-1, n_states, -1)
 
         # Get transition probabilities for each bit position
-        self.create_noise_matrix(n_shots)
+        if self.confusion_matrix.numel() == 0:
+            self.create_noise_matrix(n_shots)
         confusion_matrices = self.confusion_matrix
 
         # Index into confusion matrix for all qubits at once
@@ -309,7 +321,7 @@ class CorrelatedReadoutNoise(ReadoutInterface):
         self.n_qubits = int(log(confusion_matrix.size(0), 2))
 
     def apply_on_probas(self, batch_probs: Tensor, n_shots: int = 1000) -> Tensor:
-        output_probs = self.confusion_matrix.T @ batch_probs
+        output_probs = batch_probs @ self.confusion_matrix.T
         return output_probs
 
     def apply_on_counts(
