@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from abc import ABC
 from collections import Counter
 from enum import Enum
+from math import log
 
 import torch
 from torch import Tensor
 from torch.distributions import normal, poisson, uniform
 
-from pyqtorch.utils import OrderedCounter
+from pyqtorch.utils import OrderedCounter, sample_multinomial
 
 
 class WhiteNoise(Enum):
@@ -150,7 +152,17 @@ def create_confusion_matrices(noise_matrix: Tensor, error_probability: float) ->
     return torch.stack(confusion_matrices)
 
 
-class ReadoutNoise:
+class ReadoutInterface(ABC):
+    def apply_on_probas(self, batch_probs, n_shots: int) -> Tensor:
+        raise NotImplementedError
+
+    def apply_on_counts(
+        self, counters: list[Counter | OrderedCounter], n_shots
+    ) -> list[Counter]:
+        raise NotImplementedError
+
+
+class ReadoutNoise(ReadoutInterface):
     """Simulate errors when sampling from a circuit.
 
     The model is simple as all bits are considered independent
@@ -191,7 +203,7 @@ class ReadoutNoise:
         self.seed = seed
         self.error_probability = error_probability if error_probability else 0.1
         self.noise_distribution = noise_distribution
-        self.confusion_matrices: Tensor = torch.empty((self.n_qubits, 2, 2))
+        self.confusion_matrix: Tensor = torch.empty((self.n_qubits, 2, 2))
 
     def create_noise_matrix(self, n_shots: int) -> Tensor:
         """Create a noise matrix from a noise distribution.
@@ -213,7 +225,7 @@ class ReadoutNoise:
         confusion_matrices = create_confusion_matrices(
             noise_matrix=noise_matrix, error_probability=self.error_probability
         )
-        self.confusion_matrices = confusion_matrices
+        self.confusion_matrix = confusion_matrices
         return noise_matrix
 
     def apply_on_probas(self, batch_probs: Tensor, n_shots: int = 1000) -> Tensor:
@@ -243,7 +255,7 @@ class ReadoutNoise:
 
         # Get transition probabilities for each bit position
         self.create_noise_matrix(n_shots)
-        confusion_matrices = self.confusion_matrices
+        confusion_matrices = self.confusion_matrix
 
         # Index into confusion matrix for all qubits at once
         # Shape: (n_states_out, n_states_in, n_qubits)
@@ -276,4 +288,44 @@ class ReadoutNoise:
         for counter in counters:  # type: ignore[assignment]
             sample = sample_to_matrix(counter)
             corrupted_bitstrings.append(bs_corruption(err_idx=err_idx, sample=sample))
+        return corrupted_bitstrings
+
+
+class CorrelatedReadoutNoise(ReadoutInterface):
+    def __init__(
+        self,
+        confusion_matrix: Tensor,
+    ) -> None:
+        """Initializes CorrelatedReadoutNoise.
+
+        Args:
+            confusion_matrices (Tensor): Confusion matrices of size (2**n_qubits, 2**n_qubits).
+        """
+        if (len(confusion_matrix.size()) != 2) or (
+            confusion_matrix.size(0) != confusion_matrix.size(1)
+        ):
+            raise ValueError("The confusion matrix should be square")
+        self.confusion_matrix = confusion_matrix
+        self.n_qubits = int(log(confusion_matrix.size(0), 2))
+
+    def apply_on_probas(self, batch_probs: Tensor, n_shots: int = 1000) -> Tensor:
+        output_probs = self.confusion_matrix.T @ batch_probs
+        return output_probs
+
+    def apply_on_counts(
+        self, counters: list[Counter | OrderedCounter], n_shots: int = 1000
+    ) -> list[Counter]:
+
+        sample_from_confusion = torch.func.vmap(
+            lambda p: sample_multinomial(
+                p, self.n_qubits, 1, return_counter=True, minlength=self.n_qubits
+            ),
+            randomness="different",
+        )
+        corrupted_bitstrings = []
+        for counter in counters:
+            sample = sample_to_matrix(counter)
+            corrupted_bitstrings.append(
+                sample_from_confusion(self.confusion_matrix @ sample)
+            )
         return corrupted_bitstrings
