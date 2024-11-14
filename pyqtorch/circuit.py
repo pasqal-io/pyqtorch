@@ -11,7 +11,7 @@ from torch.nn import Module, ParameterDict
 
 from pyqtorch.composite import Sequence
 from pyqtorch.embed import Embedding
-from pyqtorch.noise import ReadoutNoise
+from pyqtorch.noise.readout import ReadoutInterface as Readout
 from pyqtorch.utils import (
     DensityMatrix,
     DropoutMode,
@@ -30,7 +30,7 @@ class QuantumCircuit(Sequence):
     Attributes:
         n_qubits (int): Number of qubits.
         operations (list[Module]): List of operations.
-        readout_noise (ReadoutNoise | None, optional): Readout noise
+        readout_noise (Readout | None, optional): Readout noise
             applied to samples. Defaults to None.
     """
 
@@ -38,7 +38,7 @@ class QuantumCircuit(Sequence):
         self,
         n_qubits: int,
         operations: list[Module],
-        readout_noise: ReadoutNoise | None = None,
+        readout_noise: Readout | None = None,
     ):
         """Initializes QuantumCircuit.
 
@@ -123,7 +123,7 @@ class DropoutQuantumCircuit(QuantumCircuit):
         self,
         n_qubits: int,
         operations: list[Module],
-        readout_noise: ReadoutNoise | None = None,
+        readout_noise: Readout | None = None,
         dropout_mode: DropoutMode = DropoutMode.ROTATIONAL,
         dropout_prob: float = 0.06,
     ):
