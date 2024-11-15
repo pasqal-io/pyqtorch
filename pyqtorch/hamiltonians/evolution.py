@@ -440,22 +440,20 @@ class HamiltonianEvolution(Sequence):
             )
 
             # Retrieve the last state of shape (2**n_qubits, batch_size)
-            state = sol.states[-1]
-
-            return state.reshape([2] * n_qubits + [batch_size])
+            return sol.states[-1]
         else:
             if not isinstance(state, DensityMatrix):
                 state = density_mat(state)
             sol = mesolve(
                 Ht,
-                torch.flatten(state, start_dim=0, end_dim=-2),
+                state,
                 self.noise_operators,
                 t_grid,
                 self.solver_type,
                 options={"use_sparse": self.use_sparse},
             )
-            state = sol.states[-1]
-            return state.reshape([2] * n_qubits * 2 + [batch_size])
+            mesolve_state = sol.states[-1]
+            return mesolve_state
 
     def forward(
         self,

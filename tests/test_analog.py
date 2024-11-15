@@ -349,10 +349,17 @@ def test_timedependent(
 
 
 @pytest.mark.parametrize("duration", [torch.rand(1), "duration"])
+@pytest.mark.parametrize(
+    "batchsize",
+    [
+        1,
+    ],
+)
 def test_timedependent_with_noise(
     tparam: str,
     param_y: float,
     duration: float,
+    batchsize: int,
     n_steps: int,
     torch_hamiltonian: Callable,
     hamevo_generator: Sequence,
@@ -360,16 +367,18 @@ def test_timedependent_with_noise(
     sq: tuple,
 ) -> None:
 
-    psi_start = density_mat(random_state(2))
+    psi_start = density_mat(random_state(2, batchsize))
     dur_val = duration if isinstance(duration, torch.Tensor) else torch.rand(1)
 
     # simulate with time-dependent solver
     t_points = torch.linspace(0, dur_val[0], n_steps)
 
+    # No batchsiwe for the jump operators
     list_ops = Depolarizing(0, error_probability=0.1).tensor(2)
+    list_ops = [op.squeeze() for op in list_ops]
     solver = SolverType.DP5_ME
     psi_solver = pyq.mesolve(
-        torch_hamiltonian, psi_start.reshape(-1, 1), list_ops, t_points, solver
+        torch_hamiltonian, psi_start, list_ops, t_points, solver
     ).states[-1]
 
     # simulate with HamiltonianEvolution
@@ -388,8 +397,8 @@ def test_timedependent_with_noise(
     values = {"y": param_y, "duration": dur_val}
     psi_hamevo = hamiltonian_evolution(
         state=psi_start, values=values, embedding=embedding
-    ).reshape(-1, 1)
-
+    )
+    print(psi_solver.shape, psi_hamevo.shape)
     assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=ATOL)
 
 
