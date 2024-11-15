@@ -30,10 +30,15 @@ def ham_t(t: float) -> Tensor:
 t_points = torch.linspace(0, duration, n_steps)
 final_state_se = sesolve(ham_t, input_state, t_points, SolverType.DP5_SE).states[-1]
 
-# define jump operator L and solve Lindblad master equation
+# define jump operator L
 L = IMAT.clone()
 for i in range(n_qubits-1):
     L = torch.kron(L, XMAT)
-final_state_me = mesolve(ham_t, input_state, [L], t_points, SolverType.DP5_ME).states[-1]
+
+# prepare initial density matrix with batch dimension as the last
+rho0 = torch.matmul(input_state, input_state.T).unsqueeze(-1)
+
+# solve Lindblad master equation
+final_state_me = mesolve(ham_t, rho0, [L], t_points, SolverType.DP5_ME).states[-1]
 
 ```

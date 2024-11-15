@@ -12,7 +12,7 @@ from pyqtorch.utils import Result, SolverType
 
 def mesolve(
     H: Callable[..., Any],
-    psi0: Tensor,
+    rho0: Tensor,
     L: list[Tensor],
     tsave: list | Tensor,
     solver: SolverType,
@@ -22,7 +22,7 @@ def mesolve(
 
     Args:
         H (Callable[[float], Tensor]): time-dependent Hamiltonian of the system
-        psi0 (Tensor): initial state or density matrix of the system
+        rho0 (Tensor): initial density matrix of the system
         L (list[Tensor]): list of jump operators
         tsave (Tensor): tensor containing simulation time instants
         solver (SolverType): name of the solver to use
@@ -34,17 +34,21 @@ def mesolve(
     """
     options = options or dict()
     L = torch.stack(L)
-    if psi0.size(-2) == 1:
-        rho0 = psi0.mH @ psi0
-    elif psi0.size(-1) == 1:
-        rho0 = psi0 @ psi0.mH
-    elif psi0.size(-1) == psi0.size(-2):
-        rho0 = psi0
-    else:
+
+    # check dimensions of initial state
+    n = H(0.0).shape[0]
+    if (
+        (rho0.shape[0] != rho0.shape[1])
+        or (rho0.shape[0] != n)
+        or (len(rho0.shape) != 3)
+    ):
         raise ValueError(
-            "Argument `psi0` must be a ket, bra or density matrix, but has shape"
-            f" {tuple(psi0.shape)}."
+            f"Argument `rho0` must be a 3D tensor of shape `({n}, {n}, batch_size)`. "
+            f"Current shape: {tuple(rho0.shape)}."
         )
+
+    # permute dimensions to allow batch operations
+    rho0 = rho0.permute(2, 0, 1)
 
     # instantiate appropriate solver
     if solver == SolverType.DP5_ME:

@@ -126,9 +126,10 @@ class AdaptiveIntegrator:
         """
 
         sc = self.options.atol + torch.abs(y0) * self.options.rtol
+        f0 = f0.to_dense() if self.options.use_sparse else f0
         d0, d1 = (
             hairer_norm(y0 / sc).max().item(),
-            hairer_norm(f0.to_dense() / sc).max().item(),
+            hairer_norm(f0 / sc).max().item(),
         )
 
         if d0 < 1e-5 or d1 < 1e-5:
@@ -138,7 +139,8 @@ class AdaptiveIntegrator:
 
         y1 = y0 + h0 * f0
         f1 = fun(t0 + h0, y1)
-        d2 = hairer_norm((f1 - f0).to_dense() / sc).max().item() / h0
+        diff = (f1 - f0).to_dense() if self.options.use_sparse else f1 - f0
+        d2 = hairer_norm(diff / sc).max().item() / h0
         if d1 <= 1e-15 and d2 <= 1e-15:
             h1 = max(1e-6, h0 * 1e-3)
         else:
@@ -183,13 +185,17 @@ class AdaptiveIntegrator:
 
         # initialize the ODE routine
         t, y, *args = self.init_forward()
-        n1, n2 = y.shape
 
         # run the ODE routine
         result = []
         for tnext in self.tsave:
             y, *args = self.integrate(t, tnext, y, *args)
-            result.append(y.mH if n1 == n2 else y.T)
+            result.append(y)
             t = tnext
 
-        return torch.cat(result).reshape((-1, n1, n2))
+        if len(y.shape) == 2:
+            res = torch.stack(result)
+        elif len(y.shape) == 3:
+            res = torch.stack(result).permute(0, 2, 3, 1)
+
+        return res
