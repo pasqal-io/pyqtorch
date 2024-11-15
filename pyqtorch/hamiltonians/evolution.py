@@ -146,7 +146,7 @@ class HamiltonianEvolution(Sequence):
         duration: Total duration for evolving when using a solver.
         steps: Number of steps to use when using solver.
         solver: Time-dependent Lindblad master equation solver.
-        noise_operators: List of tensors or Kraus oeprators adding analog noise
+        noise_operators: List of tensors or Kraus operators adding analog noise
             when solving with a Shrodinger equation solver.
     """
 
@@ -176,7 +176,7 @@ class HamiltonianEvolution(Sequence):
             duration: Total duration for evolving when using a solver.
             steps: Number of steps to use when using solver.
             solver: Time-dependent Lindblad master equation solver.
-            noise_operators: List of tensors or Kraus oeprators adding analog noise
+            noise_operators: List of tensors or Kraus operators adding analog noise
                 when solving with a Shrodinger equation solver.
         """
 
