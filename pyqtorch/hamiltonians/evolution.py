@@ -150,7 +150,8 @@ class HamiltonianEvolution(Sequence):
         cache_length: int = 1,
         duration: Tensor | str | float | None = None,
         steps: int = 100,
-        solver=SolverType.DP5_SE,
+        solver: SolverType = SolverType.DP5_SE,
+        use_sparse: bool = False,
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -167,6 +168,7 @@ class HamiltonianEvolution(Sequence):
         self.solver_type = solver
         self.steps = steps
         self.duration = duration
+        self.use_sparse = use_sparse
 
         if isinstance(duration, (str, float, Tensor)) or duration is None:
             self.duration = duration
@@ -416,6 +418,7 @@ class HamiltonianEvolution(Sequence):
             torch.flatten(state, start_dim=0, end_dim=-2),
             t_grid,
             self.solver_type,
+            options={"use_sparse": self.use_sparse},
         )
 
         # Retrieve the last state of shape (2**n_qubits, batch_size)

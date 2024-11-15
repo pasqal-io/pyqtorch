@@ -292,14 +292,16 @@ def test_hamevo_endianness_cnot() -> None:
     assert torch.allclose(wf_cnot, wf_hamevo, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("duration", [torch.rand(1)])
+@pytest.mark.parametrize("duration", [torch.rand(1), "duration"])
 @pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("use_sparse", [True, False])
 @pytest.mark.parametrize("ode_solver", [SolverType.DP5_SE, SolverType.KRYLOV_SE])
 def test_timedependent(
     tparam: str,
     param_y: float,
     duration: float,
     batch_size: int,
+    use_sparse: bool,
     n_steps: int,
     torch_hamiltonian: Callable,
     hamevo_generator: Sequence,
@@ -315,7 +317,11 @@ def test_timedependent(
     # simulate with time-dependent solver
     t_points = torch.linspace(0, dur_val[0], n_steps)
     psi_solver = pyq.sesolve(
-        torch_hamiltonian, psi_start.reshape(-1, batch_size), t_points, ode_solver
+        torch_hamiltonian,
+        psi_start.reshape(-1, batch_size),
+        t_points,
+        ode_solver,
+        options={"use_sparse": use_sparse},
     ).states[-1]
 
     # simulate with HamiltonianEvolution
@@ -329,6 +335,7 @@ def test_timedependent(
         duration=dur_val,
         steps=n_steps,
         solver=ode_solver,
+        use_sparse=use_sparse,
     )
     values = {"y": param_y, "duration": dur_val}
     psi_hamevo = hamiltonian_evolution(
