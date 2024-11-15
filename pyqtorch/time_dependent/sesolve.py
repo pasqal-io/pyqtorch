@@ -29,6 +29,14 @@ def sesolve(
     Returns:
         Result: dataclass containing the simulated states at each time moment
     """
+    # check dimensions of initial state
+    n = H(0.0).shape[0]
+    if (psi0.shape[0] != n) or len(psi0.shape) != 2:
+        raise ValueError(
+            f"Argument `psi0` must be a 2D tensor of shape `({n}, batch_size)`. Current shape:"
+            f" {tuple(psi0.shape)}."
+        )
+
     options = options or dict()
     # instantiate appropriate solver
     if solver == SolverType.DP5_SE:

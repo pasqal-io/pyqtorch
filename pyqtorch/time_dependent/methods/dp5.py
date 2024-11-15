@@ -75,10 +75,11 @@ class DormandPrince5(AdaptiveIntegrator):
 
         # compute iterated Runge-Kutta values
         k = torch.empty(7, *f.shape, dtype=self.options.ctype)
-        k[0] = f.to_dense()
+        k[0] = f.to_dense() if self.options.use_sparse else f
         for i in range(1, 7):
             dy = torch.tensordot(dt * beta[i - 1, :i], k[:i].clone(), dims=([0], [0]))
-            k[i] = fun(t + dt * alpha[i - 1].item(), y + dy).to_dense()
+            a = fun(t + dt * alpha[i - 1].item(), y + dy)
+            k[i] = a.to_dense() if self.options.use_sparse else a
 
         # compute results
         f_new = k[-1]
