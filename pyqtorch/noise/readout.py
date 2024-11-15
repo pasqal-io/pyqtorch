@@ -351,6 +351,7 @@ class CorrelatedReadoutNoise(ReadoutInterface):
     def __init__(
         self,
         confusion_matrix: Tensor,
+        seed: int | None = None,
     ) -> None:
         """Initializes CorrelatedReadoutNoise.
 
@@ -363,6 +364,7 @@ class CorrelatedReadoutNoise(ReadoutInterface):
             raise ValueError("The confusion matrix should be square")
         self.confusion_matrix = confusion_matrix
         self.n_qubits = int(log(confusion_matrix.size(0), 2))
+        self.seed = seed
 
     def apply_on_probas(self, batch_probs: Tensor, n_shots: int = 1000) -> Tensor:
         output_probs = batch_probs @ self.confusion_matrix.T
@@ -371,7 +373,8 @@ class CorrelatedReadoutNoise(ReadoutInterface):
     def apply_on_counts(
         self, counters: list[Counter | OrderedCounter], n_shots: int = 1000
     ) -> list[Counter]:
-
+        if self.seed is not None:
+            torch.manual_seed(self.seed)
         corrupted_bitstrings = []
         for counter in counters:
             sample = sample_to_matrix(counter)

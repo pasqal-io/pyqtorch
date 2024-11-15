@@ -7,7 +7,7 @@ import pytest
 import torch
 
 import pyqtorch as pyq
-from pyqtorch.noise import ReadoutNoise
+from pyqtorch.noise import CorrelatedReadoutNoise, ReadoutNoise
 from pyqtorch.noise.readout import (
     WhiteNoise,
     bs_bitflip_corruption,
@@ -112,6 +112,28 @@ def test_readout_error_quantum_circuit(
         )
 
 
+def test_correlated_readout() -> None:
+    n_shots = 1000
+    confusion_matrix = torch.tensor(
+        [
+            [0.9, 0.05, 0.03, 0.02],
+            [0.05, 0.85, 0.05, 0.05],
+            [0.03, 0.05, 0.87, 0.05],
+            [0.02, 0.05, 0.05, 0.88],
+        ],
+        dtype=torch.float64,
+    )
+
+    corr_readout = CorrelatedReadoutNoise(confusion_matrix, 0)
+    probas = torch.tensor([[0.4, 0.3, 0.2, 0.1]], dtype=torch.double)
+    out_probas = corr_readout.apply_on_probas(probas)
+    assert torch.allclose(
+        out_probas,
+        torch.tensor([[0.3830, 0.2900, 0.2060, 0.1210]], dtype=torch.float64),
+        atol=1e-4,
+    )
+
+
 def test_readout_error_expectation() -> None:
 
     n_shots = 100
@@ -127,6 +149,19 @@ def test_readout_error_expectation() -> None:
 
     readout = ReadoutNoise(n_qubits, error_probability=0.1, seed=0)
     noisy_qc = pyq.QuantumCircuit(n_qubits, ops, readout)
+
+    confusion_matrix = torch.tensor(
+        [
+            [0.9, 0.05, 0.03, 0.02],
+            [0.05, 0.85, 0.05, 0.05],
+            [0.03, 0.05, 0.87, 0.05],
+            [0.02, 0.05, 0.05, 0.88],
+        ],
+        dtype=torch.float64,
+    )
+    readoutCorrelated = CorrelatedReadoutNoise(confusion_matrix, seed=0)
+
+    corr_noisy_qc = pyq.QuantumCircuit(n_qubits, ops, readoutCorrelated)
     assert not torch.allclose(
         pyq.expectation(
             noiseless_qc,
@@ -136,6 +171,17 @@ def test_readout_error_expectation() -> None:
         ),
         pyq.expectation(
             noisy_qc, initstate, {"theta": theta}, observable=obs, n_shots=n_shots
+        ),
+    )
+    assert not torch.allclose(
+        pyq.expectation(
+            noiseless_qc,
+            initstate,
+            {"theta": theta},
+            observable=obs,
+        ),
+        pyq.expectation(
+            corr_noisy_qc, initstate, {"theta": theta}, observable=obs, n_shots=n_shots
         ),
     )
 
