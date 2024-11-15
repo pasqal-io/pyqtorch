@@ -133,6 +133,9 @@ T(x|x')=\delta_{xx'}
 $$
 
 where $x$ represent a bitstring.
+We provide two ways to define readout errors:
+- `ReadoutNoise` : where each bit can be corrupted independently given an error probability or a 1D tensor of errors.
+- `CorrelatedReadoutNoise` : where we provide the full confusion matrix for all possible bitstrings.
 
 ```python exec="on" source="material-block"
 import torch
