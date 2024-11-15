@@ -454,6 +454,7 @@ class HamiltonianEvolution(Sequence):
                 options={"use_sparse": self.use_sparse},
             )
             # Retrieve the last density matrix
+            # and reshape
             state = sol.states[-1].reshape(state.shape)
         return state
 
