@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 from torch.distributions import normal, poisson, uniform
 
-from pyqtorch.utils import OrderedCounter, sample_multinomial
+from pyqtorch.utils import OrderedCounter
 
 
 class WhiteNoise(Enum):
@@ -95,7 +95,7 @@ def create_noise_matrix(
     return noise_distribution.sample([n_shots, n_qubits])
 
 
-def bs_corruption(
+def bs_bitflip_corruption(
     err_idx: Tensor,
     sample: Tensor,
 ) -> Counter:
@@ -105,16 +105,44 @@ def bs_corruption(
     given a noise matrix.
 
     Args:
-        err_idx: A Boolean array of bit string indices that need to be corrupted.
-        sample: A torch.Tensor of bit strings n_shots x n_qubits.
+        err_idx (Tensor): A Boolean array of bit string indices that need to be corrupted.
+        sample (Tensor): A torch.Tensor of bit strings n_shots x n_qubits.
 
     Returns:
-        A counter of bit strings after readout corruption.
+        Counter: A counter of bit strings after readout corruption.
     """
 
     corrupted = sample ^ err_idx
 
     return Counter([tensor_to_bitstring(k) for k in corrupted])
+
+
+def bs_confusion_corruption(
+    confusion_matrix: Tensor,
+    sample: Tensor,
+) -> Counter:
+    """Given a confusion matrix and samples, corrupt by multinomial samples.
+
+    Args:
+        confusion_matrix (Tensor): Confusion matrix shape 2**n_bits x 2**n_bits.
+        sample (Tensor): A torch.Tensor of bit strings n_shots x n_qubits.
+
+    Returns:
+        Counter: A counter of bit strings after readout corruption.
+    """
+    n_bits = sample.shape[1]
+    sample_indices = (
+        sample * (2 ** torch.arange(n_bits - 1, -1, -1, device=sample.device).long())
+    ).sum(dim=1)
+    corrupted_indices = torch.multinomial(
+        confusion_matrix[sample_indices], num_samples=1, replacement=True
+    ).squeeze()
+
+    corrupted_bitstrings = torch.zeros_like(sample)
+    for i in range(n_bits):
+        corrupted_bitstrings[:, i] = (corrupted_indices // (2 ** (n_bits - i - 1))) % 2
+
+    return Counter([tensor_to_bitstring(k) for k in corrupted_bitstrings])
 
 
 def create_confusion_matrices(noise_matrix: Tensor, error_probability: float) -> Tensor:
@@ -313,7 +341,9 @@ class ReadoutNoise(ReadoutInterface):
         corrupted_bitstrings = []
         for counter in counters:
             sample = sample_to_matrix(counter)
-            corrupted_bitstrings.append(bs_corruption(err_idx=err_idx, sample=sample))
+            corrupted_bitstrings.append(
+                bs_bitflip_corruption(err_idx=err_idx, sample=sample)
+            )
         return corrupted_bitstrings
 
 
@@ -342,17 +372,10 @@ class CorrelatedReadoutNoise(ReadoutInterface):
         self, counters: list[Counter | OrderedCounter], n_shots: int = 1000
     ) -> list[Counter]:
 
-        sample_from_confusion = torch.func.vmap(
-            lambda p: sample_multinomial(
-                p, self.n_qubits, 1, return_counter=True, minlength=self.n_qubits
-            ),
-            randomness="different",
-        )
         corrupted_bitstrings = []
         for counter in counters:
             sample = sample_to_matrix(counter)
-            print(sample)
             corrupted_bitstrings.append(
-                sample_from_confusion(self.confusion_matrix @ sample)
+                bs_confusion_corruption(self.confusion_matrix, sample)
             )
         return corrupted_bitstrings

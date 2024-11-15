@@ -10,7 +10,7 @@ import pyqtorch as pyq
 from pyqtorch.noise import ReadoutNoise
 from pyqtorch.noise.readout import (
     WhiteNoise,
-    bs_corruption,
+    bs_bitflip_corruption,
     create_noise_matrix,
     sample_to_matrix,
 )
@@ -46,7 +46,7 @@ def test_bitstring_corruption_all_bitflips(
     noise_matrix = create_noise_matrix(WhiteNoise.UNIFORM, n_shots, n_qubits)
     err_idx = torch.as_tensor(noise_matrix < error_probability)
     sample = sample_to_matrix(counters[0])
-    corrupted_counters = [bs_corruption(err_idx=err_idx, sample=sample)]
+    corrupted_counters = [bs_bitflip_corruption(err_idx=err_idx, sample=sample)]
     assert sum(corrupted_counters[0].values()) == n_shots
     assert corrupted_counters == exp_corrupted_counters
     assert torch.allclose(
@@ -75,7 +75,7 @@ def test_bitstring_corruption_mixed_bitflips(counters: list, n_qubits: int) -> N
     noise_matrix = create_noise_matrix(WhiteNoise.UNIFORM, n_shots, n_qubits)
     err_idx = torch.as_tensor(noise_matrix < error_probability)
     sample = sample_to_matrix(counters[0])
-    corrupted_counters = [bs_corruption(err_idx=err_idx, sample=sample)]
+    corrupted_counters = [bs_bitflip_corruption(err_idx=err_idx, sample=sample)]
     for noiseless, noisy in zip(counters, corrupted_counters):
         assert sum(noisy.values()) == n_shots
         assert js_divergence_counters(noiseless, noisy) >= 0.0
