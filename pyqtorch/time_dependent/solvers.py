@@ -30,7 +30,9 @@ class SESolver(AdaptiveIntegrator):
         with warnings.catch_warnings():
             # filter-out UserWarning about "Sparse CSR tensor support is in beta state"
             warnings.filterwarnings("ignore", category=UserWarning)
-            res = -1j * self.H(t) @ psi.to_sparse()
+            res = (
+                -1j * self.H(t) @ (psi.to_sparse() if self.options.use_sparse else psi)
+            )
         return res
 
 

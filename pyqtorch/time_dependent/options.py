@@ -17,6 +17,7 @@ class AdaptiveSolverOptions:
     max_factor: float = 5.0
     ctype: dtype = torch.complex128
     rtype: dtype = torch.float64
+    use_sparse: bool = False
 
 
 @dataclass
@@ -25,3 +26,4 @@ class KrylovSolverOptions:
     max_krylov: int = 80
     exp_tolerance: float = 1e-10
     norm_tolerance: float = 1e-10
+    use_sparse: bool = False
