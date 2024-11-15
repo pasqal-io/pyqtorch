@@ -20,17 +20,17 @@ from pyqtorch.time_dependent.mesolve import mesolve
 from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
     ATOL,
+    DensityMatrix,
     Operator,
     SolverType,
     State,
     StrEnum,
     _round_operator,
+    density_mat,
     expand_operator,
     finitediff,
     is_diag,
     is_parametric,
-    DensityMatrix,
-    density_mat,
 )
 
 BATCH_DIM = 2
@@ -437,7 +437,7 @@ class HamiltonianEvolution(Sequence):
                 t_grid,
                 self.solver_type,
                 options={"use_sparse": self.use_sparse},
-        )
+            )
 
             # Retrieve the last state of shape (2**n_qubits, batch_size)
             state = sol.states[-1]
@@ -452,6 +452,7 @@ class HamiltonianEvolution(Sequence):
                 self.noise_operators,
                 t_grid,
                 self.solver_type,
+                options={"use_sparse": self.use_sparse},
             )
             state = sol.states[-1]
             return state.reshape([2] * n_qubits * 2 + [batch_size])
