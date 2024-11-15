@@ -440,7 +440,9 @@ class HamiltonianEvolution(Sequence):
             )
 
             # Retrieve the last state of shape (2**n_qubits, batch_size)
-            return sol.states[-1]
+            state = sol.states[-1]
+
+            return state.reshape([2] * n_qubits + [batch_size])
         else:
             if not isinstance(state, DensityMatrix):
                 state = density_mat(state)
