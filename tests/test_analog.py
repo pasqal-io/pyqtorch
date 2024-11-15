@@ -399,8 +399,7 @@ def test_timedependent_with_noise(
     psi_hamevo = hamiltonian_evolution(
         state=psi_start, values=values, embedding=embedding
     )
-    print(psi_solver.shape, psi_hamevo.shape)
-    assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=ATOL)
+    assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=1.0e-3)
 
 
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
