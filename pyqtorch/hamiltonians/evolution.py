@@ -455,7 +455,7 @@ class HamiltonianEvolution(Sequence):
             )
             # Retrieve the last density matrix
             # and reshape
-            state = sol.states[-1].reshape(state.shape)
+            state = sol.states[-1]
         return state
 
     def forward(
