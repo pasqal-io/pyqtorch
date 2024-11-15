@@ -353,6 +353,7 @@ def test_timedependent(
     "batchsize",
     [
         1,
+        3,
     ],
 )
 def test_timedependent_with_noise(
