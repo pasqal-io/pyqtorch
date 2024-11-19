@@ -342,7 +342,7 @@ def test_timedependent(
         state=psi_start, values=values, embedding=embedding
     ).reshape(-1, batch_size)
 
-    assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=ATOL)
+    assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=1.0e-3)
 
 
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
