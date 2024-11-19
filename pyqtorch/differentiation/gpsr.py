@@ -212,7 +212,7 @@ class PSRExpectation(Function):
             spectral_gaps = spectral_gaps.to(device=device)
             PI = torch.tensor(torch.pi, dtype=dtype)
             shifts = shift_prefac * torch.linspace(
-                PI / 2.0 - PI / 5.0, PI / 2.0 + PI / 5.0, n_eqs, dtype=dtype
+                PI / 2.0 - PI / 4.0, PI / 2.0 + PI / 5.0, n_eqs, dtype=dtype
             )
             shifts = shifts.to(device=device)
 
