@@ -159,7 +159,7 @@ def create_confusion_matrices(noise_matrix: Tensor, error_probability: float) ->
 
 class ReadoutInterface(ABC):
     @singledispatchmethod
-    def apply(self, input_to_corrupt, n_shots: int):
+    def apply(self, input_to_corrupt, n_shots):
         raise NotImplementedError
 
 
