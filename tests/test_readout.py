@@ -126,7 +126,7 @@ def test_correlated_readout() -> None:
 
     corr_readout = CorrelatedReadoutNoise(confusion_matrix, 0)
     probas = torch.tensor([[0.4, 0.3, 0.2, 0.1]], dtype=torch.double)
-    out_probas = corr_readout.apply_on_probas(probas)
+    out_probas = corr_readout.apply(probas, n_shots=1000)
     assert torch.allclose(
         out_probas,
         torch.tensor([[0.3830, 0.2900, 0.2060, 0.1210]], dtype=torch.float64),
@@ -192,7 +192,7 @@ def test_readout_apply_probas() -> None:
     n_shots = 1000
     probas = torch.tensor([[0.4, 0.3, 0.2, 0.1]], dtype=torch.double)
     readobj = ReadoutNoise(2, seed=0)
-    out_probas = readobj.apply_on_probas(probas)
+    out_probas = readobj.apply(probas, n_shots=1000)
 
     assert torch.allclose(torch.sum(out_probas), torch.ones(1, dtype=out_probas.dtype))
     assert torch.allclose(
