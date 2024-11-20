@@ -374,7 +374,8 @@ def test_timedependent_with_noise(
     # simulate with time-dependent solver
     t_points = torch.linspace(0, dur_val[0], n_steps)
 
-    # No batchsiwe for the jump operators
+    # Define jump operators
+    # Note that we squeeze to remove the batch dimension
     list_ops = Depolarizing(0, error_probability=0.1).tensor(2)
     list_ops = [op.squeeze() for op in list_ops]
     solver = SolverType.DP5_ME
