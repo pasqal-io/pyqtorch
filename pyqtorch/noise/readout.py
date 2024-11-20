@@ -278,7 +278,7 @@ class ReadoutNoise(ReadoutInterface):
         return noise_matrix
 
     @singledispatchmethod
-    def apply(self, input_to_corrupt, n_shots: int):
+    def apply(self, input_to_corrupt, n_shots):
         raise NotImplementedError
 
     @apply.register
@@ -365,7 +365,7 @@ class CorrelatedReadoutNoise(ReadoutInterface):
         self.seed = seed
 
     @singledispatchmethod
-    def apply(self, input_to_corrupt, n_shots: int):
+    def apply(self, input_to_corrupt, n_shots):
         raise NotImplementedError
 
     @apply.register
