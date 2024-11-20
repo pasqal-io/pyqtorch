@@ -123,6 +123,46 @@ def fig_to_html(fig: Figure) -> str:  # markdown-exec: hide
 print(fig_to_html(plt.gcf())) # markdown-exec: hide
 ```
 
+## Analog Noise
+
+Analog noise is made possible by specifying `noise_operators` in `HamiltonianEvolution`:
+
+```python exec="on" source="material-block"
+import torch
+from pyqtorch import uniform_state, HamiltonianEvolution
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
+from pyqtorch.noise import Depolarizing
+from pyqtorch.utils import  SolverType
+
+n_qubits = 2
+qubit_targets = list(range(n_qubits))
+
+# Random hermitian hamiltonian
+matrix = torch.rand(2**n_qubits, 2**n_qubits, dtype=DEFAULT_MATRIX_DTYPE)
+hermitian_matrix = matrix + matrix.T.conj()
+
+time = torch.tensor([1.0])
+time_symbol = "t"
+dur_val = torch.rand(1)
+list_ops = Depolarizing(0, error_probability=0.1).tensor(2)
+list_ops = [op.squeeze() for op in list_ops]
+solver = SolverType.DP5_ME
+n_steps = 5
+
+hamiltonian_evolution = HamiltonianEvolution(hermitian_matrix, time_symbol, qubit_targets,
+        duration=dur_val, steps=n_steps,
+        solver=solver, noise_operators=list_ops,)
+
+# Starting from a uniform state
+psi_start = uniform_state(n_qubits)
+
+# Returns the evolved state
+psi_end = hamiltonian_evolution(state = psi_start, values={time_symbol: time})
+
+print(psi_end)
+
+
+```
 
 ## Readout errors
 

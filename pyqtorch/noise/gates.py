@@ -9,7 +9,12 @@ from torch import Tensor
 from pyqtorch.apply import apply_operator_dm
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
-from pyqtorch.utils import DensityMatrix, density_mat, qubit_support_as_tuple
+from pyqtorch.utils import (
+    DensityMatrix,
+    density_mat,
+    promote_operator,
+    qubit_support_as_tuple,
+)
 
 
 class Noise(torch.nn.Module):
@@ -35,11 +40,12 @@ class Noise(torch.nn.Module):
     def kraus_operators(self) -> list[Tensor]:
         return [getattr(self, f"kraus_{i}") for i in range(len(self._buffers))]
 
-    def tensor(
-        self,
-    ) -> list[Tensor]:
+    def tensor(self, n_qubit_support: int | None = None) -> list[Tensor]:
         # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
-        return [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
+        t_ops = [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
+        if n_qubit_support is None:
+            return t_ops
+        return [promote_operator(t, self.target, n_qubit_support) for t in t_ops]
 
     def forward(
         self,

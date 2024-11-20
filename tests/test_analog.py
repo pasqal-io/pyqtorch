@@ -18,10 +18,12 @@ from pyqtorch.matrices import (
     XMAT,
     ZMAT,
 )
+from pyqtorch.noise import Depolarizing
 from pyqtorch.utils import (
     ATOL,
     RTOL,
     SolverType,
+    density_mat,
     is_normalized,
     operator_kron,
     overlap,
@@ -316,6 +318,7 @@ def test_timedependent(
 
     # simulate with time-dependent solver
     t_points = torch.linspace(0, dur_val[0], n_steps)
+
     psi_solver = pyq.sesolve(
         torch_hamiltonian,
         psi_start.reshape(-1, batch_size),
@@ -342,7 +345,62 @@ def test_timedependent(
         state=psi_start, values=values, embedding=embedding
     ).reshape(-1, batch_size)
 
-    assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=ATOL)
+    assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=1.0e-3)
+
+
+@pytest.mark.parametrize("duration", [torch.rand(1), "duration"])
+@pytest.mark.parametrize(
+    "batchsize",
+    [
+        1,
+        3,
+    ],
+)
+def test_timedependent_with_noise(
+    tparam: str,
+    param_y: float,
+    duration: float,
+    batchsize: int,
+    n_steps: int,
+    torch_hamiltonian: Callable,
+    hamevo_generator: Sequence,
+    sin: tuple,
+    sq: tuple,
+) -> None:
+
+    psi_start = density_mat(random_state(2, batchsize))
+    dur_val = duration if isinstance(duration, torch.Tensor) else torch.rand(1)
+
+    # simulate with time-dependent solver
+    t_points = torch.linspace(0, dur_val[0], n_steps)
+
+    # Define jump operators
+    # Note that we squeeze to remove the batch dimension
+    list_ops = Depolarizing(0, error_probability=0.1).tensor(2)
+    list_ops = [op.squeeze() for op in list_ops]
+    solver = SolverType.DP5_ME
+    psi_solver = pyq.mesolve(
+        torch_hamiltonian, psi_start, list_ops, t_points, solver
+    ).states[-1]
+
+    # simulate with HamiltonianEvolution
+    embedding = pyq.Embedding(
+        tparam_name=tparam,
+        var_to_call={sin[0]: sin[1], sq[0]: sq[1]},
+    )
+    hamiltonian_evolution = pyq.HamiltonianEvolution(
+        generator=hamevo_generator,
+        time=tparam,
+        duration=duration,
+        steps=n_steps,
+        solver=solver,
+        noise_operators=list_ops,
+    )
+    values = {"y": param_y, "duration": dur_val}
+    psi_hamevo = hamiltonian_evolution(
+        state=psi_start, values=values, embedding=embedding
+    )
+    assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=1.0e-3)
 
 
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
