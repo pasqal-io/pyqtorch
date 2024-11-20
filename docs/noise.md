@@ -173,6 +173,9 @@ T(x|x')=\delta_{xx'}
 $$
 
 where $x$ represent a bitstring.
+We provide two ways to define readout errors:
+- `ReadoutNoise` : where each bit can be corrupted independently given an error probability or a 1D tensor of errors.
+- `CorrelatedReadoutNoise` : where we provide the full confusion matrix for all possible bitstrings.
 
 ```python exec="on" source="material-block"
 import torch
@@ -190,7 +193,7 @@ theta = torch.rand(1, requires_grad=True)
 obs = pyq.Observable(pyq.Z(0))
 
 noiseless_expectation = pyq.expectation(circ, state, {"theta": theta}, observable=obs)
-readobj = ReadoutNoise(n_qubits, 0)
+readobj = ReadoutNoise(n_qubits, seed=0)
 noisycirc = pyq.QuantumCircuit(n_qubits, ops, readobj)
 noisy_expectation = pyq.expectation(noisycirc, state, {"theta": theta}, observable=obs, n_shots=1000)
 print("Noiseless expectation ", noiseless_expectation.item())

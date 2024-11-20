@@ -174,7 +174,7 @@ def sampled_expectation(
     eigvec_state_prod = torch.flatten(eigvec_state_prod, start_dim=0, end_dim=-2).t()
     probs = torch.pow(torch.abs(eigvec_state_prod), 2)
     if circuit.readout_noise is not None:
-        batch_samples = circuit.readout_noise.apply_on_probas(probs, n_shots)
+        batch_samples = circuit.readout_noise.apply(probs, n_shots)
 
     batch_sample_multinomial = torch.func.vmap(
         lambda p: sample_multinomial(
