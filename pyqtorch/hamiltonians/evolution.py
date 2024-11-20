@@ -16,14 +16,17 @@ from pyqtorch.composite import Scale
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.primitives import Primitive
 from pyqtorch.quantum_operation import QuantumOperation
+from pyqtorch.time_dependent.mesolve import mesolve
 from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
     ATOL,
+    DensityMatrix,
     Operator,
     SolverType,
     State,
     StrEnum,
     _round_operator,
+    density_mat,
     expand_operator,
     finitediff,
     is_diag,
@@ -140,6 +143,11 @@ class HamiltonianEvolution(Sequence):
         operations: List of operations.
         cache_length: LRU cache cache_length evolution operators for given set
                     of parameter values.
+        duration: Total duration for evolving when using a solver.
+        steps: Number of steps to use when using solver.
+        solver: Time-dependent Lindblad master equation solver.
+        noise_operators: List of tensors or Kraus operators adding analog noise
+            when solving with a Shrodinger equation solver.
     """
 
     def __init__(
@@ -152,6 +160,7 @@ class HamiltonianEvolution(Sequence):
         steps: int = 100,
         solver: SolverType = SolverType.DP5_SE,
         use_sparse: bool = False,
+        noise_operators: list[Tensor] = list(),
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -162,7 +171,13 @@ class HamiltonianEvolution(Sequence):
             qubit_support: The qubits the operator acts on. If generator is a quantum
                 operation or sequence of operations,
                 it will be inferred from the generator.
-            generator_parametric: Whether the generator is parametric or not.
+            cache_length: LRU cache cache_length evolution operators for given set
+                    of parameter values.
+            duration: Total duration for evolving when using a solver.
+            steps: Number of steps to use when using solver.
+            solver: Time-dependent Lindblad master equation solver.
+            noise_operators: List of tensors or Kraus operators adding analog noise
+                when solving with a Shrodinger equation solver.
         """
 
         self.solver_type = solver
@@ -244,6 +259,8 @@ class HamiltonianEvolution(Sequence):
         # to avoid recomputing hamiltonians and evolution
         self._cache_hamiltonian_evo: dict[str, Tensor] = dict()
         self.cache_length = cache_length
+
+        self.noise_operators: list[Tensor] = noise_operators
 
     @property
     def generator(self) -> ModuleList:
@@ -413,18 +430,33 @@ class HamiltonianEvolution(Sequence):
                 .squeeze(2)
             )
 
-        sol = sesolve(
-            Ht,
-            torch.flatten(state, start_dim=0, end_dim=-2),
-            t_grid,
-            self.solver_type,
-            options={"use_sparse": self.use_sparse},
-        )
+        if len(self.noise_operators) == 0:
+            sol = sesolve(
+                Ht,
+                torch.flatten(state, start_dim=0, end_dim=-2),
+                t_grid,
+                self.solver_type,
+                options={"use_sparse": self.use_sparse},
+            )
 
-        # Retrieve the last state of shape (2**n_qubits, batch_size)
-        state = sol.states[-1]
-
-        return state.reshape([2] * n_qubits + [batch_size])
+            # Retrieve the last state of shape (2**n_qubits, batch_size)
+            # and reshape
+            state = sol.states[-1].reshape([2] * n_qubits + [batch_size])
+        else:
+            if not isinstance(state, DensityMatrix):
+                state = density_mat(state)
+            sol = mesolve(
+                Ht,
+                state,
+                self.noise_operators,
+                t_grid,
+                self.solver_type,
+                options={"use_sparse": self.use_sparse},
+            )
+            # Retrieve the last density matrix
+            # and reshape
+            state = sol.states[-1]
+        return state
 
     def forward(
         self,
