@@ -105,7 +105,7 @@ def bs_bitflip_corruption(
     given a noise matrix.
 
     Args:
-        err_idx (Tensor): A Boolean array of bit string indices that need to be corrupted.
+        err_idx (Tensor): A Boolean array of bit string indices to be corrupted.
         sample (Tensor): A torch.Tensor of bit strings n_shots x n_qubits.
 
     Returns:
