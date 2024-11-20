@@ -195,7 +195,7 @@ class ReadoutNoise(ReadoutInterface):
     def __init__(
         self,
         n_qubits: int,
-        error_probability: float | Tensor | None = None,
+        error_probability: float | Tensor = 0.1,
         seed: int | None = None,
         noise_distribution: torch.distributions | None = WhiteNoise.UNIFORM,
     ) -> None:
@@ -218,7 +218,6 @@ class ReadoutNoise(ReadoutInterface):
         """
         self.n_qubits = n_qubits
         self.seed = seed
-        self.error_probability = torch.tensor(0.1)
         size_error_probability = (1,)
         if error_probability is not None:
             if isinstance(error_probability, float):
