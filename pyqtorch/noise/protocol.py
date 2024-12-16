@@ -174,6 +174,14 @@ class NoiseProtocol:
     def generalized_amplitude_damping(cls, *args, **kwargs) -> NoiseProtocol:
         return cls(DigitalNoiseType.GENERALIZED_AMPLITUDE_DAMPING, *args, **kwargs)
 
+    @classmethod
+    def analog_depolarizing(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(AnalogNoiseType.DEPOLARIZING, *args, **kwargs)
+
+    @classmethod
+    def dephasing(cls, *args, **kwargs) -> NoiseProtocol:
+        return cls(AnalogNoiseType.DEPHASING, *args, **kwargs)
+
     def __repr__(self) -> str:
         if self.len == 1:
             noise = self.noise_instances[0]
