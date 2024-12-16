@@ -17,7 +17,7 @@ from pyqtorch.utils import (
 )
 
 
-class Noise(torch.nn.Module):
+class DigitalNoise(torch.nn.Module):
     def __init__(
         self,
         kraus: list[Tensor],
@@ -90,14 +90,14 @@ class Noise(torch.nn.Module):
     def dtype(self) -> torch.dtype:
         return self._dtype
 
-    def to(self, *args: Any, **kwargs: Any) -> Noise:
+    def to(self, *args: Any, **kwargs: Any) -> DigitalNoise:
         super().to(*args, **kwargs)
         self._device = self.kraus_0.device
         self._dtype = self.kraus_0.dtype
         return self
 
 
-class BitFlip(Noise):
+class BitFlip(DigitalNoise):
     """
     Initialize the BitFlip gate.
 
@@ -127,7 +127,7 @@ class BitFlip(Noise):
         super().__init__(kraus_bitflip, target, error_param)
 
 
-class PhaseFlip(Noise):
+class PhaseFlip(DigitalNoise):
     """
     Initialize the PhaseFlip gate
 
@@ -157,7 +157,7 @@ class PhaseFlip(Noise):
         super().__init__(kraus_phaseflip, target, error_param)
 
 
-class Depolarizing(Noise):
+class Depolarizing(DigitalNoise):
     """
     Initialize the Depolarizing gate.
 
@@ -192,7 +192,7 @@ class Depolarizing(Noise):
         super().__init__(kraus_depolarizing, target, error_param)
 
 
-class PauliChannel(Noise):
+class PauliChannel(DigitalNoise):
     """
     Initialize the PauliChannel gate.
 
@@ -237,7 +237,7 @@ class PauliChannel(Noise):
         super().__init__(kraus_pauli_channel, target, error_param)
 
 
-class AmplitudeDamping(Noise):
+class AmplitudeDamping(DigitalNoise):
     """
     Initialize the AmplitudeDamping gate.
 
@@ -278,7 +278,7 @@ class AmplitudeDamping(Noise):
         super().__init__(kraus_amplitude_damping, target, rate)
 
 
-class PhaseDamping(Noise):
+class PhaseDamping(DigitalNoise):
     """
     Initialize the PhaseDamping gate.
 
@@ -319,7 +319,7 @@ class PhaseDamping(Noise):
         super().__init__(kraus_phase_damping, target, rate)
 
 
-class GeneralizedAmplitudeDamping(Noise):
+class GeneralizedAmplitudeDamping(DigitalNoise):
     """
     Initialize the GeneralizeAmplitudeDamping gate.
 

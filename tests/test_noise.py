@@ -20,9 +20,9 @@ from pyqtorch.matrices import (
 )
 from pyqtorch.noise import (
     AmplitudeDamping,
+    DigitalNoise,
     DigitalNoiseType,
     GeneralizedAmplitudeDamping,
-    Noise,
     NoiseProtocol,
     PhaseDamping,
 )
@@ -172,10 +172,10 @@ def test_flip_gates(
     target: int,
     batch_size: int,
     rho_input: Tensor,
-    random_flip_gate: Noise,
+    random_flip_gate: DigitalNoise,
     flip_expected_state: DensityMatrix,
     flip_probability: Tensor | float,
-    flip_gates_prob_0: Noise,
+    flip_gates_prob_0: DigitalNoise,
     flip_gates_prob_1: tuple,
     random_input_dm: DensityMatrix,
 ) -> None:
@@ -245,7 +245,7 @@ def test_noise_circ(
     batch_size: int,
     random_input_dm: DensityMatrix,
     random_single_qubit_gate: Primitive,
-    random_noise_gate: Noise,
+    random_noise_gate: DigitalNoise,
     random_rotation_gate: Parametric,
     random_controlled_gate: ControlledPrimitive,
     random_rotation_control_gate: ControlledRotationGate,

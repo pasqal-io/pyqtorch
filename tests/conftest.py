@@ -15,9 +15,9 @@ from pyqtorch.noise import (
     AmplitudeDamping,
     BitFlip,
     Depolarizing,
+    DigitalNoise,
     DigitalNoiseType,
     GeneralizedAmplitudeDamping,
-    Noise,
     NoiseProtocol,
     PauliChannel,
     PhaseDamping,
@@ -258,7 +258,7 @@ def random_flip_gate() -> Any:
 
 
 @pytest.fixture
-def flip_probability(random_flip_gate: Noise) -> Any:
+def flip_probability(random_flip_gate: DigitalNoise) -> Any:
     if random_flip_gate == PauliChannel:
         probabilities = torch.rand((3))
         probabilities = probabilities / (
@@ -273,7 +273,7 @@ def flip_probability(random_flip_gate: Noise) -> Any:
 def flip_expected_state(
     n_qubits: int,
     target: int,
-    random_flip_gate: Noise,
+    random_flip_gate: DigitalNoise,
     flip_probability: Tensor,
     batch_size: int,
 ) -> Any:
@@ -310,7 +310,7 @@ def flip_expected_state(
 
 
 @pytest.fixture
-def flip_gates_prob_0(random_flip_gate: Noise, target: int) -> Any:
+def flip_gates_prob_0(random_flip_gate: DigitalNoise, target: int) -> Any:
     if random_flip_gate == PauliChannel:
         FlipGate_0 = random_flip_gate(target, error_param=(0, 0, 0))
     else:
@@ -320,7 +320,7 @@ def flip_gates_prob_0(random_flip_gate: Noise, target: int) -> Any:
 
 @pytest.fixture
 def flip_gates_prob_1(
-    random_flip_gate: Noise, target: int, random_input_state: Tensor
+    random_flip_gate: DigitalNoise, target: int, random_input_state: Tensor
 ) -> Any:
     if random_flip_gate == BitFlip:
         FlipGate_1 = random_flip_gate(target, error_param=1)
@@ -358,7 +358,7 @@ def random_damping_gate() -> Any:
 
 
 @pytest.fixture
-def damping_rate(random_damping_gate: Noise) -> Any:
+def damping_rate(random_damping_gate: DigitalNoise) -> Any:
     if random_damping_gate == GeneralizedAmplitudeDamping:
         rate = torch.rand((2,))  # prob and rate
     else:
@@ -370,7 +370,7 @@ def damping_rate(random_damping_gate: Noise) -> Any:
 def damping_expected_state(
     n_qubits: int,
     target: int,
-    random_damping_gate: Noise,
+    random_damping_gate: DigitalNoise,
     damping_rate: Tensor,
     batch_size: int,
     rho_input: Tensor,
@@ -393,7 +393,7 @@ def damping_expected_state(
 
 
 @pytest.fixture
-def damping_gates_prob_0(random_damping_gate: Noise, target: int) -> Any:
+def damping_gates_prob_0(random_damping_gate: DigitalNoise, target: int) -> Any:
     if random_damping_gate == GeneralizedAmplitudeDamping:
         damping_gate_0 = random_damping_gate(target, (0, 0))
     else:

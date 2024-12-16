@@ -4,11 +4,11 @@ from .digital_gates import (
     AmplitudeDamping,
     BitFlip,
     Depolarizing,
+    DigitalNoise,
     GeneralizedAmplitudeDamping,
-    Noise,
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
 )
-from .protocol import DigitalNoiseType, AnalogNoiseType, NoiseProtocol, _repr_noise
+from .protocol import AnalogNoiseType, DigitalNoiseType, NoiseProtocol, _repr_noise
 from .readout import CorrelatedReadoutNoise, ReadoutNoise, WhiteNoise
