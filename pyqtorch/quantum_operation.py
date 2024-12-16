@@ -370,7 +370,7 @@ class QuantumOperation(torch.nn.Module):
             state, self.tensor(values, embedding), self.qubit_support
         )
 
-        for noise_class, noise_info in self.noise.operators:  # type: ignore [union-attr]
+        for noise_class, noise_info in self.noise.digital_gates:  # type: ignore [union-attr]
             if noise_info.target is None:
                 target = self.target if len(self.target) == 1 else self.target[0]
             else:

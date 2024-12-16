@@ -33,29 +33,31 @@ class NoiseProtocol:
     Define a protocol of noisy quantum channels.
 
     Args:
-        protocol: single NoiseType instance or list of NoiseType instances, or
-            list of (NoiseType, options) tuple. When passing list of tuples, for
-            each NoiseType the options should be a dict containing the "error_param",
+        protocol: single DigitalNoiseType|AnalogNoiseType instance
+            or list of DigitalNoiseType|AnalogNoiseType instances, or
+            list of (DigitalNoiseType|AnalogNoiseType, options) tuple.
+            When passing list of tuples, for each DigitalNoiseType|AnalogNoiseType
+            the options should be a dict containing the "error_param",
             and optionally a "target". If no "target" is present, the noise instance
             will be applied to the same target of the gate it is used on.
-        error_param: probability of error when passing a single NoiseType
-            or a list of NoiseTypes. Note that all noise types require a single float for the
+        error_param: probability of error when passing a single DigitalNoiseType
+            or a list of DigitalNoiseTypes. Note that all noise types require a single float for the
             error_param, while the PauliChannel and GeneralizedAmplitudeDamping require
             a tuple of error probabilities.
 
     Examples:
     ```
-        from pyqtorch.noise import NoiseProtocol, NoiseType
+        from pyqtorch.noise import NoiseProtocol, DigitalNoiseType
 
         # Single noise instance
-        protocol = NoiseProtocol(NoiseType.BITFLIP, error_param = 0.5)
+        protocol = NoiseProtocol(DigitalNoiseType.BITFLIP, error_param = 0.5)
 
         # Equivalent to using the respective class method
         protocol = NoiseProtocol.bitflip(error_param = 0.5)
 
         # Multiples noise instances with same probability
         protocol = NoiseProtocol(
-                        [NoiseType.BITFLIP, NoiseType.PHASEFLIP],
+                        [DigitalNoiseType.BITFLIP, DigitalNoiseType.PHASEFLIP],
                         error_param = 0.5
                     )
 
@@ -110,7 +112,7 @@ class NoiseProtocol:
 
     @property
     def noise_type(self):
-        return type(self.noise_instances[0].protocol)
+        return type(self.noise_instances[0].type)
 
     @property
     def error_param(self):
@@ -127,19 +129,22 @@ class NoiseProtocol:
             return [noise.target for noise in self.noise_instances]
 
     @property
-    def operators(self) -> list:
+    def digital_gates(self) -> list:
         gate_list = []
-        for noise in self.noise_instances:
-            try:
-                gate_class = getattr(
-                    sys.modules["pyqtorch.noise.digital_gates"], str(noise.type)
-                )
-                gate_list.append((gate_class, noise))
-            except AttributeError:
-                raise ValueError(
-                    f"The protocol {str(noise.type)} has not been implemented in PyQTorch yet."
-                )
-        return gate_list
+        if self.noise_type == DigitalNoiseType:
+            for noise in self.noise_instances:
+                try:
+                    gate_class = getattr(
+                        sys.modules["pyqtorch.noise.digital_gates"], str(noise.type)
+                    )
+                    gate_list.append((gate_class, noise))
+                except AttributeError:
+                    raise ValueError(
+                        f"The protocol {str(noise.type)} has not been implemented in PyQTorch yet."
+                    )
+            return gate_list
+        else:
+            raise ValueError("No digital gates are present with an Analog protocol.")
 
     @classmethod
     def bitflip(cls, *args, **kwargs) -> NoiseProtocol:
