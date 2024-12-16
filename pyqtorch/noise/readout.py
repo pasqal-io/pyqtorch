@@ -144,11 +144,11 @@ def bs_confusion_corruption(
     return Counter([tensor_to_bitstring(k) for k in corrupted_bitstrings])
 
 
-def create_confusion_matrices(noise_matrix: Tensor, error_probability: float) -> Tensor:
+def create_confusion_matrices(noise_matrix: Tensor, error_param: float) -> Tensor:
     confusion_matrices = []
     for i in range(noise_matrix.size()[1]):
         column_tensor = noise_matrix[:, i]
-        flip_proba = column_tensor[column_tensor < error_probability].mean().item()
+        flip_proba = column_tensor[column_tensor < error_param].mean().item()
         confusion_matrix = torch.tensor(
             [[1.0 - flip_proba, flip_proba], [flip_proba, 1.0 - flip_proba]],
             dtype=torch.float64,
@@ -176,22 +176,22 @@ class ReadoutNoise(ReadoutInterface):
     """Simulate errors when sampling from a circuit.
 
     The model is simple as all bits are considered independent
-    and are corrupted with an equal `error_probability`.
+    and are corrupted with an equal `error_param`.
 
     The simulation is done by drawing samples from a `noise_distribution`.
-    These samples are then compared to `error_probability` to specify
+    These samples are then compared to `error_param` to specify
     which bits are corrupted.
 
 
     Attributes:
         n_qubits (int): Number of qubits.
         seed (int | None, optional): Random seed value. Defaults to None.
-        error_probability (float, Tensor, optional): Error probabilities of wrong
+        error_param (float, Tensor, optional): Error probabilities of wrong
               readout. Defaults to 0.1 at any position in the bit strings for every bit if None.
               If float, the same probability is applied to every bit. If a 1D tensor of size
               n_qubits, a different probability is set for each qubit.
               If a tensor of shape (n_qubits, 2, 2) is passed, that is a confusion matrix,
-              we extract the error_probability
+              we extract the error_param
               and do not compute the confusion as in the other cases.
         noise_distribution (str, optional): Noise distribution type. Defaults to WhiteNoise.UNIFORM.
     """
@@ -199,7 +199,7 @@ class ReadoutNoise(ReadoutInterface):
     def __init__(
         self,
         n_qubits: int,
-        error_probability: float | Tensor = 0.1,
+        error_param: float | Tensor = 0.1,
         seed: int | None = None,
         noise_distribution: torch.distributions | None = WhiteNoise.UNIFORM,
     ) -> None:
@@ -208,12 +208,12 @@ class ReadoutNoise(ReadoutInterface):
         Args:
             n_qubits (int): Number of qubits.
             seed (int | None, optional): Random seed value. Defaults to None.
-            error_probability (float, Tensor, optional): Error probabilities of wrong
+            error_param (float, Tensor, optional): Error probabilities of wrong
               readout. Defaults to 0.1 at any position in the bit strings for every bit if None.
               If float, the same probability is applied to every bit. If a 1D tensor of size
               n_qubits, a different probability is set for each qubit.
               If a tensor of shape (n_qubits, 2, 2) is passed, that is a confusion matrix,
-              we extract the error_probability
+              we extract the error_param
               and do not compute the confusion as in the other cases.
             noise_distribution (str, optional): Noise distribution type.
               Defaults to WhiteNoise.UNIFORM.
@@ -222,41 +222,36 @@ class ReadoutNoise(ReadoutInterface):
         """
         self.n_qubits = n_qubits
         self.seed = seed
-        size_error_probability = (1,)
-        if isinstance(error_probability, float):
-            error_probability = torch.tensor(error_probability)
+        size_error_param = (1,)
+        if isinstance(error_param, float):
+            error_param = torch.tensor(error_param)
 
-        elif isinstance(error_probability, Tensor):
-            size_error_probability = tuple(error_probability.size())
-            if (
-                len(size_error_probability) == 1
-                and len(error_probability) != self.n_qubits
+        elif isinstance(error_param, Tensor):
+            size_error_param = tuple(error_param.size())
+            if len(size_error_param) == 1 and len(error_param) != self.n_qubits:
+                raise ValueError(f"`error_param` should have {n_qubits} elements.")
+            if (len(size_error_param) == 3) and (
+                size_error_param != (self.n_qubits, 2, 2)
             ):
                 raise ValueError(
-                    f"`error_probability` should have {n_qubits} elements."
-                )
-            if (len(size_error_probability) == 3) and (
-                size_error_probability != (self.n_qubits, 2, 2)
-            ):
-                raise ValueError(
-                    f"`error_probability` should have {(n_qubits, 2, 2)} elements."
+                    f"`error_param` should have {(n_qubits, 2, 2)} elements."
                 )
         else:
             raise ValueError(
-                f"`error_probability` should be float, 1D or {(n_qubits, 2, 2)} tensor."
+                f"`error_param` should be float, 1D or {(n_qubits, 2, 2)} tensor."
             )
 
-        self.error_probability = error_probability
+        self.error_param = error_param
         self.noise_distribution = noise_distribution
         self._compute_confusion: bool = (
-            False if size_error_probability == (self.n_qubits, 2, 2) else True
+            False if size_error_param == (self.n_qubits, 2, 2) else True
         )
 
         if not self._compute_confusion:
-            self.confusion_matrix = self.error_probability
-            self.error_probability = torch.empty((self.n_qubits, 2))
-            self.error_probability[:, 0] = self.confusion_matrix[:, 0, 1]
-            self.error_probability[:, 1] = self.confusion_matrix[:, 1, 0]
+            self.confusion_matrix = self.error_param
+            self.error_param = torch.empty((self.n_qubits, 2))
+            self.error_param[:, 0] = self.confusion_matrix[:, 0, 1]
+            self.error_param[:, 1] = self.confusion_matrix[:, 1, 0]
         else:
             self.confusion_matrix = torch.empty((self.n_qubits, 2, 2))
 
@@ -280,7 +275,7 @@ class ReadoutNoise(ReadoutInterface):
         )
         if self._compute_confusion:
             confusion_matrices = create_confusion_matrices(
-                noise_matrix=noise_matrix, error_probability=self.error_probability
+                noise_matrix=noise_matrix, error_param=self.error_param
             )
             self.confusion_matrix = confusion_matrices
         return noise_matrix
@@ -342,7 +337,7 @@ class ReadoutNoise(ReadoutInterface):
             list[Counter]: Samples of corrupted bit strings
         """
         noise_matrix = self.create_noise_matrix(n_shots)
-        err_idx = torch.as_tensor(noise_matrix < self.error_probability)
+        err_idx = torch.as_tensor(noise_matrix < self.error_param)
 
         corrupted_bitstrings = []
         for counter in inputs:

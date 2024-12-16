@@ -144,7 +144,7 @@ hermitian_matrix = matrix + matrix.T.conj()
 time = torch.tensor([1.0])
 time_symbol = "t"
 dur_val = torch.rand(1)
-list_ops = Depolarizing(0, error_probability=0.1).tensor(2)
+list_ops = Depolarizing(0, error_param=0.1).tensor(2)
 list_ops = [op.squeeze() for op in list_ops]
 solver = SolverType.DP5_ME
 n_steps = 5

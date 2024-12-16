@@ -376,7 +376,7 @@ def test_timedependent_with_noise(
 
     # Define jump operators
     # Note that we squeeze to remove the batch dimension
-    list_ops = Depolarizing(0, error_probability=0.1).tensor(2)
+    list_ops = Depolarizing(0, error_param=0.1).tensor(2)
     list_ops = [op.squeeze() for op in list_ops]
     solver = SolverType.DP5_ME
     psi_solver = pyq.mesolve(

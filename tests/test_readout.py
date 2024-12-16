@@ -20,7 +20,7 @@ from pyqtorch.utils_distributions import js_divergence, js_divergence_counters
 
 
 @pytest.mark.parametrize(
-    "error_probability, counters, exp_corrupted_counters, n_qubits",
+    "error_param, counters, exp_corrupted_counters, n_qubits",
     [
         (
             1.0,
@@ -37,14 +37,14 @@ from pyqtorch.utils_distributions import js_divergence, js_divergence_counters
     ],
 )
 def test_bitstring_corruption_all_bitflips(
-    error_probability: float,
+    error_param: float,
     counters: list,
     exp_corrupted_counters: list,
     n_qubits: int,
 ) -> None:
     n_shots = 100
     noise_matrix = create_noise_matrix(WhiteNoise.UNIFORM, n_shots, n_qubits)
-    err_idx = torch.as_tensor(noise_matrix < error_probability)
+    err_idx = torch.as_tensor(noise_matrix < error_param)
     sample = sample_to_matrix(counters[0])
     corrupted_counters = [bs_bitflip_corruption(err_idx=err_idx, sample=sample)]
     assert sum(corrupted_counters[0].values()) == n_shots
@@ -71,9 +71,9 @@ def test_bitstring_corruption_all_bitflips(
 )
 def test_bitstring_corruption_mixed_bitflips(counters: list, n_qubits: int) -> None:
     n_shots = 100
-    error_probability = random.random()
+    error_param = random.random()
     noise_matrix = create_noise_matrix(WhiteNoise.UNIFORM, n_shots, n_qubits)
-    err_idx = torch.as_tensor(noise_matrix < error_probability)
+    err_idx = torch.as_tensor(noise_matrix < error_param)
     sample = sample_to_matrix(counters[0])
     corrupted_counters = [bs_bitflip_corruption(err_idx=err_idx, sample=sample)]
     for noiseless, noisy in zip(counters, corrupted_counters):
@@ -83,13 +83,13 @@ def test_bitstring_corruption_mixed_bitflips(counters: list, n_qubits: int) -> N
 
 @pytest.mark.flaky(max_runs=5)
 @pytest.mark.parametrize(
-    "error_probability, n_shots, list_ops",
+    "error_param, n_shots, list_ops",
     [
         (0.1, 100, [pyq.X(0), pyq.X(1)]),
     ],
 )
 def test_readout_error_quantum_circuit(
-    error_probability: float,
+    error_param: float,
     n_shots: int,
     list_ops: list[Primitive],
 ) -> None:
@@ -98,7 +98,7 @@ def test_readout_error_quantum_circuit(
     noiseless_qc = pyq.QuantumCircuit(n_qubits, list_ops)
     noiseless_samples = noiseless_qc.sample(n_shots=n_shots)
 
-    readout = ReadoutNoise(n_qubits, error_probability=error_probability, seed=0)
+    readout = ReadoutNoise(n_qubits, error_param=error_param, seed=0)
     noisy_qc = pyq.QuantumCircuit(n_qubits, list_ops, readout)
     noisy_samples = noisy_qc.sample(n_shots=n_shots)
 
@@ -107,7 +107,7 @@ def test_readout_error_quantum_circuit(
         assert js_divergence_counters(noiseless, noisy) > 0.0
         assert torch.allclose(
             torch.tensor(1.0 - js_divergence_counters(noiseless, noisy)),
-            torch.ones(1) - error_probability,
+            torch.ones(1) - error_param,
             atol=1e-1,
         )
 
@@ -147,7 +147,7 @@ def test_readout_error_expectation() -> None:
     theta = torch.rand(1, requires_grad=True)
     obs = pyq.Observable(pyq.Z(0))
 
-    readout = ReadoutNoise(n_qubits, error_probability=0.1, seed=0)
+    readout = ReadoutNoise(n_qubits, error_param=0.1, seed=0)
     noisy_qc = pyq.QuantumCircuit(n_qubits, ops, readout)
 
     confusion_matrix = torch.tensor(
@@ -216,6 +216,6 @@ def test_readout_apply_probas() -> None:
 
     assert torch.allclose(
         torch.ones(1) - jsd,
-        torch.ones(1) - readobj.error_probability,
+        torch.ones(1) - readobj.error_param,
         atol=1e-1,
     )

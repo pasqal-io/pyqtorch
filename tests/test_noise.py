@@ -20,10 +20,10 @@ from pyqtorch.matrices import (
 )
 from pyqtorch.noise import (
     AmplitudeDamping,
+    DigitalNoiseType,
     GeneralizedAmplitudeDamping,
     Noise,
     NoiseProtocol,
-    NoiseType,
     PhaseDamping,
 )
 from pyqtorch.primitives import (
@@ -218,9 +218,7 @@ def test_damping_gates(
     elif DampingGate == PhaseDamping:
         assert torch.allclose(DampingGate(target, rate=1)(rho_1), I(target)(rho_1))
     elif DampingGate == GeneralizedAmplitudeDamping:
-        assert torch.allclose(
-            DampingGate(target, error_probability=(1, 1))(rho_1), rho_0
-        )
+        assert torch.allclose(DampingGate(target, error_param=(1, 1))(rho_1), rho_0)
 
 
 @pytest.mark.parametrize("n_qubits", [{"low": 2, "high": 5}], indirect=True)
@@ -291,29 +289,29 @@ def test_dm_expectation(n_qubits: int, batch_size: int, make_param: bool) -> Non
     assert torch.allclose(exp_state, exp_dm)
 
 
-@pytest.mark.parametrize("noise_type", [noise for noise in NoiseType])
+@pytest.mark.parametrize("noise_type", [noise for noise in DigitalNoiseType])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
 def test_digital_noise_apply(
     n_qubits: int,
     batch_size: int,
-    noise_type: NoiseType,
+    noise_type: DigitalNoiseType,
 ) -> None:
     """
     Goes through all non-parametric gates and tests their application to a random state
-    in comparison with the noisy version with error_probability = 0.
+    in comparison with the noisy version with error_param = 0.
     """
     op: type[Primitive]
-    error_probability: float | tuple[float, ...]
+    error_param: float | tuple[float, ...]
 
-    if noise_type == NoiseType.PAULI_CHANNEL:
-        error_probability = (0.0, 0.0, 0.0)
-    elif noise_type == NoiseType.GENERALIZED_AMPLITUDE_DAMPING:
-        error_probability = (0.0, 0.0)
+    if noise_type == DigitalNoiseType.PAULI_CHANNEL:
+        error_param = (0.0, 0.0, 0.0)
+    elif noise_type == DigitalNoiseType.GENERALIZED_AMPLITUDE_DAMPING:
+        error_param = (0.0, 0.0)
     else:
-        error_probability = 0.0
+        error_param = 0.0
 
-    noise_concrete = NoiseProtocol(noise_type, error_probability)
+    noise_concrete = NoiseProtocol(noise_type, error_param)
 
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
@@ -325,30 +323,30 @@ def test_digital_noise_apply(
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
-@pytest.mark.parametrize("noise_type", [noise for noise in NoiseType])
+@pytest.mark.parametrize("noise_type", [noise for noise in DigitalNoiseType])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
 def test_param_noise_apply(
     n_qubits: int,
     batch_size: int,
-    noise_type: NoiseType,
+    noise_type: DigitalNoiseType,
 ) -> None:
     """
     Goes through all parametric gates and tests their application to a random state
-    in comparison with the noisy version with error_probability = 0.
+    in comparison with the noisy version with error_param = 0.
     """
     op: type[Parametric]
 
-    error_probability: float | tuple[float, ...]
+    error_param: float | tuple[float, ...]
 
-    if noise_type == NoiseType.PAULI_CHANNEL:
-        error_probability = (0.0, 0.0, 0.0)
-    elif noise_type == NoiseType.GENERALIZED_AMPLITUDE_DAMPING:
-        error_probability = (0.0, 0.0)
+    if noise_type == DigitalNoiseType.PAULI_CHANNEL:
+        error_param = (0.0, 0.0, 0.0)
+    elif noise_type == DigitalNoiseType.GENERALIZED_AMPLITUDE_DAMPING:
+        error_param = (0.0, 0.0)
     else:
-        error_probability = 0.0
+        error_param = 0.0
 
-    noise_concrete = NoiseProtocol(noise_type, error_probability)
+    noise_concrete = NoiseProtocol(noise_type, error_param)
 
     for op in OPS_PARAM:
         supp = get_op_support(op, n_qubits)

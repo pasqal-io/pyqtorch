@@ -22,7 +22,7 @@ class Noise(torch.nn.Module):
         self,
         kraus: list[Tensor],
         target: int,
-        error_probability: tuple[float, ...] | float,
+        error_param: tuple[float, ...] | float,
     ) -> None:
         super().__init__()
         self.target: int = target
@@ -31,10 +31,10 @@ class Noise(torch.nn.Module):
             self.register_buffer(f"kraus_{index}", tensor)
         self._device: torch.device = kraus[0].device
         self._dtype: torch.dtype = kraus[0].dtype
-        self.error_probability: tuple[float, ...] | float = error_probability
+        self.error_param: tuple[float, ...] | float = error_param
 
     def extra_repr(self) -> str:
-        return f"target: {self.qubit_support}, prob: {self.error_probability}"
+        return f"target: {self.qubit_support}, prob: {self.error_param}"
 
     @property
     def kraus_operators(self) -> list[Tensor]:
@@ -108,23 +108,23 @@ class BitFlip(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        error_probability (float): The probability of a bit flip error.
+        error_param (float): The probability of a bit flip error.
 
     Raises:
-        TypeError: If the error_probability value is not a float.
+        TypeError: If the error_param value is not a float.
     """
 
     def __init__(
         self,
         target: int,
-        error_probability: float,
+        error_param: float,
     ):
-        if error_probability > 1.0 or error_probability < 0.0:
-            raise ValueError("The error_probability value is not a correct probability")
-        K0: Tensor = sqrt(1.0 - error_probability) * IMAT
-        K1: Tensor = sqrt(error_probability) * XMAT
+        if error_param > 1.0 or error_param < 0.0:
+            raise ValueError("The error_param value is not a correct probability")
+        K0: Tensor = sqrt(1.0 - error_param) * IMAT
+        K1: Tensor = sqrt(error_param) * XMAT
         kraus_bitflip: list[Tensor] = [K0, K1]
-        super().__init__(kraus_bitflip, target, error_probability)
+        super().__init__(kraus_bitflip, target, error_param)
 
 
 class PhaseFlip(Noise):
@@ -138,23 +138,23 @@ class PhaseFlip(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        error_probability (float): The probability of phase flip error.
+        error_param (float): The probability of phase flip error.
 
     Raises:
-        TypeError: If the error_probability value is not a float.
+        TypeError: If the error_param value is not a float.
     """
 
     def __init__(
         self,
         target: int,
-        error_probability: float,
+        error_param: float,
     ):
-        if error_probability > 1.0 or error_probability < 0.0:
-            raise ValueError("The error_probability value is not a correct probability")
-        K0: Tensor = sqrt(1.0 - error_probability) * IMAT
-        K1: Tensor = sqrt(error_probability) * ZMAT
+        if error_param > 1.0 or error_param < 0.0:
+            raise ValueError("The error_param value is not a correct probability")
+        K0: Tensor = sqrt(1.0 - error_param) * IMAT
+        K1: Tensor = sqrt(error_param) * ZMAT
         kraus_phaseflip: list[Tensor] = [K0, K1]
-        super().__init__(kraus_phaseflip, target, error_probability)
+        super().__init__(kraus_phaseflip, target, error_param)
 
 
 class Depolarizing(Noise):
@@ -171,25 +171,25 @@ class Depolarizing(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        error_probability (float): The probability of depolarizing error.
+        error_param (float): The probability of depolarizing error.
 
     Raises:
-        TypeError: If the error_probability value is not a float.
+        TypeError: If the error_param value is not a float.
     """
 
     def __init__(
         self,
         target: int,
-        error_probability: float,
+        error_param: float,
     ):
-        if error_probability > 1.0 or error_probability < 0.0:
-            raise ValueError("The error_probability value is not a correct probability")
-        K0: Tensor = sqrt(1.0 - error_probability) * IMAT
-        K1: Tensor = sqrt(error_probability / 3) * XMAT
-        K2: Tensor = sqrt(error_probability / 3) * YMAT
-        K3: Tensor = sqrt(error_probability / 3) * ZMAT
+        if error_param > 1.0 or error_param < 0.0:
+            raise ValueError("The error_param value is not a correct probability")
+        K0: Tensor = sqrt(1.0 - error_param) * IMAT
+        K1: Tensor = sqrt(error_param / 3) * XMAT
+        K2: Tensor = sqrt(error_param / 3) * YMAT
+        K3: Tensor = sqrt(error_param / 3) * ZMAT
         kraus_depolarizing: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(kraus_depolarizing, target, error_probability)
+        super().__init__(kraus_depolarizing, target, error_param)
 
 
 class PauliChannel(Noise):
@@ -206,7 +206,7 @@ class PauliChannel(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        error_probability (Tuple[float, ...]): Tuple containing probabilities
+        error_param (Tuple[float, ...]): Tuple containing probabilities
             of X, Y, and Z errors.
 
     Raises:
@@ -216,25 +216,25 @@ class PauliChannel(Noise):
     def __init__(
         self,
         target: int,
-        error_probability: tuple[float, ...],
+        error_param: tuple[float, ...],
     ):
-        sum_prob = sum(error_probability)
+        sum_prob = sum(error_param)
         if sum_prob > 1.0:
             raise ValueError("The sum of probabilities can't be greater than 1.0")
-        for probability in error_probability:
+        for probability in error_param:
             if probability > 1.0 or probability < 0.0:
                 raise ValueError("The probability values are not correct probabilities")
         px, py, pz = (
-            error_probability[0],
-            error_probability[1],
-            error_probability[2],
+            error_param[0],
+            error_param[1],
+            error_param[2],
         )
         K0: Tensor = sqrt(1.0 - (px + py + pz)) * IMAT
         K1: Tensor = sqrt(px) * XMAT
         K2: Tensor = sqrt(py) * YMAT
         K3: Tensor = sqrt(pz) * ZMAT
         kraus_pauli_channel: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(kraus_pauli_channel, target, error_probability)
+        super().__init__(kraus_pauli_channel, target, error_param)
 
 
 class AmplitudeDamping(Noise):
@@ -255,7 +255,7 @@ class AmplitudeDamping(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        error_probability (float): The damping rate, indicating the probability of amplitude loss.
+        error_param (float): The damping rate, indicating the probability of amplitude loss.
 
     Raises:
         TypeError: If the rate value is not a float.
@@ -265,9 +265,9 @@ class AmplitudeDamping(Noise):
     def __init__(
         self,
         target: int,
-        error_probability: float,
+        error_param: float,
     ):
-        rate = error_probability
+        rate = error_param
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
         K0: Tensor = torch.tensor(
@@ -296,7 +296,7 @@ class PhaseDamping(Noise):
 
     Args:
         target (int): The index of the qubit being affected by the noise.
-        error_probability (float): The damping rate, indicating the probability of phase damping.
+        error_param (float): The damping rate, indicating the probability of phase damping.
 
     Raises:
         TypeError: If the rate value is not a float.
@@ -306,9 +306,9 @@ class PhaseDamping(Noise):
     def __init__(
         self,
         target: int,
-        error_probability: float,
+        error_param: float,
     ):
-        rate = error_probability
+        rate = error_param
         if rate > 1.0 or rate < 0.0:
             raise ValueError("The damping rate is not a correct probability")
         K0: Tensor = torch.tensor(
@@ -352,10 +352,10 @@ class GeneralizedAmplitudeDamping(Noise):
     def __init__(
         self,
         target: int,
-        error_probability: tuple[float, ...],
+        error_param: tuple[float, ...],
     ):
-        probability = error_probability[0]
-        rate = error_probability[1]
+        probability = error_param[0]
+        rate = error_param[1]
         if probability > 1.0 or probability < 0.0:
             raise ValueError("The probability value is not a correct probability")
         if rate > 1.0 or rate < 0.0:
@@ -373,4 +373,4 @@ class GeneralizedAmplitudeDamping(Noise):
             [[0, 0], [sqrt(rate), 0]], dtype=DEFAULT_MATRIX_DTYPE
         )
         kraus_generalized_amplitude_damping: list[Tensor] = [K0, K1, K2, K3]
-        super().__init__(kraus_generalized_amplitude_damping, target, error_probability)
+        super().__init__(kraus_generalized_amplitude_damping, target, error_param)
