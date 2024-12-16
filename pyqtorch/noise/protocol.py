@@ -109,6 +109,10 @@ class NoiseProtocol:
         self.len = len(self.noise_instances)
 
     @property
+    def noise_type(self):
+        return type(self.noise_instances[0].protocol)
+
+    @property
     def error_param(self):
         if self.len == 1:
             return self._error_param
@@ -146,7 +150,7 @@ class NoiseProtocol:
         return cls(DigitalNoiseType.PHASEFLIP, *args, **kwargs)
 
     @classmethod
-    def depolarizing(cls, *args, **kwargs) -> NoiseProtocol:
+    def digital_depolarizing(cls, *args, **kwargs) -> NoiseProtocol:
         return cls(DigitalNoiseType.DEPOLARIZING, *args, **kwargs)
 
     @classmethod
