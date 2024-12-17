@@ -15,10 +15,10 @@ from pyqtorch.noise import (
     AmplitudeDamping,
     BitFlip,
     Depolarizing,
+    DigitalNoiseProtocol,
+    DigitalNoiseType,
     GeneralizedAmplitudeDamping,
     Noise,
-    NoiseProtocol,
-    NoiseType,
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
@@ -186,22 +186,22 @@ def random_noise_gate(n_qubits: int) -> Any:
 
 @pytest.fixture
 def random_noisy_protocol() -> Any:
-    noise_type = random.choice(list(NoiseType))
-    if noise_type == NoiseType.PAULI_CHANNEL:
+    noise_type = random.choice(list(DigitalNoiseType))
+    if noise_type == DigitalNoiseType.PAULI_CHANNEL:
         noise_prob = torch.rand(size=(3,))
         noise_prob = noise_prob / (
             noise_prob.sum(dim=0, keepdim=True) + torch.rand((1,)).item()
         )
-    elif noise_type == NoiseType.GENERALIZED_AMPLITUDE_DAMPING:
+    elif noise_type == DigitalNoiseType.GENERALIZED_AMPLITUDE_DAMPING:
         noise_prob = torch.rand(size=(2,))
     else:
         noise_prob = torch.rand(size=(1,)).item()
-    return NoiseProtocol(noise_type, noise_prob)
+    return DigitalNoiseProtocol(noise_type, noise_prob)
 
 
 @pytest.fixture
 def random_noisy_unitary_gate(
-    n_qubits: int, target: int, random_noisy_protocol: NoiseProtocol
+    n_qubits: int, target: int, random_noisy_protocol: DigitalNoiseProtocol
 ) -> Any:
     if n_qubits < 2:
         raise ValueError("The controlled gates are defined on 2 qubits minimum")

@@ -12,7 +12,7 @@ from torch import Tensor
 from pyqtorch.apply import apply_operator, apply_operator_dm
 from pyqtorch.embed import Embedding
 from pyqtorch.matrices import _dagger
-from pyqtorch.noise import NoiseProtocol, _repr_noise
+from pyqtorch.noise import DigitalNoiseProtocol, _repr_noise
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
@@ -114,7 +114,7 @@ class QuantumOperation(torch.nn.Module):
         operation: Tensor,
         qubit_support: int | tuple[int, ...] | Support,
         operator_function: Callable | None = None,
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ) -> None:
         """Initializes QuantumOperation
 
