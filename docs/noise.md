@@ -165,7 +165,12 @@ print(psi_end) # markdown-exec: hide
 ```
 
 There are predefined `AnalogNoise` available such as:
-- Depolarizing noise defined with jump operators: $L_{0,1,2} = \sqrt{\frac{p}{4}} (X, Y, Z)$.
+- Depolarizing noise (`AnalogDepolarizing`) defined with jump operators: $L_{0,1,2} = \sqrt{\frac{p}{4}} (X, Y, Z)$.
+
+```python exec="on" source="material-block"
+from pyqtorch.noise import AnalogDepolarizing
+analog_noise = AnalogDepolarizing(error_param=0.1, qubit_support=0)
+```
 
 ## Readout errors
 
