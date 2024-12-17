@@ -125,13 +125,13 @@ print(fig_to_html(plt.gcf())) # markdown-exec: hide
 
 ## Analog Noise
 
-Analog noise is made possible by specifying `noise_operators` in `HamiltonianEvolution`:
+Analog noise is made possible by specifying the `noise` argument in `HamiltonianEvolution` either as a list of tensors or a `AnalogNoise` instance. An `AnalogNoise` instance can be instantiated by providing a list of tensors, and a `qubit_support` that should be a subset of the qubit support of  `HamiltonianEvolution`.
 
 ```python exec="on" source="material-block"
 import torch
 from pyqtorch import uniform_state, HamiltonianEvolution
 from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE
-from pyqtorch.noise import Depolarizing
+from pyqtorch.noise import Depolarizing, AnalogNoise
 from pyqtorch.utils import  SolverType
 
 n_qubits = 2
@@ -144,14 +144,16 @@ hermitian_matrix = matrix + matrix.T.conj()
 time = torch.tensor([1.0])
 time_symbol = "t"
 dur_val = torch.rand(1)
-list_ops = Depolarizing(0, error_probability=0.1).tensor(2)
-list_ops = [op.squeeze() for op in list_ops]
+noise_ops = Depolarizing(0, error_probability=0.1).tensor(2)
+noise_ops = [op.squeeze() for op in noise_ops]
+# also can be specified as AnalogNoise
+noise_ops = AnalogNoise(noise_ops, qubit_support=(0,1))
 solver = SolverType.DP5_ME
 n_steps = 5
 
 hamiltonian_evolution = HamiltonianEvolution(hermitian_matrix, time_symbol, qubit_targets,
         duration=dur_val, steps=n_steps,
-        solver=solver, noise_operators=list_ops,)
+        solver=solver, noise=noise_ops)
 
 # Starting from a uniform state
 psi_start = uniform_state(n_qubits)
@@ -159,9 +161,7 @@ psi_start = uniform_state(n_qubits)
 # Returns the evolved state
 psi_end = hamiltonian_evolution(state = psi_start, values={time_symbol: time})
 
-print(psi_end)
-
-
+print(psi_end) # markdown-exec: hide
 ```
 
 ## Readout errors
@@ -196,6 +196,6 @@ noiseless_expectation = pyq.expectation(circ, state, {"theta": theta}, observabl
 readobj = ReadoutNoise(n_qubits, seed=0)
 noisycirc = pyq.QuantumCircuit(n_qubits, ops, readobj)
 noisy_expectation = pyq.expectation(noisycirc, state, {"theta": theta}, observable=obs, n_shots=1000)
-print("Noiseless expectation ", noiseless_expectation.item())
-print("Noisy expectation ", noisy_expectation.item())
+print("Noiseless expectation ", noiseless_expectation.item()) # markdown-exec: hide
+print("Noisy expectation ", noisy_expectation.item()) # markdown-exec: hide
 ```
