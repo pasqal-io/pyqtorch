@@ -43,6 +43,17 @@ class Support:
     def __len__(self):
         return len(self.qubits)
 
+    def __add__(self, other: Support) -> Support:
+        if not isinstance(other, Support):
+            raise ValueError(f"Cannot add type '{type(other)}' to Support.")
+        targets = tuple(set(self.target + other.target))
+        controls = tuple(set(self.control + other.control))
+        if len(set(targets + controls)) != (len(targets) + len(controls)):
+            raise ValueError(
+                "Cannot combine qubit supports with qubits in common between targets and controls."
+            )
+        return Support(targets, controls)
+
     @cached_property
     def qubits(self) -> tuple[int, ...]:
         return self.control + self.target

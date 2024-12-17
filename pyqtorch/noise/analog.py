@@ -55,6 +55,11 @@ class AnalogNoise(torch.nn.Module):
 
     @property
     def noise_operators(self) -> list[Tensor]:
+        """Get noise_operators.
+
+        Returns:
+            list[Tensor]: Noise operators.
+        """
         return [
             getattr(self, f"noise_operators_{i}") for i in range(len(self._buffers))
         ]
@@ -81,7 +86,7 @@ class AnalogNoise(torch.nn.Module):
             full_support (tuple[int, ...] | None, optional): _description_. Defaults to None.
 
         Returns:
-            list[Tensor]: _description_
+            list[Tensor]: Noise operators defined over `full_support`.
         """
         list_ops = self.noise_operators
         if self._qubit_support.qubits != self.qubit_support:
@@ -102,6 +107,11 @@ class AnalogNoise(torch.nn.Module):
             ]
 
     def to(self, *args: Any, **kwargs: Any) -> AnalogNoise:
+        """Do device or dtype conversions.
+
+        Returns:
+            AnalogNoise: Converted instance.
+        """
         super().to(*args, **kwargs)
         self._device = self.noise_operators_0.device
         self._dtype = self.noise_operators_0.dtype
@@ -116,6 +126,23 @@ class AnalogNoise(torch.nn.Module):
         options: dict[str, Any] | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Tensor:
+        """Obtain the output density matrix by solving a Shrodinger equation.
+
+        This uses the `mesolve` function.
+
+        Args:
+            state (Tensor): Input state or density matrix.
+            H (Callable[..., Any]): Time-dependent hamiltonian fonction.
+            tsave (list | Tensor): Tensor containing simulation time instants.
+            solver (SolverType): Name of the solver to use.
+            options (dict[str, Any] | None, optional): Additional options passed to the solver.
+                Defaults to None.
+            full_support (tuple[int, ...] | None, optional): The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
+
+        Returns:
+            Tensor: Output density matrix from solver.
+        """
         if not isinstance(state, DensityMatrix):
             state = density_mat(state)
         sol = mesolve(
@@ -130,11 +157,34 @@ class AnalogNoise(torch.nn.Module):
 
 
 class AnalogDepolarizing(AnalogNoise):
+    """
+    Defines jump operators for an Analog Depolarizing channel.
+
+    Under the depolarizing noise, a system in any state evolves
+      to the maximally mixed state at a rate :math:`p`.
+
+    The corresponding jump operatorsare :
+    .. math::
+        `L_{0,1,2} = \sqrt{\frac{p}{4}} \sigma_{x,y,z}`
+
+    where :math:`\sigma_{x,y,z}` correspond to the unitaries of the X,Y,Z gates.
+
+        Args:
+            error_param (float): Rate of depolarizing.
+            qubit_support (int | tuple[int, ...] | Support): Qubits defining the operation.
+    """
+
     def __init__(
         self,
         error_param: float,
         qubit_support: int | tuple[int, ...] | Support,
     ) -> None:
+        """Initializes AnalogDepolarizing.
+
+        Args:
+            error_param (float): Rate of depolarizing.
+            qubit_support (int | tuple[int, ...] | Support): Qubits defining the operation.
+        """
         coeff = sqrt(error_param / 4)
         L0 = coeff * XMAT.squeeze()
         L1 = coeff * YMAT.squeeze()
