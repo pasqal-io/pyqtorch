@@ -394,7 +394,7 @@ def test_timedependent_with_noise(
         duration=duration,
         steps=n_steps,
         solver=solver,
-        noise_operators=list_ops,
+        noise=list_ops,
     )
     values = {"y": param_y, "duration": dur_val}
     psi_hamevo = hamiltonian_evolution(

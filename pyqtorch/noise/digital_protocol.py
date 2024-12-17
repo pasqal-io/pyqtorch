@@ -64,7 +64,9 @@ class DigitalNoiseProtocol:
 
     def __init__(
         self,
-        protocol: DigitalNoiseType | list[DigitalNoiseType] | list[DigitalNoiseProtocol],
+        protocol: (
+            DigitalNoiseType | list[DigitalNoiseType] | list[DigitalNoiseProtocol]
+        ),
         error_probability: tuple[float, ...] | float | None = None,
         target: int | None = None,
     ) -> None:
@@ -75,7 +77,9 @@ class DigitalNoiseProtocol:
         is_protocol_list = isinstance(protocol, list)
 
         if isinstance(protocol, DigitalNoiseType):
-            self.noise_instances = [DigitalNoiseInstance(protocol, error_probability, target)]
+            self.noise_instances = [
+                DigitalNoiseInstance(protocol, error_probability, target)
+            ]
         elif is_protocol_list and isinstance(protocol[0], DigitalNoiseType):
             self.noise_instances = [
                 DigitalNoiseInstance(p, error_probability, target) for p in protocol  # type: ignore [arg-type]

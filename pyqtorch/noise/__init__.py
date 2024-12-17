@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .analog import AnalogNoise
 from .digital_gates import (
     AmplitudeDamping,
     BitFlip,
