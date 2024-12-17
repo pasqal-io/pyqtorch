@@ -164,13 +164,17 @@ psi_end = hamiltonian_evolution(state = psi_start, values={time_symbol: time})
 print(psi_end) # markdown-exec: hide
 ```
 
-There are predefined `AnalogNoise` available such as:
-- Depolarizing noise (`AnalogDepolarizing`) defined with jump operators: $L_{0,1,2} = \sqrt{\frac{p}{4}} (X, Y, Z)$.
+There is one predefined `AnalogNoise` available: Depolarizing noise (`AnalogDepolarizing`) defined with jump operators: $L_{0,1,2} = \sqrt{\frac{p}{4}} (X, Y, Z)$. Note we can combine `AnalogNoise` with the `+` operator.
+
+
 
 ```python exec="on" source="material-block"
 from pyqtorch.noise import AnalogDepolarizing
-analog_noise = AnalogDepolarizing(error_param=0.1, qubit_support=0)
+analog_noise = AnalogDepolarizing(error_param=0.1, qubit_support=0) + AnalogDepolarizing(error_param=0.1, qubit_support=1)
+# we now have a qubit support acting on qubits 0 and 1
+print(analog_noise.qubit_support) # markdown-exec: hide
 ```
+
 
 ## Readout errors
 
