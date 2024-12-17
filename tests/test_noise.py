@@ -20,6 +20,7 @@ from pyqtorch.matrices import (
 )
 from pyqtorch.noise import (
     AmplitudeDamping,
+    AnalogDepolarizing,
     DigitalNoiseProtocol,
     DigitalNoiseType,
     GeneralizedAmplitudeDamping,
@@ -360,3 +361,21 @@ def test_param_noise_apply(
         psi_expected = op_concrete(psi_init, values=values)
         psi_star = op_concrete_noise(psi_init, values=values)
         assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+def test_analog_noise_add():
+    noise1 = AnalogDepolarizing(error_param=0.1, qubit_support=3)
+    noise2 = AnalogDepolarizing(error_param=0.2, qubit_support=3)
+    noise3 = AnalogDepolarizing(error_param=0.2, qubit_support=2)
+
+    noise_add = noise1 + noise2
+    assert len(noise1.noise_operators) + len(noise2.noise_operators) == len(
+        noise_add.noise_operators
+    )
+    assert noise1.qubit_support == noise_add.qubit_support
+
+    noise_add = noise1 + noise3
+    assert len(noise1.noise_operators) + len(noise3.noise_operators) == len(
+        noise_add.noise_operators
+    )
+    assert noise_add.qubit_support == (2, 3)

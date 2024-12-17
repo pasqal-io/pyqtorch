@@ -155,6 +155,12 @@ class AnalogNoise(torch.nn.Module):
         )
         return DensityMatrix(sol.states[-1])
 
+    def __add__(self, other: AnalogNoise) -> AnalogNoise:
+        return AnalogNoise(
+            self.noise_operators + other.noise_operators,
+            self._qubit_support + other._qubit_support,
+        )
+
 
 class AnalogDepolarizing(AnalogNoise):
     """
