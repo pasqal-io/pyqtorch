@@ -125,7 +125,7 @@ print(fig_to_html(plt.gcf())) # markdown-exec: hide
 
 ## Analog Noise
 
-Analog noise is made possible by specifying the `noise` argument in `HamiltonianEvolution` either as a list of tensors or a `AnalogNoise` instance. An `AnalogNoise` instance can be instantiated by providing a list of tensors, and a `qubit_support` that should be a subset of the qubit support of  `HamiltonianEvolution`.
+Analog noise is made possible by specifying the `noise` argument in `HamiltonianEvolution` either as a list of tensors defining the jump operators to use when using Schrödinger or Lindblad equation solvers or a `AnalogNoise` instance. An `AnalogNoise` instance can be instantiated by providing a list of tensors, and a `qubit_support` that should be a subset of the qubit support of  `HamiltonianEvolution`.
 
 ```python exec="on" source="material-block"
 import torch
@@ -163,6 +163,9 @@ psi_end = hamiltonian_evolution(state = psi_start, values={time_symbol: time})
 
 print(psi_end) # markdown-exec: hide
 ```
+
+There are predefined `AnalogNoise` available such as:
+- Depolarizing noise defined with jump operators: $L_{0,1,2} = \sqrt{\frac{p}{4}} (X, Y, Z)$.
 
 ## Readout errors
 

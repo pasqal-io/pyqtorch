@@ -1,6 +1,6 @@
 ## Time-dependent Schrödinger and Lindblad master equation solving
 
-For simulating systems described by time-dependent Hamiltonians `pyqtorch` has a  module implementing Schrödinger and Lindblad equation solvers.
+For simulating systems described by time-dependent Hamiltonians `pyqtorch` has a module implementing Schrödinger and Lindblad equation solvers.
 
 ```python exec="on" source="material-block"
 import torch
