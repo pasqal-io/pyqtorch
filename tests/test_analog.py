@@ -405,6 +405,25 @@ def test_timedependent_with_noise(
     assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=1.0e-3)
 
 
+def test_error_noise_qubit_support(
+    tparam: str,
+    duration: float,
+    n_steps: int,
+    hamevo_generator: Sequence,
+):
+    solver = SolverType.DP5_ME
+    with pytest.raises(ValueError):
+        noise = AnalogDepolarizing(error_param=0.1, qubit_support=3)
+        hamevo = pyq.HamiltonianEvolution(
+            generator=hamevo_generator,
+            time=tparam,
+            duration=duration,
+            steps=n_steps,
+            solver=solver,
+            noise=noise,
+        )
+
+
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:

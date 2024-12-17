@@ -260,6 +260,14 @@ class HamiltonianEvolution(Sequence):
 
         if isinstance(noise, list):
             noise = AnalogNoise(noise, self.qubit_support)
+        if (
+            noise is not None
+            and len(set(noise.qubit_support) - set(self.qubit_support)) > 0
+        ):
+            raise ValueError(
+                "The noise should be a subset or the same qubit support"
+                "as HamiltonianEvolution."
+            )
         self.noise = noise
 
     @property
