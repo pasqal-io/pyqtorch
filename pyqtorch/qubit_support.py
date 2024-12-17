@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 from functools import cached_property
+
 from pyqtorch.utils import (
     qubit_support_as_tuple,
 )
+
 
 class Support:
     """

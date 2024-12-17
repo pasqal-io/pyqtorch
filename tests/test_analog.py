@@ -18,10 +18,11 @@ from pyqtorch.matrices import (
     XMAT,
     ZMAT,
 )
-from pyqtorch.noise import Depolarizing
+from pyqtorch.noise import AnalogDepolarizing
 from pyqtorch.utils import (
     ATOL,
     RTOL,
+    DensityMatrix,
     SolverType,
     density_mat,
     is_normalized,
@@ -376,8 +377,8 @@ def test_timedependent_with_noise(
 
     # Define jump operators
     # Note that we squeeze to remove the batch dimension
-    list_ops = Depolarizing(0, error_probability=0.1).tensor(2)
-    list_ops = [op.squeeze() for op in list_ops]
+    noise = AnalogDepolarizing(error_param=0.1, qubit_support=0)
+    list_ops = noise._noise_operators(full_support=(0, 1))
     solver = SolverType.DP5_ME
     psi_solver = pyq.mesolve(
         torch_hamiltonian, psi_start, list_ops, t_points, solver
@@ -400,6 +401,7 @@ def test_timedependent_with_noise(
     psi_hamevo = hamiltonian_evolution(
         state=psi_start, values=values, embedding=embedding
     )
+    assert isinstance(psi_hamevo, DensityMatrix)
     assert torch.allclose(psi_solver, psi_hamevo, rtol=RTOL, atol=1.0e-3)
 
 

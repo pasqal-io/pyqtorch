@@ -129,7 +129,7 @@ class AnalogNoise(torch.nn.Module):
         return DensityMatrix(sol.states[-1])
 
 
-class Depolarizing(AnalogNoise):
+class AnalogDepolarizing(AnalogNoise):
     def __init__(
         self,
         error_param: float,
