@@ -208,6 +208,6 @@ noiseless_expectation = pyq.expectation(circ, state, {"theta": theta}, observabl
 readobj = ReadoutNoise(n_qubits, seed=0)
 noisycirc = pyq.QuantumCircuit(n_qubits, ops, readobj)
 noisy_expectation = pyq.expectation(noisycirc, state, {"theta": theta}, observable=obs, n_shots=1000)
-print("Noiseless expectation ", noiseless_expectation.item()) # markdown-exec: hide
-print("Noisy expectation ", noisy_expectation.item()) # markdown-exec: hide
+print(f"Noiseless expectation: {noiseless_expectation.item()}") # markdown-exec: hide
+print(f"Noisy expectation: {noisy_expectation.item()}") # markdown-exec: hide
 ```
