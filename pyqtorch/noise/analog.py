@@ -20,7 +20,7 @@ from pyqtorch.utils import (
 
 class AnalogNoise(torch.nn.Module):
     """AnalogNoise is used within `HamiltonianEvolution`
-        when using a Shrodinger equation solver.
+        when solving the Schrödinger or a master (Lindblad) equation.
 
     Attributes:
         noise_operators (list[Tensor]): The list of jump operators
