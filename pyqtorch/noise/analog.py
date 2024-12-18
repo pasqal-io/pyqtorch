@@ -46,7 +46,7 @@ class AnalogNoise(torch.nn.Module):
         for index, tensor in enumerate(noise_operators):
             if len(self._qubit_support) < int(log(tensor.shape[1], 2)):
                 raise ValueError(
-                    "Tensor dimensions should match the length of the qubit support."
+                    f"Tensor dimensions should match the length of the qubit support. Tensor {tensor} has incompatible dimensions {int(log(tensor.shape[1], 2)}."
                 )
             self.register_buffer(f"noise_operators_{index}", tensor)
 
