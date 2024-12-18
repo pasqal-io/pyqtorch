@@ -169,7 +169,7 @@ class AnalogDepolarizing(AnalogNoise):
     Under the depolarizing noise, a system in any state evolves
       to the maximally mixed state at a rate :math:`p`.
 
-    The corresponding jump operatorsare :
+    The corresponding jump operators are :
     .. math::
         `L_{0,1,2} = \sqrt{\frac{p}{4}} \sigma_{x,y,z}`
 
