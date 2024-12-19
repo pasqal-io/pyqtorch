@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 
 from pyqtorch.matrices import OPERATIONS_DICT, controlled
-from pyqtorch.noise import NoiseProtocol, _repr_noise
+from pyqtorch.noise import DigitalNoiseProtocol, _repr_noise
 from pyqtorch.quantum_operation import QuantumOperation, Support
 
 
@@ -26,7 +26,7 @@ class Primitive(QuantumOperation):
         operation: Tensor,
         qubit_support: int | tuple[int, ...] | Support,
         generator: Tensor | None = None,
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ) -> None:
         super().__init__(operation, qubit_support, noise=noise)
         self.generator = generator
@@ -74,7 +74,7 @@ class ControlledPrimitive(Primitive):
         operation: str | Tensor,
         control: int | tuple[int, ...],
         target: int | tuple[int, ...],
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         support = Support(target, control)
         if isinstance(operation, str):

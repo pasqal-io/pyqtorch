@@ -11,7 +11,7 @@ from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
     controlled,
 )
-from pyqtorch.noise import NoiseProtocol
+from pyqtorch.noise import DigitalNoiseProtocol
 
 from .parametric import ControlledRotationGate, Parametric
 
@@ -35,7 +35,7 @@ class RX(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes RX.
 
@@ -76,7 +76,7 @@ class RY(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes RY.
 
@@ -117,7 +117,7 @@ class RZ(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes RZ.
 
@@ -158,7 +158,7 @@ class PHASE(Parametric):
         self,
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes PHASE.
 
@@ -238,7 +238,7 @@ class CRX(ControlledRotationGate):
         control: int | tuple[int, ...],
         target: int,
         param_name: str | int | float | Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes controlled RX.
 
@@ -284,7 +284,7 @@ class CRY(ControlledRotationGate):
         control: int | tuple[int, ...],
         target: int,
         param_name: str | int | float | Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes controlled RY.
 
@@ -330,7 +330,7 @@ class CRZ(ControlledRotationGate):
         control: int | tuple[int, ...],
         target: int,
         param_name: str | int | float | Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes controlled RZ.
 
@@ -378,7 +378,7 @@ class CPHASE(ControlledRotationGate):
         control: int | tuple[int, ...],
         target: int,
         param_name: str | int | float | Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes controlled PHASE.
 
@@ -505,7 +505,7 @@ class U(Parametric):
         phi: str,
         theta: str,
         omega: str,
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes U gate.
 

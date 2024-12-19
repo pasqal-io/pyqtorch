@@ -14,19 +14,17 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.composite import Scale
 from pyqtorch.embed import ConcretizedCallable, Embedding
+from pyqtorch.noise import AnalogNoise
 from pyqtorch.primitives import Primitive
 from pyqtorch.quantum_operation import QuantumOperation
-from pyqtorch.time_dependent.mesolve import mesolve
 from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
     ATOL,
-    DensityMatrix,
     Operator,
     SolverType,
     State,
     StrEnum,
     _round_operator,
-    density_mat,
     expand_operator,
     finitediff,
     is_diag,
@@ -160,7 +158,7 @@ class HamiltonianEvolution(Sequence):
         steps: int = 100,
         solver: SolverType = SolverType.DP5_SE,
         use_sparse: bool = False,
-        noise_operators: list[Tensor] = list(),
+        noise: list[Tensor] | AnalogNoise | None = None,
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -176,7 +174,7 @@ class HamiltonianEvolution(Sequence):
             duration: Total duration for evolving when using a solver.
             steps: Number of steps to use when using solver.
             solver: Time-dependent Lindblad master equation solver.
-            noise_operators: List of tensors or Kraus operators adding analog noise
+            noise: List of jump operatoes for noisy simulations or an AnalogNoise
                 when solving with a Shrodinger equation solver.
         """
 
@@ -260,7 +258,14 @@ class HamiltonianEvolution(Sequence):
         self._cache_hamiltonian_evo: dict[str, Tensor] = dict()
         self.cache_length = cache_length
 
-        self.noise_operators: list[Tensor] = noise_operators
+        if isinstance(noise, list):
+            noise = AnalogNoise(noise, self.qubit_support)
+        if noise is not None and set(noise.qubit_support) - set(self.qubit_support):
+            raise ValueError(
+                "The noise should be a subset or the same qubit support"
+                "as HamiltonianEvolution."
+            )
+        self.noise = noise
 
     @property
     def generator(self) -> ModuleList:
@@ -430,7 +435,7 @@ class HamiltonianEvolution(Sequence):
                 .squeeze(2)
             )
 
-        if len(self.noise_operators) == 0:
+        if self.noise is None:
             sol = sesolve(
                 Ht,
                 torch.flatten(state, start_dim=0, end_dim=-2),
@@ -443,19 +448,14 @@ class HamiltonianEvolution(Sequence):
             # and reshape
             state = sol.states[-1].reshape([2] * n_qubits + [batch_size])
         else:
-            if not isinstance(state, DensityMatrix):
-                state = density_mat(state)
-            sol = mesolve(
-                Ht,
+            state = self.noise(
                 state,
-                self.noise_operators,
+                Ht,
                 t_grid,
                 self.solver_type,
                 options={"use_sparse": self.use_sparse},
+                full_support=self.qubit_support,
             )
-            # Retrieve the last density matrix
-            # and reshape
-            state = sol.states[-1]
         return state
 
     def forward(

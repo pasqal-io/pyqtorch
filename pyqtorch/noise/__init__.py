@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from .gates import (
+from .analog import AnalogDepolarizing, AnalogNoise
+from .digital_gates import (
     AmplitudeDamping,
     BitFlip,
     Depolarizing,
@@ -10,5 +11,5 @@ from .gates import (
     PhaseDamping,
     PhaseFlip,
 )
-from .protocol import NoiseProtocol, NoiseType, _repr_noise
+from .digital_protocol import DigitalNoiseProtocol, DigitalNoiseType, _repr_noise
 from .readout import CorrelatedReadoutNoise, ReadoutNoise, WhiteNoise

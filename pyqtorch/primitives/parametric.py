@@ -13,7 +13,7 @@ from pyqtorch.matrices import (
     controlled,
     parametric_unitary,
 )
-from pyqtorch.noise import NoiseProtocol, _repr_noise
+from pyqtorch.noise import DigitalNoiseProtocol, _repr_noise
 from pyqtorch.quantum_operation import QuantumOperation, Support
 
 pauli_singleq_eigenvalues = torch.tensor([[-1.0], [1.0]], dtype=torch.cdouble)
@@ -35,7 +35,7 @@ class Parametric(QuantumOperation):
         generator: str | Tensor,
         qubit_support: int | tuple[int, ...] | Support,
         param_name: str | int | float | torch.Tensor | ConcretizedCallable = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes Parametric.
 
@@ -243,7 +243,7 @@ class ControlledParametric(Parametric):
         control: int | Tuple[int, ...],
         target: int | Tuple[int, ...],
         param_name: str | int | float | torch.Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes a ControlledParametric.
 
@@ -333,7 +333,7 @@ class ControlledRotationGate(ControlledParametric):
         control: int | Tuple[int, ...],
         target: int,
         param_name: str | int | float | torch.Tensor = "",
-        noise: NoiseProtocol | None = None,
+        noise: DigitalNoiseProtocol | None = None,
     ):
         """Initializes a ControlledRotationGate.
 
