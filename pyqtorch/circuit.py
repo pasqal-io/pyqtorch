@@ -100,9 +100,8 @@ class QuantumCircuit(Sequence):
                     start_dim=0,
                     end_dim=-2,
                 ).t()
-                probs = torch.abs(torch.pow(state, 2))
+                probs = torch.pow(torch.abs(state), 2)
 
-            probs = torch.pow(torch.abs(state), 2)
             if self.readout_noise is not None:
                 probs = self.readout_noise.apply(probs, n_shots)
             counters = list(
