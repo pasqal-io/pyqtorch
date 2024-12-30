@@ -9,11 +9,12 @@ import torch
 from torch import Tensor, einsum, rand
 from torch.nn import Module, ModuleList, ParameterDict
 
-from pyqtorch.apply import apply_operator
+from pyqtorch.apply import apply_operator, apply_operator_dm
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.matrices import add_batch_dim
 from pyqtorch.primitives import CNOT, RX, RY, Parametric, Primitive
 from pyqtorch.utils import (
+    DensityMatrix,
     Operator,
     State,
 )
@@ -233,6 +234,8 @@ class Merge(Sequence):
                 f"Require all operations to act on a single qubit. Got: {operations}."
             )
 
+        self._contains_noise = sum([op.noise is not None for op in self.operations])
+
     def forward(
         self,
         state: Tensor,
@@ -253,6 +256,18 @@ class Merge(Sequence):
                     )
                 ),
             )
+
+        if self._contains_noise:
+            # noisy cannot use merged in tensors, fall back to super forward
+            return super().forward(state, values, embedding)
+
+        if isinstance(state, DensityMatrix):
+            return apply_operator_dm(
+                state,
+                add_batch_dim(self.tensor(values, embedding), batch_size),
+                self.qubits,
+            )
+
         return apply_operator(
             state,
             add_batch_dim(self.tensor(values, embedding), batch_size),

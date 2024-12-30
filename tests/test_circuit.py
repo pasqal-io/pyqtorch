@@ -7,7 +7,10 @@ import torch
 
 import pyqtorch as pyq
 from pyqtorch import run, sample
+from pyqtorch.noise import DigitalNoiseProtocol, DigitalNoiseType
 from pyqtorch.utils import (
+    DensityMatrix,
+    density_mat,
     product_state,
 )
 
@@ -54,6 +57,35 @@ def test_merge() -> None:
     state = pyq.random_state(2)
     values = {f"theta_{i}": torch.rand(1) for i in range(3)}
     assert torch.allclose(circ(state, values), mergecirc(state, values))
+
+    # test with density matrices
+    state = density_mat(state)
+    circ_out = circ(state, values)
+    mergecirc_out = mergecirc(state, values)
+    assert isinstance(circ_out, DensityMatrix)
+    assert isinstance(mergecirc_out, DensityMatrix)
+    assert torch.allclose(circ_out, mergecirc_out)
+
+
+def test_merge_noisy_op() -> None:
+    ops = [
+        pyq.RX(0, "theta_0"),
+        pyq.RY(
+            0,
+            "theta_1",
+            noise=DigitalNoiseProtocol(DigitalNoiseType.DEPOLARIZING, 0.1, 0),
+        ),
+        pyq.RX(0, "theta_2"),
+    ]
+    circ = pyq.QuantumCircuit(2, ops)
+    mergecirc = pyq.Merge(ops)
+    state = pyq.random_state(2)
+    values = {f"theta_{i}": torch.rand(1) for i in range(3)}
+    circ_out = circ(state, values)
+    mergecirc_out = mergecirc(state, values)
+    assert isinstance(circ_out, DensityMatrix)
+    assert isinstance(mergecirc_out, DensityMatrix)
+    assert torch.allclose(circ_out, mergecirc_out)
 
 
 @pytest.mark.xfail(
