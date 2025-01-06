@@ -9,8 +9,10 @@ from pyqtorch import DiffMode, expectation
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES
 from pyqtorch.primitives import Primitive
 from pyqtorch.utils import (
+    ATOL,
     GRADCHECK_ATOL,
     GRADCHECK_ATOL_hamevo,
+    density_mat,
 )
 
 
@@ -156,6 +158,20 @@ def test_sampled_diff(
         n_shots=100000,
     )
     assert torch.allclose(exp_ad, exp_ad_sampled, atol=1e-01)
+
+    # test density mat
+    dm = density_mat(state)
+    exp_ad_dm = expectation(circ, dm, values, obs, DiffMode.AD)
+    exp_ad_sampled_dm = expectation(
+        circ,
+        dm,
+        values,
+        obs,
+        DiffMode.AD,
+        n_shots=100000,
+    )
+    assert torch.allclose(exp_ad_dm, exp_ad, atol=ATOL)
+    assert torch.allclose(exp_ad, exp_ad_sampled_dm, atol=1e-01)
 
 
 @pytest.mark.xfail  # Adjoint Scale is currently not supported

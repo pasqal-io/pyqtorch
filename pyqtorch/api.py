@@ -7,7 +7,7 @@ from logging import getLogger
 import torch
 from torch import Tensor
 
-from pyqtorch.apply import apply_operator
+from pyqtorch.apply import apply_operator, apply_operator_dm
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.differentiation import (
     AdjointExpectation,
@@ -16,7 +16,7 @@ from pyqtorch.differentiation import (
 )
 from pyqtorch.embed import Embedding
 from pyqtorch.hamiltonians import Observable
-from pyqtorch.utils import DiffMode, sample_multinomial
+from pyqtorch.utils import DensityMatrix, DiffMode, sample_multinomial
 
 logger = getLogger(__name__)
 
@@ -166,13 +166,24 @@ def sampled_expectation(
         ).permute((2, 0, 1))
     )
     eigvals = eigvals.squeeze()
-    eigvec_state_prod = apply_operator(
-        state,
-        eigvecs.T.conj(),
-        tuple(range(n_qubits)),
-    )
-    eigvec_state_prod = torch.flatten(eigvec_state_prod, start_dim=0, end_dim=-2).t()
-    probs = torch.pow(torch.abs(eigvec_state_prod), 2)
+    if isinstance(state, DensityMatrix):
+        eigvec_state_prod = apply_operator_dm(
+            state,
+            eigvecs.T.conj(),
+            tuple(range(n_qubits)),
+        )
+        probs = torch.diagonal(eigvec_state_prod, dim1=0, dim2=1).real
+
+    else:
+        eigvec_state_prod = apply_operator(
+            state,
+            eigvecs.T.conj(),
+            tuple(range(n_qubits)),
+        )
+        eigvec_state_prod = torch.flatten(
+            eigvec_state_prod, start_dim=0, end_dim=-2
+        ).t()
+        probs = torch.pow(torch.abs(eigvec_state_prod), 2)
     if circuit.readout_noise is not None:
         batch_samples = circuit.readout_noise.apply(probs, n_shots)
 
