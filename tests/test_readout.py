@@ -11,12 +11,24 @@ from pyqtorch.noise import CorrelatedReadoutNoise, ReadoutNoise
 from pyqtorch.noise.readout import (
     WhiteNoise,
     bs_bitflip_corruption,
+    create_confusion_matrices,
     create_noise_matrix,
     sample_to_matrix,
 )
 from pyqtorch.primitives import Primitive
 from pyqtorch.utils import sample_multinomial
 from pyqtorch.utils_distributions import js_divergence, js_divergence_counters
+
+
+def test_noise_matrix():
+    noise_mat = torch.tensor([[0.5679, 0.7676]])
+    zero_prob_mat = torch.tensor(
+        [[1.0, 0.0], [0.0, 1.0]],
+        dtype=torch.float64,
+    )
+    assert torch.allclose(
+        create_confusion_matrices(noise_mat, 0.1), torch.stack([zero_prob_mat] * 2)
+    )
 
 
 @pytest.mark.parametrize(

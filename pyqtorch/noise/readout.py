@@ -148,7 +148,11 @@ def create_confusion_matrices(noise_matrix: Tensor, error_probability: float) ->
     confusion_matrices = []
     for i in range(noise_matrix.size()[1]):
         column_tensor = noise_matrix[:, i]
-        flip_proba = column_tensor[column_tensor < error_probability].mean().item()
+        flip_proba = (
+            flip_proba.mean().item()
+            if len(flip_proba := column_tensor[column_tensor < error_probability]) > 0
+            else 0.0
+        )
         confusion_matrix = torch.tensor(
             [[1.0 - flip_proba, flip_proba], [flip_proba, 1.0 - flip_proba]],
             dtype=torch.float64,
