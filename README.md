@@ -7,6 +7,7 @@ It acts as the main backend for [`Qadence`](https://github.com/pasqal-io/qadence
 [![Linting / Tests/ Documentation](https://github.com/pasqal-io/pyqtorch/actions/workflows/test.yml/badge.svg)](https://github.com/pasqal-io/pyqtorch/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Pypi](https://badge.fury.io/py/pyqtorch.svg)](https://pypi.org/project/pyqtorch/)
+![Coverage](https://img.shields.io/codecov/c/github/pasqal-io/pyqtorch?style=flat-square)
 
 
 ## Installation guide

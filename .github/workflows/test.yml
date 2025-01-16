@@ -39,6 +39,11 @@ jobs:
         - name: Perform unit tests
           run: |
             hatch -e tests run pytest -n auto
+        - name: Upload coverage reports to Codecov
+          uses: codecov/codecov-action@v5
+          with:
+            token: ${{ secrets.CODECOV_TOKEN }}
+            slug: pasqal-io/pyqtorch
 
   test_docs:
     name: Documentation
