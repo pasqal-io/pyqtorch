@@ -81,7 +81,6 @@ features = [
 [tool.hatch.envs.tests.scripts]
 test = "pytest -n auto --cov-report=xml --cov-config=pyproject.toml --cov=pyqtorch --cov=tests {args}"
 test-docs = "hatch -e docs run mkdocs build --clean --strict"
-test-cov = "pytest -n auto --cov=pyqtorch tests/"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
