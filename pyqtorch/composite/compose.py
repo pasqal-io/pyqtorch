@@ -60,6 +60,12 @@ class Scale(Sequence):
         super().__init__([operations])
         self.param_name = param_name
 
+    def to_diagonal(self):
+        """Force the operator to be diagonal."""
+        if not self.diagonal:
+            self.operations[0].to_diagonal()
+            self.diagonal = self.operations[0].diagonal
+
     def forward(
         self,
         state: Tensor,
@@ -198,9 +204,12 @@ class Add(Sequence):
                 "Expanding tensor operation requires a `full_support` argument "
                 "larger than or equal to the `qubit_support`."
             )
-        mat = torch.zeros(
-            (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
-        )
+        if self.diagonal:
+            mat = torch.zeros((2 ** len(full_support), 1), device=self.device)
+        else:
+            mat = torch.zeros(
+                (2 ** len(full_support), 2 ** len(full_support), 1), device=self.device
+            )
         return reduce(
             add,
             (op.tensor(values, embedding, full_support) for op in self.operations),
@@ -269,12 +278,14 @@ class Merge(Sequence):
                 state,
                 add_batch_dim(self.tensor(values, embedding), batch_size),
                 self.qubits,
+                self.diagonal,
             )
 
         return apply_operator(
             state,
             add_batch_dim(self.tensor(values, embedding), batch_size),
             self.qubits,
+            self.diagonal,
         )
 
     def tensor(
@@ -285,6 +296,29 @@ class Merge(Sequence):
     ) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
         values = values or dict()
+        if self.diagonal:
+            return reduce(
+                lambda u0, u1: einsum("jb,jb->jb", u0, u1),
+                (
+                    op.tensor(values, embedding, full_support)
+                    for op in reversed(self.operations)
+                ),
+            )
+
+        # def get_einsum_expr(u0: Tensor, u1: Tensor) -> str:
+        #     expr = ""
+        #     prefix_u0 = "i" if len(u0.size()) == 3 else ""
+        #     prefix_u1 = "k" if len(u1.size()) == 3 else ""
+        #     expr = prefix_u0 + "jb,j" + prefix_u1 + "b->" + prefix_u1 + "b"
+        #     return expr
+
+        # return reduce(
+        #     lambda u0, u1: einsum(get_einsum_expr(u0, u1), u0, u1),
+        #     (
+        #         op.tensor(values, embedding, full_support)
+        #         for op in reversed(self.operations)
+        #     ),
+        # )
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
             (
