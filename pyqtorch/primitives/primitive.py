@@ -19,6 +19,9 @@ class Primitive(QuantumOperation):
         operation (Tensor): Matrix U.
         qubit_support: List of qubits the QuantumOperation acts on.
         generator (Tensor): A tensor G s.t. U = exp(-iG).
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
+        diagonal (bool, optional): Specify if the operation is diagonal.
     """
 
     def __init__(
@@ -27,8 +30,9 @@ class Primitive(QuantumOperation):
         qubit_support: int | tuple[int, ...] | Support,
         generator: Tensor | None = None,
         noise: DigitalNoiseProtocol | None = None,
+        diagonal: bool = False,
     ) -> None:
-        super().__init__(operation, qubit_support, noise=noise)
+        super().__init__(operation, qubit_support, noise=noise, diagonal=diagonal)
         self.generator = generator
 
     def to(self, *args: Any, **kwargs: Any) -> Primitive:
@@ -67,6 +71,9 @@ class ControlledPrimitive(Primitive):
         operation (Tensor): Unitary tensor U.
         control (int | tuple[int, ...]): List of qubits acting as controls.
         target (int | tuple[int, ...]): List of qubits operations acts on.
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
+        diagonal (bool, optional): Specify if the operation is diagonal.
     """
 
     def __init__(
@@ -75,16 +82,18 @@ class ControlledPrimitive(Primitive):
         control: int | tuple[int, ...],
         target: int | tuple[int, ...],
         noise: DigitalNoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
         support = Support(target, control)
         if isinstance(operation, str):
             operation = OPERATIONS_DICT[operation]
         operation = controlled(
-            operation=operation.unsqueeze(2),
+            operation=operation.unsqueeze(-1),
             batch_size=1,
             n_control_qubits=len(support.control),
-        ).squeeze(2)
-        super().__init__(operation, support, noise=noise)
+            diagonal=diagonal,
+        ).squeeze(-1)
+        super().__init__(operation, support, noise=noise, diagonal=diagonal)
 
     def extra_repr(self) -> str:
         return f"control: {self.control}, target: {self.target}" + _repr_noise(
