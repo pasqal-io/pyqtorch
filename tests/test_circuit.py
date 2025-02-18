@@ -36,6 +36,30 @@ def test_scale(fn: pyq.primitives.Primitive) -> None:
     assert torch.allclose(wf, scaledwf_composite)
 
 
+def test_diagonal_scale() -> None:
+    n_qubits = torch.randint(low=1, high=4, size=(1,)).item()
+    target = random.choice([i for i in range(n_qubits)])
+    state = pyq.random_state(n_qubits)
+    gate = pyq.Z(target)
+    assert not gate.diagonal
+    values = {"scale": torch.rand(1)}
+    wf = values["scale"] * pyq.QuantumCircuit(2, [gate])(state, {})
+    scaledwf_primitive = pyq.Scale(gate, "scale")(state, values)
+    scaledwf_composite = pyq.Scale(pyq.Sequence([gate]), "scale")(state, values)
+    assert torch.allclose(wf, scaledwf_primitive)
+    assert torch.allclose(wf, scaledwf_composite)
+
+    # if using diagonal gate, Scale should be diagonal
+    gate.to_diagonal()
+    assert gate.diagonal
+    scaledwf_primitive = pyq.Scale(gate, "scale")(state, values)
+    assert scaledwf_primitive.diagonal
+    scaledwf_composite = pyq.Scale(pyq.Sequence([gate]), "scale")(state, values)
+    assert scaledwf_composite.diagonal
+    assert torch.allclose(wf, scaledwf_primitive)
+    assert torch.allclose(wf, scaledwf_composite)
+
+
 def test_add() -> None:
     num_gates = 2
     fns = [pyq.X, pyq.Y, pyq.Z, pyq.S, pyq.H, pyq.T]
