@@ -305,22 +305,15 @@ class Merge(Sequence):
                 ),
             )
 
-        # def get_einsum_expr(u0: Tensor, u1: Tensor) -> str:
-        #     expr = ""
-        #     prefix_u0 = "i" if len(u0.size()) == 3 else ""
-        #     prefix_u1 = "k" if len(u1.size()) == 3 else ""
-        #     expr = prefix_u0 + "jb,j" + prefix_u1 + "b->" + prefix_u1 + "b"
-        #     return expr
+        def get_einsum_expr(u0: Tensor, u1: Tensor) -> str:
+            expr = ""
+            prefix_u0 = "i" if len(u0.size()) == 3 else ""
+            prefix_u1 = "k" if len(u1.size()) == 3 else ""
+            expr = prefix_u0 + "jb,j" + prefix_u1 + "b->" + prefix_u0 + prefix_u1 + "b"
+            return expr
 
-        # return reduce(
-        #     lambda u0, u1: einsum(get_einsum_expr(u0, u1), u0, u1),
-        #     (
-        #         op.tensor(values, embedding, full_support)
-        #         for op in reversed(self.operations)
-        #     ),
-        # )
         return reduce(
-            lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
+            lambda u0, u1: einsum(get_einsum_expr(u0, u1), u0, u1),
             (
                 op.tensor(values, embedding, full_support)
                 for op in reversed(self.operations)
