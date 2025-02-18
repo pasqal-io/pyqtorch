@@ -22,6 +22,8 @@ from pyqtorch.primitives import (
     OPS_DIGITAL,
     OPS_PARAM,
     OPS_PARAM_2Q,
+    PHASE,
+    RZ,
     SWAP,
     I,
     N,
@@ -44,6 +46,7 @@ from pyqtorch.utils import (
 
 pi = torch.tensor(torch.pi)
 OPS_DIAGONAL = (Z, I, S, T, SDagger, N, CZ)
+OPS_DIAGONAL_PARAM = (RZ, PHASE, CRZ, CPHASE)
 
 
 @pytest.mark.parametrize("use_dm", [True, False])
@@ -108,7 +111,11 @@ def test_param_tensor(
         supp = get_op_support(op, n_qubits)
         params = [f"th{i}" for i in range(op.n_params)]
         op_concrete = op(*supp, *params)
-        # op_concrete.to_diagonal()
+        op_concrete.to_diagonal()
+        if isinstance(op_concrete, OPS_DIAGONAL_PARAM):
+            assert op_concrete.diagonal
+        else:
+            assert not op_concrete.diagonal
         psi_init = random_state(n_qubits)
         values = {param: torch.rand(batch_size) for param in params}
         if use_dm:

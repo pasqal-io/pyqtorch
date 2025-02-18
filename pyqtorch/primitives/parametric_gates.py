@@ -29,6 +29,8 @@ class RX(Parametric):
     Attributes:
         param_name: Name of parameters.
         parse_values: Method defining how to handle the values dictionary input.
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
     """
 
     def __init__(
@@ -199,8 +201,12 @@ class PHASE(Parametric):
         values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        batch_mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
-        batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
+        if not self.diagonal:
+            batch_mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
+            batch_mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
+        else:
+            batch_mat = self.identity.unsqueeze(1).repeat(1, batch_size)
+            batch_mat[1, :] = torch.exp(1.0j * thetas).unsqueeze(0)
         return batch_mat
 
     def jacobian(
@@ -429,9 +435,13 @@ class CPHASE(ControlledRotationGate):
         values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
-        mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
-        return controlled(mat, batch_size, len(self.control))
+        if self.diagonal:
+            mat = self.identity.unsqueeze(-1).repeat(1, batch_size)
+            mat[1, :] = torch.exp(1.0j * thetas).unsqueeze(0)
+        else:
+            mat = self.identity.unsqueeze(2).repeat(1, 1, batch_size)
+            mat[1, 1, :] = torch.exp(1.0j * thetas).unsqueeze(0).unsqueeze(1)
+        return controlled(mat, batch_size, len(self.control), diagonal=self.diagonal)
 
     def jacobian(
         self,
