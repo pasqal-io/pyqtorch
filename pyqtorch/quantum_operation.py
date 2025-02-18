@@ -18,6 +18,7 @@ from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
     expand_operator,
+    is_diag_batched,
     permute_basis,
 )
 
@@ -60,6 +61,7 @@ class QuantumOperation(torch.nn.Module):
         qubit_support: int | tuple[int, ...] | Support,
         operator_function: Callable | None = None,
         noise: DigitalNoiseProtocol | None = None,
+        diagonal: bool = False,
     ) -> None:
         """Initializes QuantumOperation
 
@@ -67,6 +69,11 @@ class QuantumOperation(torch.nn.Module):
             operation (Tensor): Tensor used to infer the QuantumOperation.
             qubit_support (int | tuple[int, ...]): List of qubits
                 the QuantumOperation acts on.
+            noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+                to add in the operation.
+            diagonal (bool, optional): Specify if the operation is diagonal.
+                For supporting, only pass a 1 or 2-dim operation tensor
+                containing diagonal elements with batchsize.
 
         Raises:
             ValueError: When operation has incompatible shape
@@ -83,6 +90,10 @@ class QuantumOperation(torch.nn.Module):
         self.register_buffer("operation", operation)
         self._device = self.operation.device
         self._dtype = self.operation.dtype
+
+        self.diagonal = diagonal
+        if diagonal and len(self.operation.size()) == 3:
+            raise ValueError("The operation dimension should be less than 3.")
 
         is_primitive = operator_function is None
         dim_nomatch = len(self.qubit_support) != int(log2(operation.shape[0]))
@@ -188,6 +199,7 @@ class QuantumOperation(torch.nn.Module):
         Returns:
             Eigenvalues of the operation.
         """
+
         return torch.linalg.eigvalsh(self.operation).reshape(-1, 1)
 
     @cached_property
@@ -206,6 +218,8 @@ class QuantumOperation(torch.nn.Module):
             Eigenvalues of the related tensor.
         """
         blockmat = self.tensor(values or dict(), embedding)
+        if self.diagonal:
+            return blockmat
         return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
 
     @cached_property
@@ -235,8 +249,8 @@ class QuantumOperation(torch.nn.Module):
             Tensor: Base operator.
         """
         operation = (
-            self.operation.unsqueeze(2)
-            if len(self.operation.shape) == 2
+            self.operation.unsqueeze(-1)
+            if len(self.operation.shape) <= 2
             else self.operation
         )
         return operation
@@ -255,7 +269,9 @@ class QuantumOperation(torch.nn.Module):
         Returns:
             Tensor: conjugate transpose operator.
         """
-        return _dagger(self.operator_function(values or dict(), embedding))
+        return _dagger(
+            self.operator_function(values or dict(), embedding), diagonal=self.diagonal
+        )
 
     def tensor(
         self,
@@ -277,11 +293,15 @@ class QuantumOperation(torch.nn.Module):
         values = values or dict()
         blockmat = self.operator_function(values, embedding)
         if self._qubit_support.qubits != self.qubit_support:
-            blockmat = permute_basis(blockmat, self._qubit_support.qubits, inv=True)
+            blockmat = permute_basis(
+                blockmat, self._qubit_support.qubits, inv=True, diagonal=self.diagonal
+            )
         if full_support is None:
             return blockmat
         else:
-            return expand_operator(blockmat, self.qubit_support, full_support)
+            return expand_operator(
+                blockmat, self.qubit_support, full_support, diagonal=self.diagonal
+            )
 
     def _forward(
         self,
@@ -292,13 +312,17 @@ class QuantumOperation(torch.nn.Module):
         values = values or dict()
         if isinstance(state, DensityMatrix):
             return apply_operator_dm(
-                state, self.tensor(values, embedding), self.qubit_support
+                state,
+                self.tensor(values, embedding),
+                self.qubit_support,
+                diagonal=self.diagonal,
             )
         else:
             return apply_operator(
                 state,
                 self.tensor(values, embedding),
                 self.qubit_support,
+                diagonal=self.diagonal,
             )
 
     def _noise_forward(
@@ -312,7 +336,10 @@ class QuantumOperation(torch.nn.Module):
             state = density_mat(state)
 
         state = apply_operator_dm(
-            state, self.tensor(values, embedding), self.qubit_support
+            state,
+            self.tensor(values, embedding),
+            self.qubit_support,
+            diagonal=self.diagonal,
         )
 
         for noise_class, noise_info in self.noise.gates:  # type: ignore [union-attr]
@@ -348,3 +375,13 @@ class QuantumOperation(torch.nn.Module):
             return self._noise_forward(state, values, embedding)
         else:
             return self._forward(state, values, embedding)
+
+    def to_diagonal(self):
+        """Force the operator to be diagonal."""
+
+        if not self.diagonal and is_diag_batched(self.operation):
+            self.diagonal = True
+            self.operation = torch.diagonal(self.operation)
+            if len(self.operation.size()) == 3:
+                # torch diagonal switch the batchdim to first
+                self.operation = torch.transpose(self.operation, 0, -1)
