@@ -23,11 +23,16 @@ from pyqtorch.primitives import (
     OPS_PARAM,
     OPS_PARAM_2Q,
     SWAP,
+    I,
     N,
     Parametric,
     Primitive,
     Projector,
+    S,
+    SDagger,
+    T,
     Toffoli,
+    Z,
 )
 from pyqtorch.utils import (
     ATOL,
@@ -38,6 +43,7 @@ from pyqtorch.utils import (
 )
 
 pi = torch.tensor(torch.pi)
+OPS_DIAGONAL = (Z, I, S, T, SDagger, N, CZ)
 
 
 @pytest.mark.parametrize("use_dm", [True, False])
@@ -61,6 +67,11 @@ def test_digital_tensor(
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
         op_concrete = op(*supp)
+        op_concrete.to_diagonal()
+        if isinstance(op_concrete, OPS_DIAGONAL):
+            assert op_concrete.diagonal
+        else:
+            assert not op_concrete.diagonal
         psi_init = random_state(n_qubits, batch_size)
         if use_dm:
             psi_star = op_concrete(density_mat(psi_init))
@@ -97,6 +108,7 @@ def test_param_tensor(
         supp = get_op_support(op, n_qubits)
         params = [f"th{i}" for i in range(op.n_params)]
         op_concrete = op(*supp, *params)
+        # op_concrete.to_diagonal()
         psi_init = random_state(n_qubits)
         values = {param: torch.rand(batch_size) for param in params}
         if use_dm:

@@ -33,6 +33,7 @@ def apply_operator(
         state: State to operate on.
         operator: Tensor to contract over 'state'.
         qubit_support: Tuple of qubits on which to apply the 'operator' to.
+        diagonal: Whether operator is diagonal or not.
 
     Returns:
         State after applying 'operator'.
@@ -41,7 +42,7 @@ def apply_operator(
     n_qubits = len(state.size()) - 1
     n_support = len(qubit_support)
     n_state_dims = n_qubits + 1
-    operator = operator.view([2] * n_support * 2 + [operator.size(-1)])
+
     in_state_dims = ABC_ARRAY[0:n_state_dims].copy()
     if not diagonal:
         operator = operator.view([2] * n_support * 2 + [operator.size(-1)])

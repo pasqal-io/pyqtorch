@@ -512,7 +512,6 @@ def expand_operator(
 
     for i in set(full_support) - set(qubit_support):
         qubit_support += (i,)
-        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
         operator = torch.kron(operator.contiguous(), other)
     operator = permute_basis(operator, qubit_support, inv=True, diagonal=diagonal)
     return operator
