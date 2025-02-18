@@ -50,6 +50,7 @@ class Sequence(Module):
         self.operations = ModuleList(operations)
         self._device = torch_device("cpu")
         self._dtype = complex128
+
         if len(self.operations) > 0:
             try:
                 self._device = next(iter(set((op.device for op in self.operations))))
@@ -79,6 +80,7 @@ class Sequence(Module):
                 self._qubit_support,
             )
         )
+        self.diagonal = all([op.diagonal for op in self.flatten()])
         assert all(
             [isinstance(q, (int, int64)) for q in self._qubit_support]
         )  # TODO fix numpy.int issue

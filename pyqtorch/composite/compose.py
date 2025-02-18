@@ -54,6 +54,9 @@ class Scale(Sequence):
                 "Only str, int, float, Tensor or ConcretizedCallable types \
                 are supported for param_name"
             )
+        self.diagonal = (
+            operations.diagonal if not isinstance(operations, Sequence) else False
+        )
         super().__init__([operations])
         self.param_name = param_name
 

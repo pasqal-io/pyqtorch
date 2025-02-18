@@ -172,9 +172,9 @@ class AnalogDepolarizing(AnalogNoise):
 
     The corresponding jump operators are :
     .. math::
-        `L_{0,1,2} = \sqrt{\frac{p}{4}} \sigma_{x,y,z}`
+        `L_{0,1,2} = \\sqrt{\\frac{p}{4}} \\sigma_{x,y,z}`
 
-    where :math:`\sigma_{x,y,z}` correspond to the unitaries of the X,Y,Z gates.
+    where :math:`\\sigma_{x,y,z}` correspond to the unitaries of the X,Y,Z gates.
 
         Args:
             error_param (float): Rate of depolarizing.

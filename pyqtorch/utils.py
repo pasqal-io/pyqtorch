@@ -349,16 +349,18 @@ def zero_state(
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> Tensor:
     """
-    Create a batch of :math:`|\\0\\rangle^{\otimes n}` states defined on n qubits.
+    Create a batch of :math:`|\\0\\rangle^{\\otimes n}` states defined on n qubits.
 
-    Arguments:
-        n_qubits: Number of qubits n the state is defined on.
-        batch_size: The size of the batch.
-        device: Device where tensors are stored.
-        dtype: Type of tensors.
+    Args:
+        n_qubits (int): Number of qubits n the state is defined on.
+        batch_size (int, optional): The size of the batch.
+            Defaults to 1.
+        device (str | torch.device, optional): Device where tensors are stored.
+            Defaults to "cpu".
+        dtype (torch.dtype, optional): Type of tensors. Defaults to DEFAULT_MATRIX_DTYPE.
 
     Returns:
-        Batch of uniform quantum states.
+        Tensor: Batch of uniform quantum states.
     """
     return product_state("0" * n_qubits, batch_size, dtype=dtype, device=device)
 
@@ -451,7 +453,7 @@ def density_mat(state: Tensor) -> DensityMatrix:
         state: The pure state vector :math:`|\\psi\\rangle`.
 
     Returns:
-        Tensor: The density matrix :math:`\\rho = |\psi \\rangle \\langle\\psi|`.
+        Tensor: The density matrix :math:`\\rho = |\\psi \\rangle \\langle\\psi|`.
     """
     if isinstance(state, DensityMatrix):
         return state
@@ -818,7 +820,7 @@ def is_parametric(operation: pyq.Sequence) -> bool:
     res = False
     for m in operation.modules():
         if isinstance(m, (pyq.Scale, Parametric)):
-            if isinstance(m.param_name, (str, pyq.ConcretizedCallable)):
+            if isinstance(m.param_name, (str, pyq.ConcretizedCallable)):  # type: ignore[has-type]
                 res = True
                 break
     return res

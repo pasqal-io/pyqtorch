@@ -235,6 +235,7 @@ class HamiltonianEvolution(Sequence):
                 f"Received generator of type {type(generator)},\
                             allowed types are: [Tensor, str, Primitive, Sequence]"
             )
+        self.diagonal: bool = all([op.diagonal for op in generator])
         super().__init__(generator)
         self._qubit_support = qubit_support  # type: ignore
 
