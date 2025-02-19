@@ -77,11 +77,14 @@ class AdjointExpectation(Function):
         grads_dict = {k: None for k in values.keys()}
         for op in ctx.circuit.flatten()[::-1]:
             if isinstance(op, (Primitive, Parametric, HamiltonianEvolution)):
+                diagonal_apply = (
+                    op.diagonal if not isinstance(op, HamiltonianEvolution) else False
+                )
                 ctx.out_state = apply_operator(
                     ctx.out_state,
                     op.dagger(values, ctx.embedding),
                     op.qubit_support,
-                    op.diagonal if not isinstance(op, HamiltonianEvolution) else False,
+                    diagonal_apply,
                 )
                 if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(
                     op.param_name, str
@@ -91,11 +94,7 @@ class AdjointExpectation(Function):
                             ctx.out_state,
                             op.jacobian(values, ctx.embedding),
                             op.qubit_support,
-                            (
-                                op.diagonal
-                                if not isinstance(op, HamiltonianEvolution)
-                                else False
-                            ),
+                            diagonal_apply,
                         )
                         grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
                     if grads_dict[op.param_name] is not None:
@@ -107,6 +106,7 @@ class AdjointExpectation(Function):
                     ctx.projected_state,
                     op.dagger(values, ctx.embedding),
                     op.qubit_support,
+                    diagonal_apply,
                 )
 
             elif isinstance(op, Scale):
@@ -121,7 +121,10 @@ class AdjointExpectation(Function):
                         "Adjoint can only be used on Scale with Primitive blocks."
                     )
                 ctx.out_state = apply_operator(
-                    ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
+                    ctx.out_state,
+                    op.dagger(values, ctx.embedding),
+                    op.qubit_support,
+                    op.diagonal,
                 )
                 scaled_pyq_op = op.operations[0]
                 if (
@@ -133,6 +136,7 @@ class AdjointExpectation(Function):
                         ctx.out_state,
                         scaled_pyq_op.jacobian(values, ctx.embedding),
                         scaled_pyq_op.qubit_support,
+                        scaled_pyq_op.diagonal,
                     )
                     grads_dict[scaled_pyq_op.param_name] = (
                         grad_out * 2 * inner_prod(ctx.projected_state, mu).real
@@ -144,6 +148,7 @@ class AdjointExpectation(Function):
                     ctx.projected_state,
                     op.dagger(values, ctx.embedding),
                     op.qubit_support,
+                    op.diagonal,
                 )
             else:
                 logger.error(
