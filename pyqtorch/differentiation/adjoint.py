@@ -78,7 +78,10 @@ class AdjointExpectation(Function):
         for op in ctx.circuit.flatten()[::-1]:
             if isinstance(op, (Primitive, Parametric, HamiltonianEvolution)):
                 ctx.out_state = apply_operator(
-                    ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
+                    ctx.out_state,
+                    op.dagger(values, ctx.embedding),
+                    op.qubit_support,
+                    op.diagonal if not isinstance(op, HamiltonianEvolution) else False,
                 )
                 if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(
                     op.param_name, str

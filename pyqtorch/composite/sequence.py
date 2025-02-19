@@ -190,4 +190,4 @@ class Sequence(Module):
         embedding: Embedding | None = None,
     ) -> Tensor:
         values = values or dict()
-        return _dagger(self.tensor(values, embedding))
+        return _dagger(self.tensor(values, embedding), self.diagonal)

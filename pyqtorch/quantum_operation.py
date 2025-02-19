@@ -382,6 +382,9 @@ class QuantumOperation(torch.nn.Module):
         if not self.diagonal and is_diag_batched(self.operation):
             self.diagonal = True
             self.operation = torch.diagonal(self.operation)
-            if len(self.operation.size()) == 3:
-                # torch diagonal switch the batchdim to first
-                self.operation = torch.transpose(self.operation, 0, -1)
+            # torch diagonal switch the batchdim to first
+            self.operation = torch.transpose(self.operation, 0, -1)
+
+            # If only batchdim 1, remove
+            if len(self.operation.size()) == 2 and self.operation.size(1) == 1:
+                self.operation = self.operation.squeeze(1)

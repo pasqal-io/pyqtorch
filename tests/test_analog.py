@@ -207,6 +207,7 @@ def test_symbol_hamevo(
     hamevo = pyq.HamiltonianEvolution(
         symbol, t_evo, tuple([i for i in range(n_qubits)])
     )
+    assert not hamevo.diagonal
     assert hamevo.generator_type == GeneratorType.SYMBOL
     psi = pyq.uniform_state(n_qubits)
     psi_star = hamevo(psi, {symbol: H})

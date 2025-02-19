@@ -328,6 +328,7 @@ def test_diaghevo_pauli_tensor(
     generator, param_list = random_pauli_hamiltonian(
         n_qubits, k_1q, k_2q, make_param, diagonal=True
     )
+    assert not generator.diagonal
 
     values = {param: torch.rand(batch_size) for param in param_list}
     psi_init = random_state(n_qubits, batch_size)
@@ -336,24 +337,12 @@ def test_diaghevo_pauli_tensor(
     # Test the hamiltonian evolution
     tparam = "t"
     operator = HamiltonianEvolution(generator, tparam)
-    assert not operator.diagonal
-
-    if make_param:
-        assert operator.generator_type == GeneratorType.PARAMETRIC_OPERATION
-    else:
-        assert operator.generator_type == GeneratorType.OPERATION
+    assert operator.diagonal
     values[tparam] = torch.rand(batch_size)
 
     psi_star = operator(psi_init, values)
     psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-
-    operator = HamiltonianEvolution(generator, tparam)
-    operator.to_diagonal()
-    assert operator.diagonal
-
-    psi_star2 = operator(psi_init, values)
-    assert torch.allclose(psi_star2, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("gen_qubits", [3, 4])

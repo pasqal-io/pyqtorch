@@ -77,7 +77,7 @@ def evolve(
 ) -> Operator:
     """Get the evolved operator.
 
-    For a hamiltonian :math:`H` and a time evolution :math:`t`, returns :math:`exp(-i H, t)`
+    For a hamiltonian :math:`H` and a time evolution :math:`t`, returns :math:`exp(-i H, t)`.
 
     Arguments:
         hamiltonian: The operator :math:`H` for evolution.
@@ -86,13 +86,9 @@ def evolve(
 
     Returns:
         The evolution operator.
+        Note even for diagonal case, the operator is 3-dimensional.
     """
-    if diagonal and len(hamiltonian.size()) == 3:
-        evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
-            (-1, 1)
-        )
-        evol_operator = torch.diag_embed(torch.exp(evol_operator))
-    elif diagonal and len(hamiltonian.size()) == 2:
+    if diagonal:
         evol_operator = torch.transpose(hamiltonian, 0, 1) * (
             -1j * time_evolution
         ).view((-1, 1))
@@ -202,15 +198,20 @@ class HamiltonianEvolution(Sequence):
             generator = []
         elif isinstance(generator, (QuantumOperation, Sequence)):
             qubit_support = generator.qubit_support
-
+            generator.to_diagonal()
             if is_parametric(generator):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
                 generator = [
                     Primitive(
-                        generator.tensor(),
+                        (
+                            generator.tensor().squeeze(1)
+                            if generator.diagonal
+                            else generator.tensor()
+                        ),
                         generator.qubit_support,
+                        diagonal=generator.diagonal,
                     )
                 ]
 
@@ -220,7 +221,9 @@ class HamiltonianEvolution(Sequence):
                 f"Received generator of type {type(generator)},\
                             allowed types are: [Tensor, str, Primitive, Sequence]"
             )
-        self.diagonal: bool = all([op.diagonal for op in generator])
+        self.diagonal: bool = (
+            all([op.diagonal for op in generator]) if len(generator) > 0 else False
+        )
         super().__init__(generator)
         self._qubit_support = qubit_support  # type: ignore
 
