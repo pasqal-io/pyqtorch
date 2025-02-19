@@ -221,7 +221,9 @@ class Parametric(QuantumOperation):
         values = values or dict()
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
-        return _jacobian(thetas, self.operation, self.identity, batch_size)
+        return _jacobian(
+            thetas, self.operation, self.identity, batch_size, self.diagonal
+        )
 
     def to(self, *args: Any, **kwargs: Any) -> Parametric:
         super().to(*args, **kwargs)
@@ -323,15 +325,24 @@ class ControlledParametric(Parametric):
         thetas = self.parse_values(values, embedding)
         batch_size = len(thetas)
         n_control = len(self.control)
-        jU = _jacobian(thetas, self.operation, self.identity, batch_size)
+        jU = _jacobian(thetas, self.operation, self.identity, batch_size, self.diagonal)
         n_dim = 2 ** (n_control + 1)
-        jC = (
-            torch.zeros((n_dim, n_dim), dtype=self.identity.dtype)
-            .unsqueeze(2)
-            .repeat(1, 1, batch_size)
-        )
         unitary_idx = 2 ** (n_control + 1) - 2
-        jC[unitary_idx:, unitary_idx:, :] = jU
+        if not self.diagonal:
+            jC = (
+                torch.zeros((n_dim, n_dim), dtype=self.identity.dtype)
+                .unsqueeze(2)
+                .repeat(1, 1, batch_size)
+            )
+
+            jC[unitary_idx:, unitary_idx:, :] = jU
+        else:
+            jC = (
+                torch.zeros(n_dim, dtype=self.identity.dtype)
+                .unsqueeze(1)
+                .repeat(1, batch_size)
+            )
+            jC[unitary_idx:, :] = jU
         return jC
 
 

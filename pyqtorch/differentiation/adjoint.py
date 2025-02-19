@@ -91,6 +91,11 @@ class AdjointExpectation(Function):
                             ctx.out_state,
                             op.jacobian(values, ctx.embedding),
                             op.qubit_support,
+                            (
+                                op.diagonal
+                                if not isinstance(op, HamiltonianEvolution)
+                                else False
+                            ),
                         )
                         grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
                     if grads_dict[op.param_name] is not None:

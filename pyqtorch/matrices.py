@@ -93,7 +93,7 @@ def parametric_unitary(
     Args:
         theta (torch.Tensor): Parameter values.
         P (torch.Tensor): Pauli matrix to exponentiate.
-        I (torch.Tensor): Identity matrix
+        identity_mat (torch.Tensor): Identity matrix
         batch_size (int): Batch size of parameters.
         diagonal (bool): if dealing with diagonal operation.
         a (float): Prefactor.
@@ -120,24 +120,34 @@ def parametric_unitary(
     return cos_t * batch_imat - 1j * sin_t * batch_operation_mat
 
 
-def _dagger(
-    matrices: torch.Tensor, diagonal: bool = False
-) -> torch.Tensor:  # noqa: E741
+def _dagger(matrices: torch.Tensor, diagonal: bool = False) -> torch.Tensor:
     return (
         torch.permute(matrices.conj(), (1, 0, 2)) if not diagonal else matrices.conj()
     )
 
 
 def _jacobian(
-    theta: torch.Tensor, P: torch.Tensor, I: torch.Tensor, batch_size: int  # noqa: E741
+    theta: torch.Tensor,
+    P: torch.Tensor,
+    identity_mat: torch.Tensor,
+    batch_size: int,
+    diagonal: bool = False,
 ) -> torch.Tensor:
-    cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1)
-    cos_t = cos_t.repeat((2, 2, 1))
-    sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1)
-    sin_t = sin_t.repeat((2, 2, 1))
+    cos_t = torch.cos(theta / 2).unsqueeze(0)
+    sin_t = torch.sin(theta / 2).unsqueeze(0)
+    batch_imat = identity_mat.unsqueeze(-1)
+    batch_operation_mat = P.unsqueeze(-1)
+    if not diagonal:
+        cos_t = cos_t.unsqueeze(1)
+        sin_t = sin_t.unsqueeze(1)
+        cos_t = cos_t.repeat((2, 2, 1))
+        sin_t = sin_t.repeat((2, 2, 1))
 
-    batch_imat = I.unsqueeze(2).repeat(1, 1, batch_size)
-    batch_operation_mat = P.unsqueeze(2).repeat(1, 1, batch_size)
+        batch_imat = batch_imat.repeat(1, 1, batch_size)
+        batch_operation_mat = batch_operation_mat.repeat(1, 1, batch_size)
+    else:
+        batch_imat = batch_imat.repeat(1, batch_size)
+        batch_operation_mat = batch_operation_mat.repeat(1, batch_size)
 
     return -1 / 2 * (sin_t * batch_imat + 1j * cos_t * batch_operation_mat)
 
