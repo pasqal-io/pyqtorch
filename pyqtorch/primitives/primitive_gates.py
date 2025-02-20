@@ -190,3 +190,5 @@ OPS_1Q = OPS_PAULI.union({H, S, T})
 OPS_2Q = {CNOT, CY, CZ, SWAP}
 OPS_3Q = {Toffoli, CSWAP}
 OPS_DIGITAL = OPS_1Q.union(OPS_2Q, OPS_3Q)
+
+OPS_DIAGONAL = {Z, I, S, T, SDagger, N, CZ}

@@ -506,6 +506,7 @@ class HamiltonianEvolution(Sequence):
         values = values or dict()
         if embedding is not None:
             values = embedding(values)
+        use_diagonal = diagonal and self.is_diagonal
 
         values_cache_key = str(OrderedDict(values))
         if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:

@@ -22,6 +22,8 @@ from pyqtorch.primitives import (
     OPS_DIGITAL,
     OPS_PARAM,
     OPS_PARAM_2Q,
+    OPS_DIAGONAL,
+    OPS_DIAGONAL_PARAM,
     SWAP,
     N,
     Parametric,
@@ -61,6 +63,8 @@ def test_digital_tensor(
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
         op_concrete = op(*supp)
+        if op in OPS_DIAGONAL:
+            assert op_concrete.is_diagonal
         psi_init = random_state(n_qubits, batch_size)
         if use_dm:
             psi_star = op_concrete(density_mat(psi_init))
@@ -97,6 +101,8 @@ def test_param_tensor(
         supp = get_op_support(op, n_qubits)
         params = [f"th{i}" for i in range(op.n_params)]
         op_concrete = op(*supp, *params)
+        if op in OPS_DIAGONAL_PARAM:
+            assert op_concrete.is_diagonal
         psi_init = random_state(n_qubits)
         values = {param: torch.rand(batch_size) for param in params}
         if use_dm:
@@ -138,12 +144,16 @@ def test_sequence_tensor(
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
         op_concrete = Scale(op(*supp), torch.rand(1))
+        if op in OPS_DIAGONAL:
+            assert op_concrete.is_diagonal
         op_list.append(op_concrete)
     for op in OPS_PARAM:
         supp = get_op_support(op, n_qubits)
         params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
         values.update({param: torch.rand(batch_size) for param in params})
         op_concrete = op(*supp, *params)
+        if op in OPS_DIAGONAL_PARAM:
+            assert op_concrete.is_diagonal
         op_list.append(op_concrete)
     random.shuffle(op_list)
     op_composite = compose(op_list)
