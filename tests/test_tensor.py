@@ -317,12 +317,19 @@ def test_hevo_pauli_tensor(
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("diagonal", [False, True])
 def test_hevo_tensor_tensor(
-    gen_qubits: int, n_qubits: int, use_full_support: bool, batch_size: int
+    gen_qubits: int,
+    n_qubits: int,
+    use_full_support: bool,
+    batch_size: int,
+    diagonal: bool,
 ) -> None:
     k_1q = 2 * gen_qubits  # Number of 1-qubit terms
     k_2q = gen_qubits**2  # Number of 2-qubit terms
-    generator, _ = random_pauli_hamiltonian(gen_qubits, k_1q, k_2q)
+    generator, _ = random_pauli_hamiltonian(gen_qubits, k_1q, k_2q, diagonal=diagonal)
+    if diagonal:
+        assert generator.is_diagonal
     psi_init = random_state(n_qubits, batch_size)
     full_support = tuple(range(n_qubits)) if use_full_support else None
     # Test the hamiltonian evolution
@@ -338,20 +345,24 @@ def test_hevo_tensor_tensor(
 
 
 @pytest.mark.parametrize("n_qubits", [3, 5])
-def test_permute_tensor(n_qubits: int) -> None:
-    for op in OPS_2Q.union(OPS_3Q):
+@pytest.mark.parametrize("diagonal", [False, True])
+def test_permute_tensor(n_qubits: int, diagonal: bool) -> None:
+    ops = OPS_2Q.union(OPS_3Q) if not diagonal else {CZ}
+    for op in ops:
         supp, ordered_supp = get_op_support(op, n_qubits, get_ordered=True)
 
         op_concrete1 = op(*supp)
         op_concrete2 = op(*ordered_supp)
 
-        mat1 = op_concrete1.tensor()
-        mat2 = op_concrete2.tensor()
+        mat1 = op_concrete1.tensor(diagonal=diagonal)
+        mat2 = op_concrete2.tensor(diagonal=diagonal)
 
         perm = op_concrete1._qubit_support.qubits
 
-        assert torch.allclose(mat1, permute_basis(mat2, perm, inv=True))
-        assert torch.allclose(mat2, permute_basis(mat1, perm))
+        assert torch.allclose(
+            mat1, permute_basis(mat2, perm, inv=True, diagonal=diagonal)
+        )
+        assert torch.allclose(mat2, permute_basis(mat1, perm, diagonal=diagonal))
 
 
 @pytest.mark.parametrize("n_qubits", [3, 5])
