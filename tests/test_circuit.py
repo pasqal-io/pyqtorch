@@ -12,6 +12,7 @@ from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
     product_state,
+    todense_tensor,
 )
 
 
@@ -62,6 +63,10 @@ def test_add() -> None:
         [pyq.Z(random.choice([i for i in range(n_qubits)])) for _ in range(num_gates)]
     )
     assert diagonal_add.is_diagonal
+    tensor_add = diagonal_add.tensor()
+    tensor_add_diagonal = diagonal_add.tensor(diagonal=True)
+    dense_diagonal = todense_tensor(tensor_add_diagonal)
+    assert torch.allclose(tensor_add, dense_diagonal)
 
 
 def test_merge() -> None:
@@ -85,6 +90,10 @@ def test_merge() -> None:
     circ = pyq.QuantumCircuit(2, ops)
     mergecirc = pyq.Merge(ops)
     assert mergecirc.is_diagonal
+    tensor_merge = mergecirc.tensor(values)
+    tensor_merge_diagonal = mergecirc.tensor(values, diagonal=True)
+    dense_diagonal = todense_tensor(tensor_merge_diagonal)
+    assert torch.allclose(tensor_merge, dense_diagonal)
 
 
 def test_merge_noisy_op() -> None:

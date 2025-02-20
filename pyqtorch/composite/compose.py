@@ -294,13 +294,22 @@ class Merge(Sequence):
         # We reverse the list of tensors here since matmul is not commutative.
         values = values or dict()
         use_diagonal = diagonal and self.is_diagonal
-        return reduce(
-            lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
-            (
-                op.tensor(values, embedding, full_support)
-                for op in reversed(self.operations)
-            ),
-        )
+        if not use_diagonal:
+            return reduce(
+                lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
+                (
+                    op.tensor(values, embedding, full_support)
+                    for op in reversed(self.operations)
+                ),
+            )
+        else:
+            return reduce(
+                lambda u0, u1: einsum("jb,jb->jb", u0, u1),
+                (
+                    op.tensor(values, embedding, full_support, diagonal=True)
+                    for op in reversed(self.operations)
+                ),
+            )
 
 
 def hea(n_qubits: int, depth: int, param_name: str) -> tuple[ModuleList, ParameterDict]:
