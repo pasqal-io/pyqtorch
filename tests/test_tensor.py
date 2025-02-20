@@ -37,6 +37,7 @@ from pyqtorch.utils import (
     density_mat,
     permute_basis,
     random_state,
+    todense_tensor,
 )
 
 pi = torch.tensor(torch.pi)
@@ -166,6 +167,41 @@ def test_sequence_tensor(
         op_composite, psi_init, values=values, full_support=full_support
     )
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("compose", [Sequence, Add])
+def test_diagonal_sequence_tensor(
+    n_qubits: int,
+    batch_size: int,
+    use_full_support: bool,
+    compose: type[Sequence] | type[Add],
+) -> None:
+    op_list = []
+    values = {}
+    op: type[Primitive] | type[Parametric]
+    for op in OPS_DIAGONAL.intersection(OPS_DIGITAL):
+        supp = get_op_support(op, n_qubits)
+        op_concrete = Scale(op(*supp), torch.rand(1))
+        op_list.append(op_concrete)
+    for op in OPS_DIAGONAL_PARAM.intersection(OPS_PARAM):
+        supp = get_op_support(op, n_qubits)
+        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
+        values.update({param: torch.rand(batch_size) for param in params})
+        op_concrete = op(*supp, *params)
+        op_list.append(op_concrete)
+    random.shuffle(op_list)
+    op_composite = compose(op_list)
+    full_support = tuple(range(n_qubits)) if use_full_support else None
+    assert op_composite.is_diagonal
+    tensor_composite = op_composite.tensor(values, full_support=full_support)
+    tensor_composite_diagonal = op_composite.tensor(
+        values, full_support=full_support, diagonal=True
+    )
+    dense_diagonal = todense_tensor(tensor_composite_diagonal)
+    assert torch.allclose(tensor_composite, dense_diagonal, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("use_full_support", [True, False])

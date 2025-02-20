@@ -848,3 +848,15 @@ def heaviside(x: Tensor, _: Any = None, slope: float = 1000.0) -> Tensor:
     return torch.clamp(
         slope * torch.max(a, dim=1)[0], torch.tensor(0.0), torch.tensor(1.0)
     )
+
+
+def todense_tensor(x: Tensor) -> Tensor:
+    """Convert a diagonal tensor to its dense representation.
+
+    Args:
+        x (Tensor): diagonal tensor
+
+    Returns:
+        Tensor: dense tensor
+    """
+    return torch.transpose(torch.diag_embed(torch.transpose(x, 0, 1)), 0, -1)
