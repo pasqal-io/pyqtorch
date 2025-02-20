@@ -116,7 +116,9 @@ class Scale(Sequence):
         elif isinstance(self.param_name, ConcretizedCallable):
             scale = self.param_name(values)
 
-        return scale * self.operations[0].tensor(values, full_support=full_support, diagonal=use_diagonal)
+        return scale * self.operations[0].tensor(
+            values, full_support=full_support, diagonal=use_diagonal
+        )
 
     def flatten(self) -> list[Scale]:
         """This method should only be called in the AdjointExpectation,
@@ -237,7 +239,6 @@ class Merge(Sequence):
             )
 
         self._contains_noise = sum([op.noise is not None for op in self.operations])
-        
 
     def forward(
         self,

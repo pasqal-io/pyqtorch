@@ -157,7 +157,7 @@ class Sequence(Module):
             mat = torch.eye(
                 2 ** len(full_support), dtype=self.dtype, device=self.device
             ).unsqueeze(2)
-            
+
             return reduce(
                 lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
                 (
@@ -172,7 +172,10 @@ class Sequence(Module):
             ).unsqueeze(1)
             return reduce(
                 lambda t0, t1: t0 * t1,
-                (op.tensor(values, embedding, full_support, diagonal=True) for op in self.operations),
+                (
+                    op.tensor(values, embedding, full_support, diagonal=True)
+                    for op in self.operations
+                ),
                 mat,
             )
 
