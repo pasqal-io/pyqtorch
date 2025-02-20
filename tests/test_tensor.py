@@ -297,12 +297,15 @@ def test_hevo_pauli_tensor(
     psi_star = generator(psi_init, values)
     psi_expected = calc_mat_vec_wavefunction(generator, psi_init, values, full_support)
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-    if diagonal:
-        assert generator.is_diagonal
 
     # Test the hamiltonian evolution
     tparam = "t"
     operator = HamiltonianEvolution(generator, tparam)
+    if diagonal:
+        assert generator.is_diagonal
+        if not make_param:
+            assert operator.is_diagonal
+
     if make_param:
         assert operator.generator_type == GeneratorType.PARAMETRIC_OPERATION
     else:
@@ -328,8 +331,6 @@ def test_hevo_tensor_tensor(
     k_1q = 2 * gen_qubits  # Number of 1-qubit terms
     k_2q = gen_qubits**2  # Number of 2-qubit terms
     generator, _ = random_pauli_hamiltonian(gen_qubits, k_1q, k_2q, diagonal=diagonal)
-    if diagonal:
-        assert generator.is_diagonal
     psi_init = random_state(n_qubits, batch_size)
     full_support = tuple(range(n_qubits)) if use_full_support else None
     # Test the hamiltonian evolution
@@ -338,6 +339,9 @@ def test_hevo_tensor_tensor(
     tparam = "t"
     operator = HamiltonianEvolution(generator_matrix, tparam, supp)
     assert operator.generator_type == GeneratorType.TENSOR
+    if diagonal:
+        assert generator.is_diagonal
+        assert operator.is_diagonal
     values = {tparam: torch.rand(batch_size)}
     psi_star = operator(psi_init, values)
     psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)

@@ -192,6 +192,7 @@ class HamiltonianEvolution(Sequence):
             if len(generator.shape) < 3:
                 generator = generator.unsqueeze(2)
             generator = [Primitive(generator, qubit_support)]
+            self.is_diagonal = generator[0].is_diagonal
             self.generator_type = GeneratorType.TENSOR
 
         elif isinstance(generator, str):
@@ -210,7 +211,7 @@ class HamiltonianEvolution(Sequence):
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
                 # avoiding using dense tensor for diagonal generators
-                # self.is_diagonal = generator.is_diagonal
+                self.is_diagonal = generator.is_diagonal
                 generator = [
                     Primitive(
                         generator.tensor(),
