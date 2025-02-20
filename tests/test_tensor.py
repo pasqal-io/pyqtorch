@@ -43,6 +43,35 @@ from pyqtorch.utils import (
 pi = torch.tensor(torch.pi)
 
 
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("make_param", [True, False])
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("diagonal", [False, True])
+def test_primitive_tensor(
+    n_qubits: int,
+    make_param: bool,
+    use_full_support: bool,
+    diagonal: bool,
+) -> None:
+    k_1q = 2 * n_qubits  # Number of 1-qubit terms
+    k_2q = n_qubits**2  # Number of 2-qubit terms
+    generator, param_list = random_pauli_hamiltonian(
+        n_qubits, k_1q, k_2q, make_param, diagonal=diagonal
+    )
+    values = {param: torch.rand(1) for param in param_list}
+    full_support = tuple(range(n_qubits)) if use_full_support else None
+    generator_matrix = generator.tensor(
+        values=values, full_support=full_support, diagonal=diagonal
+    )
+    diag_op = diagonal and generator.is_diagonal
+    if diag_op:
+        assert len(generator_matrix.size()) == 2
+    else:
+        assert len(generator_matrix.size()) == 3
+    # primitive_op = Primitive(generator_matrix.unsqueeze(-1), qubit_support=full_support if use_full_support else generator.qubit_support)
+    # assert primitive_op.is_diagonal == diag_op
+
+
 @pytest.mark.parametrize("use_dm", [True, False])
 @pytest.mark.parametrize("use_permute", [True, False])
 @pytest.mark.parametrize("use_full_support", [True, False])

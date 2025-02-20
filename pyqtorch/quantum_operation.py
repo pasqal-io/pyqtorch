@@ -18,6 +18,7 @@ from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
     expand_operator,
+    is_diag,
     is_diag_batched,
     permute_basis,
 )
@@ -99,7 +100,11 @@ class QuantumOperation(torch.nn.Module):
 
         self.noise = noise
 
-        self.is_diagonal: bool = is_diag_batched(operation)
+        self.is_diagonal: bool = (
+            is_diag(operation)
+            if len(operation.size()) == 2
+            else is_diag_batched(operation)
+        )
 
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
