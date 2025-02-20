@@ -276,12 +276,20 @@ def test_projector_vs_operator(
 @pytest.mark.parametrize("make_param", [True, False])
 @pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("diagonal", [False, True])
 def test_hevo_pauli_tensor(
-    n_qubits: int, make_param: bool, use_full_support: bool, batch_size: int
+    n_qubits: int,
+    make_param: bool,
+    use_full_support: bool,
+    batch_size: int,
+    diagonal: bool,
 ) -> None:
     k_1q = 2 * n_qubits  # Number of 1-qubit terms
     k_2q = n_qubits**2  # Number of 2-qubit terms
-    generator, param_list = random_pauli_hamiltonian(n_qubits, k_1q, k_2q, make_param)
+    generator, param_list = random_pauli_hamiltonian(
+        n_qubits, k_1q, k_2q, make_param, diagonal=diagonal
+    )
+
     values = {param: torch.rand(batch_size) for param in param_list}
     psi_init = random_state(n_qubits, batch_size)
     full_support = tuple(range(n_qubits)) if use_full_support else None
@@ -289,6 +297,9 @@ def test_hevo_pauli_tensor(
     psi_star = generator(psi_init, values)
     psi_expected = calc_mat_vec_wavefunction(generator, psi_init, values, full_support)
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+    if diagonal:
+        assert generator.is_diagonal
+
     # Test the hamiltonian evolution
     tparam = "t"
     operator = HamiltonianEvolution(generator, tparam)

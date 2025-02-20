@@ -509,7 +509,9 @@ class HamiltonianEvolution(Sequence):
             else:
                 time_evolution = self.time
 
-            evolved_op = evolve(hamiltonian, time_evolution, diagonal=self.is_diagonal)
+            evolved_op = evolve(hamiltonian, time_evolution, diagonal=False)
+            if use_diagonal:
+                evolved_op
             nb_cached = len(self._cache_hamiltonian_evo)
 
             # LRU caching

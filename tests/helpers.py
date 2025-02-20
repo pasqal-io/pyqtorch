@@ -7,6 +7,7 @@ import torch
 import pyqtorch.embed as pyq_em
 from pyqtorch.apply import apply_operator, apply_operator_permute
 from pyqtorch.composite import Add, Scale, Sequence
+from pyqtorch.hamiltonians.evolution import HamiltonianEvolution
 from pyqtorch.primitives import (
     OPS_1Q,
     OPS_2Q,
@@ -45,7 +46,14 @@ def calc_mat_vec_wavefunction(
     )
     qubit_support = block.qubit_support if full_support is None else full_support
     apply_func = apply_operator_permute if use_permute else apply_operator
-    return apply_func(init_state, mat, qubit_support, diagonal=block.is_diagonal)
+    return apply_func(
+        init_state,
+        mat,
+        qubit_support,
+        diagonal=(
+            block.is_diagonal if not isinstance(block, HamiltonianEvolution) else False
+        ),
+    )
 
 
 def get_op_support(
