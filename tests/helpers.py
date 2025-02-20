@@ -38,14 +38,12 @@ def calc_mat_vec_wavefunction(
         Tensor: The new wavefunction after applying the block.
 
     """
-    mat = block.tensor(values=values, full_support=full_support)
+    mat = block.tensor(
+        values=values, full_support=full_support, diagonal=block.is_diagonal
+    )
     qubit_support = block.qubit_support if full_support is None else full_support
     apply_func = apply_operator_permute if use_permute else apply_operator
-    return apply_func(
-        init_state,
-        mat,
-        qubit_support,
-    )
+    return apply_func(init_state, mat, qubit_support, diagonal=block.is_diagonal)
 
 
 def get_op_support(

@@ -289,16 +289,16 @@ class QuantumOperation(torch.nn.Module):
         blockmat = self.operator_function(values, embedding)
         use_diagonal = diagonal and self.is_diagonal
         if use_diagonal:
-            blockmat = torch.diagonal(blockmat)
+            blockmat = torch.diagonal(blockmat).T
         if self._qubit_support.qubits != self.qubit_support:
             blockmat = permute_basis(
-                blockmat, self._qubit_support.qubits, inv=True, diagonal=diagonal
+                blockmat, self._qubit_support.qubits, inv=True, diagonal=use_diagonal
             )
         if full_support is None:
             return blockmat
         else:
             return expand_operator(
-                blockmat, self.qubit_support, full_support, diagonal=diagonal
+                blockmat, self.qubit_support, full_support, diagonal=use_diagonal
             )
 
     def _forward(
