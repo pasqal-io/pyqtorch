@@ -73,7 +73,9 @@ class GeneratorType(StrEnum):
     """Generators which are symbolic, i.e. will be passed via the 'values' dict by the user."""
 
 
-def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
+def evolve(
+    hamiltonian: Operator, time_evolution: Tensor, diagonal: bool = False
+) -> Operator:
     """Get the evolved operator.
 
     For a hamiltonian :math:`H` and a time evolution :math:`t`, returns :math:`exp(-i H, t)`
@@ -81,11 +83,17 @@ def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
     Arguments:
         hamiltonian: The operator :math:`H` for evolution.
         time_evolution: The evolution time :math:`t`.
+        diagonal: Whether the hamiltonian is diagonal or not.
 
     Returns:
         The evolution operator.
     """
-    if is_diag_batched(hamiltonian):
+    if diagonal:
+        evol_operator = torch.transpose(hamiltonian, 0, 1) * (
+            -1j * time_evolution
+        ).view((-1, 1))
+        evol_operator = torch.diag_embed(torch.exp(evol_operator))
+    elif is_diag_batched(hamiltonian):
         evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
             (-1, 1)
         )
@@ -201,6 +209,8 @@ class HamiltonianEvolution(Sequence):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
+                # avoiding using dense tensor for diagonal generators
+                # self.is_diagonal = generator.is_diagonal
                 generator = [
                     Primitive(
                         generator.tensor(),
@@ -499,7 +509,7 @@ class HamiltonianEvolution(Sequence):
             else:
                 time_evolution = self.time
 
-            evolved_op = evolve(hamiltonian, time_evolution)
+            evolved_op = evolve(hamiltonian, time_evolution, diagonal=self.is_diagonal)
             nb_cached = len(self._cache_hamiltonian_evo)
 
             # LRU caching
