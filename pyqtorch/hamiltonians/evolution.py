@@ -19,7 +19,6 @@ from pyqtorch.primitives import Primitive
 from pyqtorch.quantum_operation import QuantumOperation
 from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
-    ATOL,
     Operator,
     SolverType,
     State,
@@ -27,7 +26,7 @@ from pyqtorch.utils import (
     _round_operator,
     expand_operator,
     finitediff,
-    is_diag,
+    is_diag_batched,
     is_parametric,
 )
 
@@ -74,27 +73,6 @@ class GeneratorType(StrEnum):
     """Generators which are symbolic, i.e. will be passed via the 'values' dict by the user."""
 
 
-def is_diag_hamiltonian(hamiltonian: Operator, atol: Tensor = ATOL) -> bool:
-    """
-    Returns True if the batched tensors H are diagonal.
-
-    Arguments:
-        H: Input tensors.
-        atol: Tolerance for near-zero values.
-
-    Returns:
-        True if diagonal, else False.
-    """
-    diag_check = torch.tensor(
-        [
-            is_diag(hamiltonian[..., i], atol)
-            for i in range(hamiltonian.shape[BATCH_DIM])
-        ],
-        device=hamiltonian.device,
-    )
-    return bool(torch.prod(diag_check))
-
-
 def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
     """Get the evolved operator.
 
@@ -107,7 +85,7 @@ def evolve(hamiltonian: Operator, time_evolution: Tensor) -> Operator:
     Returns:
         The evolution operator.
     """
-    if is_diag_hamiltonian(hamiltonian):
+    if is_diag_batched(hamiltonian):
         evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
             (-1, 1)
         )

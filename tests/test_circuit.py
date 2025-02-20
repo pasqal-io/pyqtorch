@@ -30,8 +30,16 @@ def test_scale(fn: pyq.primitives.Primitive) -> None:
     gate = fn(target)
     values = {"scale": torch.rand(1)}
     wf = values["scale"] * pyq.QuantumCircuit(2, [gate])(state, {})
-    scaledwf_primitive = pyq.Scale(gate, "scale")(state, values)
-    scaledwf_composite = pyq.Scale(pyq.Sequence([gate]), "scale")(state, values)
+
+    scale_primitive = pyq.Scale(gate, "scale")
+    scale_composite = pyq.Scale(pyq.Sequence([gate]), "scale")
+
+    if gate.is_diagonal:
+        assert scale_composite.is_diagonal
+        assert scale_primitive.is_diagonal
+
+    scaledwf_primitive = scale_primitive(state, values)
+    scaledwf_composite = scale_composite(state, values)
     assert torch.allclose(wf, scaledwf_primitive)
     assert torch.allclose(wf, scaledwf_composite)
 
@@ -49,6 +57,12 @@ def test_add() -> None:
 
     assert torch.allclose(pyq.Add(ops)(state), ops[0](state) + ops[1](state))
 
+    # test diagonal ops
+    diagonal_add = pyq.Add(
+        [pyq.Z(random.choice([i for i in range(n_qubits)])) for _ in range(num_gates)]
+    )
+    assert diagonal_add.is_diagonal
+
 
 def test_merge() -> None:
     ops = [pyq.RX(0, "theta_0"), pyq.RY(0, "theta_1"), pyq.RX(0, "theta_2")]
@@ -65,6 +79,12 @@ def test_merge() -> None:
     assert isinstance(circ_out, DensityMatrix)
     assert isinstance(mergecirc_out, DensityMatrix)
     assert torch.allclose(circ_out, mergecirc_out)
+
+    # test diagonal merge
+    ops = [pyq.RZ(0, "theta_0"), pyq.RZ(0, "theta_1")]
+    circ = pyq.QuantumCircuit(2, ops)
+    mergecirc = pyq.Merge(ops)
+    assert mergecirc.is_diagonal
 
 
 def test_merge_noisy_op() -> None:
