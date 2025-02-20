@@ -182,6 +182,7 @@ class HamiltonianEvolution(Sequence):
         self.steps = steps
         self.duration = duration
         self.use_sparse = use_sparse
+        self.is_diagonal = False
 
         if isinstance(duration, (str, float, Tensor)) or duration is None:
             self.duration = duration
@@ -489,6 +490,7 @@ class HamiltonianEvolution(Sequence):
         values: dict | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
+        diagonal: bool = False,
     ) -> Operator:
         """Get the corresponding unitary over n_qubits.
 

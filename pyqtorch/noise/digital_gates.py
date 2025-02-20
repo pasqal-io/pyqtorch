@@ -27,6 +27,7 @@ class Noise(torch.nn.Module):
         super().__init__()
         self.target: int = target
         self.qubit_support: tuple[int, ...] = qubit_support_as_tuple(self.target)
+        self.is_diagonal = False
         for index, tensor in enumerate(kraus):
             self.register_buffer(f"kraus_{index}", tensor)
         self._device: torch.device = kraus[0].device

@@ -54,6 +54,7 @@ class Scale(Sequence):
                 "Only str, int, float, Tensor or ConcretizedCallable types \
                 are supported for param_name"
             )
+        self.is_diagonal = operations.is_diagonal
         super().__init__([operations])
         self.param_name = param_name
 
@@ -91,6 +92,7 @@ class Scale(Sequence):
         values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
+        diagonal: bool = False,
     ) -> Operator:
         """
         Get the corresponding unitary over n_qubits.
@@ -106,7 +108,7 @@ class Scale(Sequence):
         values = values or dict()
         if embedding is not None:
             values = embedding(values)
-
+        use_diagonal = diagonal and self.is_diagonal
         if isinstance(self.param_name, str):
             scale = values[self.param_name]
         elif isinstance(self.param_name, (Tensor, int, float)):
@@ -114,7 +116,7 @@ class Scale(Sequence):
         elif isinstance(self.param_name, ConcretizedCallable):
             scale = self.param_name(values)
 
-        return scale * self.operations[0].tensor(values, full_support=full_support)
+        return scale * self.operations[0].tensor(values, full_support=full_support, diagonal=use_diagonal)
 
     def flatten(self) -> list[Scale]:
         """This method should only be called in the AdjointExpectation,
@@ -148,7 +150,6 @@ class Add(Sequence):
     """
 
     def __init__(self, operations: list[Module]):
-
         super().__init__(operations=operations)
 
     def forward(
@@ -175,6 +176,7 @@ class Add(Sequence):
         values: dict | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         """
         Get the corresponding sum of unitaries over n_qubits.
@@ -188,6 +190,7 @@ class Add(Sequence):
             The unitary representation.
         """
         values = values or dict()
+        use_diagonal = diagonal and self.is_diagonal
         if full_support is None:
             full_support = self.qubit_support
         elif not set(self.qubit_support).issubset(set(full_support)):
@@ -218,7 +221,6 @@ class Merge(Sequence):
             operations: A list of single qubit operations.
 
         """
-
         if (
             isinstance(operations, (list, ModuleList))
             and all([isinstance(op, (Primitive, Parametric)) for op in operations])
@@ -235,6 +237,7 @@ class Merge(Sequence):
             )
 
         self._contains_noise = sum([op.noise is not None for op in self.operations])
+        
 
     def forward(
         self,
@@ -279,9 +282,11 @@ class Merge(Sequence):
         values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         # We reverse the list of tensors here since matmul is not commutative.
         values = values or dict()
+        use_diagonal = diagonal and self.is_diagonal
         return reduce(
             lambda u0, u1: einsum("ijb,jkb->ikb", u0, u1),
             (

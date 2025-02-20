@@ -18,7 +18,7 @@ from torch import Tensor, moveaxis
 from typing_extensions import TypeAlias
 
 import pyqtorch as pyq
-from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IMAT
+from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, DEFAULT_REAL_DTYPE, IDIAG, IMAT
 
 State: TypeAlias = Tensor
 Operator: TypeAlias = Tensor
@@ -229,6 +229,26 @@ def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
     return torch.allclose(sum_probs, ones, rtol=RTOL, atol=atol)  # type: ignore[no-any-return]
 
 
+def is_diag_batched(H: Operator, atol: Tensor = ATOL, batch_dim: int = -1) -> bool:
+    """
+    Returns True if the batched tensors of H are diagonal.
+    Arguments:
+        H: Input tensors.
+        atol: Tolerance for near-zero values.
+        batch_dim: batch dimension to go over.
+    Returns:
+        True if diagonal, else False.
+    """
+    if len(H.shape) > 2:
+        diag_check = torch.tensor(
+            [is_diag(H[..., i], atol) for i in range(H.shape[batch_dim])],
+            device=H.device,
+        )
+        return bool(torch.prod(diag_check).item())
+    else:
+        return is_diag(H, atol)
+
+
 def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
     """
     Returns True if tensor H is diagonal.
@@ -243,7 +263,7 @@ def is_diag(H: Tensor, atol: Tensor = ATOL) -> bool:
         True if diagonal, else False.
     """
     offdiag_view = H - torch.diag(torch.diag(H))
-    return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)) == 0
+    return torch.count_nonzero(torch.abs(offdiag_view).gt(atol)).item() == 0
 
 
 def finitediff(
@@ -329,16 +349,18 @@ def zero_state(
     dtype: torch.dtype = DEFAULT_MATRIX_DTYPE,
 ) -> Tensor:
     """
-    Create a batch of :math:`|\\0\\rangle^{\otimes n}` states defined on n qubits.
+    Create a batch of :math:`|\\0\\rangle^{\\otimes n}` states defined on n qubits.
 
-    Arguments:
-        n_qubits: Number of qubits n the state is defined on.
-        batch_size: The size of the batch.
-        device: Device where tensors are stored.
-        dtype: Type of tensors.
+    Args:
+        n_qubits (int): Number of qubits n the state is defined on.
+        batch_size (int, optional): The size of the batch.
+            Defaults to 1.
+        device (str | torch.device, optional): Device where tensors are stored.
+            Defaults to "cpu".
+        dtype (torch.dtype, optional): Type of tensors. Defaults to DEFAULT_MATRIX_DTYPE.
 
     Returns:
-        Batch of uniform quantum states.
+        Tensor: Batch of uniform quantum states.
     """
     return product_state("0" * n_qubits, batch_size, dtype=dtype, device=device)
 
@@ -431,7 +453,7 @@ def density_mat(state: Tensor) -> DensityMatrix:
         state: The pure state vector :math:`|\\psi\\rangle`.
 
     Returns:
-        Tensor: The density matrix :math:`\\rho = |\psi \\rangle \\langle\\psi|`.
+        Tensor: The density matrix :math:`\\rho = |\\psi \\rangle \\langle\\psi|`.
     """
     if isinstance(state, DensityMatrix):
         return state
@@ -468,7 +490,10 @@ def operator_kron(op1: Tensor, op2: Tensor) -> Tensor:
 
 
 def expand_operator(
-    operator: Tensor, qubit_support: tuple[int, ...], full_support: tuple[int, ...]
+    operator: Tensor,
+    qubit_support: tuple[int, ...],
+    full_support: tuple[int, ...],
+    diagonal: bool = False,
 ) -> Tensor:
     """
     Expands an operator acting on a given qubit_support to act on a larger full_support
@@ -482,11 +507,15 @@ def expand_operator(
             "larger than or equal to the `qubit_support`."
         )
     device, dtype = operator.device, operator.dtype
+    if not diagonal:
+        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
+    else:
+        other = IDIAG.clone().to(device=device, dtype=dtype).unsqueeze(1)
+
     for i in set(full_support) - set(qubit_support):
         qubit_support += (i,)
-        other = IMAT.clone().to(device=device, dtype=dtype).unsqueeze(2)
         operator = torch.kron(operator.contiguous(), other)
-    operator = permute_basis(operator, qubit_support, inv=True)
+    operator = permute_basis(operator, qubit_support, inv=True, diagonal=diagonal)
     return operator
 
 
@@ -554,7 +583,12 @@ def permute_state(
     return state.permute(perm)
 
 
-def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> Tensor:
+def permute_basis(
+    operator: Tensor,
+    qubit_support: tuple,
+    inv: bool = False,
+    diagonal: bool = False,
+) -> Tensor:
     """Takes an operator tensor and permutes the rows and
     columns according to the order of the qubit support.
 
@@ -572,16 +606,20 @@ def permute_basis(operator: Tensor, qubit_support: tuple, inv: bool = False) -> 
     if all(a == b for a, b in zip(ranked_support, list(range(n_qubits)))):
         return operator
     batch_size = operator.size(-1)
-    operator = operator.view([2] * 2 * n_qubits + [batch_size])
-
-    perm = list(
-        tuple(ranked_support) + tuple(ranked_support + n_qubits) + (2 * n_qubits,)
-    )
-
-    if inv:
-        perm = np.argsort(perm).tolist()
-
-    return operator.permute(perm).reshape([2**n_qubits, 2**n_qubits, batch_size])
+    if not diagonal:
+        operator = operator.view([2] * 2 * n_qubits + [batch_size])
+        perm = list(
+            tuple(ranked_support) + tuple(ranked_support + n_qubits) + (2 * n_qubits,)
+        )
+        if inv:
+            perm = np.argsort(perm).tolist()
+        return operator.permute(perm).reshape([2**n_qubits, 2**n_qubits, batch_size])
+    else:
+        operator = operator.view([2] * n_qubits + [batch_size])
+        perm = list(tuple(ranked_support) + (n_qubits,))
+        if inv:
+            perm = np.argsort(perm).tolist()
+        return operator.permute(perm).reshape([2**n_qubits, batch_size])
 
 
 def random_dm_promotion(
@@ -782,7 +820,7 @@ def is_parametric(operation: pyq.Sequence) -> bool:
     res = False
     for m in operation.modules():
         if isinstance(m, (pyq.Scale, Parametric)):
-            if isinstance(m.param_name, (str, pyq.ConcretizedCallable)):
+            if isinstance(m.param_name, (str, pyq.ConcretizedCallable)):  # type: ignore[has-type]
                 res = True
                 break
     return res

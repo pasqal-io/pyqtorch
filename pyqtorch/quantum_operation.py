@@ -18,6 +18,7 @@ from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
     expand_operator,
+    is_diag_batched,
     permute_basis,
 )
 
@@ -97,6 +98,8 @@ class QuantumOperation(torch.nn.Module):
             self._operator_function = operator_function
 
         self.noise = noise
+
+        self.is_diagonal: bool = is_diag_batched(operation)
 
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
@@ -245,23 +248,29 @@ class QuantumOperation(torch.nn.Module):
         self,
         values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         """Apply the dagger to operator.
 
         Args:
             values (dict[str, Tensor] | Tensor, optional): Parameter values. Defaults to dict().
             embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+            diagonal (bool, optional): Whether to return the diagonal form of the tensor or not.
+                Defaults to False.
 
         Returns:
             Tensor: conjugate transpose operator.
         """
-        return _dagger(self.operator_function(values or dict(), embedding))
+        blockmat = self.operator_function(values or dict(), embedding)
+        use_diagonal = diagonal and self.is_diagonal
+        return _dagger(blockmat, use_diagonal)
 
     def tensor(
         self,
         values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         """Get tensor of the QuantumOperation.
 
@@ -270,18 +279,27 @@ class QuantumOperation(torch.nn.Module):
             embedding (Embedding | None, optional): Optional embedding. Defaults to None.
             full_support (tuple[int, ...] | None, optional): The qubits the returned tensor
                 will be defined over. Defaults to None for only using the qubit_support.
+            diagonal (bool, optional): Whether to return the diagonal form of the tensor or not.
+                Defaults to False.
 
         Returns:
             Tensor: Tensor representation of QuantumOperation.
         """
         values = values or dict()
         blockmat = self.operator_function(values, embedding)
+        use_diagonal = diagonal and self.is_diagonal
+        if use_diagonal:
+            blockmat = torch.diagonal(blockmat)
         if self._qubit_support.qubits != self.qubit_support:
-            blockmat = permute_basis(blockmat, self._qubit_support.qubits, inv=True)
+            blockmat = permute_basis(
+                blockmat, self._qubit_support.qubits, inv=True, diagonal=diagonal
+            )
         if full_support is None:
             return blockmat
         else:
-            return expand_operator(blockmat, self.qubit_support, full_support)
+            return expand_operator(
+                blockmat, self.qubit_support, full_support, diagonal=diagonal
+            )
 
     def _forward(
         self,
