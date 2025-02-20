@@ -367,8 +367,14 @@ def test_permute_tensor(n_qubits: int, diagonal: bool) -> None:
 
 @pytest.mark.parametrize("n_qubits", [3, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
-def test_permute_tensor_parametric(n_qubits: int, batch_size: int) -> None:
-    for op in OPS_PARAM_2Q:
+@pytest.mark.parametrize("diagonal", [False, True])
+def test_permute_tensor_parametric(
+    n_qubits: int, batch_size: int, diagonal: bool
+) -> None:
+    ops = (
+        OPS_PARAM_2Q if not diagonal else OPS_PARAM_2Q.intersection(OPS_DIAGONAL_PARAM)
+    )
+    for op in ops:
         supp, ordered_supp = get_op_support(op, n_qubits, get_ordered=True)
         params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
         values = {param: torch.rand(batch_size) for param in params}
@@ -376,13 +382,15 @@ def test_permute_tensor_parametric(n_qubits: int, batch_size: int) -> None:
         op_concrete1 = op(*supp, *params)
         op_concrete2 = op(*ordered_supp, *params)
 
-        mat1 = op_concrete1.tensor(values=values)
-        mat2 = op_concrete2.tensor(values=values)
+        mat1 = op_concrete1.tensor(values=values, diagonal=diagonal)
+        mat2 = op_concrete2.tensor(values=values, diagonal=diagonal)
 
         perm = op_concrete1._qubit_support.qubits
 
-        assert torch.allclose(mat1, permute_basis(mat2, perm, inv=True))
-        assert torch.allclose(mat2, permute_basis(mat1, perm))
+        assert torch.allclose(
+            mat1, permute_basis(mat2, perm, inv=True, diagonal=diagonal)
+        )
+        assert torch.allclose(mat2, permute_basis(mat1, perm, diagonal=diagonal))
 
 
 def test_tensor_symmetries() -> None:
