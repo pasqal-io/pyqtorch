@@ -46,11 +46,13 @@ pi = torch.tensor(torch.pi)
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("make_param", [True, False])
 @pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize("diagonal", [False, True])
 def test_primitive_tensor(
     n_qubits: int,
     make_param: bool,
     use_full_support: bool,
+    batch_size: int,
     diagonal: bool,
 ) -> None:
     k_1q = 2 * n_qubits  # Number of 1-qubit terms
@@ -62,6 +64,11 @@ def test_primitive_tensor(
     full_support = tuple(range(n_qubits)) if use_full_support else None
     generator_matrix = generator.tensor(
         values=values, full_support=full_support, diagonal=diagonal
+    )
+    generator_matrix = (
+        generator_matrix.repeat((1, 1, batch_size))
+        if len(generator_matrix.size()) == 3
+        else generator_matrix.repeat((1, batch_size))
     )
     diag_op = diagonal and generator.is_diagonal
     primitive_op = Primitive(
