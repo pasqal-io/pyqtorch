@@ -84,6 +84,7 @@ def evolve(
         hamiltonian: The operator :math:`H` for evolution.
         time_evolution: The evolution time :math:`t`.
         diagonal: Whether the hamiltonian is diagonal or not.
+            Note for diagonal cases, we return a dense tensor.
 
     Returns:
         The evolution operator.
@@ -93,6 +94,7 @@ def evolve(
             -1j * time_evolution
         ).view((-1, 1))
         evol_operator = torch.diag_embed(torch.exp(evol_operator))
+    # for case 3D tensor is passed as generator
     elif is_diag_batched(hamiltonian):
         evol_operator = torch.diagonal(hamiltonian) * (-1j * time_evolution).view(
             (-1, 1)
@@ -211,14 +213,13 @@ class HamiltonianEvolution(Sequence):
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
                 # avoiding using dense tensor for diagonal generators
-                self.is_diagonal = generator.is_diagonal
+                tgen = generator.tensor(diagonal=generator.is_diagonal)
                 generator = [
                     Primitive(
-                        generator.tensor(),
-                        generator.qubit_support,
+                        tgen, generator.qubit_support, diagonal=(len(tgen.size()) == 2)
                     )
                 ]
-
+                self.is_diagonal = generator[0].is_diagonal
                 self.generator_type = GeneratorType.OPERATION
         else:
             raise TypeError(
@@ -334,7 +335,9 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        return self.generator[0].tensor(values or dict(), embedding)
+        return self.generator[0].tensor(
+            values or dict(), embedding, diagonal=self.is_diagonal
+        )
 
     @property
     def create_hamiltonian(self) -> Callable[[dict], Operator]:
@@ -510,7 +513,7 @@ class HamiltonianEvolution(Sequence):
             else:
                 time_evolution = self.time
 
-            evolved_op = evolve(hamiltonian, time_evolution, diagonal=False)
+            evolved_op = evolve(hamiltonian, time_evolution, diagonal=self.is_diagonal)
             if use_diagonal:
                 evolved_op = torch.diagonal(evolved_op).T
             nb_cached = len(self._cache_hamiltonian_evo)
@@ -548,7 +551,7 @@ class HamiltonianEvolution(Sequence):
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
         return finitediff(
-            lambda t: evolve(hamiltonian, t),
+            lambda t: evolve(hamiltonian, t, self.is_diagonal),
             values[self.param_name].reshape(-1, 1),
             (0,),
         )

@@ -308,7 +308,7 @@ class QuantumOperation(torch.nn.Module):
         values = values or dict()
         blockmat = self.operator_function(values, embedding)
         use_diagonal = diagonal and self.is_diagonal
-        if use_diagonal:
+        if use_diagonal and not self._diagonal:
             blockmat = torch.diagonal(blockmat).T
         if self._qubit_support.qubits != self.qubit_support:
             blockmat = permute_basis(
