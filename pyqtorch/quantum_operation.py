@@ -53,6 +53,11 @@ class QuantumOperation(torch.nn.Module):
             the QuantumOperation acts on.
         operator_function (Callable | None, optional): Function to generate the base operator
             from operation. If None, we consider returning operation itself.
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
+        diagonal (bool, optional): Specify if the operation is diagonal.
+            For supporting, only pass a 2-dim operation tensor
+            containing diagonal elements with batchsize.
 
     """
 
@@ -62,6 +67,7 @@ class QuantumOperation(torch.nn.Module):
         qubit_support: int | tuple[int, ...] | Support,
         operator_function: Callable | None = None,
         noise: DigitalNoiseProtocol | None = None,
+        diagonal: bool = False,
     ) -> None:
         """Initializes QuantumOperation
 
@@ -81,6 +87,21 @@ class QuantumOperation(torch.nn.Module):
             if isinstance(qubit_support, Support)
             else Support(target=qubit_support)
         )
+        # to inform on diagonality of operation
+        self._diagonal = diagonal
+        self.is_diagonal: bool = False
+        if diagonal:
+            if len(operation.size()) != 2:
+                raise ValueError(
+                    "Only pass diagonal operators as 2D tensors, with batchsize."
+                )
+            self.is_diagonal = diagonal
+        else:
+            self.is_diagonal = (
+                is_diag(operation)
+                if len(operation.size()) == 2
+                else is_diag_batched(operation)
+            )
 
         self.register_buffer("operation", operation)
         self._device = self.operation.device
@@ -99,12 +120,6 @@ class QuantumOperation(torch.nn.Module):
             self._operator_function = operator_function
 
         self.noise = noise
-
-        self.is_diagonal: bool = (
-            is_diag(operation)
-            if len(operation.size()) == 2
-            else is_diag_batched(operation)
-        )
 
         if logger.isEnabledFor(logging.DEBUG):
             # When Debugging let's add logging and NVTX markers
@@ -244,7 +259,7 @@ class QuantumOperation(torch.nn.Module):
         """
         operation = (
             self.operation.unsqueeze(2)
-            if len(self.operation.shape) == 2
+            if (len(self.operation.shape) == 2 and not self._diagonal)
             else self.operation
         )
         return operation

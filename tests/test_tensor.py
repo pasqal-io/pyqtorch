@@ -64,12 +64,18 @@ def test_primitive_tensor(
         values=values, full_support=full_support, diagonal=diagonal
     )
     diag_op = diagonal and generator.is_diagonal
+    primitive_op = Primitive(
+        generator_matrix,
+        qubit_support=full_support if use_full_support else generator.qubit_support,  # type: ignore[arg-type]
+        diagonal=diagonal,
+    )
     if diag_op:
         assert len(generator_matrix.size()) == 2
+        assert primitive_op.is_diagonal
     else:
         assert len(generator_matrix.size()) == 3
-    # primitive_op = Primitive(generator_matrix.unsqueeze(-1), qubit_support=full_support if use_full_support else generator.qubit_support)
-    # assert primitive_op.is_diagonal == diag_op
+        assert not primitive_op.is_diagonal
+    assert torch.allclose(primitive_op.tensor(), generator_matrix, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("use_dm", [True, False])
