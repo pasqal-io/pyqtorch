@@ -512,7 +512,7 @@ class HamiltonianEvolution(Sequence):
 
             evolved_op = evolve(hamiltonian, time_evolution, diagonal=False)
             if use_diagonal:
-                evolved_op
+                evolved_op = torch.diagonal(evolved_op).T
             nb_cached = len(self._cache_hamiltonian_evo)
 
             # LRU caching
@@ -524,7 +524,9 @@ class HamiltonianEvolution(Sequence):
         if full_support is None:
             return evolved_op
         else:
-            return expand_operator(evolved_op, self.qubit_support, full_support)
+            return expand_operator(
+                evolved_op, self.qubit_support, full_support, use_diagonal
+            )
 
     def jacobian(
         self,
