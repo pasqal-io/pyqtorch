@@ -5,7 +5,6 @@ from typing import Callable
 import pytest
 import torch
 from helpers import random_pauli_hamiltonian
-from test_analog import Hamiltonian_general
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
@@ -14,6 +13,17 @@ from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES, DEFAULT_MATRIX_DTYPE
 from pyqtorch.primitives import Parametric
 from pyqtorch.utils import PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL
+
+
+def Hamiltonian_general(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
+    H_batch = torch.zeros(
+        (2**n_qubits, 2**n_qubits, batch_size), dtype=DEFAULT_MATRIX_DTYPE
+    )
+    for i in range(batch_size):
+        H_0 = torch.randn((2**n_qubits, 2**n_qubits), dtype=DEFAULT_MATRIX_DTYPE)
+        H = (H_0 + torch.conj(H_0.transpose(0, 1))).to(DEFAULT_MATRIX_DTYPE)
+        H_batch[..., i] = H
+    return H_batch
 
 
 def circuit_psr(n_qubits: int) -> QuantumCircuit:
