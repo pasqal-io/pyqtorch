@@ -5,7 +5,7 @@ from typing import Callable
 import pytest
 import torch
 from helpers import random_pauli_hamiltonian
-from tests.noise.test_analog import Hamiltonian_general
+from tests.primitives.test_analog import Hamiltonian_general
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
