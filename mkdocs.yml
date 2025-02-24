@@ -61,7 +61,7 @@ plugins:
     default_handler: python
     handlers:
       python:
-        selection:
+        options:
           filters:
             - "!^_"  # exlude all members starting with _
             - "^__init__$"  # but always include __init__ modules and methods
