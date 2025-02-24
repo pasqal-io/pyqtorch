@@ -5,7 +5,6 @@ from typing import Callable
 import pytest
 import torch
 from helpers import random_pauli_hamiltonian
-from tests.primitives.test_analog import Hamiltonian_general
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
@@ -14,6 +13,7 @@ from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
 from pyqtorch.matrices import COMPLEX_TO_REAL_DTYPES, DEFAULT_MATRIX_DTYPE
 from pyqtorch.primitives import Parametric
 from pyqtorch.utils import PSR_ACCEPTANCE, GRADCHECK_sampling_ATOL
+from tests.test_analog import Hamiltonian_general
 
 
 def circuit_psr(n_qubits: int) -> QuantumCircuit:
