@@ -18,7 +18,6 @@ from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
     expand_operator,
-    is_diag,
     is_diag_batched,
     permute_basis,
 )
@@ -97,11 +96,7 @@ class QuantumOperation(torch.nn.Module):
                 )
             self.is_diagonal = diagonal
         else:
-            self.is_diagonal = (
-                is_diag(operation)
-                if len(operation.size()) == 2
-                else is_diag_batched(operation)
-            )
+            self.is_diagonal = is_diag_batched(operation)
 
         self.register_buffer("operation", operation)
         self._device = self.operation.device

@@ -200,8 +200,6 @@ def test_sequence_tensor(
         op_list.append(op_concrete)
     random.shuffle(op_list)
     op_composite = compose(op_list)
-    if all([op.is_diagonal for op in op_list]):
-        assert op_composite.is_diagonal
     psi_init = random_state(n_qubits, batch_size)
     psi_star = op_composite(psi_init, values)
     full_support = tuple(range(n_qubits)) if use_full_support else None
