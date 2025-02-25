@@ -19,6 +19,8 @@ from pyqtorch.primitives import (
     CZ,
     OPS_2Q,
     OPS_3Q,
+    OPS_DIAGONAL,
+    OPS_DIAGONAL_PARAM,
     OPS_DIGITAL,
     OPS_PARAM,
     OPS_PARAM_2Q,
@@ -35,9 +37,52 @@ from pyqtorch.utils import (
     density_mat,
     permute_basis,
     random_state,
+    todense_tensor,
 )
 
 pi = torch.tensor(torch.pi)
+
+
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("make_param", [True, False])
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("diagonal", [False, True])
+def test_primitive_tensor(
+    n_qubits: int,
+    make_param: bool,
+    use_full_support: bool,
+    batch_size: int,
+    diagonal: bool,
+) -> None:
+    k_1q = 2 * n_qubits  # Number of 1-qubit terms
+    k_2q = n_qubits**2  # Number of 2-qubit terms
+    generator, param_list = random_pauli_hamiltonian(
+        n_qubits, k_1q, k_2q, make_param, diagonal=diagonal
+    )
+    values = {param: torch.rand(1) for param in param_list}
+    full_support = tuple(range(n_qubits)) if use_full_support else None
+    generator_matrix = generator.tensor(
+        values=values, full_support=full_support, diagonal=diagonal
+    )
+    generator_matrix = (
+        generator_matrix.repeat((1, 1, batch_size))
+        if len(generator_matrix.size()) == 3
+        else generator_matrix.repeat((1, batch_size))
+    )
+    diag_op = diagonal and generator.is_diagonal
+    primitive_op = Primitive(
+        generator_matrix,
+        qubit_support=full_support if use_full_support else generator.qubit_support,  # type: ignore[arg-type]
+        diagonal=diagonal,
+    )
+    if diag_op:
+        assert len(generator_matrix.size()) == 2
+        assert primitive_op.is_diagonal
+    else:
+        assert len(generator_matrix.size()) == 3
+        assert not primitive_op.is_diagonal
+    assert torch.allclose(primitive_op.tensor(), generator_matrix, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("use_dm", [True, False])
@@ -61,6 +106,8 @@ def test_digital_tensor(
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
         op_concrete = op(*supp)
+        if op in OPS_DIAGONAL:
+            assert op_concrete.is_diagonal
         psi_init = random_state(n_qubits, batch_size)
         if use_dm:
             psi_star = op_concrete(density_mat(psi_init))
@@ -97,6 +144,8 @@ def test_param_tensor(
         supp = get_op_support(op, n_qubits)
         params = [f"th{i}" for i in range(op.n_params)]
         op_concrete = op(*supp, *params)
+        if op in OPS_DIAGONAL_PARAM:
+            assert op_concrete.is_diagonal
         psi_init = random_state(n_qubits)
         values = {param: torch.rand(batch_size) for param in params}
         if use_dm:
@@ -138,12 +187,16 @@ def test_sequence_tensor(
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
         op_concrete = Scale(op(*supp), torch.rand(1))
+        if op in OPS_DIAGONAL:
+            assert op_concrete.is_diagonal
         op_list.append(op_concrete)
     for op in OPS_PARAM:
         supp = get_op_support(op, n_qubits)
         params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
         values.update({param: torch.rand(batch_size) for param in params})
         op_concrete = op(*supp, *params)
+        if op in OPS_DIAGONAL_PARAM:
+            assert op_concrete.is_diagonal
         op_list.append(op_concrete)
     random.shuffle(op_list)
     op_composite = compose(op_list)
@@ -154,6 +207,41 @@ def test_sequence_tensor(
         op_composite, psi_init, values=values, full_support=full_support
     )
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
+
+@pytest.mark.parametrize("use_full_support", [True, False])
+@pytest.mark.parametrize("n_qubits", [4, 5])
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("compose", [Sequence, Add])
+def test_diagonal_sequence_tensor(
+    n_qubits: int,
+    batch_size: int,
+    use_full_support: bool,
+    compose: type[Sequence] | type[Add],
+) -> None:
+    op_list = []
+    values = {}
+    op: type[Primitive] | type[Parametric]
+    for op in OPS_DIAGONAL.intersection(OPS_DIGITAL):
+        supp = get_op_support(op, n_qubits)
+        op_concrete = Scale(op(*supp), torch.rand(1))
+        op_list.append(op_concrete)
+    for op in OPS_DIAGONAL_PARAM.intersection(OPS_PARAM):
+        supp = get_op_support(op, n_qubits)
+        params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
+        values.update({param: torch.rand(batch_size) for param in params})
+        op_concrete = op(*supp, *params)
+        op_list.append(op_concrete)
+    random.shuffle(op_list)
+    op_composite = compose(op_list)
+    full_support = tuple(range(n_qubits)) if use_full_support else None
+    assert op_composite.is_diagonal
+    tensor_composite = op_composite.tensor(values, full_support=full_support)
+    tensor_composite_diagonal = op_composite.tensor(
+        values, full_support=full_support, diagonal=True
+    )
+    dense_diagonal = todense_tensor(tensor_composite_diagonal)
+    assert torch.allclose(tensor_composite, dense_diagonal, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("use_full_support", [True, False])
@@ -228,12 +316,20 @@ def test_projector_vs_operator(
 @pytest.mark.parametrize("make_param", [True, False])
 @pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("diagonal", [False, True])
 def test_hevo_pauli_tensor(
-    n_qubits: int, make_param: bool, use_full_support: bool, batch_size: int
+    n_qubits: int,
+    make_param: bool,
+    use_full_support: bool,
+    batch_size: int,
+    diagonal: bool,
 ) -> None:
     k_1q = 2 * n_qubits  # Number of 1-qubit terms
     k_2q = n_qubits**2  # Number of 2-qubit terms
-    generator, param_list = random_pauli_hamiltonian(n_qubits, k_1q, k_2q, make_param)
+    generator, param_list = random_pauli_hamiltonian(
+        n_qubits, k_1q, k_2q, make_param, diagonal=diagonal
+    )
+
     values = {param: torch.rand(batch_size) for param in param_list}
     psi_init = random_state(n_qubits, batch_size)
     full_support = tuple(range(n_qubits)) if use_full_support else None
@@ -241,9 +337,15 @@ def test_hevo_pauli_tensor(
     psi_star = generator(psi_init, values)
     psi_expected = calc_mat_vec_wavefunction(generator, psi_init, values, full_support)
     assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+
     # Test the hamiltonian evolution
     tparam = "t"
     operator = HamiltonianEvolution(generator, tparam)
+    if diagonal:
+        assert generator.is_diagonal
+        if not make_param:
+            assert operator.is_diagonal
+
     if make_param:
         assert operator.generator_type == GeneratorType.PARAMETRIC_OPERATION
     else:
@@ -258,12 +360,17 @@ def test_hevo_pauli_tensor(
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("diagonal", [False, True])
 def test_hevo_tensor_tensor(
-    gen_qubits: int, n_qubits: int, use_full_support: bool, batch_size: int
+    gen_qubits: int,
+    n_qubits: int,
+    use_full_support: bool,
+    batch_size: int,
+    diagonal: bool,
 ) -> None:
     k_1q = 2 * gen_qubits  # Number of 1-qubit terms
     k_2q = gen_qubits**2  # Number of 2-qubit terms
-    generator, _ = random_pauli_hamiltonian(gen_qubits, k_1q, k_2q)
+    generator, _ = random_pauli_hamiltonian(gen_qubits, k_1q, k_2q, diagonal=diagonal)
     psi_init = random_state(n_qubits, batch_size)
     full_support = tuple(range(n_qubits)) if use_full_support else None
     # Test the hamiltonian evolution
@@ -272,6 +379,9 @@ def test_hevo_tensor_tensor(
     tparam = "t"
     operator = HamiltonianEvolution(generator_matrix, tparam, supp)
     assert operator.generator_type == GeneratorType.TENSOR
+    if diagonal:
+        assert generator.is_diagonal
+        assert operator.is_diagonal
     values = {tparam: torch.rand(batch_size)}
     psi_star = operator(psi_init, values)
     psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)
@@ -279,26 +389,36 @@ def test_hevo_tensor_tensor(
 
 
 @pytest.mark.parametrize("n_qubits", [3, 5])
-def test_permute_tensor(n_qubits: int) -> None:
-    for op in OPS_2Q.union(OPS_3Q):
+@pytest.mark.parametrize("diagonal", [False, True])
+def test_permute_tensor(n_qubits: int, diagonal: bool) -> None:
+    ops = OPS_2Q.union(OPS_3Q) if not diagonal else {CZ}
+    for op in ops:
         supp, ordered_supp = get_op_support(op, n_qubits, get_ordered=True)
 
         op_concrete1 = op(*supp)
         op_concrete2 = op(*ordered_supp)
 
-        mat1 = op_concrete1.tensor()
-        mat2 = op_concrete2.tensor()
+        mat1 = op_concrete1.tensor(diagonal=diagonal)
+        mat2 = op_concrete2.tensor(diagonal=diagonal)
 
         perm = op_concrete1._qubit_support.qubits
 
-        assert torch.allclose(mat1, permute_basis(mat2, perm, inv=True))
-        assert torch.allclose(mat2, permute_basis(mat1, perm))
+        assert torch.allclose(
+            mat1, permute_basis(mat2, perm, inv=True, diagonal=diagonal)
+        )
+        assert torch.allclose(mat2, permute_basis(mat1, perm, diagonal=diagonal))
 
 
 @pytest.mark.parametrize("n_qubits", [3, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
-def test_permute_tensor_parametric(n_qubits: int, batch_size: int) -> None:
-    for op in OPS_PARAM_2Q:
+@pytest.mark.parametrize("diagonal", [False, True])
+def test_permute_tensor_parametric(
+    n_qubits: int, batch_size: int, diagonal: bool
+) -> None:
+    ops = (
+        OPS_PARAM_2Q if not diagonal else OPS_PARAM_2Q.intersection(OPS_DIAGONAL_PARAM)
+    )
+    for op in ops:
         supp, ordered_supp = get_op_support(op, n_qubits, get_ordered=True)
         params = [f"{op.__name__}_th{i}" for i in range(op.n_params)]
         values = {param: torch.rand(batch_size) for param in params}
@@ -306,13 +426,15 @@ def test_permute_tensor_parametric(n_qubits: int, batch_size: int) -> None:
         op_concrete1 = op(*supp, *params)
         op_concrete2 = op(*ordered_supp, *params)
 
-        mat1 = op_concrete1.tensor(values=values)
-        mat2 = op_concrete2.tensor(values=values)
+        mat1 = op_concrete1.tensor(values=values, diagonal=diagonal)
+        mat2 = op_concrete2.tensor(values=values, diagonal=diagonal)
 
         perm = op_concrete1._qubit_support.qubits
 
-        assert torch.allclose(mat1, permute_basis(mat2, perm, inv=True))
-        assert torch.allclose(mat2, permute_basis(mat1, perm))
+        assert torch.allclose(
+            mat1, permute_basis(mat2, perm, inv=True, diagonal=diagonal)
+        )
+        assert torch.allclose(mat2, permute_basis(mat1, perm, diagonal=diagonal))
 
 
 def test_tensor_symmetries() -> None:

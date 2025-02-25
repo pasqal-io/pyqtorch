@@ -36,6 +36,7 @@ class Parametric(QuantumOperation):
         qubit_support: int | tuple[int, ...] | Support,
         param_name: str | int | float | torch.Tensor | ConcretizedCallable = "",
         noise: DigitalNoiseProtocol | None = None,
+        diagonal: bool = False,
     ):
         """Initializes Parametric.
 
@@ -44,6 +45,7 @@ class Parametric(QuantumOperation):
             qubit_support: Qubits to act on.
             param_name: Name of parameters.
             noise: Optional noise protocols to apply.
+            diagonal: Whether the tensor generator is diagonal.
         """
 
         generator_operation = (
@@ -144,6 +146,7 @@ class Parametric(QuantumOperation):
             qubit_support,
             operator_function=self._construct_parametric_base_op,
             noise=noise,
+            diagonal=diagonal if isinstance(generator, Tensor) else False,
         )
         self.register_buffer("identity", OPERATIONS_DICT["I"])
 

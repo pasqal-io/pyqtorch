@@ -18,6 +18,7 @@ from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
     expand_operator,
+    is_diag_batched,
     permute_basis,
 )
 
@@ -51,6 +52,11 @@ class QuantumOperation(torch.nn.Module):
             the QuantumOperation acts on.
         operator_function (Callable | None, optional): Function to generate the base operator
             from operation. If None, we consider returning operation itself.
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
+        diagonal (bool, optional): Specify if the operation is diagonal.
+            For supporting, only pass a 2-dim operation tensor
+            containing diagonal elements with batchsize.
 
     """
 
@@ -60,6 +66,7 @@ class QuantumOperation(torch.nn.Module):
         qubit_support: int | tuple[int, ...] | Support,
         operator_function: Callable | None = None,
         noise: DigitalNoiseProtocol | None = None,
+        diagonal: bool = False,
     ) -> None:
         """Initializes QuantumOperation
 
@@ -79,6 +86,17 @@ class QuantumOperation(torch.nn.Module):
             if isinstance(qubit_support, Support)
             else Support(target=qubit_support)
         )
+        # to inform on diagonality of operation
+        self._diagonal = diagonal
+        self.is_diagonal: bool = False
+        if diagonal:
+            if len(operation.size()) != 2:
+                raise ValueError(
+                    "Only pass diagonal operators as 2D tensors, with batchsize."
+                )
+            self.is_diagonal = diagonal
+        else:
+            self.is_diagonal = is_diag_batched(operation)
 
         self.register_buffer("operation", operation)
         self._device = self.operation.device
@@ -236,7 +254,7 @@ class QuantumOperation(torch.nn.Module):
         """
         operation = (
             self.operation.unsqueeze(2)
-            if len(self.operation.shape) == 2
+            if (len(self.operation.shape) == 2 and not self._diagonal)
             else self.operation
         )
         return operation
@@ -245,23 +263,29 @@ class QuantumOperation(torch.nn.Module):
         self,
         values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         """Apply the dagger to operator.
 
         Args:
             values (dict[str, Tensor] | Tensor, optional): Parameter values. Defaults to dict().
             embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+            diagonal (bool, optional): Whether to return the diagonal form of the tensor or not.
+                Defaults to False.
 
         Returns:
             Tensor: conjugate transpose operator.
         """
-        return _dagger(self.operator_function(values or dict(), embedding))
+        blockmat = self.operator_function(values or dict(), embedding)
+        use_diagonal = diagonal and self.is_diagonal
+        return _dagger(blockmat, use_diagonal)
 
     def tensor(
         self,
         values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         """Get tensor of the QuantumOperation.
 
@@ -270,18 +294,27 @@ class QuantumOperation(torch.nn.Module):
             embedding (Embedding | None, optional): Optional embedding. Defaults to None.
             full_support (tuple[int, ...] | None, optional): The qubits the returned tensor
                 will be defined over. Defaults to None for only using the qubit_support.
+            diagonal (bool, optional): Whether to return the diagonal form of the tensor or not.
+                Defaults to False.
 
         Returns:
             Tensor: Tensor representation of QuantumOperation.
         """
         values = values or dict()
         blockmat = self.operator_function(values, embedding)
+        use_diagonal = diagonal and self.is_diagonal
+        if use_diagonal and not self._diagonal:
+            blockmat = torch.diagonal(blockmat).T
         if self._qubit_support.qubits != self.qubit_support:
-            blockmat = permute_basis(blockmat, self._qubit_support.qubits, inv=True)
+            blockmat = permute_basis(
+                blockmat, self._qubit_support.qubits, inv=True, diagonal=use_diagonal
+            )
         if full_support is None:
             return blockmat
         else:
-            return expand_operator(blockmat, self.qubit_support, full_support)
+            return expand_operator(
+                blockmat, self.qubit_support, full_support, diagonal=use_diagonal
+            )
 
     def _forward(
         self,

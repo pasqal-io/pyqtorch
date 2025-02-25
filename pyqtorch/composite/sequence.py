@@ -83,6 +83,8 @@ class Sequence(Module):
             [isinstance(q, (int, int64)) for q in self._qubit_support]
         )  # TODO fix numpy.int issue
 
+        self.is_diagonal = all([op.is_diagonal for op in self.flatten()])
+
     @property
     def qubit_support(self) -> tuple:
         return tuple(sorted(self._qubit_support))
@@ -140,6 +142,7 @@ class Sequence(Module):
         values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         if full_support is None:
             full_support = self.qubit_support
@@ -148,23 +151,40 @@ class Sequence(Module):
                 "Expanding tensor operation requires a `full_support` argument "
                 "larger than or equal to the `qubit_support`."
             )
-        mat = torch.eye(
-            2 ** len(full_support), dtype=self.dtype, device=self.device
-        ).unsqueeze(2)
+        use_diagonal = diagonal and self.is_diagonal
         values = values or dict()
-        return reduce(
-            lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
-            (
-                add_batch_dim(op.tensor(values, embedding, full_support))
-                for op in self.operations
-            ),
-            mat,
-        )
+        if not use_diagonal:
+            mat = torch.eye(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(2)
+
+            return reduce(
+                lambda t0, t1: einsum("ijb,jkb->ikb", t1, t0),
+                (
+                    add_batch_dim(op.tensor(values, embedding, full_support))
+                    for op in self.operations
+                ),
+                mat,
+            )
+        else:
+            mat = torch.ones(
+                2 ** len(full_support), dtype=self.dtype, device=self.device
+            ).unsqueeze(1)
+            return reduce(
+                lambda t0, t1: t0 * t1,
+                (
+                    op.tensor(values, embedding, full_support, diagonal=True)
+                    for op in self.operations
+                ),
+                mat,
+            )
 
     def dagger(
         self,
         values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         values = values or dict()
-        return _dagger(self.tensor(values, embedding))
+        use_diagonal = diagonal and self.is_diagonal
+        return _dagger(self.tensor(values, embedding, diagonal=use_diagonal))

@@ -7,6 +7,7 @@ import torch
 import pyqtorch.embed as pyq_em
 from pyqtorch.apply import apply_operator, apply_operator_permute
 from pyqtorch.composite import Add, Scale, Sequence
+from pyqtorch.hamiltonians.evolution import HamiltonianEvolution
 from pyqtorch.primitives import (
     OPS_1Q,
     OPS_2Q,
@@ -14,9 +15,11 @@ from pyqtorch.primitives import (
     OPS_PARAM_1Q,
     OPS_PARAM_2Q,
     OPS_PAULI,
+    I,
     Parametric,
     Primitive,
     Toffoli,
+    Z,
 )
 
 
@@ -38,13 +41,17 @@ def calc_mat_vec_wavefunction(
         Tensor: The new wavefunction after applying the block.
 
     """
-    mat = block.tensor(values=values, full_support=full_support)
+    use_diagonal = (
+        block.is_diagonal if not isinstance(block, HamiltonianEvolution) else False
+    )
+    mat = block.tensor(values=values, full_support=full_support, diagonal=use_diagonal)
     qubit_support = block.qubit_support if full_support is None else full_support
     apply_func = apply_operator_permute if use_permute else apply_operator
     return apply_func(
         init_state,
         mat,
         qubit_support,
+        diagonal=use_diagonal,
     )
 
 
@@ -96,6 +103,7 @@ def random_pauli_hamiltonian(
     make_param: bool = False,
     default_scale_coeffs: float | None = None,
     p_param: float = 0.5,
+    diagonal: bool = False,
 ) -> tuple[Sequence, list]:
     """Creates a random Pauli Hamiltonian as a sum of k_1q + k_2q terms.
 
@@ -111,7 +119,7 @@ def random_pauli_hamiltonian(
     Returns:
         tuple[Sequence, list]: Hamiltonian and list of parameters.
     """
-    OPS_PAULI_choice = list(OPS_PAULI)
+    OPS_PAULI_choice = list(OPS_PAULI) if not diagonal else [I, Z]
     one_q_terms: list = random.choices(OPS_PAULI_choice, k=k_1q)
     two_q_terms: list = [random.choices(OPS_PAULI_choice, k=2) for _ in range(k_2q)]
     terms: list = []

@@ -19,6 +19,9 @@ class Primitive(QuantumOperation):
         operation (Tensor): Matrix U.
         qubit_support: List of qubits the QuantumOperation acts on.
         generator (Tensor): A tensor G s.t. U = exp(-iG).
+        noise ( NoiseProtocol | dict[str, NoiseProtocol. optional): Type of noise
+            to add in the operation.
+        diagonal (bool, optional): Specify if the operation is diagonal.
     """
 
     def __init__(
@@ -27,8 +30,9 @@ class Primitive(QuantumOperation):
         qubit_support: int | tuple[int, ...] | Support,
         generator: Tensor | None = None,
         noise: DigitalNoiseProtocol | None = None,
+        diagonal: bool = False,
     ) -> None:
-        super().__init__(operation, qubit_support, noise=noise)
+        super().__init__(operation, qubit_support, noise=noise, diagonal=diagonal)
         self.generator = generator
 
     def to(self, *args: Any, **kwargs: Any) -> Primitive:
