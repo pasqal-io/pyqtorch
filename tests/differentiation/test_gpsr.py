@@ -327,7 +327,7 @@ def test_compatibility_gpsr(gate_type: str, sequence_circuit: bool) -> None:
         param_value = torch.pi / 2
         values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
 
-    if gate_type != "":
+    if gate_type not in ("", "same"):
         with pytest.raises(ValueError):
             exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
     else:
