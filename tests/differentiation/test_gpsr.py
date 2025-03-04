@@ -26,13 +26,13 @@ def Hamiltonian_general(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
     return H_batch
 
 
-def circuit_psr(n_qubits: int) -> QuantumCircuit:
+def circuit_psr(n_qubits: int, different_names: bool = True) -> QuantumCircuit:
     """Helper function to make an example circuit using single gap PSR."""
 
     ops = [
         pyq.RX(0, "x"),
         pyq.RY(1, "y"),
-        pyq.RX(0, "theta"),
+        pyq.RX(0, "theta" if different_names else "x"),
         pyq.RY(1, torch.pi / 2),
         pyq.CNOT(0, 1),
     ]
@@ -42,7 +42,7 @@ def circuit_psr(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
-def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
+def circuit_gpsr(n_qubits: int, different_names: bool = True) -> QuantumCircuit:
     """Helper function to make an example circuit using multi gap GPSR."""
 
     ops = [
@@ -50,7 +50,7 @@ def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
         pyq.RX(0, "theta_0"),
         pyq.PHASE(0, "theta_1"),
         pyq.CSWAP(0, (1, 2)),
-        pyq.CRX(1, 2, "theta_2"),
+        pyq.CRX(1, 2, "theta_2" if different_names else "theta_0"),
         pyq.CPHASE(1, 2, "theta_3"),
         pyq.CNOT(0, 1),
         pyq.Toffoli((0, 1), 2),
@@ -61,7 +61,7 @@ def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
-def circuit_sequence(n_qubits: int) -> QuantumCircuit:
+def circuit_sequence(n_qubits: int, different_names: bool = True) -> QuantumCircuit:
     """Helper function to make an example circuit using Sequences of rotations."""
     name_angles = "theta"
 
@@ -69,7 +69,17 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
         [pyq.RX(i, param_name=name_angles + "_x_" + str(i)) for i in range(n_qubits)]
     )
     ops_rz = pyq.Sequence(
-        [pyq.RZ(i, param_name=name_angles + "_z_" + str(i)) for i in range(n_qubits)]
+        [
+            pyq.RZ(
+                i,
+                param_name=(
+                    name_angles + "_z_" + str(i)
+                    if different_names
+                    else name_angles + "_z"
+                ),
+            )
+            for i in range(n_qubits)
+        ]
     )
     cnot = pyq.CNOT(1, 2)
     ops = [ops_rx, ops_rz, cnot]
@@ -77,7 +87,9 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
-def circuit_hamevo_tensor_gpsr(n_qubits: int) -> QuantumCircuit:
+def circuit_hamevo_tensor_gpsr(
+    n_qubits: int, different_names: bool = True
+) -> QuantumCircuit:
     """Helper function to make an example circuit."""
 
     ham = Hamiltonian_general(n_qubits)
@@ -88,7 +100,7 @@ def circuit_hamevo_tensor_gpsr(n_qubits: int) -> QuantumCircuit:
         pyq.X(1),
         pyq.CRY(1, 2, "theta_1"),
         ham_op,
-        pyq.CRX(1, 2, "theta_2"),
+        pyq.CRX(1, 2, "theta_2" if different_names else "theta_0"),
         pyq.X(0),
         pyq.CRY(0, 1, "theta_3"),
         pyq.CNOT(0, 1),
@@ -99,7 +111,9 @@ def circuit_hamevo_tensor_gpsr(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
-def circuit_hamevo_pauligen_gpsr(n_qubits: int) -> QuantumCircuit:
+def circuit_hamevo_pauligen_gpsr(
+    n_qubits: int, different_names: bool = True
+) -> QuantumCircuit:
     """Helper function to make an example circuit."""
 
     ham = random_pauli_hamiltonian(
@@ -112,7 +126,7 @@ def circuit_hamevo_pauligen_gpsr(n_qubits: int) -> QuantumCircuit:
         pyq.X(1),
         pyq.CRY(1, 2, "theta_1"),
         ham_op,
-        pyq.CRX(1, 2, "theta_2"),
+        pyq.CRX(1, 2, "theta_2" if different_names else "theta_0"),
         pyq.X(0),
         pyq.CRY(0, 1, "theta_3"),
         pyq.CNOT(0, 1),
@@ -212,14 +226,16 @@ def test_expectation_gpsr_hamevo(
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+@pytest.mark.parametrize("different_names", [False, True])
 def test_expectation_gpsr(
     n_qubits: int,
     batch_size: int,
     circuit_fn: Callable,
     dtype: torch.dtype,
+    different_names: bool,
 ) -> None:
     torch.manual_seed(42)
-    circ = circuit_fn(n_qubits).to(dtype)
+    circ = circuit_fn(n_qubits, different_names).to(dtype)
     obs = Observable(
         random_pauli_hamiltonian(
             n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
