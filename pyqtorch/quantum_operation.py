@@ -224,7 +224,8 @@ class QuantumOperation(torch.nn.Module):
             Eigenvalues of the related tensor.
         """
         blockmat = self.tensor(values or dict(), embedding)
-        return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+        permutation_ind = (2, 0, 1) if len(blockmat.shape) == 3 else (-1, 1)
+        return torch.linalg.eigvals(blockmat.permute(permutation_ind)).reshape(-1, 1)
 
     @cached_property
     def spectral_gap(self) -> Tensor:

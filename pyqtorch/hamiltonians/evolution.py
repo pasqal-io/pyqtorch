@@ -510,7 +510,10 @@ class HamiltonianEvolution(Sequence):
             hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
 
             if isinstance(self.time, str):
-                time_evolution = values[self.time]
+                pname = self.time
+                if self._param_uuid in values.keys():
+                    pname = self._param_uuid
+                time_evolution = values[pname]
             elif isinstance(self.time, ConcretizedCallable):
                 time_evolution = self.time(values)
             else:
@@ -553,8 +556,12 @@ class HamiltonianEvolution(Sequence):
             values = embedding(values)
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
+        # note: trick for using GPSR with a same param_name used in many operations
+        pname = self.param_name
+        if self._param_uuid in values.keys():
+            pname = self._param_uuid
         return finitediff(
             lambda t: evolve(hamiltonian, t, self.is_diagonal),
-            values[self.param_name].reshape(-1, 1),
+            values[pname].reshape(-1, 1),
             (0,),
         )
