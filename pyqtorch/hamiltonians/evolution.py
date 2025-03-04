@@ -5,6 +5,7 @@ from collections import OrderedDict
 from functools import cached_property
 from logging import getLogger
 from typing import Callable, Tuple, Union
+from uuid import uuid4
 
 import torch
 from torch import Tensor
@@ -257,6 +258,8 @@ class HamiltonianEvolution(Sequence):
                 "as HamiltonianEvolution."
             )
         self.noise = noise
+
+        self._param_uuid = str(uuid4())
 
     @property
     def generator(self) -> ModuleList:
