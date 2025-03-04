@@ -273,7 +273,7 @@ class PSRExpectation(Function):
                 shift_prefac=shift_prefac,
             )
 
-        grads = {p: torch.zeros_like(v) for p, v in values.items()}
+        grads = {p: None for p in values.keys()}
         # use a copy for handling repeated params with uuid
         val_copy = values.copy()
 
@@ -290,9 +290,14 @@ class PSRExpectation(Function):
             """
             if val_copy[param_name].requires_grad:
                 val_copy.update({param_uuid: val_copy[param_name].clone()})
-                grads[param_name] += vjp(
-                    param_uuid, spectral_gap, val_copy, shift_prefac
-                )
+                if grads[param_name] is None:
+                    grads[param_name] = vjp(
+                        param_uuid, spectral_gap, val_copy, shift_prefac
+                    )
+                else:
+                    grads[param_name] += vjp(
+                        param_uuid, spectral_gap, val_copy, shift_prefac
+                    )
 
         for op in ctx.circuit.flatten():
 
