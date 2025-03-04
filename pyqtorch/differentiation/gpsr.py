@@ -141,14 +141,12 @@ class PSRExpectation(Function):
             Returns:
                 Expectation evaluation.
             """
-            return PSRExpectation.apply(
+            return ctx.expectation_method(
                 ctx.circuit,
                 ctx.state,
                 ctx.observable,
+                values,
                 ctx.embedding,
-                ctx.expectation_method,
-                values.keys(),
-                *values.values(),
             )
 
         def single_gap_shift(
@@ -370,8 +368,3 @@ def check_support_psr(circuit: QuantumCircuit):
                 param_names.append(op.time)
         else:
             continue
-
-    if len(param_names) > len(set(param_names)):
-        raise ValueError(
-            "PSR is not supported when using a same param_name in different operations."
-        )
