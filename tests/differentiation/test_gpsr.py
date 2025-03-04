@@ -144,14 +144,16 @@ def circuit_hamevo_pauligen_gpsr(
         (3, 1, circuit_hamevo_pauligen_gpsr),
     ],
 )
+@pytest.mark.parametrize("different_names", [False, True])
 def test_expectation_gpsr_hamevo(
     n_qubits: int,
     batch_size: int,
     circuit_fn: Callable,
+    different_names: bool,
     dtype: torch.dtype = torch.complex128,
 ) -> None:
     torch.manual_seed(42)
-    circ = circuit_fn(n_qubits).to(dtype)
+    circ = circuit_fn(n_qubits, different_names).to(dtype)
     obs = Observable(
         random_pauli_hamiltonian(
             n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
