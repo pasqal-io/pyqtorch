@@ -293,9 +293,8 @@ class PSRExpectation(Function):
                         param_uuid, spectral_gap, val_copy, shift_prefac
                     )
                 else:
-                    grads[param_name] += vjp(
-                        param_uuid, spectral_gap, val_copy, shift_prefac
-                    )
+                    grad_contrib = vjp(param_uuid, spectral_gap, val_copy, shift_prefac)
+                    grads[param_name] += grad_contrib.reshape(grads[param_name].shape)  # type: ignore[attr-defined]
 
         for op in ctx.circuit.flatten():
 
