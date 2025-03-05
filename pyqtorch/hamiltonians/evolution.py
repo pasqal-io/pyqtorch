@@ -511,6 +511,7 @@ class HamiltonianEvolution(Sequence):
 
             if isinstance(self.time, str):
                 pname = self.time
+                # note: GPSR trick when the same param_name is used in many operations
                 if self._param_uuid in values.keys():
                     pname = self._param_uuid
                 time_evolution = values[pname]
@@ -556,7 +557,7 @@ class HamiltonianEvolution(Sequence):
             values = embedding(values)
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
-        # note: trick for using GPSR with a same param_name used in many operations
+        # note: GPSR trick when the same param_name is used in many operations
         pname = self.param_name
         if self._param_uuid in values.keys():
             pname = self._param_uuid
