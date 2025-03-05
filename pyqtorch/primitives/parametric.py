@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import cached_property
 from typing import Any, Tuple
+from uuid import uuid4
 
 import torch
 from torch import Tensor
@@ -57,6 +58,7 @@ class Parametric(QuantumOperation):
                 are supported for param_name"
             )
         self.param_name = param_name
+        self._param_uuid = str(uuid4())
 
         def parse_values(
             values: dict[str, Tensor] | Tensor | None = None,
@@ -76,7 +78,9 @@ class Parametric(QuantumOperation):
             values = values or dict()
             if embedding is not None:
                 values = embedding(values)
-
+            # note: GPSR trick when the same param_name is used in many operations
+            if self._param_uuid in values.keys():
+                return Parametric._expand_values(values[self._param_uuid])  # type: ignore[index]
             return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 
         def parse_tensor(

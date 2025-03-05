@@ -4,7 +4,7 @@ from typing import Callable
 
 import pytest
 import torch
-from helpers import random_pauli_hamiltonian
+from helpers import random_parameter_names, random_pauli_hamiltonian
 
 import pyqtorch as pyq
 from pyqtorch import DiffMode, expectation
@@ -26,13 +26,17 @@ def Hamiltonian_general(n_qubits: int = 2, batch_size: int = 1) -> torch.Tensor:
     return H_batch
 
 
-def circuit_psr(n_qubits: int) -> QuantumCircuit:
+def circuit_psr(n_qubits: int, different_names: bool = True) -> QuantumCircuit:
     """Helper function to make an example circuit using single gap PSR."""
 
+    param_names = ["x", "y", "theta"]
+    if not different_names:
+        param_names = random_parameter_names(param_names)
+
     ops = [
-        pyq.RX(0, "x"),
-        pyq.RY(1, "y"),
-        pyq.RX(0, "theta"),
+        pyq.RX(0, param_names[0]),
+        pyq.RY(1, param_names[1]),
+        pyq.RX(0, param_names[2]),
         pyq.RY(1, torch.pi / 2),
         pyq.CNOT(0, 1),
     ]
@@ -42,16 +46,19 @@ def circuit_psr(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
-def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
+def circuit_gpsr(n_qubits: int, different_names: bool = True) -> QuantumCircuit:
     """Helper function to make an example circuit using multi gap GPSR."""
+    param_names = ["theta" + str(i) for i in range(4)]
+    if not different_names:
+        param_names = random_parameter_names(param_names)
 
     ops = [
         pyq.Y(1),
-        pyq.RX(0, "theta_0"),
-        pyq.PHASE(0, "theta_1"),
+        pyq.RX(0, param_names[0]),
+        pyq.PHASE(0, param_names[1]),
         pyq.CSWAP(0, (1, 2)),
-        pyq.CRX(1, 2, "theta_2"),
-        pyq.CPHASE(1, 2, "theta_3"),
+        pyq.CRX(1, 2, param_names[2]),
+        pyq.CPHASE(1, 2, param_names[3]),
         pyq.CNOT(0, 1),
         pyq.Toffoli((0, 1), 2),
     ]
@@ -61,7 +68,7 @@ def circuit_gpsr(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
-def circuit_sequence(n_qubits: int) -> QuantumCircuit:
+def circuit_sequence(n_qubits: int, different_names: bool = True) -> QuantumCircuit:
     """Helper function to make an example circuit using Sequences of rotations."""
     name_angles = "theta"
 
@@ -69,7 +76,17 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
         [pyq.RX(i, param_name=name_angles + "_x_" + str(i)) for i in range(n_qubits)]
     )
     ops_rz = pyq.Sequence(
-        [pyq.RZ(i, param_name=name_angles + "_z_" + str(i)) for i in range(n_qubits)]
+        [
+            pyq.RZ(
+                i,
+                param_name=(
+                    name_angles + "_z_" + str(i)
+                    if different_names
+                    else name_angles + "_z"
+                ),
+            )
+            for i in range(n_qubits)
+        ]
     )
     cnot = pyq.CNOT(1, 2)
     ops = [ops_rx, ops_rz, cnot]
@@ -77,20 +94,25 @@ def circuit_sequence(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
-def circuit_hamevo_tensor_gpsr(n_qubits: int) -> QuantumCircuit:
+def circuit_hamevo_tensor_gpsr(
+    n_qubits: int, different_names: bool = True
+) -> QuantumCircuit:
     """Helper function to make an example circuit."""
 
     ham = Hamiltonian_general(n_qubits)
     ham_op = pyq.HamiltonianEvolution(ham, "t", qubit_support=tuple(range(n_qubits)))
+    param_names = ["theta" + str(i) for i in range(4)]
+    if not different_names:
+        param_names = random_parameter_names(param_names)
 
     ops = [
-        pyq.CRX(0, 1, "theta_0"),
+        pyq.CRX(0, 1, param_names[0]),
         pyq.X(1),
-        pyq.CRY(1, 2, "theta_1"),
+        pyq.CRY(1, 2, param_names[1]),
         ham_op,
-        pyq.CRX(1, 2, "theta_2"),
+        pyq.CRX(1, 2, param_names[2]),
         pyq.X(0),
-        pyq.CRY(0, 1, "theta_3"),
+        pyq.CRY(0, 1, param_names[3]),
         pyq.CNOT(0, 1),
     ]
 
@@ -99,7 +121,9 @@ def circuit_hamevo_tensor_gpsr(n_qubits: int) -> QuantumCircuit:
     return circ
 
 
-def circuit_hamevo_pauligen_gpsr(n_qubits: int) -> QuantumCircuit:
+def circuit_hamevo_pauligen_gpsr(
+    n_qubits: int, different_names: bool = True
+) -> QuantumCircuit:
     """Helper function to make an example circuit."""
 
     ham = random_pauli_hamiltonian(
@@ -107,14 +131,18 @@ def circuit_hamevo_pauligen_gpsr(n_qubits: int) -> QuantumCircuit:
     )[0]
     ham_op = pyq.HamiltonianEvolution(ham, "t", qubit_support=tuple(range(n_qubits)))
 
+    param_names = ["theta" + str(i) for i in range(4)]
+    if not different_names:
+        param_names = random_parameter_names(param_names)
+
     ops = [
-        pyq.CRX(0, 1, "theta_0"),
+        pyq.CRX(0, 1, param_names[0]),
         pyq.X(1),
-        pyq.CRY(1, 2, "theta_1"),
+        pyq.CRY(1, 2, param_names[1]),
         ham_op,
-        pyq.CRX(1, 2, "theta_2"),
+        pyq.CRX(1, 2, param_names[2]),
         pyq.X(0),
-        pyq.CRY(0, 1, "theta_3"),
+        pyq.CRY(0, 1, param_names[3]),
         pyq.CNOT(0, 1),
     ]
 
@@ -130,14 +158,16 @@ def circuit_hamevo_pauligen_gpsr(n_qubits: int) -> QuantumCircuit:
         (3, 1, circuit_hamevo_pauligen_gpsr),
     ],
 )
+@pytest.mark.parametrize("different_names", [False, True])
 def test_expectation_gpsr_hamevo(
     n_qubits: int,
     batch_size: int,
     circuit_fn: Callable,
+    different_names: bool,
     dtype: torch.dtype = torch.complex128,
 ) -> None:
     torch.manual_seed(42)
-    circ = circuit_fn(n_qubits).to(dtype)
+    circ = circuit_fn(n_qubits, different_names).to(dtype)
     obs = Observable(
         random_pauli_hamiltonian(
             n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
@@ -212,14 +242,16 @@ def test_expectation_gpsr_hamevo(
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+@pytest.mark.parametrize("different_names", [False, True])
 def test_expectation_gpsr(
     n_qubits: int,
     batch_size: int,
     circuit_fn: Callable,
     dtype: torch.dtype,
+    different_names: bool,
 ) -> None:
     torch.manual_seed(42)
-    circ = circuit_fn(n_qubits).to(dtype)
+    circ = circuit_fn(n_qubits, different_names).to(dtype)
     obs = Observable(
         random_pauli_hamiltonian(
             n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
@@ -327,7 +359,7 @@ def test_compatibility_gpsr(gate_type: str, sequence_circuit: bool) -> None:
         param_value = torch.pi / 2
         values = {"theta_0": torch.tensor([param_value], requires_grad=True)}
 
-    if gate_type != "":
+    if gate_type not in ("", "same"):
         with pytest.raises(ValueError):
             exp_gpsr = expectation(circ, state, values, obs, DiffMode.GPSR)
     else:

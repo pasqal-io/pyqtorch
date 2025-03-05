@@ -223,37 +223,61 @@ def test_adjoint_scale(dtype: torch.dtype, batch_size: int, n_qubits: int) -> No
 @pytest.mark.parametrize("batch_size", [1, 10])
 @pytest.mark.parametrize("op_obs", [pyq.Z, pyq.X, pyq.Y])
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+@pytest.mark.parametrize("different_names", [False, True])
 def test_all_diff_singlegap(
-    n_qubits: int, batch_size: int, op_obs: Primitive, dtype: torch.dtype
+    n_qubits: int,
+    batch_size: int,
+    op_obs: Primitive,
+    dtype: torch.dtype,
+    different_names: bool,
 ) -> None:
     name_angles = "theta"
+    dtype_val = COMPLEX_TO_REAL_DTYPES[dtype]
 
-    ops_rx = pyq.Sequence(
-        [pyq.RX(i, param_name=name_angles + "_x_" + str(i)) for i in range(n_qubits)]
-    )
-    ops_rz = pyq.Sequence(
-        [pyq.RZ(i, param_name=name_angles + "_z_" + str(i)) for i in range(n_qubits)]
-    )
+    if different_names:
+        ops_rx = pyq.Sequence(
+            [
+                pyq.RX(i, param_name=name_angles + "_x_" + str(i))
+                for i in range(n_qubits)
+            ]
+        )
+        ops_rz = pyq.Sequence(
+            [
+                pyq.RZ(i, param_name=name_angles + "_z_" + str(i))
+                for i in range(n_qubits)
+            ]
+        )
+        values = {
+            name_angles
+            + "_x_"
+            + str(i): torch.rand(1, dtype=dtype_val, requires_grad=True)
+            for i in range(n_qubits)
+        }
+        values.update(
+            {
+                name_angles
+                + "_z_"
+                + str(i): torch.rand(1, dtype=dtype_val, requires_grad=True)
+                for i in range(n_qubits)
+            }
+        )
+    else:
+        ops_rx = pyq.Sequence(
+            [pyq.RX(i, param_name=name_angles + "_x") for i in range(n_qubits)]
+        )
+        ops_rz = pyq.Sequence(
+            [pyq.RZ(i, param_name=name_angles + "_z") for i in range(n_qubits)]
+        )
+        values = {
+            name_angles + "_x": torch.rand(1, dtype=dtype_val, requires_grad=True),
+            name_angles + "_z": torch.rand(1, dtype=dtype_val, requires_grad=True),
+        }
     cnot = pyq.CNOT(1, 2)
     ops = [ops_rx, ops_rz, cnot]
 
     circ = pyq.QuantumCircuit(n_qubits, ops).to(dtype)
     obs = pyq.Observable([op_obs(i) for i in range(n_qubits)]).to(dtype)
     state = pyq.random_state(n_qubits, batch_size, dtype=dtype)
-
-    dtype_val = COMPLEX_TO_REAL_DTYPES[dtype]
-    values = {
-        name_angles + "_x_" + str(i): torch.rand(1, dtype=dtype_val, requires_grad=True)
-        for i in range(n_qubits)
-    }
-    values.update(
-        {
-            name_angles
-            + "_z_"
-            + str(i): torch.rand(1, dtype=dtype_val, requires_grad=True)
-            for i in range(n_qubits)
-        }
-    )
 
     exp_ad = expectation(circ, state, values, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values, obs, DiffMode.ADJOINT)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 
+import numpy as np
 import torch
 
 import pyqtorch.embed as pyq_em
@@ -145,3 +146,7 @@ def random_pauli_hamiltonian(
                     ),
                 )
     return Add(terms), param_list
+
+
+def random_parameter_names(names: list[str]) -> list[str]:
+    return np.random.choice(names, len(names), replace=True)

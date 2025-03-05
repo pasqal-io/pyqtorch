@@ -213,6 +213,7 @@ class QuantumOperation(torch.nn.Module):
         self,
         values: dict[str, Tensor] | Tensor | None = None,
         embedding: Embedding | None = None,
+        diagonal: bool = False,
     ) -> Tensor:
         """Get eigenvalues of the tensor of QuantumOperation.
 
@@ -224,7 +225,11 @@ class QuantumOperation(torch.nn.Module):
             Eigenvalues of the related tensor.
         """
         blockmat = self.tensor(values or dict(), embedding)
-        return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+        if len(blockmat.shape) == 3:
+            return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+        else:
+            # for diagonal cases
+            return blockmat
 
     @cached_property
     def spectral_gap(self) -> Tensor:

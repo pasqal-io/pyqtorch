@@ -141,14 +141,12 @@ class PSRExpectation(Function):
             Returns:
                 Expectation evaluation.
             """
-            return PSRExpectation.apply(
+            return ctx.expectation_method(
                 ctx.circuit,
                 ctx.state,
                 ctx.observable,
+                values,
                 ctx.embedding,
-                ctx.expectation_method,
-                values.keys(),
-                *values.values(),
             )
 
         def single_gap_shift(
@@ -273,18 +271,30 @@ class PSRExpectation(Function):
                 shift_prefac=shift_prefac,
             )
 
-        grads = {p: torch.zeros_like(v) for p, v in values.items()}
+        grads = {p: None for p in values.keys()}
+        # use a copy for handling repeated params with uuid
+        val_copy = values.copy()
 
-        def update_gradient(param_name: str, spectral_gap: Tensor, shift_prefac: float):
+        def update_gradient(
+            param_name: str, param_uuid: str, spectral_gap: Tensor, shift_prefac: float
+        ):
             """Update gradient of a parameter using PSR.
 
             Args:
                 param_name (str): Parameter name to compute gradient over.
+                param_uuid (str): Uuid of Parameter to help identify the computed gradient.
                 spectral_gap (Tensor): Spectral gap of the corresponding operation.
                 shift_prefac (float): Shift prefactor value for PSR shifts.
             """
-            if values[param_name].requires_grad:
-                grads[param_name] = vjp(param_name, spectral_gap, values, shift_prefac)
+            if val_copy[param_name].requires_grad:
+                val_copy.update({param_uuid: val_copy[param_name].clone()})
+                if grads[param_name] is None:
+                    grads[param_name] = vjp(
+                        param_uuid, spectral_gap, val_copy, shift_prefac
+                    )
+                else:
+                    grad_contrib = vjp(param_uuid, spectral_gap, val_copy, shift_prefac)
+                    grads[param_name] += grad_contrib.reshape(grads[param_name].shape)  # type: ignore[attr-defined]
 
         for op in ctx.circuit.flatten():
 
@@ -293,7 +303,9 @@ class PSRExpectation(Function):
             ):
                 factor = 1.0 if isinstance(op, Parametric) else 2.0
                 if len(op.spectral_gap) > 1:
-                    update_gradient(op.param_name, factor * op.spectral_gap, 0.5)
+                    update_gradient(
+                        op.param_name, op._param_uuid, factor * op.spectral_gap, 0.5
+                    )
                 else:
                     shift_factor = 1.0
                     # note the spectral gap can be empty
@@ -305,7 +317,10 @@ class PSRExpectation(Function):
                             else 1.0
                         )
                     update_gradient(
-                        op.param_name, factor * op.spectral_gap, shift_factor
+                        op.param_name,
+                        op._param_uuid,
+                        factor * op.spectral_gap,
+                        shift_factor,
                     )
 
         return (
@@ -352,8 +367,3 @@ def check_support_psr(circuit: QuantumCircuit):
                 param_names.append(op.time)
         else:
             continue
-
-    if len(param_names) > len(set(param_names)):
-        raise ValueError(
-            "PSR is not supported when using a same param_name in different operations."
-        )

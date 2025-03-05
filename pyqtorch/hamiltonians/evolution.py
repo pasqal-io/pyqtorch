@@ -5,6 +5,7 @@ from collections import OrderedDict
 from functools import cached_property
 from logging import getLogger
 from typing import Callable, Tuple, Union
+from uuid import uuid4
 
 import torch
 from torch import Tensor
@@ -258,6 +259,8 @@ class HamiltonianEvolution(Sequence):
             )
         self.noise = noise
 
+        self._param_uuid = str(uuid4())
+
     @property
     def generator(self) -> ModuleList:
         """Returns the operations making the generator.
@@ -507,7 +510,11 @@ class HamiltonianEvolution(Sequence):
             hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
 
             if isinstance(self.time, str):
-                time_evolution = values[self.time]
+                pname = self.time
+                # note: GPSR trick when the same param_name is used in many operations
+                if self._param_uuid in values.keys():
+                    pname = self._param_uuid
+                time_evolution = values[pname]
             elif isinstance(self.time, ConcretizedCallable):
                 time_evolution = self.time(values)
             else:
@@ -550,8 +557,12 @@ class HamiltonianEvolution(Sequence):
             values = embedding(values)
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
+        # note: GPSR trick when the same param_name is used in many operations
+        pname = self.param_name
+        if self._param_uuid in values.keys():
+            pname = self._param_uuid
         return finitediff(
             lambda t: evolve(hamiltonian, t, self.is_diagonal),
-            values[self.param_name].reshape(-1, 1),
+            values[pname].reshape(-1, 1),
             (0,),
         )
