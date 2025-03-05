@@ -282,7 +282,7 @@ class PSRExpectation(Function):
 
             Args:
                 param_name (str): Parameter name to compute gradient over.
-                param_uuid (str): Uuid of Parameter to hrlp compute gradient over.
+                param_uuid (str): Uuid of Parameter to help identify the computed gradient.
                 spectral_gap (Tensor): Spectral gap of the corresponding operation.
                 shift_prefac (float): Shift prefactor value for PSR shifts.
             """

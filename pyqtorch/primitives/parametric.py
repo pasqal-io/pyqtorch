@@ -78,7 +78,7 @@ class Parametric(QuantumOperation):
             values = values or dict()
             if embedding is not None:
                 values = embedding(values)
-            # note: trick for using GPSR with a same param_name used in many operations
+            # note: GPSR trick when the same param_name is used in many operations
             if self._param_uuid in values.keys():
                 return Parametric._expand_values(values[self._param_uuid])  # type: ignore[index]
             return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
