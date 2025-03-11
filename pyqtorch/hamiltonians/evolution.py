@@ -14,6 +14,7 @@ from torch.nn import ModuleList, ParameterDict
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
 from pyqtorch.composite import Scale
+from pyqtorch.decompose import DecomposeMode, decompose_mode_callable
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.noise import AnalogNoise
 from pyqtorch.primitives import Primitive
@@ -148,6 +149,7 @@ class HamiltonianEvolution(Sequence):
         solver: SolverType = SolverType.DP5_SE,
         use_sparse: bool = False,
         noise: list[Tensor] | AnalogNoise | None = None,
+        decompose_mode: DecomposeMode = DecomposeMode.NODECOMPOSE,
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -172,6 +174,7 @@ class HamiltonianEvolution(Sequence):
         self.duration = duration
         self.use_sparse = use_sparse
         self.is_diagonal = False
+        self.decompose_mode = decompose_mode
 
         if isinstance(duration, (str, float, Tensor)) or duration is None:
             self.duration = duration
@@ -210,7 +213,7 @@ class HamiltonianEvolution(Sequence):
             qubit_support = generator.qubit_support
 
             if is_parametric(generator):
-                generator = [generator]
+                generator = decompose_mode_callable[self.decompose_mode](generator)
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
                 # avoiding using dense tensor for diagonal generators
