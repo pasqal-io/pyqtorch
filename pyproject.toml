@@ -6,8 +6,8 @@ build-backend = "hatchling.build"
 name = "pyqtorch"
 description = "An efficient, large-scale emulator designed for quantum machine learning, seamlessly integrated with a PyTorch backend. Please refer to https://pyqtorch.readthedocs.io/en/latest/ for setup and usage info, along with the full documentation."
 readme = "README.md"
-version = "1.7.2"
-requires-python = ">=3.8,<3.13"
+version = "1.7.3"
+requires-python = ">=3.9"
 license = { text = "Apache 2.0" }
 keywords = ["quantum"]
 authors = [
@@ -39,8 +39,8 @@ classifiers=[
 # always specify a version for each package
 # to maintain consistency
 dependencies = [
+    "numpy",
     "torch",
-    "numpy"
 ]
 
 [tool.hatch.metadata]
@@ -63,7 +63,7 @@ dev = [
 ]
 testlibs = [
     "jax",
-    "qutip~=4.7.5",
+    "qutip",
     "jaxlib"
 ]
 
