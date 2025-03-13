@@ -63,7 +63,7 @@ dev = [
 ]
 testlibs = [
     "jax",
-    "qutip~=5.1.1",
+    "qutip",
     "jaxlib"
 ]
 
