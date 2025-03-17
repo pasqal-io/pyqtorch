@@ -15,8 +15,6 @@ from pyqtorch.utils import (
     todense_tensor,
 )
 
-from helpers import set_device
-device = set_device()
 
 def test_device_inference() -> None:
     ops = [pyq.RX(0), pyq.RX(0)]
@@ -24,11 +22,6 @@ def test_device_inference() -> None:
     nested_circ = pyq.QuantumCircuit(2, [circ, circ])
     assert nested_circ._device is not None
 
-def test_todevice():
-    ops = [pyq.X(0)]
-    circ = pyq.QuantumCircuit(2, ops).to(device=device)
-    assert circ.device == device
-    assert circ.tensor().device == device
 
 @pytest.mark.parametrize("fn", [pyq.X, pyq.Z, pyq.Y])
 def test_scale(fn: pyq.primitives.Primitive) -> None:

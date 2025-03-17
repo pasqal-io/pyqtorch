@@ -127,9 +127,11 @@ def test_digital_tensor(
 @pytest.mark.parametrize("use_full_support", [True, False])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 def test_param_tensor(
     n_qubits: int,
     batch_size: int,
+    dtype: torch.dtype,
     use_full_support: bool,
     use_permute: bool,
     use_dm: bool,
@@ -143,15 +145,16 @@ def test_param_tensor(
     for op in OPS_PARAM:
         supp = get_op_support(op, n_qubits)
         params = [f"th{i}" for i in range(op.n_params)]
-        op_concrete = op(*supp, *params)
+        op_concrete = op(*supp, *params).to(dtype=dtype)
         if op in OPS_DIAGONAL_PARAM:
             assert op_concrete.is_diagonal
-        psi_init = random_state(n_qubits)
+        psi_init = random_state(n_qubits, dtype=dtype)
         values = {param: torch.rand(batch_size) for param in params}
         if use_dm:
             psi_star = op_concrete(density_mat(psi_init), values)
         else:
             psi_star = op_concrete(psi_init, values)
+        assert psi_star.dtype == dtype
         full_support = tuple(range(n_qubits)) if use_full_support else None
         psi_expected = calc_mat_vec_wavefunction(
             op_concrete,
