@@ -94,8 +94,16 @@ def parametric_unitary(
     Returns:
         torch.Tensor: The exponentiation of P
     """
-    cos_t = torch.cos(theta * a).unsqueeze(0)
-    sin_t = torch.sin(theta * a).unsqueeze(0)
+    cos_t = (
+        torch.cos(theta * a)
+        .unsqueeze(0)
+        .to(dtype=identity_mat.dtype, device=identity_mat.device)
+    )
+    sin_t = (
+        torch.sin(theta * a)
+        .unsqueeze(0)
+        .to(dtype=identity_mat.dtype, device=identity_mat.device)
+    )
     batch_imat = identity_mat.unsqueeze(-1)
     batch_operation_mat = P.unsqueeze(-1)
     if not diagonal:

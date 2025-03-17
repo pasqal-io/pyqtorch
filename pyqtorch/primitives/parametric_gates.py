@@ -572,10 +572,24 @@ class U(Parametric):
         )
         batch_size = len(theta)
 
-        t_plus = torch.exp(-1j * (phi + omega) / 2)
-        t_minus = torch.exp(-1j * (phi - omega) / 2)
-        sin_t = torch.sin(theta / 2).unsqueeze(0).unsqueeze(1).repeat((2, 2, 1))
-        cos_t = torch.cos(theta / 2).unsqueeze(0).unsqueeze(1).repeat((2, 2, 1))
+        dtype = self.a.dtype
+        device = self.a.device
+        t_plus = torch.exp(-1j * (phi + omega) / 2).to(dtype=dtype)
+        t_minus = torch.exp(-1j * (phi - omega) / 2).to(dtype=dtype)
+        sin_t = (
+            torch.sin(theta / 2)
+            .unsqueeze(0)
+            .unsqueeze(1)
+            .repeat((2, 2, 1))
+            .to(dtype=dtype, device=device)
+        )
+        cos_t = (
+            torch.cos(theta / 2)
+            .unsqueeze(0)
+            .unsqueeze(1)
+            .repeat((2, 2, 1))
+            .to(dtype=dtype, device=device)
+        )
 
         a = self.a.repeat(1, 1, batch_size) * cos_t * t_plus
         b = self.b.repeat(1, 1, batch_size) * sin_t * torch.conj(t_minus)
