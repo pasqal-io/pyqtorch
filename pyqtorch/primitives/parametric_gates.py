@@ -522,16 +522,20 @@ class U(Parametric):
         super().__init__("X", target, param_name="", noise=noise)
 
         self.register_buffer(
-            "a", torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+            "proj00",
+            torch.tensor([[1, 0], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2),
         )
         self.register_buffer(
-            "b", torch.tensor([[0, 1], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+            "proj01",
+            torch.tensor([[0, 1], [0, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2),
         )
         self.register_buffer(
-            "c", torch.tensor([[0, 0], [1, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+            "proj10",
+            torch.tensor([[0, 0], [1, 0]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2),
         )
         self.register_buffer(
-            "d", torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2)
+            "proj11",
+            torch.tensor([[0, 0], [0, 1]], dtype=DEFAULT_MATRIX_DTYPE).unsqueeze(2),
         )
 
     @cached_property
@@ -572,8 +576,8 @@ class U(Parametric):
         )
         batch_size = len(theta)
 
-        dtype = self.a.dtype
-        device = self.a.device
+        dtype = self.proj00.dtype
+        device = self.proj00.device
         t_plus = torch.exp(-1j * (phi + omega) / 2).to(dtype=dtype)
         t_minus = torch.exp(-1j * (phi - omega) / 2).to(dtype=dtype)
         sin_t = (
@@ -591,11 +595,11 @@ class U(Parametric):
             .to(dtype=dtype, device=device)
         )
 
-        a = self.a.repeat(1, 1, batch_size) * cos_t * t_plus
-        b = self.b.repeat(1, 1, batch_size) * sin_t * torch.conj(t_minus)
-        c = self.c.repeat(1, 1, batch_size) * sin_t * t_minus
-        d = self.d.repeat(1, 1, batch_size) * cos_t * torch.conj(t_plus)
-        return a - b + c + d
+        proj00 = self.proj00.repeat(1, 1, batch_size) * cos_t * t_plus
+        proj01 = self.proj01.repeat(1, 1, batch_size) * sin_t * torch.conj(t_minus)
+        proj10 = self.proj10.repeat(1, 1, batch_size) * sin_t * t_minus
+        proj11 = self.proj11.repeat(1, 1, batch_size) * cos_t * torch.conj(t_plus)
+        return proj00 - proj01 + proj10 + proj11
 
     def jacobian(
         self,
