@@ -316,16 +316,21 @@ def test_dagger_nqubit() -> None:
             assert torch.allclose(daggered_back, state)
 
 
-def test_U() -> None:
+@pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
+def test_U(dtype: torch.dtype) -> None:
     n_qubits = torch.randint(low=1, high=8, size=(1,)).item()
     target = random.choice([i for i in range(n_qubits)])
     params = ["phi", "theta", "omega"]
-    u = pyq.U(target, phi=params[0], theta=params[1], omega=params[2])
+    u = pyq.U(target, phi=params[0], theta=params[1], omega=params[2]).to(dtype=dtype)
     values = {param: torch.rand(1) for param in params}
-    state = pyq.random_state(n_qubits)
+    state = pyq.random_state(n_qubits, dtype=dtype)
+    fwd_u = u(state, values)
+    circ_u = pyq.QuantumCircuit(n_qubits, u.digital_decomposition()).to(dtype=dtype)
+    fwd_circ_u = circ_u(state, values)
+    assert fwd_u.dtype == fwd_circ_u.dtype == dtype
     assert torch.allclose(
-        u(state, values),
-        pyq.QuantumCircuit(n_qubits, u.digital_decomposition())(state, values),
+        fwd_u,
+        fwd_circ_u,
     )
     assert u.spectral_gap == 2.0
 
