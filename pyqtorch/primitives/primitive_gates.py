@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import torch
+from torch import Tensor
+
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.noise import DigitalNoiseProtocol
 from pyqtorch.quantum_operation import Support
 from pyqtorch.utils import (
+    DensityMatrix,
     product_state,
     qubit_support_as_tuple,
 )
@@ -18,6 +23,41 @@ class X(Primitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["X"], target, noise=noise)
+
+    def _permute_state_vector(self, state: Tensor) -> Tensor:
+        n_qubits = len(state.shape) - 1
+        perm = list(range(n_qubits + 1))
+        target_qubit = self.target[0]
+        perm[0], perm[target_qubit] = perm[target_qubit], perm[0]
+        transposed_state = state.permute(perm)
+
+        # Transpose the state
+        transposed_state = state.permute(perm)
+
+        # Reshape to separate the target qubit
+        reshaped_state = transposed_state.reshape(2, -1)
+
+        # Swap the rows to implement X gate
+        swapped_state = torch.flip(reshaped_state, dims=[0])
+
+        # Reshape back to original structure
+        final_state = swapped_state.reshape(state.shape)
+
+        # Transpose back to original order
+        inverse_perm = [perm.index(i) for i in range(n_qubits + 1)]
+        return final_state.permute(inverse_perm)
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(state, DensityMatrix):
+            return super()._forward(state, values, embedding)
+        else:
+            return self._permute_state_vector(state)
 
 
 class Y(Primitive):
