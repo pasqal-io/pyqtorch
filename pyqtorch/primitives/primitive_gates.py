@@ -148,12 +148,12 @@ class Z(Primitive):
         phase_mask = torch.ones_like(
             reshaped_state, dtype=state.dtype, device=state.device
         )
-        phase_mask[1, :] = -1
+        phase_mask[1, :] = self.operation[1, 1]
 
         # Apply phase mask
-        z_state = reshaped_state * phase_mask
+        phase_state = reshaped_state * phase_mask
 
-        return mutate_revert_modified(z_state, state.shape, perm)
+        return mutate_revert_modified(phase_state, state.shape, perm)
 
     def _forward(
         self,
@@ -235,6 +235,32 @@ class T(Primitive):
     ):
         super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
 
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+        perm, reshaped_state = mutate_separate_target(state, self.target[0])
+
+        # Create a phase mask
+        phase_mask = torch.ones_like(
+            reshaped_state, dtype=state.dtype, device=state.device
+        )
+        phase_mask[1, :] = self.operation[1, 1]
+
+        # Apply phase mask
+        phase_state = reshaped_state * phase_mask
+
+        return mutate_revert_modified(phase_state, state.shape, perm)
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(state, DensityMatrix):
+            return super()._forward(state, values, embedding)
+        else:
+            return self._mutate_state_vector(state)
+
 
 class S(Primitive):
     def __init__(
@@ -246,6 +272,32 @@ class S(Primitive):
             OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"], noise=noise
         )
 
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+        perm, reshaped_state = mutate_separate_target(state, self.target[0])
+
+        # Create a phase mask
+        phase_mask = torch.ones_like(
+            reshaped_state, dtype=state.dtype, device=state.device
+        )
+        phase_mask[1, :] = self.operation[1, 1]
+
+        # Apply phase mask
+        phase_state = reshaped_state * phase_mask
+
+        return mutate_revert_modified(phase_state, state.shape, perm)
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(state, DensityMatrix):
+            return super()._forward(state, values, embedding)
+        else:
+            return self._mutate_state_vector(state)
+
 
 class SDagger(Primitive):
     def __init__(
@@ -256,6 +308,32 @@ class SDagger(Primitive):
         super().__init__(
             OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"], noise=noise
         )
+
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+        perm, reshaped_state = mutate_separate_target(state, self.target[0])
+
+        # Create a phase mask
+        phase_mask = torch.ones_like(
+            reshaped_state, dtype=state.dtype, device=state.device
+        )
+        phase_mask[1, :] = self.operation[1, 1]
+
+        # Apply phase mask
+        phase_state = reshaped_state * phase_mask
+
+        return mutate_revert_modified(phase_state, state.shape, perm)
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(state, DensityMatrix):
+            return super()._forward(state, values, embedding)
+        else:
+            return self._mutate_state_vector(state)
 
 
 class Projector(Primitive):
