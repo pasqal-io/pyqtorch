@@ -40,8 +40,8 @@ def test_identity() -> None:
     assert torch.allclose(product_state("1"), pyq.I(0)(product_state("1")))
 
 
-@pytest.mark.parametrize("op", [pyq.X, pyq.Z])
-def test_mutation(op: pyq.X | pyq.Z) -> None:
+@pytest.mark.parametrize("op", [pyq.X, pyq.Z, pyq.Y])
+def test_mutation(op: Primitive) -> None:
     # checking mutation is equivalent to the original forward method
     n_qubits = random.randint(1, 5)
     target = random.randint(0, n_qubits - 1)

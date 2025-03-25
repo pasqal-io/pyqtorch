@@ -103,6 +103,34 @@ class Y(Primitive):
     ):
         super().__init__(OPERATIONS_DICT["Y"], target, noise=noise)
 
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+
+        perm, reshaped_state = mutate_separate_target(state, self.target[0])
+
+        y_state = torch.zeros_like(
+            reshaped_state, dtype=state.dtype, device=state.device
+        )
+
+        # Y gate:
+        # |0⟩ -> i|1⟩
+        # |1⟩ -> -i|0⟩
+        y_state[0, :] = 1.0j * reshaped_state[1, :]  # i|1⟩
+        y_state[1, :] = -1.0j * reshaped_state[0, :]  # -i|0⟩
+
+        return mutate_revert_modified(y_state, state.shape, perm)
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(state, DensityMatrix):
+            return super()._forward(state, values, embedding)
+        else:
+            return self._mutate_state_vector(state)
+
 
 class Z(Primitive):
     def __init__(
@@ -117,7 +145,9 @@ class Z(Primitive):
 
         # Create a phase mask
         # Z gate multiplies |1⟩ state by -1
-        phase_mask = torch.ones_like(reshaped_state, dtype=reshaped_state.dtype)
+        phase_mask = torch.ones_like(
+            reshaped_state, dtype=state.dtype, device=state.device
+        )
         phase_mask[1, :] = -1
 
         # Apply phase mask
