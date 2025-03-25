@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 import torch
 from torch import Tensor
 
@@ -65,22 +67,29 @@ def mutate_revert_modified(
     return final_state.permute(inverse_perm)
 
 
-class X(Primitive):
+class MutatePrimitive(Primitive):
+    """Primitive with a mutation operation via a callable `modifier`
+    acting directly on the input state.
+    """
+
     def __init__(
         self,
+        operation: Tensor,
         target: int,
+        generator: Tensor | None = None,
         noise: DigitalNoiseProtocol | None = None,
+        modifier: Callable = lambda s: s,
     ):
-        super().__init__(OPERATIONS_DICT["X"], target, noise=noise)
+        super().__init__(operation, target, generator=generator, noise=noise)
+        self.modifier: Callable = modifier
 
     def _mutate_state_vector(self, state: Tensor) -> Tensor:
-
         perm, reshaped_state = mutate_separate_target(state, self.target[0])
 
         # Swap the rows to implement X gate
-        swapped_state = torch.flip(reshaped_state, dims=[0])
+        modified_state = self.modifier(reshaped_state)
 
-        return mutate_revert_modified(swapped_state, state.shape, perm)
+        return mutate_revert_modified(modified_state, state.shape, perm)
 
     def _forward(
         self,
@@ -93,6 +102,42 @@ class X(Primitive):
             return super()._forward(state, values, embedding)
         else:
             return self._mutate_state_vector(state)
+
+
+class Phase1MutatePrimitive(MutatePrimitive):
+    """Primitive with a mutation operation where we multiply by a phase given
+    by the matrix element for the state 1.
+    """
+
+    def __init__(
+        self,
+        operation: Tensor,
+        target: int,
+        generator: Tensor | None = None,
+        noise: DigitalNoiseProtocol | None = None,
+    ):
+        super().__init__(operation, target, generator=generator, noise=noise)
+        self.modifier = self.apphy_phase1
+
+    def apphy_phase1(self, state) -> Tensor:
+        phase_mask = torch.ones_like(state, dtype=state.dtype, device=state.device)
+        phase_mask[1, :] = self.operation[1, 1]
+        phase_state = state * phase_mask
+        return phase_state
+
+
+class X(MutatePrimitive):
+    def __init__(
+        self,
+        target: int,
+        noise: DigitalNoiseProtocol | None = None,
+    ):
+        super().__init__(
+            OPERATIONS_DICT["X"],
+            target,
+            noise=noise,
+            modifier=lambda s: torch.flip(s, dims=[0]),
+        )
 
 
 class Y(Primitive):
@@ -119,53 +164,14 @@ class Y(Primitive):
 
         return mutate_revert_modified(y_state, state.shape, perm)
 
-    # def _forward(
-    #     self,
-    #     state: Tensor,
-    #     values: dict[str, Tensor] | Tensor | None = None,
-    #     embedding: Embedding | None = None,
-    # ) -> Tensor:
-    #     values = values or dict()
-    #     if isinstance(state, DensityMatrix):
-    #         return super()._forward(state, values, embedding)
-    #     else:
-    #         return self._mutate_state_vector(state)
 
-
-class Z(Primitive):
+class Z(Phase1MutatePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
-
-    def _mutate_state_vector(self, state: Tensor) -> Tensor:
-        perm, reshaped_state = mutate_separate_target(state, self.target[0])
-
-        # Create a phase mask
-        # Z gate multiplies |1⟩ state by -1
-        phase_mask = torch.ones_like(
-            reshaped_state, dtype=state.dtype, device=state.device
-        )
-        phase_mask[1, :] = self.operation[1, 1]
-
-        # Apply phase mask
-        phase_state = reshaped_state * phase_mask
-
-        return mutate_revert_modified(phase_state, state.shape, perm)
-
-    def _forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | Tensor | None = None,
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        values = values or dict()
-        if isinstance(state, DensityMatrix):
-            return super()._forward(state, values, embedding)
-        else:
-            return self._mutate_state_vector(state)
 
 
 class I(Primitive):  # noqa: E742
@@ -214,20 +220,8 @@ class H(Primitive):
 
         return mutate_revert_modified(h_state, state.shape, perm)
 
-    # def _forward(
-    #     self,
-    #     state: Tensor,
-    #     values: dict[str, Tensor] | Tensor | None = None,
-    #     embedding: Embedding | None = None,
-    # ) -> Tensor:
-    #     values = values or dict()
-    #     if isinstance(state, DensityMatrix):
-    #         return super()._forward(state, values, embedding)
-    #     else:
-    #         return self._mutate_state_vector(state)
 
-
-class T(Primitive):
+class T(Phase1MutatePrimitive):
     def __init__(
         self,
         target: int,
@@ -235,105 +229,33 @@ class T(Primitive):
     ):
         super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
 
-    def _mutate_state_vector(self, state: Tensor) -> Tensor:
-        perm, reshaped_state = mutate_separate_target(state, self.target[0])
 
-        # Create a phase mask
-        phase_mask = torch.ones_like(
-            reshaped_state, dtype=state.dtype, device=state.device
-        )
-        phase_mask[1, :] = self.operation[1, 1]
-
-        # Apply phase mask
-        phase_state = reshaped_state * phase_mask
-
-        return mutate_revert_modified(phase_state, state.shape, perm)
-
-    def _forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | Tensor | None = None,
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        values = values or dict()
-        if isinstance(state, DensityMatrix):
-            return super()._forward(state, values, embedding)
-        else:
-            return self._mutate_state_vector(state)
-
-
-class S(Primitive):
+class S(Phase1MutatePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(
-            OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"], noise=noise
+            OPERATIONS_DICT["S"],
+            target,
+            generator=0.5 * OPERATIONS_DICT["Z"],
+            noise=noise,
         )
 
-    def _mutate_state_vector(self, state: Tensor) -> Tensor:
-        perm, reshaped_state = mutate_separate_target(state, self.target[0])
 
-        # Create a phase mask
-        phase_mask = torch.ones_like(
-            reshaped_state, dtype=state.dtype, device=state.device
-        )
-        phase_mask[1, :] = self.operation[1, 1]
-
-        # Apply phase mask
-        phase_state = reshaped_state * phase_mask
-
-        return mutate_revert_modified(phase_state, state.shape, perm)
-
-    def _forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | Tensor | None = None,
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        values = values or dict()
-        if isinstance(state, DensityMatrix):
-            return super()._forward(state, values, embedding)
-        else:
-            return self._mutate_state_vector(state)
-
-
-class SDagger(Primitive):
+class SDagger(Phase1MutatePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(
-            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"], noise=noise
+            OPERATIONS_DICT["SDAGGER"],
+            target,
+            generator=-0.5 * OPERATIONS_DICT["Z"],
+            noise=noise,
         )
-
-    def _mutate_state_vector(self, state: Tensor) -> Tensor:
-        perm, reshaped_state = mutate_separate_target(state, self.target[0])
-
-        # Create a phase mask
-        phase_mask = torch.ones_like(
-            reshaped_state, dtype=state.dtype, device=state.device
-        )
-        phase_mask[1, :] = self.operation[1, 1]
-
-        # Apply phase mask
-        phase_state = reshaped_state * phase_mask
-
-        return mutate_revert_modified(phase_state, state.shape, perm)
-
-    def _forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | Tensor | None = None,
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        values = values or dict()
-        if isinstance(state, DensityMatrix):
-            return super()._forward(state, values, embedding)
-        else:
-            return self._mutate_state_vector(state)
 
 
 class Projector(Primitive):
