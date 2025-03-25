@@ -119,17 +119,17 @@ class Y(Primitive):
 
         return mutate_revert_modified(y_state, state.shape, perm)
 
-    def _forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | Tensor | None = None,
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        values = values or dict()
-        if isinstance(state, DensityMatrix):
-            return super()._forward(state, values, embedding)
-        else:
-            return self._mutate_state_vector(state)
+    # def _forward(
+    #     self,
+    #     state: Tensor,
+    #     values: dict[str, Tensor] | Tensor | None = None,
+    #     embedding: Embedding | None = None,
+    # ) -> Tensor:
+    #     values = values or dict()
+    #     if isinstance(state, DensityMatrix):
+    #         return super()._forward(state, values, embedding)
+    #     else:
+    #         return self._mutate_state_vector(state)
 
 
 class Z(Primitive):
@@ -192,6 +192,39 @@ class H(Primitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
+
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+
+        perm, reshaped_state = mutate_separate_target(state, self.target[0])
+
+        h_state = torch.zeros_like(
+            reshaped_state, dtype=state.dtype, device=state.device
+        )
+        norm = 1.0 / torch.sqrt(
+            torch.tensor(2.0, dtype=state.dtype, device=state.device)
+        )
+        # Hadamard gate transformation:
+        # |0⟩ -> 1/√2 (|0⟩ + |1⟩)
+        # |1⟩ -> 1/√2 (|0⟩ - |1⟩)
+
+        # Compute superposition for each column (representing other qubits' states)
+        for col in range(reshaped_state.shape[1]):
+            h_state[0, col] = norm * (reshaped_state[0, col] + reshaped_state[1, col])
+            h_state[1, col] = norm * (reshaped_state[0, col] - reshaped_state[1, col])
+
+        return mutate_revert_modified(h_state, state.shape, perm)
+
+    # def _forward(
+    #     self,
+    #     state: Tensor,
+    #     values: dict[str, Tensor] | Tensor | None = None,
+    #     embedding: Embedding | None = None,
+    # ) -> Tensor:
+    #     values = values or dict()
+    #     if isinstance(state, DensityMatrix):
+    #         return super()._forward(state, values, embedding)
+    #     else:
+    #         return self._mutate_state_vector(state)
 
 
 class T(Primitive):
