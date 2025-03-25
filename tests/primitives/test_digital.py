@@ -18,6 +18,7 @@ from pyqtorch.primitives import Parametric, Primitive
 from pyqtorch.utils import (
     ATOL,
     product_state,
+    random_state,
 )
 
 state_000 = product_state("000")
@@ -37,6 +38,17 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 def test_identity() -> None:
     assert torch.allclose(product_state("0"), pyq.I(0)(product_state("0"), None))
     assert torch.allclose(product_state("1"), pyq.I(0)(product_state("1")))
+
+
+@pytest.mark.parametrize("op", [pyq.X, pyq.Z])
+def test_mutation(op: pyq.X | pyq.Z) -> None:
+    # checking mutation is equivalent to the original forward method
+    n_qubits = random.randint(1, 5)
+    target = random.randint(0, n_qubits - 1)
+    state = random_state(n_qubits)
+    gate = op(target)
+    primitive_op = Primitive(gate.operation, qubit_support=gate.qubit_support)
+    torch.allclose(gate(state), primitive_op(state))
 
 
 def test_N() -> None:

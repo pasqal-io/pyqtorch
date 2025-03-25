@@ -16,6 +16,55 @@ from pyqtorch.utils import (
 from .primitive import ControlledPrimitive, Primitive
 
 
+def mutate_separate_target(
+    state: Tensor, target_qubit: int
+) -> tuple[list[int], Tensor]:
+    """Create a tensor separating the target components
+    for a single-qubit gate for mutating an input state-vector.
+
+    Args:
+        state (Tensor): Input state.
+        target_qubit (int): Target index.
+
+    Returns:
+        tuple[int list[int], Tensor]: The permutation indices with an intermediate state
+            with separated target qubit.
+    """
+    n_qubits = len(state.shape) - 1
+    perm = list(range(n_qubits + 1))
+    perm[0], perm[target_qubit] = perm[target_qubit], perm[0]
+    transposed_state = state.permute(perm)
+
+    # Transpose the state
+    transposed_state = state.permute(perm)
+
+    # Reshape to separate the target qubit
+    reshaped_state = transposed_state.reshape(2, -1)
+    return perm, reshaped_state
+
+
+def mutate_revert_modified(
+    state: Tensor, original_shape: tuple[int], perm: list[int]
+) -> Tensor:
+    """After mutating a state given a single qubit gate, we revert back the new state
+    to correspond to the `original_shape`.
+
+    Args:
+        state (Tensor): modified state by operation.
+        original_shape (tuple[int]): original shape for reshapping.
+        perm (list[int]): Permutation indices.
+
+    Returns:
+        Tensor: Mutated state.
+    """
+    # Reshape back to original structure
+    final_state = state.reshape(original_shape)
+
+    # Transpose back to original order
+    inverse_perm = [perm.index(i) for i in range(len(perm))]
+    return final_state.permute(inverse_perm)
+
+
 class X(Primitive):
     def __init__(
         self,
@@ -24,28 +73,14 @@ class X(Primitive):
     ):
         super().__init__(OPERATIONS_DICT["X"], target, noise=noise)
 
-    def _permute_state_vector(self, state: Tensor) -> Tensor:
-        n_qubits = len(state.shape) - 1
-        perm = list(range(n_qubits + 1))
-        target_qubit = self.target[0]
-        perm[0], perm[target_qubit] = perm[target_qubit], perm[0]
-        transposed_state = state.permute(perm)
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
 
-        # Transpose the state
-        transposed_state = state.permute(perm)
-
-        # Reshape to separate the target qubit
-        reshaped_state = transposed_state.reshape(2, -1)
+        perm, reshaped_state = mutate_separate_target(state, self.target[0])
 
         # Swap the rows to implement X gate
         swapped_state = torch.flip(reshaped_state, dims=[0])
 
-        # Reshape back to original structure
-        final_state = swapped_state.reshape(state.shape)
-
-        # Transpose back to original order
-        inverse_perm = [perm.index(i) for i in range(n_qubits + 1)]
-        return final_state.permute(inverse_perm)
+        return mutate_revert_modified(swapped_state, state.shape, perm)
 
     def _forward(
         self,
@@ -57,7 +92,7 @@ class X(Primitive):
         if isinstance(state, DensityMatrix):
             return super()._forward(state, values, embedding)
         else:
-            return self._permute_state_vector(state)
+            return self._mutate_state_vector(state)
 
 
 class Y(Primitive):
@@ -77,6 +112,31 @@ class Z(Primitive):
     ):
         super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
 
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+        perm, reshaped_state = mutate_separate_target(state, self.target[0])
+
+        # Create a phase mask
+        # Z gate multiplies |1⟩ state by -1
+        phase_mask = torch.ones_like(reshaped_state, dtype=reshaped_state.dtype)
+        phase_mask[1, :] = -1
+
+        # Apply phase mask
+        z_state = reshaped_state * phase_mask
+
+        return mutate_revert_modified(z_state, state.shape, perm)
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(state, DensityMatrix):
+            return super()._forward(state, values, embedding)
+        else:
+            return self._mutate_state_vector(state)
+
 
 class I(Primitive):  # noqa: E742
     def __init__(
@@ -85,6 +145,14 @@ class I(Primitive):  # noqa: E742
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["I"], target, noise=noise)
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        return state
 
 
 class H(Primitive):
