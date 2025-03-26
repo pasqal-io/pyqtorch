@@ -140,38 +140,25 @@ class X(MutatePrimitive):
         )
 
 
-class Y(Primitive):
+class Y(MutatePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["Y"], target, noise=noise)
+        self.modifier = self._apply_phases
 
-    def _mutate_state_vector(self, state: Tensor) -> Tensor:
-        perm, reshaped_state = mutate_separate_target(state, self.target[0])
-
-        y_state = torch.zeros_like(reshaped_state)
+    def _apply_phases(self, state: Tensor) -> Tensor:
+        y_state = torch.zeros_like(state)
 
         # Y gate:
         # |0⟩ -> i|1⟩
         # |1⟩ -> -i|0⟩
-        y_state[0, :] = self.operation[0, 1] * reshaped_state[1, :]  # i|1⟩
-        y_state[1, :] = self.operation[1, 0] * reshaped_state[0, :]  # -i|0⟩
+        y_state[0, :] = self.operation[0, 1] * state[1, :]  # i|1⟩
+        y_state[1, :] = self.operation[1, 0] * state[0, :]  # -i|0⟩
 
-        return mutate_revert_modified(y_state, state.shape, perm)
-
-    def _forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | Tensor | None = None,
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        values = values or dict()
-        if isinstance(state, DensityMatrix):
-            return super()._forward(state, values, embedding)
-        else:
-            return self._mutate_state_vector(state)
+        return y_state
 
 
 class Z(Phase1MutatePrimitive):
