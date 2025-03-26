@@ -186,24 +186,35 @@ class I(Primitive):  # noqa: E742
         return state
 
 
-class H(MutatePrimitive):
+class H(Primitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
-        self.modifier = self._apply_transformation
 
-    def _apply_transformation(self, state: Tensor) -> Tensor:
-        h_state = torch.zeros_like(state, dtype=state.dtype, device=state.device)
-        norm = 1.0 / torch.sqrt(
-            torch.tensor(2.0, dtype=state.dtype, device=state.device)
-        )
-        for col in range(state.shape[1]):
-            h_state[0, col] = norm * (state[0, col] + state[1, col])
-            h_state[1, col] = norm * (state[0, col] - state[1, col])
-        return h_state
+
+# mutated H possible but too slow
+
+# class H(MutatePrimitive):
+#     def __init__(
+#         self,
+#         target: int,
+#         noise: DigitalNoiseProtocol | None = None,
+#     ):
+#         super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
+#         self.modifier = self._apply_transformation
+
+#     def _apply_transformation(self, state: Tensor) -> Tensor:
+#         h_state = torch.zeros_like(state, dtype=state.dtype, device=state.device)
+#         norm = 1.0 / torch.sqrt(
+#             torch.tensor(2.0, dtype=state.dtype, device=state.device)
+#         )
+#         for col in range(state.shape[1]):
+#             h_state[0, col] = norm * (state[0, col] + state[1, col])
+#             h_state[1, col] = norm * (state[0, col] - state[1, col])
+#         return h_state
 
 
 class T(Phase1MutatePrimitive):
