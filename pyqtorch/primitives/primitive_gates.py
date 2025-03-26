@@ -149,20 +149,29 @@ class Y(Primitive):
         super().__init__(OPERATIONS_DICT["Y"], target, noise=noise)
 
     def _mutate_state_vector(self, state: Tensor) -> Tensor:
-
         perm, reshaped_state = mutate_separate_target(state, self.target[0])
 
-        y_state = torch.zeros_like(
-            reshaped_state, dtype=state.dtype, device=state.device
-        )
+        y_state = torch.zeros_like(reshaped_state)
 
         # Y gate:
         # |0⟩ -> i|1⟩
         # |1⟩ -> -i|0⟩
-        y_state[0, :] = 1.0j * reshaped_state[1, :]  # i|1⟩
-        y_state[1, :] = -1.0j * reshaped_state[0, :]  # -i|0⟩
+        y_state[0, :] = self.operation[0, 1] * reshaped_state[1, :]  # i|1⟩
+        y_state[1, :] = self.operation[1, 0] * reshaped_state[0, :]  # -i|0⟩
 
         return mutate_revert_modified(y_state, state.shape, perm)
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(state, DensityMatrix):
+            return super()._forward(state, values, embedding)
+        else:
+            return self._mutate_state_vector(state)
 
 
 class Z(Phase1MutatePrimitive):
