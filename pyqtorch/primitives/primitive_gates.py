@@ -66,7 +66,7 @@ def mutate_revert_modified(
     return state.permute(inverse_perm)
 
 
-class MutatePrimitive(Primitive):
+class MutablePrimitive(Primitive):
     """Primitive with a mutation operation via a callable `modifier`
     acting directly on the input state.
 
@@ -106,7 +106,7 @@ class MutatePrimitive(Primitive):
             return self._mutate_state_vector(state)
 
 
-class Phase1MutatePrimitive(MutatePrimitive):
+class PhaseMutablePrimitive(MutablePrimitive):
     """Primitive with a mutation operation where we multiply by a phase given
     by the matrix element for the state 1.
     """
@@ -128,7 +128,7 @@ class Phase1MutatePrimitive(MutatePrimitive):
         return phase_state
 
 
-class X(MutatePrimitive):
+class X(MutablePrimitive):
     def __init__(
         self,
         target: int,
@@ -142,7 +142,7 @@ class X(MutatePrimitive):
         )
 
 
-class Y(MutatePrimitive):
+class Y(MutablePrimitive):
     def __init__(
         self,
         target: int,
@@ -163,7 +163,7 @@ class Y(MutatePrimitive):
         return y_state
 
 
-class Z(Phase1MutatePrimitive):
+class Z(PhaseMutablePrimitive):
     def __init__(
         self,
         target: int,
@@ -198,7 +198,7 @@ class H(Primitive):
         super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
 
 
-class T(Phase1MutatePrimitive):
+class T(PhaseMutablePrimitive):
     def __init__(
         self,
         target: int,
@@ -207,7 +207,7 @@ class T(Phase1MutatePrimitive):
         super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
 
 
-class S(Phase1MutatePrimitive):
+class S(PhaseMutablePrimitive):
     def __init__(
         self,
         target: int,
@@ -221,7 +221,7 @@ class S(Phase1MutatePrimitive):
         )
 
 
-class SDagger(Phase1MutatePrimitive):
+class SDagger(PhaseMutablePrimitive):
     def __init__(
         self,
         target: int,
