@@ -37,11 +37,11 @@ def mutate_separate_target(
     perm[0], perm[target_qubit] = perm[target_qubit], perm[0]
 
     # Transpose the state
-    transposed_state = state.permute(perm)
+    state = state.permute(perm)
 
     # Reshape to separate the target qubit
-    reshaped_state = transposed_state.reshape(2, -1)
-    return perm, reshaped_state
+    state = state.reshape(2, -1)
+    return perm, state
 
 
 def mutate_revert_modified(
@@ -59,11 +59,11 @@ def mutate_revert_modified(
         Tensor: Mutated state.
     """
     # Reshape back to original structure
-    final_state = state.reshape(original_shape)
+    state = state.reshape(original_shape)
 
     # Transpose back to original order
     inverse_perm = [perm.index(i) for i in range(len(perm))]
-    return final_state.permute(inverse_perm)
+    return state.permute(inverse_perm)
 
 
 class MutatePrimitive(Primitive):
