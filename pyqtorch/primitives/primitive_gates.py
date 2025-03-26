@@ -35,7 +35,6 @@ def mutate_separate_target(
     n_qubits = len(state.shape) - 1
     perm = list(range(n_qubits + 1))
     perm[0], perm[target_qubit] = perm[target_qubit], perm[0]
-    transposed_state = state.permute(perm)
 
     # Transpose the state
     transposed_state = state.permute(perm)
