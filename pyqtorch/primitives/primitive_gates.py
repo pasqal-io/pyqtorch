@@ -69,6 +69,8 @@ def mutate_revert_modified(
 class MutatePrimitive(Primitive):
     """Primitive with a mutation operation via a callable `modifier`
     acting directly on the input state.
+
+    Reference: https://arxiv.org/pdf/2303.01493
     """
 
     def __init__(
