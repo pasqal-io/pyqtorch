@@ -83,12 +83,13 @@ class MutatePrimitive(Primitive):
         self.modifier: Callable = modifier
 
     def _mutate_state_vector(self, state: Tensor) -> Tensor:
-        perm, reshaped_state = mutate_separate_target(state, self.target[0])
+        state_shape = state.shape
+        perm, state = mutate_separate_target(state, self.target[0])
 
         # Swap the rows to implement X gate
-        modified_state = self.modifier(reshaped_state)
+        state = self.modifier(state)
 
-        return mutate_revert_modified(modified_state, state.shape, perm)
+        return mutate_revert_modified(state, state_shape, perm)
 
     def _forward(
         self,
