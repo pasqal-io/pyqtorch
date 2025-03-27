@@ -150,13 +150,19 @@ class Projector(Primitive):
         )
 
 
-class N(Primitive):
+class N(MutablePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["N"], target, noise=noise)
+
+        self.modifier = self._zero_out
+
+    def _zero_out(self, state: Tensor) -> Tensor:
+        state[0, :] = self.operation[0][0]
+        return state
 
 
 class SWAP(Primitive):

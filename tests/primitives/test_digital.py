@@ -49,6 +49,7 @@ def test_identity() -> None:
         pyq.S,
         pyq.SDagger,
         pyq.Y,
+        pyq.N,
     ],
 )
 def test_mutation(op: Primitive) -> None:
