@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Any
+from typing import Any, Callable
 
 import torch
 from torch import Tensor
 
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import OPERATIONS_DICT, controlled
 from pyqtorch.noise import DigitalNoiseProtocol, _repr_noise
 from pyqtorch.quantum_operation import QuantumOperation, Support
+from pyqtorch.utils import DensityMatrix
+
+from .mutation_utils import mutate_revert_modified, mutate_separate_target
 
 
 class Primitive(QuantumOperation):
@@ -94,3 +98,68 @@ class ControlledPrimitive(Primitive):
         return f"control: {self.control}, target: {self.target}" + _repr_noise(
             self.noise
         )
+
+
+class MutablePrimitive(Primitive):
+    """Primitive with a mutation operation via a callable `modifier`
+    acting directly on the input state.
+
+    Reference: https://arxiv.org/pdf/2303.01493
+
+    Attributes:
+        modifier (Callable): Function to modify the state, so applying a gate effect.
+    """
+
+    def __init__(
+        self,
+        operation: Tensor,
+        target: int,
+        generator: Tensor | None = None,
+        noise: DigitalNoiseProtocol | None = None,
+        modifier: Callable = lambda s: s,
+    ):
+        super().__init__(operation, target, generator=generator, noise=noise)
+        self.modifier: Callable = modifier
+
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+        state_shape = state.shape
+        perm, state = mutate_separate_target(state, self.target[0])
+
+        # Swap the rows to implement X gate
+        state = self.modifier(state)
+
+        return mutate_revert_modified(state, state_shape, perm)
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(state, DensityMatrix):
+            return super()._forward(state, values, embedding)
+        else:
+            return self._mutate_state_vector(state)
+
+
+class PhaseMutablePrimitive(MutablePrimitive):
+    """Primitive with a mutation operation where we multiply by a phase given
+    by the matrix element for the state 1.
+    """
+
+    def __init__(
+        self,
+        operation: Tensor,
+        target: int,
+        generator: Tensor | None = None,
+        noise: DigitalNoiseProtocol | None = None,
+    ):
+        super().__init__(operation, target, generator=generator, noise=noise)
+        self.modifier = self.apply_phase1
+
+    def apply_phase1(self, state) -> Tensor:
+        phase_mask = torch.ones_like(state, dtype=state.dtype, device=state.device)
+        phase_mask[1, :] = self.operation[1, 1]
+        phase_state = state * phase_mask
+        return phase_state

@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import torch
+from torch import Tensor
+
+from pyqtorch.embed import Embedding
 from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.noise import DigitalNoiseProtocol
 from pyqtorch.quantum_operation import Support
@@ -8,28 +12,46 @@ from pyqtorch.utils import (
     qubit_support_as_tuple,
 )
 
-from .primitive import ControlledPrimitive, Primitive
+from .primitive import (
+    ControlledPrimitive,
+    MutablePrimitive,
+    PhaseMutablePrimitive,
+    Primitive,
+)
 
 
-class X(Primitive):
+class X(MutablePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
-        super().__init__(OPERATIONS_DICT["X"], target, noise=noise)
+        super().__init__(
+            OPERATIONS_DICT["X"],
+            target,
+            noise=noise,
+            modifier=lambda s: torch.flip(s, dims=[0]),
+        )
 
 
-class Y(Primitive):
+class Y(MutablePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["Y"], target, noise=noise)
+        self.modifier = self._apply_phases
+
+    def _apply_phases(self, state: Tensor) -> Tensor:
+        state = torch.flip(state, dims=[0])
+        state[0, :] *= self.operation[0, 1]
+        state[1, :] *= self.operation[1, 0]
+
+        return state
 
 
-class Z(Primitive):
+class Z(PhaseMutablePrimitive):
     def __init__(
         self,
         target: int,
@@ -46,6 +68,14 @@ class I(Primitive):  # noqa: E742
     ):
         super().__init__(OPERATIONS_DICT["I"], target, noise=noise)
 
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        return state
+
 
 class H(Primitive):
     def __init__(
@@ -56,7 +86,7 @@ class H(Primitive):
         super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
 
 
-class T(Primitive):
+class T(PhaseMutablePrimitive):
     def __init__(
         self,
         target: int,
@@ -65,25 +95,31 @@ class T(Primitive):
         super().__init__(OPERATIONS_DICT["T"], target, noise=noise)
 
 
-class S(Primitive):
+class S(PhaseMutablePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(
-            OPERATIONS_DICT["S"], target, 0.5 * OPERATIONS_DICT["Z"], noise=noise
+            OPERATIONS_DICT["S"],
+            target,
+            generator=0.5 * OPERATIONS_DICT["Z"],
+            noise=noise,
         )
 
 
-class SDagger(Primitive):
+class SDagger(PhaseMutablePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(
-            OPERATIONS_DICT["SDAGGER"], target, -0.5 * OPERATIONS_DICT["Z"], noise=noise
+            OPERATIONS_DICT["SDAGGER"],
+            target,
+            generator=-0.5 * OPERATIONS_DICT["Z"],
+            noise=noise,
         )
 
 
@@ -110,13 +146,19 @@ class Projector(Primitive):
         )
 
 
-class N(Primitive):
+class N(MutablePrimitive):
     def __init__(
         self,
         target: int,
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["N"], target, noise=noise)
+
+        self.modifier = self._zero_out
+
+    def _zero_out(self, state: Tensor) -> Tensor:
+        state[0, :] = self.operation[0][0]
+        return state
 
 
 class SWAP(Primitive):
