@@ -44,15 +44,11 @@ class Y(MutablePrimitive):
         self.modifier = self._apply_phases
 
     def _apply_phases(self, state: Tensor) -> Tensor:
-        y_state = torch.zeros_like(state)
+        state = torch.flip(state, dims=[0])
+        state[0, :] *= self.operation[0, 1]
+        state[1, :] *= self.operation[1, 0]
 
-        # Y gate:
-        # |0⟩ -> i|1⟩
-        # |1⟩ -> -i|0⟩
-        y_state[0, :] = self.operation[0, 1] * state[1, :]  # i|1⟩
-        y_state[1, :] = self.operation[1, 0] * state[0, :]  # -i|0⟩
-
-        return y_state
+        return state
 
 
 class Z(PhaseMutablePrimitive):
@@ -88,6 +84,23 @@ class H(Primitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
+
+
+# class H(MutablePrimitive):
+#     def __init__(
+#         self,
+#         target: int,
+#         noise: DigitalNoiseProtocol | None = None,
+#     ):
+#         super().__init__(OPERATIONS_DICT["H"], target, noise=noise)
+#         self.modifier = self._apply_phases
+
+#     def _apply_H(self, state: Tensor) -> Tensor:
+#         h_state = torch.zeros_like(state)
+#         h_state[0, :] = self.operation[0, 1] * state[1, :]  # i|1⟩
+#         h_state[1, :] = self.operation[1, 0] * state[0, :]  # -i|0⟩
+
+#         return h_state
 
 
 class T(PhaseMutablePrimitive):
