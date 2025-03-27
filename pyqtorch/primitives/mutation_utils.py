@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from torch import Tensor
+
 
 def mutate_separate_target(
     state: Tensor, target_qubit: int
