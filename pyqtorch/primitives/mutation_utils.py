@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import torch
 from torch import Tensor
 
 
@@ -49,3 +50,21 @@ def mutate_revert_modified(
     # Transpose back to original order
     inverse_perm = [perm.index(i) for i in range(len(perm))]
     return state.permute(inverse_perm)
+
+
+def mutate_control_mask(state: Tensor, control_qubits: tuple[int, ...]) -> Tensor:
+    # Create a control state mask using bitwise operations
+    # Convert state to binary representation
+    state_indices = torch.arange(state.numel()).view(state.shape)
+
+    # Create a mask for control qubits being |1⟩
+    control_mask = torch.zeros_like(state_indices, dtype=torch.bool)
+
+    for qubit in control_qubits:
+        # Use bitwise AND to check if the specific qubit bit is set
+        control_mask |= ((state_indices >> qubit) & 1).bool()
+
+    # Apply the mask to match exact control qubit states
+    control_mask = control_mask == len(control_qubits)
+
+    return control_mask

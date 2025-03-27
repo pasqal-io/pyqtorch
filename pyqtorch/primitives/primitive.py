@@ -12,7 +12,11 @@ from pyqtorch.noise import DigitalNoiseProtocol, _repr_noise
 from pyqtorch.quantum_operation import QuantumOperation, Support
 from pyqtorch.utils import DensityMatrix
 
-from .mutation_utils import mutate_revert_modified, mutate_separate_target
+from .mutation_utils import (
+    mutate_control_mask,
+    mutate_revert_modified,
+    mutate_separate_target,
+)
 
 
 class Primitive(QuantumOperation):
@@ -124,8 +128,6 @@ class MutablePrimitive(Primitive):
     def _mutate_state_vector(self, state: Tensor) -> Tensor:
         state_shape = state.shape
         perm, state = mutate_separate_target(state, self.target[0])
-
-        # Swap the rows to implement X gate
         state = self.modifier(state)
 
         return mutate_revert_modified(state, state_shape, perm)
@@ -163,3 +165,57 @@ class PhaseMutablePrimitive(MutablePrimitive):
         phase_mask[1, :] = self.operation[1, 1]
         phase_state = state * phase_mask
         return phase_state
+
+
+class MutableControlledPrimitive(ControlledPrimitive):
+    """Primitive applied depending on control qubits, in a mutable fashion.
+
+    Reference: https://arxiv.org/pdf/2303.01493
+
+    Attributes:
+        modifier (Callable): Function to modify the state, so applying a gate effect.
+    """
+
+    def __init__(
+        self,
+        operation: str | Tensor,
+        control: int | tuple[int, ...],
+        target: int | tuple[int, ...],
+        noise: DigitalNoiseProtocol | None = None,
+        modifier: Callable = lambda s: s,
+    ):
+        super().__init__(operation, control, target, noise)
+        self.modifier = modifier
+
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+
+        n_qubits = len(state.shape) - 1
+        control_mask = mutate_control_mask(state, self.control)
+
+        # Get the states where ALL control qubits are |1⟩
+        controlled_states = state[control_mask]
+
+        # Reshape to separate the target qubit for transformation
+        reshaped_controlled = controlled_states.reshape((2,) * len(self.control), -1)
+
+        # Permute to bring target qubit to first dimension
+        perm = list(range(n_qubits))
+        perm = [q for q in perm if q not in self.control and q != self.target[0]]
+        perm = [self.target[0]] + perm
+        transformed_states = self.modifier(reshaped_controlled)
+
+        # Update the controlled states
+        state[control_mask] = transformed_states.reshape(-1)
+        return state
+
+    def _forward(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(state, DensityMatrix):
+            return super()._forward(state, values, embedding)
+        else:
+            return self._mutate_state_vector(state)
