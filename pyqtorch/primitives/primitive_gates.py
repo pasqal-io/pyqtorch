@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Callable
-
 import torch
 from torch import Tensor
 
@@ -10,122 +8,16 @@ from pyqtorch.matrices import OPERATIONS_DICT
 from pyqtorch.noise import DigitalNoiseProtocol
 from pyqtorch.quantum_operation import Support
 from pyqtorch.utils import (
-    DensityMatrix,
     product_state,
     qubit_support_as_tuple,
 )
 
-from .primitive import ControlledPrimitive, Primitive
-
-
-def mutate_separate_target(
-    state: Tensor, target_qubit: int
-) -> tuple[list[int], Tensor]:
-    """Create a tensor separating the target components
-    for a single-qubit gate for mutating an input state-vector.
-
-    Args:
-        state (Tensor): Input state.
-        target_qubit (int): Target index.
-
-    Returns:
-        tuple[int list[int], Tensor]: The permutation indices with an intermediate state
-            with separated target qubit.
-    """
-    n_qubits = len(state.shape) - 1
-    perm = list(range(n_qubits + 1))
-    perm[0], perm[target_qubit] = perm[target_qubit], perm[0]
-
-    # Transpose the state
-    state = state.permute(perm)
-
-    # Reshape to separate the target qubit
-    state = state.reshape(2, -1)
-    return perm, state
-
-
-def mutate_revert_modified(
-    state: Tensor, original_shape: tuple[int], perm: list[int]
-) -> Tensor:
-    """After mutating a state given a single qubit gate, we revert back the new state
-    to correspond to the `original_shape`.
-
-    Args:
-        state (Tensor): modified state by operation.
-        original_shape (tuple[int]): original shape for reshapping.
-        perm (list[int]): Permutation indices.
-
-    Returns:
-        Tensor: Mutated state.
-    """
-    # Reshape back to original structure
-    state = state.reshape(original_shape)
-
-    # Transpose back to original order
-    inverse_perm = [perm.index(i) for i in range(len(perm))]
-    return state.permute(inverse_perm)
-
-
-class MutablePrimitive(Primitive):
-    """Primitive with a mutation operation via a callable `modifier`
-    acting directly on the input state.
-
-    Reference: https://arxiv.org/pdf/2303.01493
-    """
-
-    def __init__(
-        self,
-        operation: Tensor,
-        target: int,
-        generator: Tensor | None = None,
-        noise: DigitalNoiseProtocol | None = None,
-        modifier: Callable = lambda s: s,
-    ):
-        super().__init__(operation, target, generator=generator, noise=noise)
-        self.modifier: Callable = modifier
-
-    def _mutate_state_vector(self, state: Tensor) -> Tensor:
-        state_shape = state.shape
-        perm, state = mutate_separate_target(state, self.target[0])
-
-        # Swap the rows to implement X gate
-        state = self.modifier(state)
-
-        return mutate_revert_modified(state, state_shape, perm)
-
-    def _forward(
-        self,
-        state: Tensor,
-        values: dict[str, Tensor] | Tensor | None = None,
-        embedding: Embedding | None = None,
-    ) -> Tensor:
-        values = values or dict()
-        if isinstance(state, DensityMatrix):
-            return super()._forward(state, values, embedding)
-        else:
-            return self._mutate_state_vector(state)
-
-
-class PhaseMutablePrimitive(MutablePrimitive):
-    """Primitive with a mutation operation where we multiply by a phase given
-    by the matrix element for the state 1.
-    """
-
-    def __init__(
-        self,
-        operation: Tensor,
-        target: int,
-        generator: Tensor | None = None,
-        noise: DigitalNoiseProtocol | None = None,
-    ):
-        super().__init__(operation, target, generator=generator, noise=noise)
-        self.modifier = self.apphy_phase1
-
-    def apphy_phase1(self, state) -> Tensor:
-        phase_mask = torch.ones_like(state, dtype=state.dtype, device=state.device)
-        phase_mask[1, :] = self.operation[1, 1]
-        phase_state = state * phase_mask
-        return phase_state
+from .primitive import (
+    ControlledPrimitive,
+    MutablePrimitive,
+    PhaseMutablePrimitive,
+    Primitive,
+)
 
 
 class X(MutablePrimitive):
