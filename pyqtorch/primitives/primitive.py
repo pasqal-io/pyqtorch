@@ -156,9 +156,9 @@ class PhaseMutablePrimitive(MutablePrimitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(operation, target, generator=generator, noise=noise)
-        self.modifier = self.apphy_phase1
+        self.modifier = self.apply_phase1
 
-    def apphy_phase1(self, state) -> Tensor:
+    def apply_phase1(self, state) -> Tensor:
         phase_mask = torch.ones_like(state, dtype=state.dtype, device=state.device)
         phase_mask[1, :] = self.operation[1, 1]
         phase_state = state * phase_mask
