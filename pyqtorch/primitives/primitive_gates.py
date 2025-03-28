@@ -157,8 +157,9 @@ class N(MutablePrimitive):
         self.modifier = self._zero_out
 
     def _zero_out(self, state: Tensor) -> Tensor:
-        state[0, :] = self.operation[0][0]
-        return state
+        cloned_state = state.clone()
+        cloned_state[0, :] = self.operation[0][0]
+        return cloned_state
 
 
 class SWAP(Primitive):
