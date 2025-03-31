@@ -194,6 +194,16 @@ class CNOT(ControlledPrimitive):
         super().__init__("X", control, target, noise=noise)
 
 
+# class CNOT(MutableControlledPrimitive):
+#     def __init__(
+#         self,
+#         control: int | tuple[int, ...],
+#         target: int,
+#         noise: DigitalNoiseProtocol | None = None,
+#     ):
+#         super().__init__("X", control, target, noise=noise,
+# modifier=lambda s: torch.flip(s, dims=[0]),)
+
 CX = CNOT
 
 

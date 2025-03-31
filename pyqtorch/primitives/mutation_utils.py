@@ -5,14 +5,14 @@ from torch import Tensor
 
 
 def mutate_separate_target(
-    state: Tensor, target_qubit: int
+    state: Tensor, target_qubit: int | tuple[int, ...]
 ) -> tuple[list[int], Tensor]:
     """Create a tensor separating the target components
     for a single-qubit gate for mutating an input state-vector.
 
     Args:
         state (Tensor): Input state.
-        target_qubit (int): Target index.
+        target_qubit (int | tuple[int, ...]): Target index.
 
     Returns:
         tuple[int list[int], Tensor]: The permutation indices with an intermediate state
@@ -20,13 +20,17 @@ def mutate_separate_target(
     """
     n_qubits = len(state.shape) - 1
     perm = list(range(n_qubits + 1))
-    perm[0], perm[target_qubit] = perm[target_qubit], perm[0]
+    if isinstance(target_qubit, int):
+        perm[0], perm[target_qubit] = perm[target_qubit], perm[0]
+        target_qubit = (target_qubit,)
+    else:
+        perm = list(target_qubit) + list(filter(lambda x: x not in target_qubit, perm))
 
     # Transpose the state
     state = state.permute(perm)
 
     # Reshape to separate the target qubit
-    state = state.reshape(2, -1)
+    state = state.reshape(2 * len(target_qubit), -1)
     return perm, state
 
 
