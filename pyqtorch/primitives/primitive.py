@@ -123,7 +123,7 @@ class MutablePrimitive(Primitive):
 
     def _mutate_state_vector(self, state: Tensor) -> Tensor:
         state_shape = state.shape
-        perm, state = mutate_separate_target(state, self.target[0])
+        perm, state = mutate_separate_target(state, self.target)
 
         # Swap the rows to implement X gate
         state = self.modifier(state)

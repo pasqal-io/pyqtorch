@@ -34,7 +34,9 @@ class X(MutablePrimitive):
 
     def _mutate_state_vector(self, state: Tensor) -> Tensor:
         #  X gate flips the values at the specified dimension
-        return torch.flip(state, [self.target[0]])
+        dims = list(range(state.dim()))
+        flip_dims = [dims[self.target[0]]]
+        return torch.flip(state, flip_dims)
 
 
 class Y(MutablePrimitive):
@@ -52,7 +54,6 @@ class Y(MutablePrimitive):
         state[1, :] *= self.operation[1, 0]
 
         return state
-    
 
 
 class Z(PhaseMutablePrimitive):
@@ -174,6 +175,8 @@ class SWAP(Primitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["SWAP"], (i, j), noise=noise)
+
+    # def _mutate_state_vector(self, state: Tensor) -> Tensor:
 
 
 class CSWAP(Primitive):
