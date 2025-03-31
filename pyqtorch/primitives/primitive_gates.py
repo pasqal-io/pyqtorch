@@ -33,6 +33,11 @@ class X(MutablePrimitive):
             modifier=lambda s: torch.flip(s, dims=[0]),
         )
 
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+        #  X gate flips the values at the specified dimension
+        dims = list(range(state.dim()))
+        flip_dims = [dims[self.target[0]]]
+        return torch.flip(state, flip_dims)
 
 class Y(MutablePrimitive):
     def __init__(
