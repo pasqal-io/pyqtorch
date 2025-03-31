@@ -189,24 +189,20 @@ class MutableControlledPrimitive(ControlledPrimitive):
 
     def _mutate_state_vector(self, state: Tensor) -> Tensor:
 
-        n_qubits = len(state.shape) - 1
+        result = state.clone()
         control_mask = mutate_control_mask(state, self.control)
 
         # Get the states where ALL control qubits are |1⟩
         controlled_states = state[control_mask]
 
         # Reshape to separate the target qubit for transformation
-        reshaped_controlled = controlled_states.reshape((2,) * len(self.control), -1)
+        temp_state = controlled_states.reshape((2,) * len(self.target), -1)
+        for i, target in enumerate(self.target):
+            temp_state = self.modifier(state)
 
-        # Permute to bring target qubit to first dimension
-        perm = list(range(n_qubits))
-        perm = [q for q in perm if q not in self.control and q != self.target[0]]
-        perm = [self.target[0]] + perm
-        transformed_states = self.modifier(reshaped_controlled)
-
-        # Update the controlled states
-        state[control_mask] = transformed_states.reshape(-1)
-        return state
+        # Put the modified state back
+        result[control_mask] = temp_state.reshape(-1)
+        return result
 
     def _forward(
         self,

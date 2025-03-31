@@ -61,14 +61,13 @@ def mutate_control_mask(state: Tensor, control_qubits: tuple[int, ...]) -> Tenso
     # Convert state to binary representation
     state_indices = torch.arange(state.numel()).view(state.shape)
 
-    # Create a mask for control qubits being |1⟩
-    control_mask = torch.zeros_like(state_indices, dtype=torch.bool)
+    # Start with all True and AND with each control qubit condition
+    control_mask = torch.ones_like(state_indices, dtype=torch.bool)
 
     for qubit in control_qubits:
-        # Use bitwise AND to check if the specific qubit bit is set
-        control_mask |= ((state_indices >> qubit) & 1).bool()
-
-    # Apply the mask to match exact control qubit states
-    control_mask = control_mask == len(control_qubits)
+        # Check if the specific qubit bit is set to 1
+        qubit_is_one = ((state_indices >> qubit) & 1).bool()
+        # AND with our accumulating mask - all must be True
+        control_mask &= qubit_is_one
 
     return control_mask
