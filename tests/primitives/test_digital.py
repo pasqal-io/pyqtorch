@@ -14,7 +14,7 @@ from pyqtorch.apply import apply_operator
 from pyqtorch.matrices import (
     DEFAULT_MATRIX_DTYPE,
 )
-from pyqtorch.primitives import Parametric, Primitive
+from pyqtorch.primitives import ControlledPrimitive, Parametric, Primitive
 from pyqtorch.utils import (
     ATOL,
     product_state,
@@ -52,14 +52,32 @@ def test_identity() -> None:
         pyq.N,
     ],
 )
-def test_mutation(op: Primitive) -> None:
+def test_mutation_primitive(op: Primitive) -> None:
     # checking mutation is equivalent to the original forward method
     n_qubits = random.randint(1, 5)
     target = random.randint(0, n_qubits - 1)
     state = random_state(n_qubits)
     gate = op(target)
     primitive_op = Primitive(gate.operation, qubit_support=gate.qubit_support)
-    torch.allclose(gate(state), primitive_op(state))
+    assert torch.allclose(gate(state), primitive_op(state))
+
+
+@pytest.mark.parametrize(
+    "op_str, op",
+    [
+        ("X", pyq.CNOT),
+    ],
+)
+def test_mutation_controlled_primitive(op_str: str, op: ControlledPrimitive) -> None:
+    # checking mutation is equivalent to the original forward method
+    n_qubits = random.randint(1, 5)
+    target = random.randint(0, n_qubits - 1)
+    control = random.choice([i for i in range(5) if i != target])
+    state = random_state(n_qubits)
+    gate = op(target=target, control=control)
+    state_gate = gate(state)
+    primitive_op = ControlledPrimitive(op_str, control, target)
+    assert torch.allclose(state_gate, primitive_op(state))
 
 
 def test_N() -> None:
