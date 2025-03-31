@@ -63,18 +63,12 @@ def test_mutation(op: Primitive) -> None:
     assert torch.allclose(gate(state), primitive_op(state))
 
 
-@pytest.mark.parametrize(
-    "op",
-    [
-        pyq.SWAP,
-    ],
-)
-def test_mutation_swap(op: Primitive) -> None:
+def test_mutation_swap() -> None:
     # checking mutation is equivalent to the original forward method
     n_qubits = random.randint(2, 5)
     target = random.randint(0, n_qubits - 1)
     target2 = random.choice([i for i in range(n_qubits) if i != target])
-    gate = op(target, target2)
+    gate = pyq.SWAP(target, target2)
     state = random_state(n_qubits)
     primitive_op = Primitive(gate.operation, qubit_support=gate.qubit_support)
     assert torch.allclose(gate(state), primitive_op(state))
