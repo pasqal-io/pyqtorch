@@ -113,7 +113,7 @@ class MutablePrimitive(Primitive):
     def __init__(
         self,
         operation: Tensor,
-        target: int,
+        target: int | tuple[int, ...],
         generator: Tensor | None = None,
         noise: DigitalNoiseProtocol | None = None,
         modifier: Callable = lambda s: s,

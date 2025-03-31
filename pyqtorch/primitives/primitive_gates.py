@@ -167,7 +167,7 @@ class N(MutablePrimitive):
         return cloned_state
 
 
-class SWAP(Primitive):
+class SWAP(MutablePrimitive):
     def __init__(
         self,
         i: int,
@@ -176,7 +176,10 @@ class SWAP(Primitive):
     ):
         super().__init__(OPERATIONS_DICT["SWAP"], (i, j), noise=noise)
 
-    # def _mutate_state_vector(self, state: Tensor) -> Tensor:
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+        #  X gate flips the values at the specified dimension
+        dims = list(range(state.dim()))
+        return state.transpose(dims[self.target[0]], dims[self.target[1]])
 
 
 class CSWAP(Primitive):
