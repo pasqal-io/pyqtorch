@@ -113,7 +113,7 @@ class MutablePrimitive(Primitive):
     def __init__(
         self,
         operation: Tensor,
-        target: int,
+        target: int | tuple[int, ...],
         generator: Tensor | None = None,
         noise: DigitalNoiseProtocol | None = None,
         modifier: Callable = lambda s: s,
@@ -123,7 +123,7 @@ class MutablePrimitive(Primitive):
 
     def _mutate_state_vector(self, state: Tensor) -> Tensor:
         state_shape = state.shape
-        perm, state = mutate_separate_target(state, self.target[0])
+        perm, state = mutate_separate_target(state, self.target)
 
         # Swap the rows to implement X gate
         state = self.modifier(state)

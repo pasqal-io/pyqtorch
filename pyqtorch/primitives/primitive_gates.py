@@ -30,8 +30,11 @@ class X(MutablePrimitive):
             OPERATIONS_DICT["X"],
             target,
             noise=noise,
-            modifier=lambda s: torch.flip(s, dims=[0]),
         )
+
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+        #  X gate flips the values at the specified dimension
+        return torch.flip(state, [self.target[0]])
 
 
 class Y(MutablePrimitive):
@@ -162,7 +165,7 @@ class N(MutablePrimitive):
         return cloned_state
 
 
-class SWAP(Primitive):
+class SWAP(MutablePrimitive):
     def __init__(
         self,
         i: int,
@@ -170,6 +173,10 @@ class SWAP(Primitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["SWAP"], (i, j), noise=noise)
+
+    def _mutate_state_vector(self, state: Tensor) -> Tensor:
+        #  SWAP gate flips the values at the specified dimensions
+        return state.transpose(self.target[0], self.target[1])
 
 
 class CSWAP(Primitive):
