@@ -193,7 +193,7 @@ class MutableControlledPrimitive(ControlledPrimitive):
         result = state.clone()
 
         # first, create a mask to separate states to be modified
-        mask = mutate_control_slice(len(self.qubit_support), self.control)
+        mask = mutate_control_slice(len(state.shape) - 1, self.control)
         controlled_state = state[mask]
         # second, modify only the controlled states
         result[mask] = self._controlled_mutate(controlled_state)
