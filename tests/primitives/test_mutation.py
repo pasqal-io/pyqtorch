@@ -1,25 +1,17 @@
 from __future__ import annotations
 
 import random
-from math import log2
-from typing import Callable, Tuple
 
 import pytest
 import torch
-from torch import Tensor
 
 import pyqtorch as pyq
-from pyqtorch import ConcretizedCallable
-from pyqtorch.apply import apply_operator
-from pyqtorch.matrices import (
-    DEFAULT_MATRIX_DTYPE,
-)
-from pyqtorch.primitives import Parametric, Primitive
+from pyqtorch.primitives import Primitive
 from pyqtorch.utils import (
     ATOL,
-    product_state,
     random_state,
 )
+
 
 @pytest.mark.parametrize(
     "op",
