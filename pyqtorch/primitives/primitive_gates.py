@@ -12,6 +12,7 @@ from pyqtorch.utils import (
     qubit_support_as_tuple,
 )
 
+from .mutation_utils import mutate_control_slice
 from .primitive import (
     ControlledPrimitive,
     MutableControlledPrimitive,
@@ -193,16 +194,6 @@ class CSWAP(Primitive):
         super().__init__(OPERATIONS_DICT["CSWAP"], support)
 
 
-# class CNOT(ControlledPrimitive):
-#     def __init__(
-#         self,
-#         control: int | tuple[int, ...],
-#         target: int,
-#         noise: DigitalNoiseProtocol | None = None,
-#     ):
-#         super().__init__("X", control, target, noise=noise)
-
-
 class CNOT(MutableControlledPrimitive):
     def __init__(
         self,
@@ -234,7 +225,7 @@ class CY(ControlledPrimitive):
         super().__init__("Y", control, target, noise=noise)
 
 
-class CZ(ControlledPrimitive):
+class CZ(MutableControlledPrimitive):
     def __init__(
         self,
         control: int | tuple[int, ...],
@@ -242,6 +233,13 @@ class CZ(ControlledPrimitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__("Z", control, target, noise=noise)
+
+    def _mutate_state_vector(self, state):
+        result = state.clone()
+        all_controls = self.control + self.target
+        phase_selector = mutate_control_slice(len(state.shape) - 1, all_controls)
+        result[phase_selector] = -result[phase_selector]
+        return result
 
 
 class Toffoli(ControlledPrimitive):

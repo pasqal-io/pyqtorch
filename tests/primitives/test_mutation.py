@@ -40,6 +40,7 @@ def test_mutation_single(op: Primitive) -> None:
     "op, op_str",
     [
         (pyq.CNOT, "X"),
+        (pyq.CZ, "Z"),
     ],
 )
 def test_mutation_controlled(op: Primitive, op_str: str) -> None:
