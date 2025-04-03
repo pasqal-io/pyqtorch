@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import torch
 from torch import Tensor
 
 
@@ -52,25 +51,17 @@ def mutate_revert_modified(
     return state.permute(inverse_perm)
 
 
-def mutate_control_mask(state: Tensor, control_qubits: tuple[int, ...]) -> Tensor:
-    """Create a mask for mutable operations.
+def mutate_control_slice(n_qubits: int, control_qubits: tuple[int, ...]) -> tuple:
+    """Create a slice for mutable controlled operations.
 
     Args:
-        state (Tensor): Input state
+        n_qubits (int): Number of qubits
         control_qubits (tuple[int, ...]): Control indices.
 
     Returns:
-        Tensor: Mask.
+        tuple: slices to select controlled states.
     """
-    state_indices = torch.arange(state.numel()).view(state.shape)
-
-    # Start with all True and AND with each control qubit condition
-    control_mask = torch.ones_like(state_indices, dtype=torch.bool)
-
+    selector: list = [slice(None)] * n_qubits
     for qubit in control_qubits:
-        # Check if the specific qubit bit is set to 1
-        qubit_is_one = ((state_indices >> qubit) & 1).bool()
-        # AND with our accumulating mask - all must be True
-        control_mask &= qubit_is_one
-
-    return control_mask
+        selector[qubit] = 1
+    return tuple(selector)

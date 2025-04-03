@@ -13,7 +13,7 @@ from pyqtorch.quantum_operation import QuantumOperation, Support
 from pyqtorch.utils import DensityMatrix
 
 from .mutation_utils import (
-    mutate_control_mask,
+    mutate_control_slice,
     mutate_revert_modified,
     mutate_separate_target,
 )
@@ -168,7 +168,7 @@ class PhaseMutablePrimitive(MutablePrimitive):
         return phase_state
 
 
-class MutableControlledPrimitive(Primitive):
+class MutableControlledPrimitive(ControlledPrimitive):
     """Controlled primitive with a mutation operation via a callable `modifier`
     acting directly on the input state.
 
@@ -193,13 +193,11 @@ class MutableControlledPrimitive(Primitive):
         result = state.clone()
 
         # first, create a mask to separate states to be modified
-        mask = mutate_control_mask(state, self.control)
-
+        mask = mutate_control_slice(len(self.qubit_support), self.control)
+        controlled_state = state[mask]
         # second, modify only the controlled states
-        controlled_state = self._controlled_mutate(state[mask])
+        result[mask] = self._controlled_mutate(controlled_state)
 
-        # last, put back changes into the result
-        result[mask] = controlled_state
         return result
 
     def _controlled_mutate(self, controlled_state: Tensor) -> Tensor:

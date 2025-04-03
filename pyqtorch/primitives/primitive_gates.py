@@ -14,6 +14,7 @@ from pyqtorch.utils import (
 
 from .primitive import (
     ControlledPrimitive,
+    MutableControlledPrimitive,
     MutablePrimitive,
     PhaseMutablePrimitive,
     Primitive,
@@ -192,7 +193,17 @@ class CSWAP(Primitive):
         super().__init__(OPERATIONS_DICT["CSWAP"], support)
 
 
-class CNOT(ControlledPrimitive):
+# class CNOT(ControlledPrimitive):
+#     def __init__(
+#         self,
+#         control: int | tuple[int, ...],
+#         target: int,
+#         noise: DigitalNoiseProtocol | None = None,
+#     ):
+#         super().__init__("X", control, target, noise=noise)
+
+
+class CNOT(MutableControlledPrimitive):
     def __init__(
         self,
         control: int | tuple[int, ...],
@@ -200,6 +211,14 @@ class CNOT(ControlledPrimitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__("X", control, target, noise=noise)
+
+    def _controlled_mutate(self, controlled_state: Tensor) -> Tensor:
+        target_dim = self.target[0]
+        target_adjusted = target_dim
+        for control in self.control:
+            if control < target_dim:
+                target_adjusted -= 1
+        return torch.flip(controlled_state, [target_adjusted])
 
 
 CX = CNOT
