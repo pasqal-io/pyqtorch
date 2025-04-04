@@ -32,7 +32,7 @@ def test_mutation_single(op: Primitive) -> None:
     state = random_state(n_qubits)
     gate = op(target)
 
-    primitive_op = Primitive(gate.operation, qubit_support=gate.qubit_support)
+    primitive_op = Primitive(gate.operation, qubit_support=gate.target)
     assert torch.allclose(gate(state), primitive_op(state), atol=ATOL)
 
 
@@ -68,5 +68,5 @@ def test_mutation_swap() -> None:
     target2 = random.choice([i for i in range(n_qubits) if i != target])
     gate = pyq.SWAP(target, target2)
     state = random_state(n_qubits)
-    primitive_op = Primitive(gate.operation, qubit_support=gate.qubit_support)
+    primitive_op = Primitive(gate.operation, qubit_support=gate.target)
     assert torch.allclose(gate(state), primitive_op(state), atol=ATOL)
