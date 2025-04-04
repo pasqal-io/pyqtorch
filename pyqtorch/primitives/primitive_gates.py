@@ -204,11 +204,9 @@ class CNOT(MutableControlledPrimitive):
         super().__init__("X", control, target, noise=noise)
 
     def _mutate_control_state(self, control_state: Tensor) -> Tensor:
-        target_dim = self.target[0]
-        target_adjusted = target_dim
-        for control in self.control:
-            if control < target_dim:
-                target_adjusted -= 1
+        target_adjusted = self.target[0] - sum(
+            (1 for c in self.control if c < self.target[0])
+        )
         return torch.flip(control_state, [target_adjusted])
 
 
