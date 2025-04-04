@@ -49,3 +49,19 @@ def mutate_revert_modified(
     # Transpose back to original order
     inverse_perm = [perm.index(i) for i in range(len(perm))]
     return state.permute(inverse_perm)
+
+
+def mutate_control_slice(n_qubits: int, control_qubits: tuple[int, ...]) -> tuple:
+    """Create a slice for mutable controlled operations.
+
+    Args:
+        n_qubits (int): Number of qubits
+        control_qubits (tuple[int, ...]): Control indices.
+
+    Returns:
+        tuple: slices to select controlled states.
+    """
+    selector: list = [slice(None)] * n_qubits
+    for qubit in control_qubits:
+        selector[qubit] = 1
+    return tuple(selector)

@@ -12,8 +12,10 @@ from pyqtorch.utils import (
     qubit_support_as_tuple,
 )
 
+from .mutation_utils import mutate_control_slice
 from .primitive import (
     ControlledPrimitive,
+    MutableControlledPrimitive,
     MutablePrimitive,
     PhaseMutablePrimitive,
     Primitive,
@@ -192,7 +194,7 @@ class CSWAP(Primitive):
         super().__init__(OPERATIONS_DICT["CSWAP"], support)
 
 
-class CNOT(ControlledPrimitive):
+class CNOT(MutableControlledPrimitive):
     def __init__(
         self,
         control: int | tuple[int, ...],
@@ -200,6 +202,12 @@ class CNOT(ControlledPrimitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__("X", control, target, noise=noise)
+
+    def _mutate_control_state(self, control_state: Tensor) -> Tensor:
+        target_adjusted = self.target[0] - sum(
+            (1 for c in self.control if c < self.target[0])
+        )
+        return torch.flip(control_state, [target_adjusted])
 
 
 CX = CNOT
@@ -215,7 +223,7 @@ class CY(ControlledPrimitive):
         super().__init__("Y", control, target, noise=noise)
 
 
-class CZ(ControlledPrimitive):
+class CZ(MutableControlledPrimitive):
     def __init__(
         self,
         control: int | tuple[int, ...],
@@ -224,8 +232,15 @@ class CZ(ControlledPrimitive):
     ):
         super().__init__("Z", control, target, noise=noise)
 
+    def _mutate_state_vector(self, state):
+        result = state.clone()
+        all_qubits = self.control + self.target
+        phase_selector = mutate_control_slice(len(state.shape) - 1, all_qubits)
+        result[phase_selector] = -result[phase_selector]
+        return result
 
-class Toffoli(ControlledPrimitive):
+
+class Toffoli(MutableControlledPrimitive):
     def __init__(
         self,
         control: int | tuple[int, ...],
@@ -233,6 +248,12 @@ class Toffoli(ControlledPrimitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__("X", control, target, noise=noise)
+
+    def _mutate_control_state(self, control_state: Tensor) -> Tensor:
+        target_adjusted = self.target[0] - sum(
+            (1 for c in self.control if c < self.target[0])
+        )
+        return torch.flip(control_state, [target_adjusted])
 
 
 OPS_PAULI = {X, Y, Z, I}
