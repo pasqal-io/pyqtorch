@@ -46,7 +46,7 @@ def test_mutation_single(op: Primitive) -> None:
 )
 def test_mutation_controlled(op: Primitive, op_str: str) -> None:
     # checking mutation is equivalent to the original forward method
-    n_qubits = random.randint(2, 5)
+    n_qubits = random.randint(3, 6)
     target = random.randint(0, n_qubits - 1)
     control = random.choice([i for i in range(n_qubits) if i != target])
     if op == pyq.Toffoli:
