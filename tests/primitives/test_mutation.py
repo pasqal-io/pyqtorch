@@ -41,6 +41,7 @@ def test_mutation_single(op: Primitive) -> None:
     [
         (pyq.CNOT, "X"),
         (pyq.CZ, "Z"),
+        (pyq.Toffoli, "X"),
     ],
 )
 def test_mutation_controlled(op: Primitive, op_str: str) -> None:
@@ -48,6 +49,11 @@ def test_mutation_controlled(op: Primitive, op_str: str) -> None:
     n_qubits = random.randint(2, 5)
     target = random.randint(0, n_qubits - 1)
     control = random.choice([i for i in range(n_qubits) if i != target])
+    if op == pyq.Toffoli:
+        control = (  # type: ignore[assignment]
+            control,
+            random.choice([i for i in range(n_qubits) if i not in (target, control)]),
+        )
     state = random_state(n_qubits)
     gate = op(control, target)
 

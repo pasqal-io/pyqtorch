@@ -240,7 +240,7 @@ class CZ(MutableControlledPrimitive):
         return result
 
 
-class Toffoli(ControlledPrimitive):
+class Toffoli(MutableControlledPrimitive):
     def __init__(
         self,
         control: int | tuple[int, ...],
@@ -248,6 +248,12 @@ class Toffoli(ControlledPrimitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__("X", control, target, noise=noise)
+
+    def _mutate_control_state(self, control_state: Tensor) -> Tensor:
+        target_adjusted = self.target[0] - sum(
+            (1 for c in self.control if c < self.target[0])
+        )
+        return torch.flip(control_state, [target_adjusted])
 
 
 OPS_PAULI = {X, Y, Z, I}
