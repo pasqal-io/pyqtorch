@@ -203,13 +203,13 @@ class CNOT(MutableControlledPrimitive):
     ):
         super().__init__("X", control, target, noise=noise)
 
-    def _controlled_mutate(self, controlled_state: Tensor) -> Tensor:
+    def _mutate_control_state(self, control_state: Tensor) -> Tensor:
         target_dim = self.target[0]
         target_adjusted = target_dim
         for control in self.control:
             if control < target_dim:
                 target_adjusted -= 1
-        return torch.flip(controlled_state, [target_adjusted])
+        return torch.flip(control_state, [target_adjusted])
 
 
 CX = CNOT
@@ -236,8 +236,8 @@ class CZ(MutableControlledPrimitive):
 
     def _mutate_state_vector(self, state):
         result = state.clone()
-        all_controls = self.control + self.target
-        phase_selector = mutate_control_slice(len(state.shape) - 1, all_controls)
+        all_qubits = self.control + self.target
+        phase_selector = mutate_control_slice(len(state.shape) - 1, all_qubits)
         result[phase_selector] = -result[phase_selector]
         return result
 

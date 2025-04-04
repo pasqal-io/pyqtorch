@@ -194,21 +194,19 @@ class MutableControlledPrimitive(ControlledPrimitive):
 
         # first, create a mask to separate states to be modified
         mask = mutate_control_slice(len(state.shape) - 1, self.control)
-        controlled_state = state[mask]
+        control_state = state[mask]
         # second, modify only the controlled states
-        result[mask] = self._controlled_mutate(controlled_state)
+        result[mask] = self._mutate_control_state(control_state)
 
         return result
 
-    def _controlled_mutate(self, controlled_state: Tensor) -> Tensor:
-        controlled_state_shape = controlled_state.shape
-        perm, controlled_state = mutate_separate_target(controlled_state, self.target)
+    def _mutate_control_state(self, control_state: Tensor) -> Tensor:
+        control_state_shape = control_state.shape
+        perm, control_state = mutate_separate_target(control_state, self.target)
 
-        controlled_state = self.modifier(controlled_state)
-        controlled_state = mutate_revert_modified(
-            controlled_state, controlled_state_shape, perm
-        )
-        return controlled_state
+        control_state = self.modifier(control_state)
+        control_state = mutate_revert_modified(control_state, control_state_shape, perm)
+        return control_state
 
     def _forward(
         self,
