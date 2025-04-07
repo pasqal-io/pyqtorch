@@ -71,6 +71,10 @@ class Primitive(QuantumOperation):
             return torch.linalg.eigvalsh(self.generator).reshape(-1, 1)
         pass
 
+    @property
+    def is_parametric(self) -> bool:
+        return False
+
 
 class ControlledPrimitive(Primitive):
     """Primitive applied depending on control qubits.

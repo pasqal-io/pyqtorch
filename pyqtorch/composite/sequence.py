@@ -91,7 +91,7 @@ class Sequence(Module):
 
     @property
     def params(self) -> list:
-        return list(op.param_name for op in self.flatten() if op.is_parametric)
+        return list(set(op.param_name for op in self.flatten() if op.is_parametric))
 
     def __iter__(self) -> Iterator:
         return iter(self.operations)
