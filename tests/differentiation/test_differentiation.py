@@ -84,6 +84,9 @@ def test_adjoint_diff(n_qubits: int, n_layers: int, obs: pyq.Observable) -> None
         # gradgrad_adjoint = torch.autograd.grad(
         #     grad_adjoint, tuple(values_adjoint.values()), torch.ones_like(grad_adjoint)
         # )
+    else:
+        # for obs param
+        assert grad_ad[-1] != 0
 
 
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
