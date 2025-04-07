@@ -10,7 +10,7 @@ from torch.autograd import Function
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.composite import Scale
 from pyqtorch.embed import Embedding
-from pyqtorch.hamiltonians import GeneratorType, HamiltonianEvolution, Observable
+from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
 from pyqtorch.matrices import DEFAULT_REAL_DTYPE
 from pyqtorch.primitives import Parametric
 from pyqtorch.utils import param_dict
@@ -298,13 +298,11 @@ class PSRExpectation(Function):
 
         for op in ctx.circuit.flatten():
 
-            if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(
-                op.param_name, str
-            ):
+            if isinstance(op, (Parametric, HamiltonianEvolution)) and op.is_parametric:
                 factor = 1.0 if isinstance(op, Parametric) else 2.0
                 if len(op.spectral_gap) > 1:
                     update_gradient(
-                        op.param_name, op._param_uuid, factor * op.spectral_gap, 0.5
+                        op.param_name, op._param_uuid, factor * op.spectral_gap, 0.5  # type: ignore[arg-type]
                     )
                 else:
                     shift_factor = 1.0
@@ -351,19 +349,12 @@ def check_support_psr(circuit: QuantumCircuit):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."
             )
-        if isinstance(op, HamiltonianEvolution) and op.generator_type in [
-            GeneratorType.SYMBOL,
-            GeneratorType.PARAMETRIC_OPERATION,
-        ]:
+        if isinstance(op, HamiltonianEvolution) and op.is_parametric_generator:
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)} \
                     whose generator type is {op.generator_type}."
             )
-        elif isinstance(op, Parametric):
-            if isinstance(op.param_name, str):
-                param_names.append(op.param_name)
-        elif isinstance(op, HamiltonianEvolution):
-            if isinstance(op.time, str):
-                param_names.append(op.time)
+        elif isinstance(op, (Parametric, HamiltonianEvolution)) and op.is_parametric:
+            param_names.append(op.param_name)
         else:
             continue

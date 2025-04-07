@@ -179,6 +179,15 @@ class QuantumOperation(torch.nn.Module):
         return f"target: {self.qubit_support}" + _repr_noise(self.noise)
 
     @property
+    def is_parametric(self) -> bool:
+        """Consider by default that operation is parametric when `operator_function` is not None.
+
+        Returns:
+            bool: True if `operator_function` is not None
+        """
+        return self.operator_function is not None
+
+    @property
     def device(self) -> torch.device:
         """Returns device.
 
