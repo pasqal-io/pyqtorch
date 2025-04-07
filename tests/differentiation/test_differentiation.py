@@ -68,6 +68,16 @@ def test_ad_observable(
     assert len(grad_ad_obs) == len(obs.params)
     assert torch.allclose(grad_ad[-1], grad_ad_obs[0])
 
+    with pytest.raises(NotImplementedError):
+        exp_ad_separate = expectation(
+            circ,
+            state,
+            values_circuit,
+            obs,
+            DiffMode.ADJOINT,
+            values_observable=values_obs,
+        )
+
 
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
 @pytest.mark.parametrize("n_layers", [1, 2, 3])
