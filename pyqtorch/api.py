@@ -171,7 +171,9 @@ def sampled_expectation(
     # batchsize needs to be first dim for eigh
     eigvals, eigvecs = torch.linalg.eigh(
         observable.tensor(
-            values=values_observable, embedding=embedding, full_support=tuple(range(n_qubits))
+            values=values_observable,
+            embedding=embedding,
+            full_support=tuple(range(n_qubits)),
         ).permute((2, 0, 1))
     )
     eigvals = eigvals.squeeze()
@@ -233,6 +235,8 @@ def expectation(
         state: A torch.Tensor of shape [2, 2, ..., batch_size].
         values: A dictionary containing <'parameter_name': torch.Tensor> pairs
                 denoting the current parameter values for each parameter in `circuit`.
+                Note it can include also values for the observable, but differentiation will
+                not separate gradients.
         observable: A pyq.Observable instance.
         diff_mode: The differentiation mode.
         n_shots: Number of shots for estimating expectation values.
@@ -283,7 +287,14 @@ def expectation(
             logger.error("Please provide a 'n_shots' in options of type 'int'.")
 
     if diff_mode == DiffMode.AD:
-        return expectation_fn(circuit, state, observable, values, embedding, values_observable=values_observable)
+        return expectation_fn(
+            circuit,
+            state,
+            observable,
+            values,
+            embedding,
+            values_observable=values_observable,
+        )
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit,
