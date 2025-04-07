@@ -295,24 +295,34 @@ def expectation(
             values_observable=values_observable,
         )
     elif diff_mode == DiffMode.ADJOINT:
-        return AdjointExpectation.apply(
-            circuit,
-            state,
-            observable,
-            embedding,
-            values.keys(),
-            *values.values(),
-        )
+        if values_observable is None:
+            return AdjointExpectation.apply(
+                circuit,
+                state,
+                observable,
+                embedding,
+                values.keys(),
+                *values.values(),
+            )
+        else:
+            raise NotImplementedError(
+                "ADJOINT does not support separate observable values"
+            )
     elif diff_mode == DiffMode.GPSR:
-        check_support_psr(circuit)
-        return PSRExpectation.apply(
-            circuit,
-            state,
-            observable,
-            embedding,
-            expectation_fn,
-            values.keys(),
-            *values.values(),
-        )
+        if values_observable is None:
+            check_support_psr(circuit)
+            return PSRExpectation.apply(
+                circuit,
+                state,
+                observable,
+                embedding,
+                expectation_fn,
+                values.keys(),
+                *values.values(),
+            )
+        else:
+            raise NotImplementedError(
+                "GPSR does not support separate observable values"
+            )
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")
