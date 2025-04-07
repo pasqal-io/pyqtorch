@@ -44,17 +44,29 @@ def test_ad_observable(
     n_qubits: int,
     n_layers: int,
 ) -> None:
-    circ, values_ad = circuit_example(n_qubits, n_layers)
+    circ, values_circuit = circuit_example(n_qubits, n_layers)
     state = pyq.zero_state(n_qubits)
     obs = pyq.Observable(pyq.RZ(0, "theta_obs"))
     assert obs.is_parametric
-    values_ad = values_ad | {"theta_obs": torch.tensor([torch.pi / 4], requires_grad=True)}
+    assert obs.params == ["theta_obs"]
+    values_obs = {"theta_obs": torch.tensor([torch.pi / 4], requires_grad=True)}
+    values_all = values_circuit | values_obs
 
-    exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
+    exp_ad = expectation(circ, state, values_all, obs, DiffMode.AD)
     grad_ad = torch.autograd.grad(
-        exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad)
+        exp_ad, tuple(values_all.values()), torch.ones_like(exp_ad)
     )
-    assert len(grad_ad) == len(values_ad)
+    assert len(grad_ad) == len(values_circuit) + 1
+
+    exp_ad_separate = expectation(
+        circ, state, values_circuit, obs, DiffMode.AD, values_observable=values_obs
+    )
+    assert torch.allclose(exp_ad_separate, exp_ad)
+    grad_ad_obs = torch.autograd.grad(
+        exp_ad_separate, tuple(values_obs.values()), torch.ones_like(exp_ad)
+    )
+    assert len(grad_ad_obs) == len(obs.params)
+    assert torch.allclose(grad_ad[-1], grad_ad_obs[0])
 
 
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
