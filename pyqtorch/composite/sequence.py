@@ -89,9 +89,9 @@ class Sequence(Module):
     def qubit_support(self) -> tuple:
         return tuple(sorted(self._qubit_support))
 
-    # @property
-    # def params(self) -> tuple:
-    #     return tuple(op.param_name if  for op in self.flatten())
+    @property
+    def params(self) -> list:
+        return list(op.param_name for op in self.flatten() if op.is_parametric)
 
     def __iter__(self) -> Iterator:
         return iter(self.operations)
