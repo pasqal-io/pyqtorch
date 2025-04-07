@@ -18,7 +18,10 @@ from pyqtorch.utils import (
 
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
 @pytest.mark.parametrize("n_layers", [1, 2, 3])
-def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
+@pytest.mark.parametrize(
+    "obs", [pyq.Observable(pyq.Z(0)), pyq.Observable(pyq.RZ(0, "obs_param"))]
+)
+def test_adjoint_diff(n_qubits: int, n_layers: int, obs: pyq.Observable) -> None:
     rx = pyq.RX(0, param_name="theta_0")
     cry = pyq.CPHASE(0, 1, param_name="theta_1")
     rz = pyq.RZ(2, param_name="theta_2")
@@ -26,7 +29,6 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
     cnot = pyq.CNOT(1, 2)
     ops = [rx, cry, rz, cnot] * n_layers
     circ = pyq.QuantumCircuit(n_qubits, ops)
-    obs = pyq.Observable(pyq.Z(0))
 
     theta_0_value = torch.pi / 2
     theta_1_value = torch.pi
@@ -53,25 +55,35 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
         "theta_1": thetas_1_adjoint,
         "theta_2": thetas_2_adjoint,
     }
+    if obs.is_parametric:
+        theta_obs = torch.pi / 4
+        theta_obs_ad = torch.tensor([theta_obs], requires_grad=True)
+        theta_obs_adjoint = torch.tensor([theta_obs], requires_grad=True)
+        values_ad.update({"obs_param": theta_obs_ad})
+        values_adjoint.update({"obs_param": theta_obs_adjoint})
+
     exp_ad = expectation(circ, state, values_ad, obs, DiffMode.AD)
     exp_adjoint = expectation(circ, state, values_adjoint, obs, DiffMode.ADJOINT)
 
     grad_ad = torch.autograd.grad(
         exp_ad, tuple(values_ad.values()), torch.ones_like(exp_ad)
     )
+    assert len(grad_ad) == len(values_ad)
 
-    grad_adjoint = torch.autograd.grad(
-        exp_adjoint, tuple(values_adjoint.values()), torch.ones_like(exp_adjoint)
-    )
+    if not obs.is_parametric:
+        grad_adjoint = torch.autograd.grad(
+            exp_adjoint, tuple(values_adjoint.values()), torch.ones_like(exp_adjoint)
+        )
 
-    assert len(grad_ad) == len(grad_adjoint)
-    for i in range(len(grad_ad)):
-        assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
+        assert len(grad_ad) == len(grad_adjoint)
+        for i in range(len(grad_ad)):
+            if grad_adjoint[i] is not None:
+                assert torch.allclose(grad_ad[i], grad_adjoint[i], atol=GRADCHECK_ATOL)
 
-    # TODO higher order adjoint is not yet supported.
-    # gradgrad_adjoint = torch.autograd.grad(
-    #     grad_adjoint, tuple(values_adjoint.values()), torch.ones_like(grad_adjoint)
-    # )
+        # TODO higher order adjoint is not yet supported.
+        # gradgrad_adjoint = torch.autograd.grad(
+        #     grad_adjoint, tuple(values_adjoint.values()), torch.ones_like(grad_adjoint)
+        # )
 
 
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])

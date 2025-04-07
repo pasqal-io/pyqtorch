@@ -266,7 +266,6 @@ def expectation(
     ```
     """
     values = values or dict()
-    values_observable = values_observable or values
     if embedding is not None and diff_mode != DiffMode.AD:
         raise NotImplementedError("Only diff_mode AD supports embedding")
     logger.debug(
