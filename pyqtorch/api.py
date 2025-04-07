@@ -108,6 +108,7 @@ def analytical_expectation(
     observable: Observable,
     values: dict[str, Tensor] | None = None,
     embedding: Embedding | None = None,
+    values_observable: dict[str, Tensor] | None = None,
 ) -> Tensor:
     """Compute the analytical expectation value.
 
@@ -122,13 +123,17 @@ def analytical_expectation(
         observable (Observable): Observable O.
         values (dict[str, Tensor], optional): Parameter values for the observable if any.
         embedding (Embedding | None, optional): An optional instance of `Embedding`.
+        values_observable: A dictionary containing <'parameter_name': torch.Tensor> pairs
+                denoting the current parameter values for each parameter in `observable`.
+                Useful for differentiating on observable parameters when using AD.
 
     Returns:
         Tensor: Expectation value.
     """
     values = values or dict()
+    values_observable = values_observable or values
     state = run(circuit, state, values, embedding=embedding)
-    return observable.expectation(state, values, embedding=embedding)
+    return observable.expectation(state, values_observable, embedding=embedding)
 
 
 def sampled_expectation(
@@ -138,6 +143,7 @@ def sampled_expectation(
     values: dict[str, Tensor] | None = None,
     embedding: Embedding | None = None,
     n_shots: int = 1,
+    values_observable: dict[str, Tensor] | None = None,
 ) -> Tensor:
     """Expectation value approximated via sampling.
 
@@ -151,18 +157,21 @@ def sampled_expectation(
         values (dict[str, Tensor], optional): Parameter values for the observable if any.
         embedding (Embedding | None, optional): An optional instance of `Embedding`.
         n_shots: (int, optional): Number of samples to compute expectation on.
-
+        values_observable: A dictionary containing <'parameter_name': torch.Tensor> pairs
+                denoting the current parameter values for each parameter in `observable`.
+                Useful for differentiating on observable parameters when using AD.
     Returns:
         Tensor: Expectation value.
     """
     values = values or dict()
+    values_observable = values_observable or values
     state = run(circuit, state, values, embedding=embedding)
     n_qubits = circuit.n_qubits
 
     # batchsize needs to be first dim for eigh
     eigvals, eigvecs = torch.linalg.eigh(
         observable.tensor(
-            values=values, embedding=embedding, full_support=tuple(range(n_qubits))
+            values=values_observable, embedding=embedding, full_support=tuple(range(n_qubits))
         ).permute((2, 0, 1))
     )
     eigvals = eigvals.squeeze()
@@ -213,6 +222,7 @@ def expectation(
     diff_mode: DiffMode = DiffMode.AD,
     n_shots: int | None = None,
     embedding: Embedding | None = None,
+    values_observable: dict[str, Tensor] | None = None,
 ) -> Tensor:
     """Compute the expectation value of `circuit` given a `state`,
     parameter values `values` and an `observable`
@@ -228,6 +238,9 @@ def expectation(
         n_shots: Number of shots for estimating expectation values.
                     Only used with DiffMode.GPSR or DiffMode.AD.
         embedding: An optional instance of `Embedding`.
+        values_observable: A dictionary containing <'parameter_name': torch.Tensor> pairs
+                denoting the current parameter values for each parameter in `observable`.
+                Useful for differentiating on observable parameters when using AD.
 
     Returns:
         An expectation value.
@@ -249,6 +262,7 @@ def expectation(
     ```
     """
     values = values or dict()
+    values_observable = values_observable or values
     if embedding is not None and diff_mode != DiffMode.AD:
         raise NotImplementedError("Only diff_mode AD supports embedding")
     logger.debug(
@@ -269,7 +283,7 @@ def expectation(
             logger.error("Please provide a 'n_shots' in options of type 'int'.")
 
     if diff_mode == DiffMode.AD:
-        return expectation_fn(circuit, state, observable, values, embedding)
+        return expectation_fn(circuit, state, observable, values, embedding, values_observable=values_observable)
     elif diff_mode == DiffMode.ADJOINT:
         return AdjointExpectation.apply(
             circuit,
