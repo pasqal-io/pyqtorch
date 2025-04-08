@@ -164,6 +164,10 @@ class Parametric(QuantumOperation):
             self.noise
         )
 
+    @property
+    def is_parametric(self) -> bool:
+        return isinstance(self.param_name, str) and self.param_name != ""
+
     def __hash__(self) -> int:
         """Hash qubit support and param_name
 

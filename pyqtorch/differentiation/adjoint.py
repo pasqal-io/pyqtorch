@@ -80,20 +80,22 @@ class AdjointExpectation(Function):
                 ctx.out_state = apply_operator(
                     ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
                 )
-                if isinstance(op, (Parametric, HamiltonianEvolution)) and isinstance(
-                    op.param_name, str
+                if (
+                    isinstance(op, (Parametric, HamiltonianEvolution))
+                    and op.is_parametric
                 ):
-                    if values[op.param_name].requires_grad:
+                    param_name: str = op.param_name  # type: ignore[assignment]
+                    if values[param_name].requires_grad:
                         mu = apply_operator(
                             ctx.out_state,
                             op.jacobian(values, ctx.embedding),
                             op.qubit_support,
                         )
                         grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
-                    if grads_dict[op.param_name] is not None:
-                        grads_dict[op.param_name] += grad
+                    if grads_dict[param_name] is not None:
+                        grads_dict[param_name] += grad
                     else:
-                        grads_dict[op.param_name] = grad
+                        grads_dict[param_name] = grad
 
                 ctx.projected_state = apply_operator(
                     ctx.projected_state,

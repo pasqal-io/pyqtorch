@@ -270,6 +270,23 @@ class HamiltonianEvolution(Sequence):
         """
         return self.operations
 
+    @property
+    def is_parametric(self) -> bool:
+        """Check if operation is parametric, that only the time is parametrized.
+
+
+        Returns:
+            bool: True is `time` is str.
+        """
+        return isinstance(self.param_name, str)
+
+    @property
+    def is_parametric_generator(self) -> bool:
+        return self.generator_type in (
+            GeneratorType.SYMBOL,
+            GeneratorType.PARAMETRIC_OPERATION,
+        )
+
     @cached_property
     def is_time_dependent(self) -> bool:
         return self._is_time_dependent(self.generator)
