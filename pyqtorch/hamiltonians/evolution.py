@@ -398,7 +398,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-        blockmat = super().tensor()
+        blockmat = super().tensor(diagonal=self.is_diagonal)
         if len(blockmat.shape) == 3:
             return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
         else:
