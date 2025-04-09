@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from functools import reduce
+from functools import cached_property, reduce
 from logging import getLogger
 from operator import add
 from typing import Any, Iterator
@@ -196,3 +196,17 @@ class Sequence(Module):
         values = values or dict()
         use_diagonal = diagonal and self.is_diagonal
         return _dagger(self.tensor(values, embedding, diagonal=use_diagonal))
+
+    @cached_property
+    def eigenvalues(
+        self,
+        values: dict[str, Tensor] | Tensor | None = None,
+        embedding: Embedding | None = None,
+        diagonal: bool = False,
+    ) -> Tensor:
+        blockmat = self.tensor(values or dict(), embedding)
+        if len(blockmat.shape) == 3:
+            return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+        else:
+            # for diagonal cases
+            return blockmat

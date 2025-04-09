@@ -210,6 +210,16 @@ class DropoutMode(StrEnum):
     CANONICAL_FWD = "canonical_fwd_dropout"
 
 
+class Decomposition(StrEnum):
+    """Available techniques to decompose a Hamiltonian, useful in `HamiltonianEvolution`."""
+
+    IDENTITY = "identity"
+    """No decomposition applied on the Hamiltonian."""
+    SUPPORT = "support"
+    """Decomposition when operator is composed of
+    elements defined over different subsets of qubits."""
+
+
 def is_normalized(state: Tensor, atol: float = ATOL) -> bool:
     """
     Function to test if the probabilities from the state sum up to 1.

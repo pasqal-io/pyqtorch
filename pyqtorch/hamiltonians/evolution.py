@@ -20,6 +20,7 @@ from pyqtorch.primitives import Primitive
 from pyqtorch.quantum_operation import QuantumOperation
 from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
+    Decomposition,
     Operator,
     SolverType,
     State,
@@ -109,8 +110,6 @@ def evolve(
     return torch.transpose(evol_operator, 0, -1)
 
 
-# FIXME: Review HamiltonianEvolution inheriting from Sequence.
-# Probably makes more sense to inherit from Parametric.
 class HamiltonianEvolution(Sequence):
     """
     The HamiltonianEvolution corresponds to :math:`t`, returns :math:`exp(-i H, t)` where
@@ -148,6 +147,7 @@ class HamiltonianEvolution(Sequence):
         solver: SolverType = SolverType.DP5_SE,
         use_sparse: bool = False,
         noise: list[Tensor] | AnalogNoise | None = None,
+        generator_decomposition: Decomposition = Decomposition.IDENTITY,
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -214,13 +214,26 @@ class HamiltonianEvolution(Sequence):
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
                 # avoiding using dense tensor for diagonal generators
-                tgen = generator.tensor(diagonal=generator.is_diagonal)
-                generator = [
-                    Primitive(
-                        tgen, generator.qubit_support, diagonal=(len(tgen.size()) == 2)
-                    )
-                ]
-                self.is_diagonal = generator[0].is_diagonal
+                if generator_decomposition == Decomposition.SUPPORT and isinstance(
+                    generator, Sequence
+                ):
+                    supports = [op.qubit_support for op in generator.operations]
+                    if len(set(supports)) == len(supports):
+                        generator = [
+                            Primitive(op.tensor(), op.qubit_support, diagonal=False)
+                            for op in generator.operations
+                        ]
+                        self.is_diagonal = False
+                else:
+                    tgen = generator.tensor(diagonal=generator.is_diagonal)
+                    generator = [
+                        Primitive(
+                            tgen,
+                            generator.qubit_support,
+                            diagonal=(len(tgen.size()) == 2),
+                        )
+                    ]
+                    self.is_diagonal = generator[0].is_diagonal
                 self.generator_type = GeneratorType.OPERATION
         else:
             raise TypeError(
