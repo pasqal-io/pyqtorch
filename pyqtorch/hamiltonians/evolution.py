@@ -333,6 +333,7 @@ class HamiltonianEvolution(Sequence):
         self,
         values: dict,
         embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
     ) -> Operator:
         """Returns the generator for the SYMBOL case.
 
@@ -358,7 +359,10 @@ class HamiltonianEvolution(Sequence):
         return hamiltonian
 
     def _tensor_generator(
-        self, values: dict | None = None, embedding: Embedding | None = None
+        self,
+        values: dict | None = None,
+        embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
     ) -> Operator:
         """Returns the generator for the TENSOR, OPERATION and PARAMETRIC_OPERATION cases.
 
@@ -368,12 +372,15 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        return self.generator[0].tensor(
-            values or dict(), embedding, diagonal=self.is_diagonal
+        return super().tensor(
+            values or dict(),
+            embedding,
+            diagonal=self.is_diagonal,
+            full_support=full_support,
         )
 
     @property
-    def create_hamiltonian(self) -> Callable[[dict], Operator]:
+    def create_hamiltonian(self) -> Callable:
         """A utility method for setting the right generator getter depending on the init case.
 
         Returns:
@@ -391,8 +398,12 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-
-        return self.generator[0].eigenvalues
+        blockmat = super().tensor()
+        if len(blockmat.shape) == 3:
+            return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+        else:
+            # for diagonal cases
+            return blockmat
 
     @cached_property
     def spectral_gap(self) -> Tensor:
@@ -451,15 +462,11 @@ class HamiltonianEvolution(Sequence):
             else:
                 values[self.time] = torch.as_tensor(t)
                 reembedded_time_values = values
-            return (
-                self.generator[0]
-                .tensor(
-                    reembedded_time_values,
-                    embedding,
-                    full_support=tuple(range(n_qubits)),
-                )
-                .squeeze(2)
-            )
+            return self.create_hamiltonian(
+                reembedded_time_values,
+                embedding,
+                full_support=tuple(range(n_qubits)),
+            ).squeeze(2)
 
         if self.noise is None:
             sol = sesolve(
