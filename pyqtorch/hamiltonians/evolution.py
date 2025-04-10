@@ -437,10 +437,15 @@ class HamiltonianEvolution(Sequence):
         embedding: Embedding | None = None,
     ) -> State:
         values = values or dict()
-        evolved_op = self.tensor(values, embedding)
-        return apply_operator(
-            state=state, operator=evolved_op, qubit_support=self.qubit_support
-        )
+        if len(self.generator) < 2:
+            evolved_op = self.tensor(values, embedding)
+            return apply_operator(
+                state=state, operator=evolved_op, qubit_support=self.qubit_support
+            )
+        else:
+            for op in self.generator:
+                state = op(state, values, embedding)
+            return state
 
     def _forward_time(
         self,
