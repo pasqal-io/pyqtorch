@@ -336,11 +336,14 @@ class HamiltonianEvolution(Sequence):
         self,
         values: dict,
         embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
     ) -> Operator:
         """Returns the generator for the SYMBOL case.
 
         Arguments:
-            values:
+            values (dict[str, Tensor], optional): Parameter values. Defaults to dict().
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+            full_support (tuple[int, ...] | None, optional): Unused but kept for consistency.
 
         Returns:
             The generator as a tensor.
@@ -361,20 +364,33 @@ class HamiltonianEvolution(Sequence):
         return hamiltonian
 
     def _tensor_generator(
-        self, values: dict | None = None, embedding: Embedding | None = None
+        self,
+        values: dict | None = None,
+        embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
     ) -> Operator:
         """Returns the generator for the TENSOR, OPERATION and PARAMETRIC_OPERATION cases.
 
         Arguments:
-            values: Values dict with any needed parameters.
+            values (dict[str, Tensor], optional): Parameter values. Defaults to dict().
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+            full_support (tuple[int, ...] | None, optional): The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
 
         Returns:
             The generator as a tensor.
         """
-        return super().tensor(values or dict(), embedding, diagonal=self.is_diagonal)
+        return super().tensor(
+            values or dict(),
+            embedding,
+            diagonal=self.is_diagonal,
+            full_support=full_support,
+        )
 
     @property
-    def create_hamiltonian(self) -> Callable[[dict], Operator]:
+    def create_hamiltonian(
+        self,
+    ) -> Callable[..., Operator]:
         """A utility method for setting the right generator getter depending on the init case.
 
         Returns:
@@ -458,15 +474,11 @@ class HamiltonianEvolution(Sequence):
             else:
                 values[self.time] = torch.as_tensor(t)
                 reembedded_time_values = values
-            return (
-                self.generator[0]
-                .tensor(
-                    reembedded_time_values,
-                    embedding,
-                    full_support=tuple(range(n_qubits)),
-                )
-                .squeeze(2)
-            )
+            return self.create_hamiltonian(
+                reembedded_time_values,
+                embedding,
+                full_support=tuple(range(n_qubits)),
+            ).squeeze(2)
 
         if self.noise is None:
             sol = sesolve(
