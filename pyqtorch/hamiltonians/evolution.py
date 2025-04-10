@@ -206,23 +206,7 @@ class HamiltonianEvolution(Sequence):
             self.generator_type = GeneratorType.SYMBOL
             self.generator_symbol = generator
             generator = []
-        elif isinstance(generator, QuantumOperation):
-            qubit_support = generator.qubit_support
-            if is_parametric(generator):
-                generator = [generator]
-                self.generator_type = GeneratorType.PARAMETRIC_OPERATION
-            else:
-                # avoiding using dense tensor for diagonal generators
-                tgen = generator.tensor(diagonal=generator.is_diagonal)
-                generator = [
-                    Primitive(
-                        tgen, generator.qubit_support, diagonal=(len(tgen.size()) == 2)
-                    )
-                ]
-                self.is_diagonal = generator[0].is_diagonal
-                self.generator_type = GeneratorType.OPERATION
-
-        elif isinstance(generator, Sequence):
+        elif isinstance(generator, (QuantumOperation, Sequence)):
             qubit_support = generator.qubit_support
 
             if is_parametric(generator):
