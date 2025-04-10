@@ -20,7 +20,6 @@ from pyqtorch.primitives import Primitive
 from pyqtorch.quantum_operation import QuantumOperation
 from pyqtorch.time_dependent.sesolve import sesolve
 from pyqtorch.utils import (
-    Decomposition,
     Operator,
     SolverType,
     State,
@@ -110,6 +109,8 @@ def evolve(
     return torch.transpose(evol_operator, 0, -1)
 
 
+# FIXME: Review HamiltonianEvolution inheriting from Sequence.
+# Probably makes more sense to inherit from Parametric.
 class HamiltonianEvolution(Sequence):
     """
     The HamiltonianEvolution corresponds to :math:`t`, returns :math:`exp(-i H, t)` where
@@ -147,7 +148,6 @@ class HamiltonianEvolution(Sequence):
         solver: SolverType = SolverType.DP5_SE,
         use_sparse: bool = False,
         noise: list[Tensor] | AnalogNoise | None = None,
-        generator_decomposition: Decomposition = Decomposition.IDENTITY,
     ):
         """Initializes the HamiltonianEvolution.
         Depending on the generator argument, set the type and set the right generator getter.
@@ -214,26 +214,13 @@ class HamiltonianEvolution(Sequence):
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
                 # avoiding using dense tensor for diagonal generators
-                if generator_decomposition == Decomposition.SUPPORT and isinstance(
-                    generator, Sequence
-                ):
-                    supports = [op.qubit_support for op in generator.operations]
-                    if len(set(supports)) == len(supports):
-                        generator = [
-                            Primitive(op.tensor(), op.qubit_support, diagonal=False)
-                            for op in generator.operations
-                        ]
-                        self.is_diagonal = False
-                else:
-                    tgen = generator.tensor(diagonal=generator.is_diagonal)
-                    generator = [
-                        Primitive(
-                            tgen,
-                            generator.qubit_support,
-                            diagonal=(len(tgen.size()) == 2),
-                        )
-                    ]
-                    self.is_diagonal = generator[0].is_diagonal
+                tgen = generator.tensor(diagonal=generator.is_diagonal)
+                generator = [
+                    Primitive(
+                        tgen, generator.qubit_support, diagonal=(len(tgen.size()) == 2)
+                    )
+                ]
+                self.is_diagonal = generator[0].is_diagonal
                 self.generator_type = GeneratorType.OPERATION
         else:
             raise TypeError(
@@ -333,7 +320,6 @@ class HamiltonianEvolution(Sequence):
         self,
         values: dict,
         embedding: Embedding | None = None,
-        full_support: tuple[int, ...] | None = None,
     ) -> Operator:
         """Returns the generator for the SYMBOL case.
 
@@ -359,10 +345,7 @@ class HamiltonianEvolution(Sequence):
         return hamiltonian
 
     def _tensor_generator(
-        self,
-        values: dict | None = None,
-        embedding: Embedding | None = None,
-        full_support: tuple[int, ...] | None = None,
+        self, values: dict | None = None, embedding: Embedding | None = None
     ) -> Operator:
         """Returns the generator for the TENSOR, OPERATION and PARAMETRIC_OPERATION cases.
 
@@ -372,15 +355,12 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        return super().tensor(
-            values or dict(),
-            embedding,
-            diagonal=self.is_diagonal,
-            full_support=full_support,
+        return self.generator[0].tensor(
+            values or dict(), embedding, diagonal=self.is_diagonal
         )
 
     @property
-    def create_hamiltonian(self) -> Callable:
+    def create_hamiltonian(self) -> Callable[[dict], Operator]:
         """A utility method for setting the right generator getter depending on the init case.
 
         Returns:
@@ -398,12 +378,8 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-        blockmat = super().tensor(diagonal=self.is_diagonal)
-        if len(blockmat.shape) == 3:
-            return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
-        else:
-            # for diagonal cases
-            return blockmat
+
+        return self.generator[0].eigenvalues
 
     @cached_property
     def spectral_gap(self) -> Tensor:
@@ -462,11 +438,15 @@ class HamiltonianEvolution(Sequence):
             else:
                 values[self.time] = torch.as_tensor(t)
                 reembedded_time_values = values
-            return self.create_hamiltonian(
-                reembedded_time_values,
-                embedding,
-                full_support=tuple(range(n_qubits)),
-            ).squeeze(2)
+            return (
+                self.generator[0]
+                .tensor(
+                    reembedded_time_values,
+                    embedding,
+                    full_support=tuple(range(n_qubits)),
+                )
+                .squeeze(2)
+            )
 
         if self.noise is None:
             sol = sesolve(
