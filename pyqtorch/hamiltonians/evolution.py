@@ -206,7 +206,23 @@ class HamiltonianEvolution(Sequence):
             self.generator_type = GeneratorType.SYMBOL
             self.generator_symbol = generator
             generator = []
-        elif isinstance(generator, (QuantumOperation, Sequence)):
+        elif isinstance(generator, QuantumOperation):
+            qubit_support = generator.qubit_support
+            if is_parametric(generator):
+                generator = [generator]
+                self.generator_type = GeneratorType.PARAMETRIC_OPERATION
+            else:
+                # avoiding using dense tensor for diagonal generators
+                tgen = generator.tensor(diagonal=generator.is_diagonal)
+                generator = [
+                    Primitive(
+                        tgen, generator.qubit_support, diagonal=(len(tgen.size()) == 2)
+                    )
+                ]
+                self.is_diagonal = generator[0].is_diagonal
+                self.generator_type = GeneratorType.OPERATION
+
+        elif isinstance(generator, Sequence):
             qubit_support = generator.qubit_support
 
             if is_parametric(generator):
@@ -355,9 +371,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        return self.generator[0].tensor(
-            values or dict(), embedding, diagonal=self.is_diagonal
-        )
+        return super().tensor(values or dict(), embedding, diagonal=self.is_diagonal)
 
     @property
     def create_hamiltonian(self) -> Callable[[dict], Operator]:
@@ -378,8 +392,14 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
+        if len(self.generator) == 1:
+            return self.generator[0].eigenvalues
 
-        return self.generator[0].eigenvalues
+        blockmat = super().tensor(diagonal=self.is_diagonal)
+        if len(blockmat.shape) == 3:
+            return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+        else:
+            return blockmat
 
     @cached_property
     def spectral_gap(self) -> Tensor:
