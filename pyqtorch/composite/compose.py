@@ -22,7 +22,7 @@ from pyqtorch.utils import (
 from .sequence import Sequence
 
 BATCH_DIM = 2
-PAULI_OPS = [X, Y, Z, I]
+PAULI_OPS = (X, Y, Z, I)
 
 logger = getLogger(__name__)
 
@@ -227,14 +227,12 @@ class Add(Sequence):
         all_leaves_ops: list = list()
         for op in self.flatten():
             if isinstance(op, Scale):
-                all_leaves_ops.append(
-                    op.operations[0].flatten()
-                    if isinstance(op.operations[0], Sequence)
-                    else op.operations[0]
-                )
+                if isinstance(op.operations[0], Sequence):
+                    all_leaves_ops += op.operations[0].flatten()
+                else:
+                    all_leaves_ops += [op.operations[0]]
             else:
                 all_leaves_ops.append(op)
-
         return all(isinstance(op, PAULI_OPS) for op in all_leaves_ops)  # type: ignore[arg-type]
 
 
