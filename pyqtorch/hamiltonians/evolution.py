@@ -364,7 +364,7 @@ class HamiltonianEvolution(Sequence):
         )
 
     @property
-    def create_hamiltonian(self) -> Callable[[dict], Operator]:
+    def create_hamiltonian(self) -> Callable:
         """A utility method for setting the right generator getter depending on the init case.
 
         Returns:
@@ -382,7 +382,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-        blockmat = self._tensor_generator()
+        blockmat = self.create_hamiltonian()
         if len(blockmat.shape) == 3:
             return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
         else:
@@ -446,7 +446,7 @@ class HamiltonianEvolution(Sequence):
             else:
                 values[self.time] = torch.as_tensor(t)
                 reembedded_time_values = values
-            return self._tensor_generator(
+            return self.create_hamiltonian(
                 reembedded_time_values,
                 embedding,
                 full_support=tuple(range(n_qubits)),
