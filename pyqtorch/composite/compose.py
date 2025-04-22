@@ -236,7 +236,7 @@ class Add(Sequence):
         return all(isinstance(op, PAULI_OPS) for op in all_leaves_ops)  # type: ignore[arg-type]
 
     @property
-    def commuting(self) -> bool:
+    def commuting_terms(self) -> bool:
         """Check if operator can be decomposed into commuting terms."""
 
         # when operators are defined on different qubit supports
