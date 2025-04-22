@@ -320,6 +320,7 @@ class HamiltonianEvolution(Sequence):
         self,
         values: dict,
         embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
     ) -> Operator:
         """Returns the generator for the SYMBOL case.
 
@@ -345,7 +346,10 @@ class HamiltonianEvolution(Sequence):
         return hamiltonian
 
     def _tensor_generator(
-        self, values: dict | None = None, embedding: Embedding | None = None
+        self,
+        values: dict | None = None,
+        embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
     ) -> Operator:
         """Returns the generator for the TENSOR, OPERATION and PARAMETRIC_OPERATION cases.
 
@@ -355,8 +359,8 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        return self.generator[0].tensor(
-            values or dict(), embedding, diagonal=self.is_diagonal
+        return super().tensor(
+            values or dict(), embedding, full_support, diagonal=self.is_diagonal
         )
 
     @property
@@ -378,7 +382,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-
+        
         return self.generator[0].eigenvalues
 
     @cached_property
@@ -439,8 +443,7 @@ class HamiltonianEvolution(Sequence):
                 values[self.time] = torch.as_tensor(t)
                 reembedded_time_values = values
             return (
-                self.generator[0]
-                .tensor(
+                self._tensor_generator(
                     reembedded_time_values,
                     embedding,
                     full_support=tuple(range(n_qubits)),
