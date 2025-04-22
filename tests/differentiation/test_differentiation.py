@@ -59,7 +59,7 @@ def test_ad_observable(
     assert len(grad_ad) == len(values_circuit) + 1
 
     exp_ad_separate = expectation(
-        circ, state, values_circuit, obs, DiffMode.AD, values_observable=values_obs
+        circ, state, values_circuit, obs, DiffMode.AD, values_observables=values_obs
     )
     assert torch.allclose(exp_ad_separate, exp_ad)
     grad_ad_obs = torch.autograd.grad(
@@ -75,7 +75,7 @@ def test_ad_observable(
             values_circuit,
             obs,
             DiffMode.ADJOINT,
-            values_observable=values_obs,
+            values_observables=values_obs,
         )
 
 
