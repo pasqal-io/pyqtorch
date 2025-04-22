@@ -103,9 +103,9 @@ the circuit parameters, as follows:
 
 obs = pyq.Observable(pyq.RZ(0, "obs"))
 values_obs = {"obs": torch.tensor([torch.pi / 2], requires_grad=True)}
-exp_ad = pyq.expectation(circ, state, values_ad, obs, DiffMode.AD, values_observables=values_obs)
+exp_ad_separate = pyq.expectation(circ, state, values_ad, obs, DiffMode.AD, values_observables=values_obs)
 grad_ad_obs = torch.autograd.grad(
-    exp_ad_separate, tuple(values_obs.values()), torch.ones_like(exp_ad)
+    exp_ad_separate, tuple(values_obs.values()), torch.ones_like(exp_ad_separate)
 )
 assert len(grad_ad_obs) == len(obs.params)
 ```
