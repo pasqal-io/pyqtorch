@@ -235,6 +235,17 @@ class Add(Sequence):
                 all_leaves_ops.append(op)
         return all(isinstance(op, PAULI_OPS) for op in all_leaves_ops)  # type: ignore[arg-type]
 
+    @property
+    def commuting(self) -> bool:
+        """Check if operator can be decomposed into commuting terms."""
+
+        # when operators are defined on different qubit supports
+        qubit_supports = [op.qubit_support for op in self.operations]
+        if len(set(qubit_supports)) == len(qubit_supports):
+            return True
+
+        return False
+
 
 class Merge(Sequence):
     def __init__(
