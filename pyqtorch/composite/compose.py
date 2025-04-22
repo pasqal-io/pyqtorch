@@ -12,7 +12,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 from pyqtorch.apply import apply_operator, apply_operator_dm
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.matrices import add_batch_dim
-from pyqtorch.primitives import CNOT, RX, RY, Parametric, Primitive
+from pyqtorch.primitives import CNOT, RX, RY, I, Parametric, Primitive, X, Y, Z
 from pyqtorch.utils import (
     DensityMatrix,
     Operator,
@@ -22,6 +22,7 @@ from pyqtorch.utils import (
 from .sequence import Sequence
 
 BATCH_DIM = 2
+PAULI_OPS = [X, Y, Z, I]
 
 logger = getLogger(__name__)
 
@@ -214,6 +215,27 @@ class Add(Sequence):
             ),
             mat,
         )
+
+    @property
+    def is_pauli_string(self) -> bool:
+        """Check if Add is a pauli string, that is a weighted
+        sum of tensor products of pauli operators.
+
+        Returns:
+            bool: True if pauli string.
+        """
+        all_leaves_ops: list = list()
+        for op in self.flatten():
+            if isinstance(op, Scale):
+                all_leaves_ops.append(
+                    op.operations[0].flatten()
+                    if isinstance(op.operations[0], Sequence)
+                    else op.operations[0]
+                )
+            else:
+                all_leaves_ops.append(op)
+
+        return all(isinstance(op, PAULI_OPS) for op in all_leaves_ops)  # type: ignore[arg-type]
 
 
 class Merge(Sequence):
