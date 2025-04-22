@@ -382,8 +382,12 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-        
-        return self.generator[0].eigenvalues
+        blockmat = self._tensor_generator()
+        if len(blockmat.shape) == 3:
+            return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+        else:
+            # for diagonal cases
+            return blockmat
 
     @cached_property
     def spectral_gap(self) -> Tensor:
@@ -442,14 +446,11 @@ class HamiltonianEvolution(Sequence):
             else:
                 values[self.time] = torch.as_tensor(t)
                 reembedded_time_values = values
-            return (
-                self._tensor_generator(
-                    reembedded_time_values,
-                    embedding,
-                    full_support=tuple(range(n_qubits)),
-                )
-                .squeeze(2)
-            )
+            return self._tensor_generator(
+                reembedded_time_values,
+                embedding,
+                full_support=tuple(range(n_qubits)),
+            ).squeeze(2)
 
         if self.noise is None:
             sol = sesolve(
