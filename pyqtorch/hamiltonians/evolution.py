@@ -13,7 +13,7 @@ from torch.nn import ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
-from pyqtorch.composite import Scale
+from pyqtorch.composite import Add, Scale
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.noise import AnalogNoise
 from pyqtorch.primitives import Primitive
@@ -213,42 +213,42 @@ class HamiltonianEvolution(Sequence):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
-                # if isinstance(generator, Add) and generator.commuting_terms:
-                #     # avoiding using dense tensor for diagonal generators
-                #     primitives = [
-                #         op.tensor(diagonal=generator.is_diagonal)
-                #         for op in generator.operations
-                #     ]
-                #     generator = [
-                #         Primitive(
-                #             tgen, op.qubit_support, diagonal=(len(tgen.size()) == 2)
-                #         )
-                #         for tgen, op in zip(primitives, generator.operations)
-                #     ]
-                # else:
-                #     # avoiding using dense tensor for diagonal generators
-                #     tgen = generator.tensor(diagonal=generator.is_diagonal)
-                #     generator = [
-                #         Primitive(
-                #             tgen,
-                #             generator.qubit_support,
-                #             diagonal=(len(tgen.size()) == 2),
-                #         )
-                #     ]
-                # self.is_diagonal = generator[0].is_diagonal
-                # self.generator_type = GeneratorType.OPERATION
-
-                # avoiding using dense tensor for diagonal generators
-                tgen = generator.tensor(diagonal=generator.is_diagonal)
-                generator = [
-                    Primitive(
-                        tgen,
-                        generator.qubit_support,
-                        diagonal=(len(tgen.size()) == 2),
-                    )
-                ]
+                if isinstance(generator, Add) and generator.commuting_terms:
+                    # avoiding using dense tensor for diagonal generators
+                    primitives = [
+                        op.tensor(diagonal=generator.is_diagonal)
+                        for op in generator.operations
+                    ]
+                    generator = [
+                        Primitive(
+                            tgen, op.qubit_support, diagonal=(len(tgen.size()) == 2)
+                        )
+                        for tgen, op in zip(primitives, generator.operations)
+                    ]
+                else:
+                    # avoiding using dense tensor for diagonal generators
+                    tgen = generator.tensor(diagonal=generator.is_diagonal)
+                    generator = [
+                        Primitive(
+                            tgen,
+                            generator.qubit_support,
+                            diagonal=(len(tgen.size()) == 2),
+                        )
+                    ]
                 self.is_diagonal = generator[0].is_diagonal
                 self.generator_type = GeneratorType.OPERATION
+
+                # # avoiding using dense tensor for diagonal generators
+                # tgen = generator.tensor(diagonal=generator.is_diagonal)
+                # generator = [
+                #     Primitive(
+                #         tgen,
+                #         generator.qubit_support,
+                #         diagonal=(len(tgen.size()) == 2),
+                #     )
+                # ]
+                # self.is_diagonal = generator[0].is_diagonal
+                # self.generator_type = GeneratorType.OPERATION
         else:
             raise TypeError(
                 f"Received generator of type {type(generator)},\
@@ -627,7 +627,11 @@ class HamiltonianEvolution(Sequence):
         use_diagonal = diagonal and self.is_diagonal
 
         values_cache_key = str(OrderedDict(values))
-        if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
+        if (
+            len(self.generator) < 2
+            and self.cache_length > 0
+            and values_cache_key in self._cache_hamiltonian_evo
+        ):
             evolved_op = self._cache_hamiltonian_evo[values_cache_key]
         else:
             hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
