@@ -432,7 +432,7 @@ def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
     generator, param_list = random_pauli_hamiltonian(
         n_qubits, k_1q, k_2q, make_param=True, p_param=1.0
     )
-    assert generator.is_pauli_string
+    assert generator.is_pauli_add
 
     tparam = "t"
 

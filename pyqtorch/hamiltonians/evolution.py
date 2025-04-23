@@ -235,7 +235,7 @@ class HamiltonianEvolution(Sequence):
                             diagonal=(len(tgen.size()) == 2),
                         )
                     ]
-                self.is_diagonal = generator[0].is_diagonal
+                self.is_diagonal = all(g.is_diagonal for g in generator)
                 self.generator_type = GeneratorType.OPERATION
         else:
             raise TypeError(
