@@ -214,17 +214,7 @@ class HamiltonianEvolution(Sequence):
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
                 if isinstance(generator, Add) and generator.commuting_terms:
-                    # avoiding using dense tensor for diagonal generators
-                    primitives = [
-                        op.tensor(diagonal=generator.is_diagonal)
-                        for op in generator.operations
-                    ]
-                    generator = [
-                        Primitive(
-                            tgen, op.qubit_support, diagonal=(len(tgen.size()) == 2)
-                        )
-                        for tgen, op in zip(primitives, generator.operations)
-                    ]
+                    generator = generator.operations
                 else:
                     # avoiding using dense tensor for diagonal generators
                     tgen = generator.tensor(diagonal=generator.is_diagonal)
