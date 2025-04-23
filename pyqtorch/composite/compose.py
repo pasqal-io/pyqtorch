@@ -217,8 +217,8 @@ class Add(Sequence):
         )
 
     @property
-    def is_pauli_string(self) -> bool:
-        """Check if Add is a pauli string, that is a weighted
+    def is_pauli_add(self) -> bool:
+        """Check if Add contains only pauli string, that is a weighted
         sum of tensor products of pauli operators.
 
         Returns:
