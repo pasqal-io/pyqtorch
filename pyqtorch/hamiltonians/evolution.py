@@ -213,11 +213,38 @@ class HamiltonianEvolution(Sequence):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
+                # if isinstance(generator, Add) and generator.commuting_terms:
+                #     # avoiding using dense tensor for diagonal generators
+                #     primitives = [
+                #         op.tensor(diagonal=generator.is_diagonal)
+                #         for op in generator.operations
+                #     ]
+                #     generator = [
+                #         Primitive(
+                #             tgen, op.qubit_support, diagonal=(len(tgen.size()) == 2)
+                #         )
+                #         for tgen, op in zip(primitives, generator.operations)
+                #     ]
+                # else:
+                #     # avoiding using dense tensor for diagonal generators
+                #     tgen = generator.tensor(diagonal=generator.is_diagonal)
+                #     generator = [
+                #         Primitive(
+                #             tgen,
+                #             generator.qubit_support,
+                #             diagonal=(len(tgen.size()) == 2),
+                #         )
+                #     ]
+                # self.is_diagonal = generator[0].is_diagonal
+                # self.generator_type = GeneratorType.OPERATION
+
                 # avoiding using dense tensor for diagonal generators
                 tgen = generator.tensor(diagonal=generator.is_diagonal)
                 generator = [
                     Primitive(
-                        tgen, generator.qubit_support, diagonal=(len(tgen.size()) == 2)
+                        tgen,
+                        generator.qubit_support,
+                        diagonal=(len(tgen.size()) == 2),
                     )
                 ]
                 self.is_diagonal = generator[0].is_diagonal
@@ -247,7 +274,7 @@ class HamiltonianEvolution(Sequence):
         }
 
         # to avoid recomputing hamiltonians and evolution
-        self._cache_hamiltonian_evo: dict[str, Tensor] = dict()
+        self._cache_hamiltonian_evo: dict[str, tuple[Tensor, ...] | Tensor] = dict()
         self.cache_length = cache_length
 
         if isinstance(noise, list):
@@ -363,6 +390,19 @@ class HamiltonianEvolution(Sequence):
             values or dict(), embedding, full_support, diagonal=self.is_diagonal
         )
 
+    def _tensor_multiple_generators(
+        self,
+        values: dict | None = None,
+        embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
+    ) -> tuple[Operator]:
+        return tuple(
+            op.tensor(
+                values or dict(), embedding, full_support, diagonal=self.is_diagonal
+            )
+            for op in self.generator
+        )
+
     @property
     def create_hamiltonian(self) -> Callable:
         """A utility method for setting the right generator getter depending on the init case.
@@ -402,6 +442,22 @@ class HamiltonianEvolution(Sequence):
         spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 
+    def _time_evolution(
+        self, values: dict[str, Tensor] | ParameterDict | None = None
+    ) -> Tensor:
+        values = values or dict()
+        if isinstance(self.time, str):
+            pname = self.time
+            # note: GPSR trick when the same param_name is used in many operations
+            if self._param_uuid in values.keys():
+                pname = self._param_uuid
+            time_evolution = values[pname]
+        elif isinstance(self.time, ConcretizedCallable):
+            time_evolution = self.time(values)
+        else:
+            time_evolution = self.time
+        return time_evolution
+
     def _forward(
         self,
         state: Tensor,
@@ -409,10 +465,56 @@ class HamiltonianEvolution(Sequence):
         embedding: Embedding | None = None,
     ) -> State:
         values = values or dict()
-        evolved_op = self.tensor(values, embedding)
-        return apply_operator(
-            state=state, operator=evolved_op, qubit_support=self.qubit_support
-        )
+
+        if len(self.generator) < 2:
+
+            evolved_op = self.tensor(values, embedding)
+            return apply_operator(
+                state=state, operator=evolved_op, qubit_support=self.qubit_support
+            )
+        else:
+            return self._forward_commuting_generators(state, values, embedding)
+
+    def _forward_commuting_generators(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict | None = None,
+        embedding: Embedding | None = None,
+    ) -> State:
+        values = values or dict()
+        if embedding is not None:
+            values = embedding(values)
+
+        values_cache_key = str(OrderedDict(values))
+        if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
+            evolved_ops = self._cache_hamiltonian_evo[values_cache_key]
+
+        else:
+            hamiltonians = self._tensor_multiple_generators(values, embedding)
+            time_evolution = self._time_evolution(values)
+
+            evolved_ops = tuple(
+                evolve(h, time_evolution, diagonal=self.is_diagonal)
+                for h in hamiltonians
+            )
+
+            nb_cached = len(self._cache_hamiltonian_evo)
+
+            # LRU caching
+            if (nb_cached > 0) and (nb_cached == self.cache_length):
+                self._cache_hamiltonian_evo.pop(next(iter(self._cache_hamiltonian_evo)))
+            if nb_cached < self.cache_length:
+                self._cache_hamiltonian_evo[values_cache_key] = evolved_ops
+
+        evolved_state = state
+        for evo, qs in zip(
+            evolved_ops, tuple(op.qubit_support for op in self.generator)
+        ):
+            evolved_state = apply_operator(
+                state=evolved_state, operator=evo, qubit_support=qs
+            )
+
+        return evolved_state
 
     def _forward_time(
         self,
@@ -529,17 +631,7 @@ class HamiltonianEvolution(Sequence):
             evolved_op = self._cache_hamiltonian_evo[values_cache_key]
         else:
             hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
-
-            if isinstance(self.time, str):
-                pname = self.time
-                # note: GPSR trick when the same param_name is used in many operations
-                if self._param_uuid in values.keys():
-                    pname = self._param_uuid
-                time_evolution = values[pname]
-            elif isinstance(self.time, ConcretizedCallable):
-                time_evolution = self.time(values)
-            else:
-                time_evolution = self.time
+            time_evolution = self._time_evolution(values)
 
             evolved_op = evolve(hamiltonian, time_evolution, diagonal=self.is_diagonal)
             if use_diagonal:
