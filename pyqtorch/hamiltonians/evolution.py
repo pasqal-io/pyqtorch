@@ -237,18 +237,6 @@ class HamiltonianEvolution(Sequence):
                     ]
                 self.is_diagonal = generator[0].is_diagonal
                 self.generator_type = GeneratorType.OPERATION
-
-                # # avoiding using dense tensor for diagonal generators
-                # tgen = generator.tensor(diagonal=generator.is_diagonal)
-                # generator = [
-                #     Primitive(
-                #         tgen,
-                #         generator.qubit_support,
-                #         diagonal=(len(tgen.size()) == 2),
-                #     )
-                # ]
-                # self.is_diagonal = generator[0].is_diagonal
-                # self.generator_type = GeneratorType.OPERATION
         else:
             raise TypeError(
                 f"Received generator of type {type(generator)},\
@@ -445,6 +433,15 @@ class HamiltonianEvolution(Sequence):
     def _time_evolution(
         self, values: dict[str, Tensor] | ParameterDict | None = None
     ) -> Tensor:
+        """
+        Get the evolution from parameter values.
+
+        Arguments:
+            values: Values of parameters.
+
+        Returns:
+            The time evolution.
+        """
         values = values or dict()
         if isinstance(self.time, str):
             pname = self.time
@@ -464,6 +461,17 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
+        """
+        Apply the hamiltonian evolution with input parameter values.
+
+        Arguments:
+            state: Input state.
+            values: Values of parameters.
+            embedding: Embedding of parameters.
+
+        Returns:
+            The transformed state.
+        """
         values = values or dict()
 
         if len(self.generator) < 2:
@@ -481,6 +489,18 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
+        """
+        Apply the hamiltonian evolution with input parameter values when
+        hamiltonian is composed of commuting terms.
+
+        Arguments:
+            state: Input state.
+            values: Values of parameters.
+            embedding: Embedding of parameters.
+
+        Returns:
+            The transformed state.
+        """
         values = values or dict()
         if embedding is not None:
             values = embedding(values)
@@ -522,6 +542,17 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding = Embedding(),
     ) -> State:
+        """
+        Apply the hamiltonian evolution with input parameter values for time dependent cases.
+
+        Arguments:
+            state: Input state.
+            values: Values of parameters.
+            embedding: Embedding of parameters.
+
+        Returns:
+            The transformed state.
+        """
         values = values or dict()
         n_qubits = len(state.shape) - 1
         batch_size = state.shape[-1]
@@ -615,8 +646,12 @@ class HamiltonianEvolution(Sequence):
         To avoid computing the evolution operator, we store it in cache wrt values.
 
         Arguments:
-            values: Parameter value.
-            Can be higher than the number of qubit support.
+            values: Parameter values.
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+            full_support (tuple[int, ...] | None, optional): The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
+            diagonal (bool, optional): Whether to return the diagonal form of the tensor or not.
+                Defaults to False.
 
         Returns:
             The unitary representation.
