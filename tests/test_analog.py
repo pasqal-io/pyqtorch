@@ -426,11 +426,12 @@ def test_error_noise_qubit_support(
 
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
 @pytest.mark.parametrize("batch_size", [1, 2])
-def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
+@pytest.mark.parametrize("make_param", [True, False])
+def test_hamevo_parametric_gen(n_qubits: int, batch_size: int, make_param: bool) -> None:
     k_1q = 2 * n_qubits  # Number of 1-qubit terms
     k_2q = n_qubits**2  # Number of 2-qubit terms
     generator, param_list = random_pauli_hamiltonian(
-        n_qubits, k_1q, k_2q, make_param=True, p_param=1.0
+        n_qubits, k_1q, k_2q, make_param=make_param, p_param=1.0
     )
     assert generator.is_pauli_add
 
@@ -440,7 +441,10 @@ def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
 
     hamevo = pyq.HamiltonianEvolution(generator, tparam, cache_length=2)
 
-    assert hamevo.generator_type == GeneratorType.PARAMETRIC_OPERATION
+    if make_param:
+        assert hamevo.generator_type == GeneratorType.PARAMETRIC_OPERATION
+    else:
+        assert hamevo.generator_type == GeneratorType.OPERATION
     assert len(hamevo._cache_hamiltonian_evo) == 0
 
     def apply_hamevo_and_compare_expected(psi, values):
