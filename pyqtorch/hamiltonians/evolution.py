@@ -206,6 +206,17 @@ class HamiltonianEvolution(Sequence):
             self.generator_type = GeneratorType.SYMBOL
             self.generator_symbol = generator
             generator = []
+
+        elif isinstance(generator, Add) and generator.commuting_terms:
+            qubit_support = generator.qubit_support
+            self.generator_type = (
+                GeneratorType.PARAMETRIC_OPERATION
+                if is_parametric(generator)
+                else GeneratorType.OPERATION
+            )
+            self.is_diagonal = generator.is_diagonal
+            generator = list(generator.operations)
+
         elif isinstance(generator, (QuantumOperation, Sequence)):
             qubit_support = generator.qubit_support
 
@@ -213,18 +224,16 @@ class HamiltonianEvolution(Sequence):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
-                if isinstance(generator, Add) and generator.commuting_terms:
-                    generator = generator.operations
-                else:
-                    # avoiding using dense tensor for diagonal generators
-                    tgen = generator.tensor(diagonal=generator.is_diagonal)
-                    generator = [
-                        Primitive(
-                            tgen,
-                            generator.qubit_support,
-                            diagonal=(len(tgen.size()) == 2),
-                        )
-                    ]
+
+                # avoiding using dense tensor for diagonal generators
+                tgen = generator.tensor(diagonal=generator.is_diagonal)
+                generator = [
+                    Primitive(
+                        tgen,
+                        generator.qubit_support,
+                        diagonal=(len(tgen.size()) == 2),
+                    )
+                ]
                 self.is_diagonal = all(g.is_diagonal for g in generator)
                 self.generator_type = GeneratorType.OPERATION
         else:
@@ -495,26 +504,12 @@ class HamiltonianEvolution(Sequence):
         if embedding is not None:
             values = embedding(values)
 
-        values_cache_key = str(OrderedDict(values))
-        if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
-            evolved_ops = self._cache_hamiltonian_evo[values_cache_key]
+        hamiltonians = self._tensor_multiple_generators(values, embedding)
+        time_evolution = self._time_evolution(values)
 
-        else:
-            hamiltonians = self._tensor_multiple_generators(values, embedding)
-            time_evolution = self._time_evolution(values)
-
-            evolved_ops = tuple(
-                evolve(h, time_evolution, diagonal=self.is_diagonal)
-                for h in hamiltonians
-            )
-
-            nb_cached = len(self._cache_hamiltonian_evo)
-
-            # LRU caching
-            if (nb_cached > 0) and (nb_cached == self.cache_length):
-                self._cache_hamiltonian_evo.pop(next(iter(self._cache_hamiltonian_evo)))
-            if nb_cached < self.cache_length:
-                self._cache_hamiltonian_evo[values_cache_key] = evolved_ops
+        evolved_ops = tuple(
+            evolve(h, time_evolution, diagonal=self.is_diagonal) for h in hamiltonians
+        )
 
         evolved_state = state
         for evo, qs in zip(
