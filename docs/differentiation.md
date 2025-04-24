@@ -94,7 +94,7 @@ for i in range(len(dfdx_ad)):
     assert torch.allclose(dfdx_ad[i], dfdx_gpsr[i])
 ```
 
-#### Differentiation with a parametrized observable
+### Parametrized observable differentiation
 
 To allow differentiating observable parameters only, we need to specify the `values_observables` argument separately from
 the circuit parameters, as follows:
