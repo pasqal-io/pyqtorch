@@ -96,7 +96,7 @@ for i in range(len(dfdx_ad)):
 
 #### Differentiation with a parametrized observable
 
-To allow differentiating only on the observable parameters, we need to specify the `values_observables` argument separately from
+To allow differentiating observable parameters only, we need to specify the `values_observables` argument separately from
 the circuit parameters, as follows:
 
 ```python exec="on" source="material-block" html="1" session="diff"
