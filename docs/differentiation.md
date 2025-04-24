@@ -1,3 +1,5 @@
+## Differentiation
+
 `pyqtorch` also offers several differentiation modes to compute gradients which can be accessed through the
 `expectation` API. Simply pass one of three `DiffMode` options to the `diff_mode` argument.
 The default is `ad`.
@@ -47,7 +49,7 @@ Here $F_s=f(x+\delta_s)-f(x-\delta_s)$ denotes the difference between values of 
     spectral gaps. Also we use a shift prefactor of 0.5 for multi-gap GPSR or 0.5 divided by the spectral gap for single-gap GPSR.
 
 
-### Examples
+## Examples
 
 ### Circuit parameters differentiation
 
