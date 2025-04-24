@@ -49,7 +49,7 @@ Here $F_s=f(x+\delta_s)-f(x-\delta_s)$ denotes the difference between values of 
 
 ### Examples
 
-#### Differentiation of circuit parameters
+### Circuit parameters differentiation
 
 We show below a code example with several differentiation methods for circuit parameters:
 
