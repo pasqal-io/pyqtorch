@@ -51,7 +51,7 @@ Here $F_s=f(x+\delta_s)-f(x-\delta_s)$ denotes the difference between values of 
 
 #### Differentiation of circuit parameters
 
-We show below a code example with the different differentiation methods for differentiating circuit parameters:
+We show below a code example with several differentiation methods for circuit parameters:
 
 ```python exec="on" source="material-block" html="1" session="diff"
 import pyqtorch as pyq
