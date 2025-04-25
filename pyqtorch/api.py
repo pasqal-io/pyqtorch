@@ -27,11 +27,12 @@ def _values_processing(
     """Process the parameter values."""
     values = values or dict()
     values_observables = values
+    values_circuit = values
     val_keys = values.keys()
     if "circuit" in val_keys and "observables" in val_keys:
         values_observables = values["observables"]
-        values = values["circuit"]
-    return values, values_observables
+        values_circuit = values["circuit"]
+    return values_circuit, values_observables
 
 
 def run(
@@ -133,7 +134,8 @@ def analytical_expectation(
         circuit (QuantumCircuit): Quantum circuit :math:`U(\\theta)`.
         state (Tensor): Input state :math:`\\ket\\rangle`.
         observable (Observable): Observable O.
-        values (dict[str, Tensor], optional): Parameter values for the circuit and the observable if any.
+        values (dict[str, Tensor], optional): Parameter values for the
+            circuit and the observable if any.
         embedding (Embedding | None, optional): An optional instance of `Embedding`.
 
     Returns:

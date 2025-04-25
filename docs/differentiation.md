@@ -104,8 +104,8 @@ To allow differentiating observable parameters only, we need to specify the `val
 
 obs = pyq.Observable(pyq.RZ(0, "obs"))
 values_obs = {"obs": torch.tensor([torch.pi / 2], requires_grad=True)}
-values_separated = {"circuit": values_ad, "observables": values_obs}
-exp_ad_separate = pyq.expectation(circ, state, values_separated, obs, DiffMode.AD)
+values = {"circuit": values_ad, "observables": values_obs}
+exp_ad_separate = pyq.expectation(circ, state, values, obs, DiffMode.AD)
 grad_ad_obs = torch.autograd.grad(
     exp_ad_separate, tuple(values_obs.values()), torch.ones_like(exp_ad_separate)
 )
