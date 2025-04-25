@@ -58,25 +58,14 @@ def test_ad_observable(
     )
     assert len(grad_ad) == len(values_circuit) + 1
 
-    exp_ad_separate = expectation(
-        circ, state, values_circuit, obs, DiffMode.AD, values_observables=values_obs
-    )
+    values_separated = {"circuit": values_circuit, "observables": values_obs}
+    exp_ad_separate = expectation(circ, state, values_separated, obs, DiffMode.AD)
     assert torch.allclose(exp_ad_separate, exp_ad)
     grad_ad_obs = torch.autograd.grad(
         exp_ad_separate, tuple(values_obs.values()), torch.ones_like(exp_ad)
     )
     assert len(grad_ad_obs) == len(obs.params)
     assert torch.allclose(grad_ad[-1], grad_ad_obs[0])
-
-    with pytest.raises(NotImplementedError):
-        exp_ad_separate = expectation(
-            circ,
-            state,
-            values_circuit,
-            obs,
-            DiffMode.ADJOINT,
-            values_observables=values_obs,
-        )
 
 
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])

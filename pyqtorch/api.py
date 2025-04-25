@@ -21,6 +21,19 @@ from pyqtorch.utils import DensityMatrix, DiffMode, sample_multinomial
 logger = getLogger(__name__)
 
 
+def _values_processing(
+    values: dict[str, Tensor] | dict[str, dict[str, Tensor]] | None = None
+) -> tuple[dict[str, Tensor], dict[str, Tensor]]:
+    """Process the parameter values."""
+    values = values or dict()
+    values_observables = values
+    val_keys = values.keys()
+    if "circuit" in val_keys and "observables" in val_keys:
+        values_observables = values["observables"]
+        values = values["circuit"]
+    return values, values_observables
+
+
 def run(
     circuit: QuantumCircuit,
     state: Tensor = None,
@@ -108,7 +121,6 @@ def analytical_expectation(
     observable: Observable,
     values: dict[str, Tensor] | None = None,
     embedding: Embedding | None = None,
-    values_observables: dict[str, Tensor] | None = None,
 ) -> Tensor:
     """Compute the analytical expectation value.
 
@@ -121,18 +133,14 @@ def analytical_expectation(
         circuit (QuantumCircuit): Quantum circuit :math:`U(\\theta)`.
         state (Tensor): Input state :math:`\\ket\\rangle`.
         observable (Observable): Observable O.
-        values (dict[str, Tensor], optional): Parameter values for the observable if any.
+        values (dict[str, Tensor], optional): Parameter values.
         embedding (Embedding | None, optional): An optional instance of `Embedding`.
-        values_observables: A dictionary containing <'parameter_name': torch.Tensor> pairs
-                denoting the current parameter values for each parameter in `observable`.
-                Useful for differentiating on observable parameters when using AD.
 
     Returns:
         Tensor: Expectation value.
     """
-    values = values or dict()
-    values_observables = values_observables or values
-    state = run(circuit, state, values, embedding=embedding)
+    values_circuit, values_observables = _values_processing(values)
+    state = run(circuit, state, values_circuit, embedding=embedding)
     return observable.expectation(state, values_observables, embedding=embedding)
 
 
@@ -143,7 +151,6 @@ def sampled_expectation(
     values: dict[str, Tensor] | None = None,
     embedding: Embedding | None = None,
     n_shots: int = 1,
-    values_observables: dict[str, Tensor] | None = None,
 ) -> Tensor:
     """Expectation value approximated via sampling.
 
@@ -157,15 +164,12 @@ def sampled_expectation(
         values (dict[str, Tensor], optional): Parameter values for the observable if any.
         embedding (Embedding | None, optional): An optional instance of `Embedding`.
         n_shots: (int, optional): Number of samples to compute expectation on.
-        values_observables: A dictionary containing <'parameter_name': torch.Tensor> pairs
-                denoting the current parameter values for each parameter in `observable`.
-                Useful for differentiating on observable parameters when using AD.
+
     Returns:
         Tensor: Expectation value.
     """
-    values = values or dict()
-    values_observables = values_observables or values
-    state = run(circuit, state, values, embedding=embedding)
+    values_circuit, values_observables = _values_processing(values)
+    state = run(circuit, state, values_circuit, embedding=embedding)
     n_qubits = circuit.n_qubits
 
     # batchsize needs to be first dim for eigh
@@ -219,12 +223,11 @@ def sampled_expectation(
 def expectation(
     circuit: QuantumCircuit,
     state: Tensor = None,
-    values: dict[str, Tensor] | None = None,
+    values: dict[str, Tensor] | dict[str, dict[str, Tensor]] | None = None,
     observable: Observable = None,  # type: ignore[assignment]
     diff_mode: DiffMode = DiffMode.AD,
     n_shots: int | None = None,
     embedding: Embedding | None = None,
-    values_observables: dict[str, Tensor] | None = None,
 ) -> Tensor:
     """Compute the expectation value of `circuit` given a `state`,
     parameter values `values` and an `observable`
@@ -235,16 +238,15 @@ def expectation(
         state: A torch.Tensor of shape [2, 2, ..., batch_size].
         values: A dictionary containing <'parameter_name': torch.Tensor> pairs
                 denoting the current parameter values for each parameter in `circuit`.
-                Note it can include also values for the observable, but differentiation will
+                Note it can include also values for the observables, but differentiation will
                 not separate gradients.
+                To do so, we should provide values as a dict of dict[str, Tensor]
+                with two keys: `circuit` and `observables`.
         observable: A pyq.Observable instance.
         diff_mode: The differentiation mode.
         n_shots: Number of shots for estimating expectation values.
                     Only used with DiffMode.GPSR or DiffMode.AD.
         embedding: An optional instance of `Embedding`.
-        values_observables: A dictionary containing <'parameter_name': torch.Tensor> pairs
-                denoting the current parameter values for each parameter in `observable`.
-                Useful for differentiating on observable parameters when using AD.
 
     Returns:
         An expectation value.
@@ -266,6 +268,7 @@ def expectation(
     ```
     """
     values = values or dict()
+
     if embedding is not None and diff_mode != DiffMode.AD:
         raise NotImplementedError("Only diff_mode AD supports embedding")
     logger.debug(
@@ -292,37 +295,26 @@ def expectation(
             observable,
             values,
             embedding,
-            values_observables=values_observables,
         )
     elif diff_mode == DiffMode.ADJOINT:
-        if values_observables is None:
-            return AdjointExpectation.apply(
-                circuit,
-                state,
-                observable,
-                embedding,
-                values.keys(),
-                *values.values(),
-            )
-        else:
-            raise NotImplementedError(
-                "ADJOINT does not support separate observable values"
-            )
+        return AdjointExpectation.apply(
+            circuit,
+            state,
+            observable,
+            embedding,
+            values.keys(),
+            *values.values(),
+        )
     elif diff_mode == DiffMode.GPSR:
-        if values_observables is None:
-            check_support_psr(circuit)
-            return PSRExpectation.apply(
-                circuit,
-                state,
-                observable,
-                embedding,
-                expectation_fn,
-                values.keys(),
-                *values.values(),
-            )
-        else:
-            raise NotImplementedError(
-                "GPSR does not support separate observable values"
-            )
+        check_support_psr(circuit)
+        return PSRExpectation.apply(
+            circuit,
+            state,
+            observable,
+            embedding,
+            expectation_fn,
+            values.keys(),
+            *values.values(),
+        )
     else:
         logger.error(f"Requested diff_mode '{diff_mode}' not supported.")

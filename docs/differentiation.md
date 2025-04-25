@@ -98,14 +98,14 @@ for i in range(len(dfdx_ad)):
 
 ### Parametrized observable differentiation
 
-To allow differentiating observable parameters only, we need to specify the `values_observables` argument separately from
-the circuit parameters, as follows:
+To allow differentiating observable parameters only, we need to specify the `values` argument as a dictionary with two keys `circuit` and `observables`, each being a dictionary of corresponding parameters and values, as follows:
 
 ```python exec="on" source="material-block" html="1" session="diff"
 
 obs = pyq.Observable(pyq.RZ(0, "obs"))
 values_obs = {"obs": torch.tensor([torch.pi / 2], requires_grad=True)}
-exp_ad_separate = pyq.expectation(circ, state, values_ad, obs, DiffMode.AD, values_observables=values_obs)
+values_separated = {"circuit": values_ad, "observables": values_obs}
+exp_ad_separate = pyq.expectation(circ, state, values_separated, obs, DiffMode.AD)
 grad_ad_obs = torch.autograd.grad(
     exp_ad_separate, tuple(values_obs.values()), torch.ones_like(exp_ad_separate)
 )
