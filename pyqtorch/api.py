@@ -133,7 +133,7 @@ def analytical_expectation(
         circuit (QuantumCircuit): Quantum circuit :math:`U(\\theta)`.
         state (Tensor): Input state :math:`\\ket\\rangle`.
         observable (Observable): Observable O.
-        values (dict[str, Tensor], optional): Parameter values.
+        values (dict[str, Tensor], optional): Parameter values for the circuit and the observable if any.
         embedding (Embedding | None, optional): An optional instance of `Embedding`.
 
     Returns:
