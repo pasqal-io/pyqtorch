@@ -172,7 +172,7 @@ class HamiltonianEvolution(Sequence):
         self.duration = duration
         self.use_sparse = use_sparse
         self.is_diagonal = False
-        self._generator = generator
+        original_generator = None
 
         if isinstance(duration, (str, float, Tensor)) or duration is None:
             self.duration = duration
@@ -215,6 +215,7 @@ class HamiltonianEvolution(Sequence):
                 else GeneratorType.OPERATION
             )
             self.is_diagonal = generator.is_diagonal
+            original_generator = generator
             generator = [
                 HamiltonianEvolution(
                     op,
@@ -253,6 +254,7 @@ class HamiltonianEvolution(Sequence):
             )
         super().__init__(generator)
         self._qubit_support = qubit_support  # type: ignore
+        self._original_generator = original_generator
 
         logger.debug("Hamiltonian Evolution initialized")
         if logger.isEnabledFor(logging.DEBUG):
@@ -383,8 +385,8 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        if len(self.generator) > 1:
-            return self._generator.tensor(  # type: ignore [union-attr]
+        if self._original_generator:
+            return self._original_generator.tensor(  # type: ignore [union-attr]
                 values or dict(), embedding, full_support, diagonal=self.is_diagonal
             )
         return super().tensor(
@@ -398,12 +400,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The right generator getter.
         """
-        blockmat = self.create_hamiltonian()
-        if len(blockmat.shape) == 3:
-            return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
-        else:
-            # for diagonal cases
-            return blockmat
+        return self._generator_map[self.generator_type]
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -415,8 +412,15 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-
-        return self.generator[0].eigenvalues
+        if self._original_generator is None:
+            return self.generator[0].eigenvalues
+        else:
+            blockmat = self.create_hamiltonian()
+            if len(blockmat.shape) == 3:
+                return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+            else:
+                # for diagonal cases
+                return blockmat
 
     @cached_property
     def spectral_gap(self) -> Tensor:
@@ -461,7 +465,7 @@ class HamiltonianEvolution(Sequence):
         embedding: Embedding | None = None,
     ) -> State:
         values = values or dict()
-        if len(self.generator) < 2:
+        if self._original_generator is None:
 
             evolved_op = self.tensor(values, embedding)
             return apply_operator(
