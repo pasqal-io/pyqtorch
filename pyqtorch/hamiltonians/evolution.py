@@ -317,8 +317,11 @@ class HamiltonianEvolution(Sequence):
     def is_time_dependent(self) -> bool:
         return self._is_time_dependent(self.generator)
 
-    def flatten(self) -> ModuleList:
+    def _flatten(self) -> ModuleList:
         return ModuleList([self])
+
+    def flatten(self) -> ModuleList:
+        return self._flatten()
 
     @property
     def param_name(self) -> Tensor | str:

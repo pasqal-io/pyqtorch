@@ -136,6 +136,15 @@ class Sequence(Module):
             self._dtype = self.operations[0].dtype
         return self
 
+    def _flatten(self) -> ModuleList:
+        ops = []
+        for op in self.operations:
+            if isinstance(op, Sequence):
+                ops += op._flatten()
+            else:
+                ops.append(op)
+        return ModuleList(ops)
+
     def flatten(self) -> ModuleList:
         ops = []
         for op in self.operations:

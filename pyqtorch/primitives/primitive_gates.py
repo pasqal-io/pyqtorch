@@ -33,6 +33,7 @@ class X(MutablePrimitive):
             target,
             noise=noise,
         )
+        self.name = "X"
 
     def _mutate_state_vector(self, state: Tensor) -> Tensor:
         #  X gate flips the values at the specified dimension
@@ -47,6 +48,7 @@ class Y(MutablePrimitive):
     ):
         super().__init__(OPERATIONS_DICT["Y"], target, noise=noise)
         self.modifier = self._apply_phases
+        self.name = "Y"
 
     def _apply_phases(self, state: Tensor) -> Tensor:
         state = torch.flip(state, dims=[0])
@@ -63,6 +65,7 @@ class Z(PhaseMutablePrimitive):
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["Z"], target, noise=noise)
+        self.name = "Z"
 
 
 class I(Primitive):  # noqa: E742
@@ -72,6 +75,7 @@ class I(Primitive):  # noqa: E742
         noise: DigitalNoiseProtocol | None = None,
     ):
         super().__init__(OPERATIONS_DICT["I"], target, noise=noise)
+        self.name = "I"
 
     def _forward(
         self,

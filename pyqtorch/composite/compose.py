@@ -217,12 +217,68 @@ class Add(Sequence):
         )
 
     @property
-    def commuting_terms(self) -> bool:
-        """Check if operator can be decomposed into commuting terms."""
+    def is_pauli_add(self) -> bool:
+        """Check if Add contains only pauli string, that is a weighted
+        sum of tensor products of pauli operators.
 
-        # when operators are defined on different qubit supports
-        if len(self.operations) == 1:
-            return False
+        Returns:
+            bool: True if pauli string.
+        """
+        return all(isinstance(op, PAULI_OPS) for op in self._flatten())
+
+    def _symplectic_commute(self) -> bool:
+        """Check if operator is composed of pauli strings, each commuting with each other."""
+
+        if self.is_pauli_add:
+            qubit_support = self.qubit_support
+            nb_support = len(qubit_support)
+
+            # build string representation of pauli operations
+            pauli_strings = [["I"] * nb_support for _ in range(len(self.operations))]
+            for ind_op, op in enumerate(self.operations):
+                if isinstance(op, Sequence):
+                    for subop in op._flatten():
+                        pauli_strings[ind_op][
+                            qubit_support.index(subop.qubit_support[0])
+                        ] = subop.name
+                else:
+                    pauli_strings[ind_op][
+                        qubit_support.index(op.qubit_support[0])
+                    ] = op.name
+
+            # Convert to binary vectors
+            binary_vectors = []
+            for p_string in pauli_strings:
+                x_vec = [1 if p in ["X", "Y"] else 0 for p in p_string]
+                z_vec = [1 if p in ["Z", "Y"] else 0 for p in p_string]
+                binary_vectors.append(x_vec + z_vec)  # Concatenate x and z vectors
+
+            # Check commutation using symplectic inner product
+            n_strings = len(pauli_strings)
+            for i in range(n_strings):
+                for j in range(i + 1, n_strings):
+                    vec_i = binary_vectors[i]
+                    vec_j = binary_vectors[j]
+
+                    # Split into x and z parts
+                    x_i = vec_i[:nb_support]
+                    z_i = vec_i[nb_support:]
+                    x_j = vec_j[:nb_support]
+                    z_j = vec_j[nb_support:]
+
+                    # Symplectic product: (x_i · z_j) XOR (z_i · x_j)
+                    product = 0
+                    for k in range(nb_support):
+                        product ^= (x_i[k] & z_j[k]) ^ (z_i[k] & x_j[k])
+
+                    if product == 1:
+                        return False  # Found a pair that doesn't commute
+
+            return True
+
+        return False
+
+    def _different_support_operations(self):
         qubit_supports_intersect = [set(op.qubit_support) for op in self.operations]
 
         disjoint_sets: set[int] = set()
@@ -234,7 +290,18 @@ class Add(Sequence):
         if len(disjoint_sets) == len(self.qubit_support):
             return True
 
-        # TODO: pauli hamiltonian cases
+        return False
+
+    @property
+    def commuting_terms(self) -> bool:
+        """Return if all operations are commuting terms."""
+
+        # when operators are defined on different qubit supports
+        if len(self.operations) == 1:
+            return False
+
+        if self._symplectic_commute() or self._different_support_operations():
+            return True
 
         return False
 
