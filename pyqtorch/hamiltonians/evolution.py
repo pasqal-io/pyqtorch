@@ -172,6 +172,7 @@ class HamiltonianEvolution(Sequence):
         self.duration = duration
         self.use_sparse = use_sparse
         self.is_diagonal = False
+        self._param_uuid = str(uuid4())
         original_generator = None
 
         if isinstance(duration, (str, float, Tensor)) or duration is None:
@@ -229,6 +230,8 @@ class HamiltonianEvolution(Sequence):
                 )
                 for op in generator.operations
             ]
+            for gen in generator:
+                gen._param_uuid = self._param_uuid
             self.is_diagonal = all(gen.is_diagonal for gen in generator)
 
         elif isinstance(generator, (QuantumOperation, Sequence)):
@@ -284,8 +287,6 @@ class HamiltonianEvolution(Sequence):
                 "as HamiltonianEvolution."
             )
         self.noise = noise
-
-        self._param_uuid = str(uuid4())
 
     @property
     def generator(self) -> ModuleList:
