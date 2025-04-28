@@ -427,7 +427,9 @@ def test_error_noise_qubit_support(
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
 @pytest.mark.parametrize("batch_size", [1, 2])
 @pytest.mark.parametrize("make_param", [True, False])
-def test_hamevo_parametric_gen(n_qubits: int, batch_size: int, make_param: bool) -> None:
+def test_hamevo_parametric_gen(
+    n_qubits: int, batch_size: int, make_param: bool
+) -> None:
     k_1q = 2 * n_qubits  # Number of 1-qubit terms
     k_2q = n_qubits**2  # Number of 2-qubit terms
     generator, param_list = random_pauli_hamiltonian(

@@ -244,7 +244,7 @@ class Add(Sequence):
             return False
         qubit_supports_intersect = [set(op.qubit_support) for op in self.operations]
 
-        disjoint_sets = set()
+        disjoint_sets: set[int] = set()
         for s in qubit_supports_intersect:
             if s.isdisjoint(disjoint_sets):
                 disjoint_sets.update(s)

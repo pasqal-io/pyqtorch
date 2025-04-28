@@ -172,6 +172,7 @@ class HamiltonianEvolution(Sequence):
         self.duration = duration
         self.use_sparse = use_sparse
         self.is_diagonal = False
+        self._generator = generator
 
         if isinstance(duration, (str, float, Tensor)) or duration is None:
             self.duration = duration
@@ -206,8 +207,7 @@ class HamiltonianEvolution(Sequence):
             self.generator_type = GeneratorType.SYMBOL
             self.generator_symbol = generator
             generator = []
-
-        elif isinstance(generator, Add) and generator.commuting_terms:
+        elif noise is None and isinstance(generator, Add) and generator.commuting_terms:
             qubit_support = generator.qubit_support
             self.generator_type = (
                 GeneratorType.PARAMETRIC_OPERATION
@@ -215,7 +215,20 @@ class HamiltonianEvolution(Sequence):
                 else GeneratorType.OPERATION
             )
             self.is_diagonal = generator.is_diagonal
-            generator = list(generator.operations)
+            generator = [
+                HamiltonianEvolution(
+                    op,
+                    time,
+                    op.qubit_support,
+                    cache_length,
+                    duration,
+                    steps,
+                    solver,
+                    use_sparse,
+                    noise,
+                )
+                for op in generator.operations
+            ]
 
         elif isinstance(generator, (QuantumOperation, Sequence)):
             qubit_support = generator.qubit_support
@@ -224,17 +237,14 @@ class HamiltonianEvolution(Sequence):
                 generator = [generator]
                 self.generator_type = GeneratorType.PARAMETRIC_OPERATION
             else:
-
                 # avoiding using dense tensor for diagonal generators
                 tgen = generator.tensor(diagonal=generator.is_diagonal)
                 generator = [
                     Primitive(
-                        tgen,
-                        generator.qubit_support,
-                        diagonal=(len(tgen.size()) == 2),
+                        tgen, generator.qubit_support, diagonal=(len(tgen.size()) == 2)
                     )
                 ]
-                self.is_diagonal = all(g.is_diagonal for g in generator)
+                self.is_diagonal = generator[0].is_diagonal
                 self.generator_type = GeneratorType.OPERATION
         else:
             raise TypeError(
@@ -261,7 +271,7 @@ class HamiltonianEvolution(Sequence):
         }
 
         # to avoid recomputing hamiltonians and evolution
-        self._cache_hamiltonian_evo: dict[str, tuple[Tensor, ...] | Tensor] = dict()
+        self._cache_hamiltonian_evo: dict[str, Tensor] = dict()
         self.cache_length = cache_length
 
         if isinstance(noise, list):
@@ -373,21 +383,12 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        return super().tensor(
-            values or dict(), embedding, full_support, diagonal=self.is_diagonal
-        )
-
-    def _tensor_multiple_generators(
-        self,
-        values: dict | None = None,
-        embedding: Embedding | None = None,
-        full_support: tuple[int, ...] | None = None,
-    ) -> tuple[Operator]:
-        return tuple(
-            op.tensor(
+        if len(self.generator) > 1:
+            return self._generator.tensor(  # type: ignore [union-attr]
                 values or dict(), embedding, full_support, diagonal=self.is_diagonal
             )
-            for op in self.generator
+        return super().tensor(
+            values or dict(), embedding, full_support, diagonal=self.is_diagonal
         )
 
     @property
@@ -397,7 +398,12 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The right generator getter.
         """
-        return self._generator_map[self.generator_type]
+        blockmat = self.create_hamiltonian()
+        if len(blockmat.shape) == 3:
+            return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+        else:
+            # for diagonal cases
+            return blockmat
 
     @cached_property
     def eigenvals_generator(self) -> Tensor:
@@ -409,12 +415,8 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-        blockmat = self.create_hamiltonian()
-        if len(blockmat.shape) == 3:
-            return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
-        else:
-            # for diagonal cases
-            return blockmat
+
+        return self.generator[0].eigenvalues
 
     @cached_property
     def spectral_gap(self) -> Tensor:
@@ -434,10 +436,8 @@ class HamiltonianEvolution(Sequence):
     ) -> Tensor:
         """
         Get the evolution from parameter values.
-
         Arguments:
             values: Values of parameters.
-
         Returns:
             The time evolution.
         """
@@ -460,19 +460,7 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
-        """
-        Apply the hamiltonian evolution with input parameter values.
-
-        Arguments:
-            state: Input state.
-            values: Values of parameters.
-            embedding: Embedding of parameters.
-
-        Returns:
-            The transformed state.
-        """
         values = values or dict()
-
         if len(self.generator) < 2:
 
             evolved_op = self.tensor(values, embedding)
@@ -491,12 +479,10 @@ class HamiltonianEvolution(Sequence):
         """
         Apply the hamiltonian evolution with input parameter values when
         hamiltonian is composed of commuting terms.
-
         Arguments:
             state: Input state.
             values: Values of parameters.
             embedding: Embedding of parameters.
-
         Returns:
             The transformed state.
         """
@@ -504,22 +490,7 @@ class HamiltonianEvolution(Sequence):
         if embedding is not None:
             values = embedding(values)
 
-        hamiltonians = self._tensor_multiple_generators(values, embedding)
-        time_evolution = self._time_evolution(values)
-
-        evolved_ops = tuple(
-            evolve(h, time_evolution, diagonal=self.is_diagonal) for h in hamiltonians
-        )
-
-        evolved_state = state
-        for evo, qs in zip(
-            evolved_ops, tuple(op.qubit_support for op in self.generator)
-        ):
-            evolved_state = apply_operator(
-                state=evolved_state, operator=evo, qubit_support=qs
-            )
-
-        return evolved_state
+        return super().forward(state, values, embedding)
 
     def _forward_time(
         self,
@@ -529,12 +500,10 @@ class HamiltonianEvolution(Sequence):
     ) -> State:
         """
         Apply the hamiltonian evolution with input parameter values for time dependent cases.
-
         Arguments:
             state: Input state.
             values: Values of parameters.
             embedding: Embedding of parameters.
-
         Returns:
             The transformed state.
         """
