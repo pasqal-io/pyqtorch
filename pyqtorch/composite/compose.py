@@ -174,6 +174,9 @@ class Add(Sequence):
         values = values or dict()
         return reduce(add, (op(state, values, embedding) for op in self.operations))
 
+    def _flatten(self) -> ModuleList:
+        return ModuleList([self])
+
     def tensor(
         self,
         values: dict | None = None,
