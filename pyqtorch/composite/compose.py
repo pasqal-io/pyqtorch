@@ -217,25 +217,6 @@ class Add(Sequence):
         )
 
     @property
-    def is_pauli_add(self) -> bool:
-        """Check if Add contains only pauli string, that is a weighted
-        sum of tensor products of pauli operators.
-
-        Returns:
-            bool: True if pauli string.
-        """
-        all_leaves_ops: list = list()
-        for op in self.flatten():
-            if isinstance(op, Scale):
-                if isinstance(op.operations[0], Sequence):
-                    all_leaves_ops += op.operations[0].flatten()
-                else:
-                    all_leaves_ops += [op.operations[0]]
-            else:
-                all_leaves_ops.append(op)
-        return all(isinstance(op, PAULI_OPS) for op in all_leaves_ops)  # type: ignore[arg-type]
-
-    @property
     def commuting_terms(self) -> bool:
         """Check if operator can be decomposed into commuting terms."""
 
