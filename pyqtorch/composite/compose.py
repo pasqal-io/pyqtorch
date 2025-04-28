@@ -224,7 +224,9 @@ class Add(Sequence):
         Returns:
             bool: True if pauli string.
         """
-        return all(isinstance(op, PAULI_OPS) for op in self._flatten())
+        if all(isinstance(op, (Scale, Primitive)) for op in self.operations):
+            return all(isinstance(op, PAULI_OPS) for op in self._flatten())
+        return False
 
     def _symplectic_commute(self) -> bool:
         """Check if operator is composed of pauli strings, each commuting with each other."""
@@ -299,7 +301,6 @@ class Add(Sequence):
         # when operators are defined on different qubit supports
         if len(self.operations) == 1:
             return False
-
         if self._symplectic_commute() or self._different_support_operations():
             # if self._different_support_operations():
             return True
@@ -336,6 +337,9 @@ class Merge(Sequence):
             )
 
         self._contains_noise = sum([op.noise is not None for op in self.operations])
+
+    def _flatten(self) -> ModuleList:
+        return ModuleList([self])
 
     def forward(
         self,
