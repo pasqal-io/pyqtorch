@@ -252,6 +252,9 @@ class Add(Sequence):
                 return False
         if len(disjoint_sets) == len(self.qubit_support):
             return True
+
+        # TODO: pauli hamiltonian cases
+
         return False
 
 

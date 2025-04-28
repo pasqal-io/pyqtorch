@@ -220,13 +220,12 @@ class HamiltonianEvolution(Sequence):
                 HamiltonianEvolution(
                     op,
                     time,
-                    op.qubit_support,
-                    cache_length,
-                    duration,
-                    steps,
-                    solver,
-                    use_sparse,
-                    noise,
+                    cache_length=cache_length,
+                    duration=duration,
+                    steps=steps,
+                    solver=solver,
+                    use_sparse=use_sparse,
+                    noise=noise,
                 )
                 for op in generator.operations
             ]
