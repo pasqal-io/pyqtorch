@@ -629,6 +629,8 @@ class HamiltonianEvolution(Sequence):
             and values_cache_key in self._cache_hamiltonian_evo
         ):
             evolved_op = self._cache_hamiltonian_evo[values_cache_key]
+        elif len(self.generator) > 1:
+            return super().tensor(values, embedding, full_support, use_diagonal)
         else:
             hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
             time_evolution = self._time_evolution(values)

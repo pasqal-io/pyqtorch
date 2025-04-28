@@ -301,6 +301,7 @@ class Add(Sequence):
             return False
 
         if self._symplectic_commute() or self._different_support_operations():
+            # if self._different_support_operations():
             return True
 
         return False
