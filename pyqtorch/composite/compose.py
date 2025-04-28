@@ -240,10 +240,18 @@ class Add(Sequence):
         """Check if operator can be decomposed into commuting terms."""
 
         # when operators are defined on different qubit supports
-        qubit_supports = [op.qubit_support for op in self.operations]
-        if len(set(qubit_supports)) == len(qubit_supports):
-            return True
+        if len(self.operations) == 1:
+            return False
+        qubit_supports_intersect = [set(op.qubit_support) for op in self.operations]
 
+        disjoint_sets = set()
+        for s in qubit_supports_intersect:
+            if s.isdisjoint(disjoint_sets):
+                disjoint_sets.update(s)
+            else:
+                return False
+        if len(disjoint_sets) == len(self.qubit_support):
+            return True
         return False
 
 
