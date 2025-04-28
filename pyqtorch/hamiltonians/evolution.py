@@ -214,7 +214,6 @@ class HamiltonianEvolution(Sequence):
                 if is_parametric(generator)
                 else GeneratorType.OPERATION
             )
-            self.is_diagonal = generator.is_diagonal
             original_generator = generator
             generator = [
                 HamiltonianEvolution(
@@ -230,6 +229,7 @@ class HamiltonianEvolution(Sequence):
                 )
                 for op in generator.operations
             ]
+            self.is_diagonal = all(gen.is_diagonal for gen in generator)
 
         elif isinstance(generator, (QuantumOperation, Sequence)):
             qubit_support = generator.qubit_support

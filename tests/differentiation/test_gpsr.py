@@ -109,7 +109,9 @@ def circuit_sequence(n_qubits: int, different_names: bool = True) -> QuantumCirc
 
 
 def circuit_hamevo_tensor_gpsr(
-    n_qubits: int, different_names: bool = True
+    n_qubits: int,
+    different_names: bool = True,
+    commuting_terms: bool = False,  # unused here
 ) -> QuantumCircuit:
     """Helper function to make an example circuit."""
 
@@ -136,12 +138,16 @@ def circuit_hamevo_tensor_gpsr(
 
 
 def circuit_hamevo_pauligen_gpsr(
-    n_qubits: int, different_names: bool = True
+    n_qubits: int, different_names: bool = True, commuting_terms: bool = False
 ) -> QuantumCircuit:
     """Helper function to make an example circuit."""
 
     ham = random_pauli_hamiltonian(
-        n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
+        n_qubits,
+        k_1q=n_qubits,
+        k_2q=0,
+        default_scale_coeffs=1.0,
+        commuting_terms=commuting_terms,
     )[0]
     ham_op = pyq.HamiltonianEvolution(ham, "t", qubit_support=tuple(range(n_qubits)))
 
@@ -173,18 +179,23 @@ def circuit_hamevo_pauligen_gpsr(
     ],
 )
 @pytest.mark.parametrize("different_names", [False, True])
+@pytest.mark.parametrize("commuting_terms", [False, True])
 def test_expectation_gpsr_hamevo(
     n_qubits: int,
     batch_size: int,
     circuit_fn: Callable,
     different_names: bool,
+    commuting_terms: bool,
     dtype: torch.dtype = torch.complex128,
 ) -> None:
     torch.manual_seed(42)
-    circ = circuit_fn(n_qubits, different_names).to(dtype)
+    circ = circuit_fn(n_qubits, different_names, commuting_terms).to(dtype)
     obs = Observable(
         random_pauli_hamiltonian(
-            n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
+            n_qubits,
+            k_1q=n_qubits,
+            k_2q=0,
+            default_scale_coeffs=1.0,
         )[0]
     ).to(dtype)
     values = {
@@ -268,7 +279,10 @@ def test_expectation_gpsr(
     circ = circuit_fn(n_qubits, different_names).to(dtype)
     obs = Observable(
         random_pauli_hamiltonian(
-            n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0
+            n_qubits,
+            k_1q=n_qubits,
+            k_2q=0,
+            default_scale_coeffs=1.0,
         )[0]
     ).to(dtype)
     values = {
