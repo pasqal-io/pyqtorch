@@ -271,9 +271,9 @@ class HamiltonianEvolution(Sequence):
 
         self._generator_map: dict[GeneratorType, Callable] = {
             GeneratorType.SYMBOL: self._symbolic_generator,
-            GeneratorType.TENSOR: self._tensor_generator,
-            GeneratorType.OPERATION: self._tensor_generator,
-            GeneratorType.PARAMETRIC_OPERATION: self._tensor_generator,
+            GeneratorType.TENSOR: self._generator,
+            GeneratorType.OPERATION: self._generator,
+            GeneratorType.PARAMETRIC_OPERATION: self._generator,
         }
 
         # to avoid recomputing hamiltonians and evolution
@@ -379,7 +379,7 @@ class HamiltonianEvolution(Sequence):
             return torch.permute(hamiltonian.squeeze(3), (1, 2, 0))
         return hamiltonian
 
-    def _tensor_generator(
+    def _generator(
         self,
         values: dict | None = None,
         embedding: Embedding | None = None,
@@ -447,8 +447,7 @@ class HamiltonianEvolution(Sequence):
         return spectral_gap[spectral_gap.nonzero()]
 
     def _time_evolution(self, values: dict[str, Tensor] | ParameterDict) -> Tensor:
-        """
-        Get the evolution from parameter values.
+        """Get the evolution from parameter values.
 
         Arguments:
             values: Values of parameters.
@@ -490,8 +489,7 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
-        """
-        Apply the hamiltonian evolution with input parameter values when
+        """Apply the hamiltonian evolution with input parameter values when
         hamiltonian is composed of commuting terms.
 
         Arguments:
@@ -514,8 +512,7 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding = Embedding(),
     ) -> State:
-        """
-        Apply the hamiltonian evolution with input parameter values for time dependent cases.
+        """Apply the hamiltonian evolution with input parameter values for time dependent cases.
 
         Arguments:
             state: Input state.
@@ -586,8 +583,7 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
-        """
-        Apply the hamiltonian evolution with input parameter values.
+        """Apply the hamiltonian evolution with input parameter values.
 
         Arguments:
             state: Input state.
@@ -669,8 +665,7 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | None = None,
         embedding: Embedding | None = None,
     ) -> Tensor:
-        """
-        Get the corresponding unitary of the jacobian.
+        """Get the corresponding unitary of the jacobian.
 
         Arguments:
             values: Parameter value.
