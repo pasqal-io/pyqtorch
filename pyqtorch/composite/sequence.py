@@ -137,7 +137,7 @@ class Sequence(Module):
         return self
 
     def _flatten(self) -> ModuleList:
-        """This method helps for checking commutation of pauli operators, especially for Scale."""
+        """Method helper for checking commutation of pauli operators, especially for Scale."""
         ops = []
         for op in self.operations:
             if isinstance(op, Sequence):
