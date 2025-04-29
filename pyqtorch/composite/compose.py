@@ -175,6 +175,7 @@ class Add(Sequence):
         return reduce(add, (op(state, values, embedding) for op in self.operations))
 
     def _flatten(self) -> ModuleList:
+        """This method avoids returning individual operations when checking commutation."""
         return ModuleList([self])
 
     def tensor(
@@ -232,7 +233,9 @@ class Add(Sequence):
         return False
 
     def _symplectic_commute(self) -> bool:
-        """Check if operator is composed of pauli strings, each commuting with each other."""
+        """Check if operator is composed of pauli strings, each commuting with each other.
+        Done by computing the symplectic inner product.
+        """
 
         if self.is_pauli_add:
             qubit_support = self.qubit_support
@@ -283,7 +286,8 @@ class Add(Sequence):
 
         return False
 
-    def _different_support_operations(self):
+    def _disjoint_supports(self):
+        """Check if operations are defined on disjoint supports."""
         qubit_supports_intersect = [set(op.qubit_support) for op in self.operations]
 
         disjoint_sets: set[int] = set()
@@ -299,13 +303,14 @@ class Add(Sequence):
 
     @property
     def commuting_terms(self) -> bool:
-        """Return if all operations are commuting terms."""
+        """Return if all operations are commuting terms.
+        Useful for HamiltonianEvolution.
+        """
 
-        # when operators are defined on different qubit supports
         if len(self.operations) == 1:
             return False
-        if self._symplectic_commute() or self._different_support_operations():
-            # if self._different_support_operations():
+
+        if self._symplectic_commute() or self._disjoint_supports():
             return True
 
         return False
@@ -342,6 +347,7 @@ class Merge(Sequence):
         self._contains_noise = sum([op.noise is not None for op in self.operations])
 
     def _flatten(self) -> ModuleList:
+        """This method avoids returning individual operations when checking commutation."""
         return ModuleList([self])
 
     def forward(
