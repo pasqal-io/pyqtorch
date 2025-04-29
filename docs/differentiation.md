@@ -1,3 +1,5 @@
+## Differentiation
+
 `pyqtorch` also offers several differentiation modes to compute gradients which can be accessed through the
 `expectation` API. Simply pass one of three `DiffMode` options to the `diff_mode` argument.
 The default is `ad`.
@@ -13,11 +15,8 @@ The [adjoint differentiation mode](https://arxiv.org/abs/2009.02823) computes fi
 The Generalized parameter shift rule (GPSR mode) is an extension of the well known [parameter shift rule (PSR)](https://arxiv.org/abs/1811.11184) algorithm [to arbitrary quantum operations](https://arxiv.org/abs/2108.01218). Indeed, PSR only works for quantum operations whose generator has a single gap in its eigenvalue spectrum, GPSR extending to multi-gap.
 
 !!! warning "Usage restrictions"
-    At the moment, circuits with one or more Scale or HamiltonianEvolution with parametric generators operations are not supported.
+    At the moment, circuits with one or more `Scale` or `HamiltonianEvolution` with parametric generators operations are not supported.
     They should be handled differently as GPSR requires operations to be of the form presented below.
-    Also, circuits with operations sharing a same parameter name are also not supported
-    as such cases are handled by our other Python package for differentiable digital-analog quantum programs Qadence
-    which uses pyqtorch as a backend. Qadence convert circuits to use different parameter names when applying GPSR.
 
 For this, we define the differentiable function as quantum expectation value
 
@@ -50,8 +49,13 @@ Here $F_s=f(x+\delta_s)-f(x-\delta_s)$ denotes the difference between values of 
     spectral gaps. Also we use a shift prefactor of 0.5 for multi-gap GPSR or 0.5 divided by the spectral gap for single-gap GPSR.
 
 
-### Example
-```python exec="on" source="material-block" html="1"
+## Examples
+
+### Circuit parameters differentiation
+
+We show below a code example with several differentiation methods for circuit parameters:
+
+```python exec="on" source="material-block" html="1" session="diff"
 import pyqtorch as pyq
 import torch
 from pyqtorch.utils import DiffMode
@@ -90,4 +94,20 @@ assert len(dfdx_ad) == len(dfdx_adjoint) == len(dfdx_gpsr)
 for i in range(len(dfdx_ad)):
     assert torch.allclose(dfdx_ad[i], dfdx_adjoint[i])
     assert torch.allclose(dfdx_ad[i], dfdx_gpsr[i])
+```
+
+### Parametrized observable differentiation
+
+To allow differentiating observable parameters only, we need to specify the `values` argument as a dictionary with two keys `circuit` and `observables`, each being a dictionary of corresponding parameters and values, as follows:
+
+```python exec="on" source="material-block" html="1" session="diff"
+
+obs = pyq.Observable(pyq.RZ(0, "obs"))
+values_obs = {"obs": torch.tensor([torch.pi / 2], requires_grad=True)}
+values = {"circuit": values_ad, "observables": values_obs}
+exp_ad_separate = pyq.expectation(circ, state, values, obs, DiffMode.AD)
+grad_ad_obs = torch.autograd.grad(
+    exp_ad_separate, tuple(values_obs.values()), torch.ones_like(exp_ad_separate)
+)
+assert len(grad_ad_obs) == len(obs.params)
 ```
