@@ -69,6 +69,22 @@ def test_add() -> None:
     assert torch.allclose(tensor_add, dense_diagonal)
 
 
+def test_add_commute() -> None:
+    op = pyq.Add([pyq.Z(q) for q in range(5)])
+    assert op._disjoint_supports()
+    assert op.commuting_terms
+
+    op = pyq.Add([pyq.Merge([pyq.Z(0), pyq.X(0)]), pyq.Z(1)])
+    assert op._disjoint_supports()
+    assert not op._symplectic_commute()
+    assert op.commuting_terms
+
+    op = pyq.Add([pyq.Sequence([pyq.Z(0), pyq.X(0)]), pyq.Z(1)])
+    assert op._disjoint_supports()
+    assert not op._symplectic_commute()
+    assert op.commuting_terms
+
+
 def test_merge() -> None:
     ops = [pyq.RX(0, "theta_0"), pyq.RY(0, "theta_1"), pyq.RX(0, "theta_2")]
     circ = pyq.QuantumCircuit(2, ops)
