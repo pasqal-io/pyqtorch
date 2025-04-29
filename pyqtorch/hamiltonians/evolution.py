@@ -382,7 +382,7 @@ class HamiltonianEvolution(Sequence):
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Operator:
-        """Returns the generator for the TENSOR, OPERATION and PARAMETRIC_OPERATION cases.
+        """Returns the TENSOR, OPERATION and PARAMETRIC_OPERATION generator.
 
         Arguments:
             values: Values dict with any needed parameters.
