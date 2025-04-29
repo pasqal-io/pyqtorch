@@ -144,6 +144,24 @@ class Scale(Sequence):
         return self
 
 
+def paulis_to_binary_vectors(p_string: list[str]) -> tuple[list[int], list[int]]:
+    """Convert a pauli string to a binary representation for symplectic inner product."""
+    x_vec = [1 if p in ["X", "Y"] else 0 for p in p_string]
+    z_vec = [1 if p in ["Z", "Y"] else 0 for p in p_string]
+    return x_vec, z_vec
+
+
+def symplectic_inner_product(
+    x1: list[int], z1: list[int], x2: list[int], z2: list[int]
+) -> int:
+    """Sympletic inner prodtcfor checking commutation fot two pauli strings p1 and p2
+    represented by their binary representation (`x1`, `z1`), (`x2, `z2``)"""
+    product = 0
+    for k in range(len(x1)):
+        product ^= (x1[k] & z2[k]) ^ (z1[k] & x2[k])
+    return product
+
+
 class Add(Sequence):
     """
     The 'add' operation applies all 'operations' to 'state' and returns the sum of states.
@@ -219,6 +237,10 @@ class Add(Sequence):
     def _symplectic_commute(self) -> bool:
         """Check if operator is composed of pauli strings, each commuting with each other.
         Done by computing the symplectic inner product from the string-based representations.
+
+        Reference:
+            S. Aaronson, D. Gottesman, Improved Simulation of Stabilizer Circuits,
+            Phys. Rev. A 70, 052328 (2004). arXiv:quant-ph/0406196
         """
 
         if all(isinstance(op, PAULI_OPS) for op in self._flatten()):
@@ -259,29 +281,17 @@ class Add(Sequence):
                         return False
 
             # Convert to binary vectors
-            binary_vectors = []
-            for p_string in pauli_strings:
-                x_vec = [1 if p in ["X", "Y"] else 0 for p in p_string]
-                z_vec = [1 if p in ["Z", "Y"] else 0 for p in p_string]
-                binary_vectors.append((x_vec, z_vec))  # Keep x and z vectors
+            binary_vectors = [
+                paulis_to_binary_vectors(p_string) for p_string in pauli_strings
+            ]
 
             # Check commutation using symplectic inner product
             n_strings = len(pauli_strings)
             for i in range(n_strings):
                 for j in range(i + 1, n_strings):
-                    vec_i = binary_vectors[i]
-                    vec_j = binary_vectors[j]
-
-                    # Split into x and z parts
-                    x_i = vec_i[0]
-                    z_i = vec_i[1]
-                    x_j = vec_j[0]
-                    z_j = vec_j[1]
-
-                    # Symplectic product: (x_i · z_j) XOR (z_i · x_j)
-                    product = 0
-                    for k in range(nb_support):
-                        product ^= (x_i[k] & z_j[k]) ^ (z_i[k] & x_j[k])
+                    product = symplectic_inner_product(
+                        *binary_vectors[i], *binary_vectors[j]
+                    )
 
                     if product == 1:
                         return False  # Found a pair that doesn't commute
@@ -314,7 +324,10 @@ class Add(Sequence):
         if len(self.operations) == 1:
             return False
 
-        if self._symplectic_commute() or self._disjoint_supports():
+        if self._disjoint_supports():
+            return True
+
+        if self._symplectic_commute():
             return True
 
         return False
