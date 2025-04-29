@@ -279,10 +279,15 @@ def test_noise_circ(
 @pytest.mark.parametrize("make_param", [True, False])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
-def test_dm_expectation(n_qubits: int, batch_size: int, make_param: bool) -> None:
+@pytest.mark.parametrize("commuting_terms", [False, True])
+def test_dm_expectation(
+    n_qubits: int, batch_size: int, make_param: bool, commuting_terms: bool
+) -> None:
     k_1q = 2 * n_qubits  # Number of 1-qubit terms
     k_2q = n_qubits**2  # Number of 2-qubit terms
-    hamiltonian, param_list = random_pauli_hamiltonian(n_qubits, k_1q, k_2q, make_param)
+    hamiltonian, param_list = random_pauli_hamiltonian(
+        n_qubits, k_1q, k_2q, make_param, commuting_terms=commuting_terms
+    )
     values = {param: torch.rand(batch_size) for param in param_list}
     psi_init = random_state(n_qubits, batch_size)
     dm_init = density_mat(psi_init)
