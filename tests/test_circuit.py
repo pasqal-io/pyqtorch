@@ -74,16 +74,13 @@ def test_add_commute() -> None:
     assert not op.commuting_terms()
 
     op = pyq.Add([pyq.Z(q) for q in range(5)])
-    assert op._disjoint_supports()
     assert op.commuting_terms()
 
     op = pyq.Add([pyq.Merge([pyq.Z(0), pyq.X(0)]), pyq.Z(1)])
-    assert op._disjoint_supports()
     assert not op._symplectic_commute()
     assert op.commuting_terms()
 
     op = pyq.Add([pyq.Sequence([pyq.Z(0), pyq.X(0)]), pyq.Z(1)])
-    assert op._disjoint_supports()
     assert not op._symplectic_commute()
     assert op.commuting_terms()
 
