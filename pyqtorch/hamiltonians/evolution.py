@@ -356,7 +356,10 @@ class HamiltonianEvolution(Sequence):
         """Returns the generator for the SYMBOL case.
 
         Arguments:
-            values:
+            values: Values dict with any needed parameters.
+            embedding: Embedding of parameters.
+            full_support: The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
 
         Returns:
             The generator as a tensor.
@@ -386,6 +389,9 @@ class HamiltonianEvolution(Sequence):
 
         Arguments:
             values: Values dict with any needed parameters.
+            embedding: Embedding of parameters.
+            full_support: The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
 
         Returns:
             The generator as a tensor.
@@ -445,8 +451,10 @@ class HamiltonianEvolution(Sequence):
     ) -> Tensor:
         """
         Get the evolution from parameter values.
+
         Arguments:
             values: Values of parameters.
+
         Returns:
             The time evolution.
         """
@@ -488,10 +496,12 @@ class HamiltonianEvolution(Sequence):
         """
         Apply the hamiltonian evolution with input parameter values when
         hamiltonian is composed of commuting terms.
+
         Arguments:
             state: Input state.
             values: Values of parameters.
             embedding: Embedding of parameters.
+
         Returns:
             The transformed state.
         """
@@ -509,10 +519,12 @@ class HamiltonianEvolution(Sequence):
     ) -> State:
         """
         Apply the hamiltonian evolution with input parameter values for time dependent cases.
+
         Arguments:
             state: Input state.
             values: Values of parameters.
             embedding: Embedding of parameters.
+
         Returns:
             The transformed state.
         """
