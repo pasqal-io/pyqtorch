@@ -70,6 +70,9 @@ def test_add() -> None:
 
 
 def test_add_commute() -> None:
+    op = pyq.Add([pyq.Z(0)])
+    assert not op.commuting_terms
+
     op = pyq.Add([pyq.Z(q) for q in range(5)])
     assert op._disjoint_supports()
     assert op.commuting_terms
