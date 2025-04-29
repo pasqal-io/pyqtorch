@@ -208,7 +208,9 @@ class HamiltonianEvolution(Sequence):
             self.generator_type = GeneratorType.SYMBOL
             self.generator_symbol = generator
             generator = []
-        elif noise is None and isinstance(generator, Add) and generator.commuting_terms:
+        elif (
+            noise is None and isinstance(generator, Add) and generator.commuting_terms()
+        ):
             qubit_support = generator.qubit_support
             self.generator_type = (
                 GeneratorType.PARAMETRIC_OPERATION

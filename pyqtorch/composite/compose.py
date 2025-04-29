@@ -315,10 +315,9 @@ class Add(Sequence):
 
         return False
 
-    @property
     def commuting_terms(self) -> bool:
         """Predicate for all operations being composed of commuting terms.
-        
+
         Useful for HamiltonianEvolution.
         """
 
