@@ -446,9 +446,7 @@ class HamiltonianEvolution(Sequence):
         spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 
-    def _time_evolution(
-        self, values: dict[str, Tensor] | ParameterDict | None = None
-    ) -> Tensor:
+    def _time_evolution(self, values: dict[str, Tensor] | ParameterDict) -> Tensor:
         """
         Get the evolution from parameter values.
 
@@ -458,7 +456,6 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The time evolution.
         """
-        values = values or dict()
         if isinstance(self.time, str):
             pname = self.time
             # note: GPSR trick when the same param_name is used in many operations
