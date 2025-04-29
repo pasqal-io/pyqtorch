@@ -174,10 +174,6 @@ class Add(Sequence):
         values = values or dict()
         return reduce(add, (op(state, values, embedding) for op in self.operations))
 
-    def _flatten(self) -> ModuleList:
-        """This method avoids returning individual operations when checking commutation."""
-        return ModuleList([self])
-
     def tensor(
         self,
         values: dict | None = None,
@@ -220,46 +216,54 @@ class Add(Sequence):
             mat,
         )
 
-    @property
-    def is_pauli_add(self) -> bool:
-        """Check if Add contains only pauli string, that is a weighted
-        sum of tensor products of pauli operators.
-
-        Returns:
-            bool: True if pauli string.
-        """
-        if all(isinstance(op, (Scale, Primitive)) for op in self.operations):
-            return all(isinstance(op, PAULI_OPS) for op in self._flatten())
-        return False
-
     def _symplectic_commute(self) -> bool:
         """Check if operator is composed of pauli strings, each commuting with each other.
-        Done by computing the symplectic inner product.
+        Done by computing the symplectic inner product from the string-based representations.
         """
 
-        if self.is_pauli_add:
+        if all(isinstance(op, PAULI_OPS) for op in self._flatten()):
             qubit_support = self.qubit_support
             nb_support = len(qubit_support)
 
             # build string representation of pauli operations
-            pauli_strings = [["I"] * nb_support for _ in range(len(self.operations))]
+            pauli_strings = [[""] * nb_support for _ in range(len(self.operations))]
             for ind_op, op in enumerate(self.operations):
                 if isinstance(op, Sequence):
                     for subop in op._flatten():
-                        pauli_strings[ind_op][
-                            qubit_support.index(subop.qubit_support[0])
-                        ] = subop.name
+                        if (
+                            pauli_strings[ind_op][
+                                qubit_support.index(subop.qubit_support[0])
+                            ]
+                            == ""
+                        ):
+                            pauli_strings[ind_op][
+                                qubit_support.index(subop.qubit_support[0])
+                            ] = subop.name
+                        else:
+                            # cases where two or more operators
+                            # are defined for a same qubit
+                            # are not considered
+                            return False
                 else:
-                    pauli_strings[ind_op][
-                        qubit_support.index(op.qubit_support[0])
-                    ] = op.name
+                    if (
+                        pauli_strings[ind_op][qubit_support.index(op.qubit_support[0])]
+                        == ""
+                    ):
+                        pauli_strings[ind_op][
+                            qubit_support.index(op.qubit_support[0])
+                        ] = op.name
+                    else:
+                        # cases where two or more operators
+                        # are defined for a same qubit
+                        # are not considered
+                        return False
 
             # Convert to binary vectors
             binary_vectors = []
             for p_string in pauli_strings:
                 x_vec = [1 if p in ["X", "Y"] else 0 for p in p_string]
                 z_vec = [1 if p in ["Z", "Y"] else 0 for p in p_string]
-                binary_vectors.append(x_vec + z_vec)  # Concatenate x and z vectors
+                binary_vectors.append((x_vec, z_vec))  # Keep x and z vectors
 
             # Check commutation using symplectic inner product
             n_strings = len(pauli_strings)
@@ -269,10 +273,10 @@ class Add(Sequence):
                     vec_j = binary_vectors[j]
 
                     # Split into x and z parts
-                    x_i = vec_i[:nb_support]
-                    z_i = vec_i[nb_support:]
-                    x_j = vec_j[:nb_support]
-                    z_j = vec_j[nb_support:]
+                    x_i = vec_i[0]
+                    z_i = vec_i[1]
+                    x_j = vec_j[0]
+                    z_j = vec_j[1]
 
                     # Symplectic product: (x_i · z_j) XOR (z_i · x_j)
                     product = 0
