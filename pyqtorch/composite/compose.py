@@ -317,7 +317,8 @@ class Add(Sequence):
 
     @property
     def commuting_terms(self) -> bool:
-        """Return if all operations are commuting terms.
+        """Predicate for all operations being composed of commuting terms.
+        
         Useful for HamiltonianEvolution.
         """
 
