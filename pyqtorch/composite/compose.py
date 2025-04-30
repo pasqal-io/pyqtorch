@@ -259,7 +259,7 @@ class Add(Sequence):
 
     def _symplectic_commute(self) -> bool:
         """A predicate to check if operator is composed of communting pauli strings.
-        
+
         Achieved by computing the symplectic inner product from string-based representations.
 
         Reference:
@@ -269,12 +269,12 @@ class Add(Sequence):
 
         if all(isinstance(op, PAULI_OPS) for op in self._flatten()):
             qubit_support = self.qubit_support
-            nb_support = len(qubit_support)
+            n_qubits = len(qubit_support)
             n_strings = len(self.operations)
 
             # build binary representation of pauli operations for symplectic product
             binary_vectors = [
-                (np.zeros(nb_support, dtype=int), np.zeros(nb_support, dtype=int))
+                (np.zeros(n_qubits, dtype=int), np.zeros(n_qubits, dtype=int))
                 for _ in range(n_strings)
             ]
             for ind_op, op in enumerate(self.operations):
@@ -320,7 +320,10 @@ class Add(Sequence):
         if len(self.operations) == 1:
             return False
 
-        if disjoint_supports(self.operations, self.qubit_support) or self._symplectic_commute():
+        if (
+            disjoint_supports(self.operations, self.qubit_support)
+            or self._symplectic_commute()
+        ):
             return True
 
         return False
