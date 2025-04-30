@@ -381,7 +381,7 @@ class HamiltonianEvolution(Sequence):
 
     def _generator(
         self,
-        values: dict | None = None,
+        values: dict = dict(),
         embedding: Embedding | None = None,
         full_support: tuple[int, ...] | None = None,
     ) -> Operator:
@@ -398,10 +398,10 @@ class HamiltonianEvolution(Sequence):
         """
         if self._original_generator:
             return self._original_generator.tensor(  # type: ignore [union-attr]
-                values or dict(), embedding, full_support, diagonal=self.is_diagonal
+                values, embedding, full_support, diagonal=self.is_diagonal
             )
         return super().tensor(
-            values or dict(), embedding, full_support, diagonal=self.is_diagonal
+            values, embedding, full_support, diagonal=self.is_diagonal
         )
 
     @property
@@ -470,10 +470,9 @@ class HamiltonianEvolution(Sequence):
     def _forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict | None = None,
+        values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding | None = None,
     ) -> State:
-        values = values or dict()
         if self._original_generator is None:
 
             evolved_op = self.tensor(values, embedding)
@@ -486,7 +485,7 @@ class HamiltonianEvolution(Sequence):
     def _forward_commuting_generators(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict | None = None,
+        values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding | None = None,
     ) -> State:
         """Apply the hamiltonian evolution with input parameter values when
@@ -500,7 +499,6 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The transformed state.
         """
-        values = values or dict()
         if embedding is not None:
             values = embedding(values)
 
@@ -509,7 +507,7 @@ class HamiltonianEvolution(Sequence):
     def _forward_time(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict | None = None,
+        values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding = Embedding(),
     ) -> State:
         """Apply the hamiltonian evolution with input parameter values for time dependent cases.
@@ -522,7 +520,6 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The transformed state.
         """
-        values = values or dict()
         n_qubits = len(state.shape) - 1
         batch_size = state.shape[-1]
         duration = (
@@ -662,7 +659,7 @@ class HamiltonianEvolution(Sequence):
 
     def jacobian(
         self,
-        values: dict[str, Tensor] | None = None,
+        values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
         """Get the corresponding unitary of the jacobian.
@@ -673,7 +670,6 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The unitary representation of the jacobian.
         """
-        values = values or dict()
         if embedding is not None:
             values = embedding(values)
 
