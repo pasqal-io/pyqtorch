@@ -148,7 +148,7 @@ class Scale(Sequence):
 def disjoint_supports(
     operations: ModuleList | list[Module], qubit_support: tuple[int, ...]
 ) -> bool:
-    """Check all operations are defined over different supports.
+    """Check all operations are defined over disjoint supports.
 
     Args:
         operations (ModuleList): Operations.
