@@ -126,7 +126,6 @@ def test_reembedding() -> None:
     ) and np.allclose(reembedded_results[0], reembedded_results[2], atol=ATOL_embedding)
 
 
-@pytest.mark.skip(reason="Test fail mysteriously for 3.11 in CI")
 def test_sample_run_expectation_grads_with_embedding() -> None:
     name0, fn0 = "fn0", ConcretizedCallable("sin", ["x"])
     name1, fn1 = "fn1", ConcretizedCallable("mul", ["fn0", "y"])
