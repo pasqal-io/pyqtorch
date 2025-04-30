@@ -448,9 +448,15 @@ def test_hamevo_parametric_gen(
     hamevo = pyq.HamiltonianEvolution(generator, tparam, cache_length=2)
 
     if make_param:
-        assert hamevo.generator_type == GeneratorType.PARAMETRIC_OPERATION
+        assert hamevo.generator_type in (
+            GeneratorType.PARAMETRIC_OPERATION,
+            GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE,
+        )
     else:
-        assert hamevo.generator_type == GeneratorType.OPERATION
+        assert hamevo.generator_type in (
+            GeneratorType.OPERATION,
+            GeneratorType.COMMUTING_SEQUENCE,
+        )
     assert len(hamevo._cache_hamiltonian_evo) == 0
 
     def apply_hamevo_and_compare_expected(psi, values):

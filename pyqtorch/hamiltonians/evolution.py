@@ -68,10 +68,20 @@ class GeneratorType(StrEnum):
     OPERATION = "operation"
     """Generators of type Primitive or Sequence which do not contain parameters or contain
        constants as Parameters for example pyq.Scale(Z(0), torch.tensor([1.]))."""
+    PARAMETRIC_COMMUTING_SEQUENCE = "parametric_commuting_sequence"
+    """Parametric generators of type Add where each operation commute with each other."""
+    COMMUTING_SEQUENCE = "commuting_sequence"
+    """Generators of type Add where each operation commute with each other."""
     TENSOR = "tensor"
     """Generators of type torch.Tensor in which case a qubit_support needs to be passed."""
     SYMBOL = "symbol"
     """Generators which are symbolic, i.e. will be passed via the 'values' dict by the user."""
+
+
+COMMUTING = (
+    GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE,
+    GeneratorType.COMMUTING_SEQUENCE,
+)
 
 
 def evolve(
@@ -109,8 +119,6 @@ def evolve(
     return torch.transpose(evol_operator, 0, -1)
 
 
-# FIXME: Review HamiltonianEvolution inheriting from Sequence.
-# Probably makes more sense to inherit from Parametric.
 class HamiltonianEvolution(Sequence):
     """
     The HamiltonianEvolution corresponds to :math:`t`, returns :math:`exp(-i H, t)` where
@@ -213,9 +221,9 @@ class HamiltonianEvolution(Sequence):
         ):
             qubit_support = generator.qubit_support
             self.generator_type = (
-                GeneratorType.PARAMETRIC_OPERATION
+                GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE
                 if is_parametric(generator)
-                else GeneratorType.OPERATION
+                else GeneratorType.COMMUTING_SEQUENCE
             )
             original_generator = generator
             generator = [
@@ -274,6 +282,8 @@ class HamiltonianEvolution(Sequence):
             GeneratorType.TENSOR: self._generator,
             GeneratorType.OPERATION: self._generator,
             GeneratorType.PARAMETRIC_OPERATION: self._generator,
+            GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE: self._commuting_generator,
+            GeneratorType.COMMUTING_SEQUENCE: self._commuting_generator,
         }
 
         # to avoid recomputing hamiltonians and evolution
@@ -313,6 +323,7 @@ class HamiltonianEvolution(Sequence):
         return self.generator_type in (
             GeneratorType.SYMBOL,
             GeneratorType.PARAMETRIC_OPERATION,
+            GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE,
         )
 
     @cached_property
@@ -396,11 +407,28 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The generator as a tensor.
         """
-        if self._original_generator:
-            return self._original_generator.tensor(  # type: ignore [union-attr]
-                values, embedding, full_support, diagonal=self.is_diagonal
-            )
         return super().tensor(
+            values, embedding, full_support, diagonal=self.is_diagonal
+        )
+
+    def _commuting_generator(
+        self,
+        values: dict = dict(),
+        embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
+    ) -> Operator:
+        """Returns the COMMUTING_SEQUENCE generator.
+
+        Arguments:
+            values: Values dict with any needed parameters.
+            embedding: Embedding of parameters.
+            full_support: The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
+
+        Returns:
+            The generator as a tensor.
+        """
+        return self._original_generator.tensor(  # type: ignore [union-attr]
             values, embedding, full_support, diagonal=self.is_diagonal
         )
 
@@ -423,7 +451,7 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-        if self._original_generator is None:
+        if self.generator_type not in COMMUTING:
             return self.generator[0].eigenvalues
         else:
             blockmat = self.create_hamiltonian()
@@ -473,7 +501,7 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding | None = None,
     ) -> State:
-        if self._original_generator is None:
+        if self.generator_type not in COMMUTING:
 
             evolved_op = self.tensor(values, embedding)
             return apply_operator(
@@ -627,14 +655,12 @@ class HamiltonianEvolution(Sequence):
         use_diagonal = diagonal and self.is_diagonal
 
         values_cache_key = str(OrderedDict(values))
-        if (
-            len(self.generator) < 2
-            and self.cache_length > 0
-            and values_cache_key in self._cache_hamiltonian_evo
-        ):
-            evolved_op = self._cache_hamiltonian_evo[values_cache_key]
-        elif len(self.generator) > 1:
+        commuting_generator = self.generator_type in COMMUTING
+        if commuting_generator:
             return super().tensor(values, embedding, full_support, use_diagonal)
+        elif self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
+            evolved_op = self._cache_hamiltonian_evo[values_cache_key]
+
         else:
             hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
             time_evolution = self._time_evolution(values)
