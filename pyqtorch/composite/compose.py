@@ -258,8 +258,9 @@ class Add(Sequence):
         )
 
     def _symplectic_commute(self) -> bool:
-        """Check if operator is composed of pauli strings, each commuting with each other.
-        Done by computing the symplectic inner product from the string-based representations.
+        """A predicate to check if operator is composed of communting pauli strings.
+        
+        Achieved by computing the symplectic inner product from string-based representations.
 
         Reference:
             S. Aaronson, D. Gottesman, Improved Simulation of Stabilizer Circuits,
