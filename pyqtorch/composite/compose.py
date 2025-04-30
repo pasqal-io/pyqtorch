@@ -319,10 +319,7 @@ class Add(Sequence):
         if len(self.operations) == 1:
             return False
 
-        if disjoint_supports(self.operations, self.qubit_support):
-            return True
-
-        if self._symplectic_commute():
+        if disjoint_supports(self.operations, self.qubit_support) or self._symplectic_commute():
             return True
 
         return False
