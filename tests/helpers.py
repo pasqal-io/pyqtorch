@@ -105,6 +105,7 @@ def random_pauli_hamiltonian(
     default_scale_coeffs: float | None = None,
     p_param: float = 0.5,
     diagonal: bool = False,
+    commuting_terms: bool = False,
 ) -> tuple[Sequence, list]:
     """Creates a random Pauli Hamiltonian as a sum of k_1q + k_2q terms.
 
@@ -121,11 +122,18 @@ def random_pauli_hamiltonian(
         tuple[Sequence, list]: Hamiltonian and list of parameters.
     """
     OPS_PAULI_choice = list(OPS_PAULI) if not diagonal else [I, Z]
+    if commuting_terms:
+        k_1q = n_qubits
+        k_2q = 0
     one_q_terms: list = random.choices(OPS_PAULI_choice, k=k_1q)
+
     two_q_terms: list = [random.choices(OPS_PAULI_choice, k=2) for _ in range(k_2q)]
     terms: list = []
-    for term in one_q_terms:
-        supp = random.sample(range(n_qubits), 1)
+    for i, term in enumerate(one_q_terms):
+        if commuting_terms:
+            supp = [i]
+        else:
+            supp = random.sample(range(n_qubits), 1)
         terms.append(term(supp))
     for term in two_q_terms:
         supp = random.sample(range(n_qubits), 2)

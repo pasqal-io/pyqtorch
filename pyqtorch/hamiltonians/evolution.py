@@ -13,7 +13,7 @@ from torch.nn import ModuleList, ParameterDict
 
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import Sequence
-from pyqtorch.composite import Scale
+from pyqtorch.composite import Add, Scale
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.noise import AnalogNoise
 from pyqtorch.primitives import Primitive
@@ -68,10 +68,20 @@ class GeneratorType(StrEnum):
     OPERATION = "operation"
     """Generators of type Primitive or Sequence which do not contain parameters or contain
        constants as Parameters for example pyq.Scale(Z(0), torch.tensor([1.]))."""
+    PARAMETRIC_COMMUTING_SEQUENCE = "parametric_commuting_sequence"
+    """Parametric generators of type Add where each operation commute with each other."""
+    COMMUTING_SEQUENCE = "commuting_sequence"
+    """Generators of type Add where each operation commute with each other."""
     TENSOR = "tensor"
     """Generators of type torch.Tensor in which case a qubit_support needs to be passed."""
     SYMBOL = "symbol"
     """Generators which are symbolic, i.e. will be passed via the 'values' dict by the user."""
+
+
+COMMUTING = (
+    GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE,
+    GeneratorType.COMMUTING_SEQUENCE,
+)
 
 
 def evolve(
@@ -109,8 +119,6 @@ def evolve(
     return torch.transpose(evol_operator, 0, -1)
 
 
-# FIXME: Review HamiltonianEvolution inheriting from Sequence.
-# Probably makes more sense to inherit from Parametric.
 class HamiltonianEvolution(Sequence):
     """
     The HamiltonianEvolution corresponds to :math:`t`, returns :math:`exp(-i H, t)` where
@@ -172,6 +180,8 @@ class HamiltonianEvolution(Sequence):
         self.duration = duration
         self.use_sparse = use_sparse
         self.is_diagonal = False
+        self._param_uuid = str(uuid4())
+        original_generator = None
 
         if isinstance(duration, (str, float, Tensor)) or duration is None:
             self.duration = duration
@@ -206,6 +216,33 @@ class HamiltonianEvolution(Sequence):
             self.generator_type = GeneratorType.SYMBOL
             self.generator_symbol = generator
             generator = []
+        elif (
+            noise is None and isinstance(generator, Add) and generator.commuting_terms()
+        ):
+            qubit_support = generator.qubit_support
+            self.generator_type = (
+                GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE
+                if is_parametric(generator)
+                else GeneratorType.COMMUTING_SEQUENCE
+            )
+            original_generator = generator
+            generator = [
+                HamiltonianEvolution(
+                    op,
+                    time,
+                    cache_length=cache_length,
+                    duration=duration,
+                    steps=steps,
+                    solver=solver,
+                    use_sparse=use_sparse,
+                    noise=noise,
+                )
+                for op in generator.operations
+            ]
+            for gen in generator:
+                gen._param_uuid = self._param_uuid
+            self.is_diagonal = all(gen.is_diagonal for gen in generator)
+
         elif isinstance(generator, (QuantumOperation, Sequence)):
             qubit_support = generator.qubit_support
 
@@ -229,6 +266,7 @@ class HamiltonianEvolution(Sequence):
             )
         super().__init__(generator)
         self._qubit_support = qubit_support  # type: ignore
+        self._original_generator = original_generator
 
         logger.debug("Hamiltonian Evolution initialized")
         if logger.isEnabledFor(logging.DEBUG):
@@ -241,9 +279,11 @@ class HamiltonianEvolution(Sequence):
 
         self._generator_map: dict[GeneratorType, Callable] = {
             GeneratorType.SYMBOL: self._symbolic_generator,
-            GeneratorType.TENSOR: self._tensor_generator,
-            GeneratorType.OPERATION: self._tensor_generator,
-            GeneratorType.PARAMETRIC_OPERATION: self._tensor_generator,
+            GeneratorType.TENSOR: self._generator,
+            GeneratorType.OPERATION: self._generator,
+            GeneratorType.PARAMETRIC_OPERATION: self._generator,
+            GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE: self._commuting_generator,
+            GeneratorType.COMMUTING_SEQUENCE: self._commuting_generator,
         }
 
         # to avoid recomputing hamiltonians and evolution
@@ -258,8 +298,6 @@ class HamiltonianEvolution(Sequence):
                 "as HamiltonianEvolution."
             )
         self.noise = noise
-
-        self._param_uuid = str(uuid4())
 
     @property
     def generator(self) -> ModuleList:
@@ -285,14 +323,18 @@ class HamiltonianEvolution(Sequence):
         return self.generator_type in (
             GeneratorType.SYMBOL,
             GeneratorType.PARAMETRIC_OPERATION,
+            GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE,
         )
 
     @cached_property
     def is_time_dependent(self) -> bool:
         return self._is_time_dependent(self.generator)
 
-    def flatten(self) -> ModuleList:
+    def _flatten(self) -> ModuleList:
         return ModuleList([self])
+
+    def flatten(self) -> ModuleList:
+        return self._flatten()
 
     @property
     def param_name(self) -> Tensor | str:
@@ -320,11 +362,15 @@ class HamiltonianEvolution(Sequence):
         self,
         values: dict,
         embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
     ) -> Operator:
         """Returns the generator for the SYMBOL case.
 
         Arguments:
-            values:
+            values: Values dict with any needed parameters.
+            embedding: Embedding of parameters.
+            full_support: The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
 
         Returns:
             The generator as a tensor.
@@ -344,23 +390,50 @@ class HamiltonianEvolution(Sequence):
             return torch.permute(hamiltonian.squeeze(3), (1, 2, 0))
         return hamiltonian
 
-    def _tensor_generator(
-        self, values: dict | None = None, embedding: Embedding | None = None
+    def _generator(
+        self,
+        values: dict = dict(),
+        embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
     ) -> Operator:
-        """Returns the generator for the TENSOR, OPERATION and PARAMETRIC_OPERATION cases.
+        """Returns the TENSOR, OPERATION and PARAMETRIC_OPERATION generator.
 
         Arguments:
             values: Values dict with any needed parameters.
+            embedding: Embedding of parameters.
+            full_support: The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
 
         Returns:
             The generator as a tensor.
         """
-        return self.generator[0].tensor(
-            values or dict(), embedding, diagonal=self.is_diagonal
+        return super().tensor(
+            values, embedding, full_support, diagonal=self.is_diagonal
+        )
+
+    def _commuting_generator(
+        self,
+        values: dict = dict(),
+        embedding: Embedding | None = None,
+        full_support: tuple[int, ...] | None = None,
+    ) -> Operator:
+        """Returns the COMMUTING_SEQUENCE generator.
+
+        Arguments:
+            values: Values dict with any needed parameters.
+            embedding: Embedding of parameters.
+            full_support: The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
+
+        Returns:
+            The generator as a tensor.
+        """
+        return self._original_generator.tensor(  # type: ignore [union-attr]
+            values, embedding, full_support, diagonal=self.is_diagonal
         )
 
     @property
-    def create_hamiltonian(self) -> Callable[[dict], Operator]:
+    def create_hamiltonian(self) -> Callable:
         """A utility method for setting the right generator getter depending on the init case.
 
         Returns:
@@ -378,8 +451,15 @@ class HamiltonianEvolution(Sequence):
         Returns:
             Eigenvalues of the operation.
         """
-
-        return self.generator[0].eigenvalues
+        if self.generator_type not in COMMUTING:
+            return self.generator[0].eigenvalues
+        else:
+            blockmat = self.create_hamiltonian()
+            if len(blockmat.shape) == 3:
+                return torch.linalg.eigvals(blockmat.permute((2, 0, 1))).reshape(-1, 1)
+            else:
+                # for diagonal cases
+                return blockmat
 
     @cached_property
     def spectral_gap(self) -> Tensor:
@@ -394,31 +474,84 @@ class HamiltonianEvolution(Sequence):
         spectral_gap = torch.unique(torch.abs(torch.tril(diffs)))
         return spectral_gap[spectral_gap.nonzero()]
 
+    def _time_evolution(self, values: dict[str, Tensor] | ParameterDict) -> Tensor:
+        """Get the evolution from parameter values.
+
+        Arguments:
+            values: Values of parameters.
+
+        Returns:
+            The time evolution.
+        """
+        if isinstance(self.time, str):
+            pname = self.time
+            # note: GPSR trick when the same param_name is used in many operations
+            if self._param_uuid in values.keys():
+                pname = self._param_uuid
+            time_evolution = values[pname]
+        elif isinstance(self.time, ConcretizedCallable):
+            time_evolution = self.time(values)
+        else:
+            time_evolution = self.time
+        return time_evolution
+
     def _forward(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict | None = None,
+        values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding | None = None,
     ) -> State:
-        values = values or dict()
-        evolved_op = self.tensor(values, embedding)
-        return apply_operator(
-            state=state, operator=evolved_op, qubit_support=self.qubit_support
-        )
+        if self.generator_type not in COMMUTING:
+
+            evolved_op = self.tensor(values, embedding)
+            return apply_operator(
+                state=state, operator=evolved_op, qubit_support=self.qubit_support
+            )
+        else:
+            return self._forward_commuting_generators(state, values, embedding)
+
+    def _forward_commuting_generators(
+        self,
+        state: Tensor,
+        values: dict[str, Tensor] | ParameterDict = dict(),
+        embedding: Embedding | None = None,
+    ) -> State:
+        """Apply the hamiltonian evolution with input parameter values when
+        hamiltonian is composed of commuting terms.
+
+        Arguments:
+            state: Input state.
+            values: Values of parameters.
+            embedding: Embedding of parameters.
+
+        Returns:
+            The transformed state.
+        """
+        if embedding is not None:
+            values = embedding(values)
+
+        return super().forward(state, values, embedding)
 
     def _forward_time(
         self,
         state: Tensor,
-        values: dict[str, Tensor] | ParameterDict | None = None,
+        duration: float,
+        values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding = Embedding(),
     ) -> State:
-        values = values or dict()
+        """Apply the hamiltonian evolution with input parameter values for time dependent cases.
+
+        Arguments:
+            state: Input state.
+            values: Values of parameters.
+            embedding: Embedding of parameters.
+
+        Returns:
+            The transformed state.
+        """
         n_qubits = len(state.shape) - 1
         batch_size = state.shape[-1]
-        duration = (
-            values[self.duration] if isinstance(self.duration, str) else self.duration
-        )
-        t_grid = torch.linspace(0, float(duration), self.steps)
+        t_grid = torch.linspace(0, duration, self.steps)
         if embedding is not None:
             values.update({embedding.tparam_name: torch.tensor(0.0)})  # type: ignore [dict-item]
             embedded_params = embedding(values)
@@ -438,15 +571,11 @@ class HamiltonianEvolution(Sequence):
             else:
                 values[self.time] = torch.as_tensor(t)
                 reembedded_time_values = values
-            return (
-                self.generator[0]
-                .tensor(
-                    reembedded_time_values,
-                    embedding,
-                    full_support=tuple(range(n_qubits)),
-                )
-                .squeeze(2)
-            )
+            return self.create_hamiltonian(
+                reembedded_time_values,
+                embedding,
+                full_support=tuple(range(n_qubits)),
+            ).squeeze(2)
 
         if self.noise is None:
             sol = sesolve(
@@ -477,8 +606,10 @@ class HamiltonianEvolution(Sequence):
         values: dict[str, Tensor] | ParameterDict | None = None,
         embedding: Embedding | None = None,
     ) -> State:
-        """
-        Apply the hamiltonian evolution with input parameter values.
+        """Apply the hamiltonian evolution with input parameter values.
+
+        Note when duration is None for the time_dependent generator cases, we fall back
+        to considering forwarding as a time-independent case.
 
         Arguments:
             state: Input state.
@@ -492,7 +623,20 @@ class HamiltonianEvolution(Sequence):
         if self.is_time_dependent or (
             embedding is not None and getattr(embedding, "tparam_name", None)
         ):
-            return self._forward_time(state, values, embedding)  # type: ignore [arg-type]
+            # to handle cases where a time-dependent generator becomes
+            # time-independent with missing duration
+            duration = (
+                values[self.duration]
+                if isinstance(self.duration, str)
+                else self.duration
+            )
+            if duration is None:
+                return self._forward(
+                    state,
+                    values,
+                    embedding,
+                )
+            return self._forward_time(state, float(duration), values, embedding)  # type: ignore [arg-type]
 
         else:
             return self._forward(state, values, embedding)
@@ -509,8 +653,12 @@ class HamiltonianEvolution(Sequence):
         To avoid computing the evolution operator, we store it in cache wrt values.
 
         Arguments:
-            values: Parameter value.
-            Can be higher than the number of qubit support.
+            values: Parameter values.
+            embedding (Embedding | None, optional): Optional embedding. Defaults to None.
+            full_support (tuple[int, ...] | None, optional): The qubits the returned tensor
+                will be defined over. Defaults to None for only using the qubit_support.
+            diagonal (bool, optional): Whether to return the diagonal form of the tensor or not.
+                Defaults to False.
 
         Returns:
             The unitary representation.
@@ -521,21 +669,15 @@ class HamiltonianEvolution(Sequence):
         use_diagonal = diagonal and self.is_diagonal
 
         values_cache_key = str(OrderedDict(values))
-        if self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
+        commuting_generator = self.generator_type in COMMUTING
+        if commuting_generator:
+            return super().tensor(values, embedding, full_support, use_diagonal)
+        elif self.cache_length > 0 and values_cache_key in self._cache_hamiltonian_evo:
             evolved_op = self._cache_hamiltonian_evo[values_cache_key]
+
         else:
             hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
-
-            if isinstance(self.time, str):
-                pname = self.time
-                # note: GPSR trick when the same param_name is used in many operations
-                if self._param_uuid in values.keys():
-                    pname = self._param_uuid
-                time_evolution = values[pname]
-            elif isinstance(self.time, ConcretizedCallable):
-                time_evolution = self.time(values)
-            else:
-                time_evolution = self.time
+            time_evolution = self._time_evolution(values)
 
             evolved_op = evolve(hamiltonian, time_evolution, diagonal=self.is_diagonal)
             if use_diagonal:
@@ -557,11 +699,10 @@ class HamiltonianEvolution(Sequence):
 
     def jacobian(
         self,
-        values: dict[str, Tensor] | None = None,
+        values: dict[str, Tensor] = dict(),
         embedding: Embedding | None = None,
     ) -> Tensor:
-        """
-        Get the corresponding unitary of the jacobian.
+        """Get the corresponding unitary of the jacobian.
 
         Arguments:
             values: Parameter value.
@@ -569,7 +710,6 @@ class HamiltonianEvolution(Sequence):
         Returns:
             The unitary representation of the jacobian.
         """
-        values = values or dict()
         if embedding is not None:
             values = embedding(values)
 

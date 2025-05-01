@@ -350,9 +350,15 @@ def test_hevo_pauli_tensor(
             assert operator.is_diagonal
 
     if make_param:
-        assert operator.generator_type == GeneratorType.PARAMETRIC_OPERATION
+        assert operator.generator_type in (
+            GeneratorType.PARAMETRIC_OPERATION,
+            GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE,
+        )
     else:
-        assert operator.generator_type == GeneratorType.OPERATION
+        assert operator.generator_type in (
+            GeneratorType.OPERATION,
+            GeneratorType.COMMUTING_SEQUENCE,
+        )
     values[tparam] = torch.rand(batch_size)
     psi_star = operator(psi_init, values)
     psi_expected = calc_mat_vec_wavefunction(operator, psi_init, values, full_support)

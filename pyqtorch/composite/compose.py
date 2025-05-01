@@ -5,6 +5,7 @@ from logging import getLogger
 from operator import add
 from typing import Any, Generator, NoReturn, Union
 
+import numpy as np
 import torch
 from torch import Tensor, einsum, rand
 from torch.nn import Module, ModuleList, ParameterDict
@@ -12,7 +13,7 @@ from torch.nn import Module, ModuleList, ParameterDict
 from pyqtorch.apply import apply_operator, apply_operator_dm
 from pyqtorch.embed import ConcretizedCallable, Embedding
 from pyqtorch.matrices import add_batch_dim
-from pyqtorch.primitives import CNOT, RX, RY, Parametric, Primitive
+from pyqtorch.primitives import CNOT, RX, RY, I, Parametric, Primitive, X, Y, Z
 from pyqtorch.utils import (
     DensityMatrix,
     Operator,
@@ -22,6 +23,7 @@ from pyqtorch.utils import (
 from .sequence import Sequence
 
 BATCH_DIM = 2
+PAULI_OPS = (X, Y, Z, I)
 
 logger = getLogger(__name__)
 
@@ -143,6 +145,46 @@ class Scale(Sequence):
         return self
 
 
+def disjoint_supports(
+    operations: ModuleList | list[Module], qubit_support: tuple[int, ...]
+) -> bool:
+    """Check all operations are defined over disjoint supports.
+
+    Args:
+        operations (ModuleList): Operations.
+        qubit_support (tuple[int, ...]): Support of all operations.
+
+    Returns:
+        bool: True if all operations are defined on independent supports.
+    """
+    qubit_supports_intersect = [set(op.qubit_support) for op in operations]
+
+    disjoint_sets: set[int] = set()
+    for s in qubit_supports_intersect:
+        if s.isdisjoint(disjoint_sets):
+            disjoint_sets.update(s)
+        else:
+            return False
+    if len(disjoint_sets) == len(qubit_support):
+        return True
+
+    return False
+
+
+def symplectic_inner_product(
+    x1: np.array, z1: np.array, x2: np.array, z2: np.array
+) -> int:
+    """Sympletic inner product for checking commutation fot two pauli strings p1 and p2
+    represented by their binary representation (`x1`, `z1`), (`x2, `z2``)
+
+    Returns:
+        int: 0 if the pauli strings commute, 1 if they anti-commute
+    """
+    dot1 = np.sum(x1 & z2) % 2
+    dot2 = np.sum(z1 & x2) % 2
+    return (dot1 ^ dot2).item()  # XOR of the two dot products
+
+
 class Add(Sequence):
     """
     The 'add' operation applies all 'operations' to 'state' and returns the sum of states.
@@ -215,6 +257,77 @@ class Add(Sequence):
             mat,
         )
 
+    def _symplectic_commute(self) -> bool:
+        """A predicate to check if operator is composed of communting pauli strings.
+
+        Achieved by computing the symplectic inner product from string-based representations.
+
+        Reference:
+            S. Aaronson, D. Gottesman, Improved Simulation of Stabilizer Circuits,
+            Phys. Rev. A 70, 052328 (2004). arXiv:quant-ph/0406196
+        """
+
+        if all(isinstance(op, PAULI_OPS) for op in self._flatten()):
+            qubit_support = self.qubit_support
+            n_qubits = len(qubit_support)
+            n_strings = len(self.operations)
+
+            # build binary representation of pauli operations for symplectic product
+            binary_vectors = [
+                (np.zeros(n_qubits, dtype=int), np.zeros(n_qubits, dtype=int))
+                for _ in range(n_strings)
+            ]
+            for ind_op, op in enumerate(self.operations):
+                if isinstance(op, Sequence):
+                    subops = op._flatten()
+                    if not disjoint_supports(subops, op.qubit_support):
+                        return False
+                else:
+                    subops = [
+                        op,
+                    ]
+                for subop in subops:
+                    qubit = qubit_support.index(subop.qubit_support[0])
+                    if isinstance(subop, X):
+                        binary_vectors[ind_op][0][qubit] = 1
+                        binary_vectors[ind_op][1][qubit] = 1
+                    if isinstance(subop, Y):
+                        binary_vectors[ind_op][0][qubit] = 1
+                    if isinstance(subop, Z):
+                        binary_vectors[ind_op][1][qubit] = 1
+
+            # Check commutation using symplectic inner product
+
+            for i in range(n_strings):
+                for j in range(i + 1, n_strings):
+                    product = symplectic_inner_product(
+                        *binary_vectors[i], *binary_vectors[j]
+                    )
+
+                    if product == 1:
+                        return False  # Found a pair that doesn't commute
+
+            return True
+
+        return False
+
+    def commuting_terms(self) -> bool:
+        """Predicate for all operations being composed of commuting terms.
+
+        Useful for faster HamiltonianEvolution forward methods.
+        """
+
+        if len(self.operations) == 1:
+            return False
+
+        if (
+            disjoint_supports(self.operations, self.qubit_support)
+            or self._symplectic_commute()
+        ):
+            return True
+
+        return False
+
 
 class Merge(Sequence):
     def __init__(
@@ -245,6 +358,10 @@ class Merge(Sequence):
             )
 
         self._contains_noise = sum([op.noise is not None for op in self.operations])
+
+    def _flatten(self) -> ModuleList:
+        """This method avoids returning individual operations when checking commutation."""
+        return ModuleList([self])
 
     def forward(
         self,

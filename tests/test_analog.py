@@ -426,20 +426,37 @@ def test_error_noise_qubit_support(
 
 @pytest.mark.parametrize("n_qubits", [2, 4, 6])
 @pytest.mark.parametrize("batch_size", [1, 2])
-def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
+@pytest.mark.parametrize("make_param", [True, False])
+@pytest.mark.parametrize("commuting_terms", [False, True])
+def test_hamevo_parametric_gen(
+    n_qubits: int, batch_size: int, make_param: bool, commuting_terms: bool
+) -> None:
     k_1q = 2 * n_qubits  # Number of 1-qubit terms
     k_2q = n_qubits**2  # Number of 2-qubit terms
     generator, param_list = random_pauli_hamiltonian(
-        n_qubits, k_1q, k_2q, make_param=True, p_param=1.0
+        n_qubits,
+        k_1q,
+        k_2q,
+        make_param=make_param,
+        p_param=1.0,
+        commuting_terms=commuting_terms,
     )
-
     tparam = "t"
 
     param_list.append("t")
 
     hamevo = pyq.HamiltonianEvolution(generator, tparam, cache_length=2)
 
-    assert hamevo.generator_type == GeneratorType.PARAMETRIC_OPERATION
+    if make_param:
+        assert hamevo.generator_type in (
+            GeneratorType.PARAMETRIC_OPERATION,
+            GeneratorType.PARAMETRIC_COMMUTING_SEQUENCE,
+        )
+    else:
+        assert hamevo.generator_type in (
+            GeneratorType.OPERATION,
+            GeneratorType.COMMUTING_SEQUENCE,
+        )
     assert len(hamevo._cache_hamiltonian_evo) == 0
 
     def apply_hamevo_and_compare_expected(psi, values):
@@ -453,21 +470,25 @@ def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
     apply_hamevo_and_compare_expected(psi, values)
 
     # test cached
-    assert len(hamevo._cache_hamiltonian_evo) == 1
+    if not commuting_terms:
+        assert len(hamevo._cache_hamiltonian_evo) == 1
     apply_hamevo_and_compare_expected(psi, values)
-    assert len(hamevo._cache_hamiltonian_evo) == 1
+    if not commuting_terms:
+        assert len(hamevo._cache_hamiltonian_evo) == 1
 
     # test caching new value
     for param in param_list:
         values[param] += 0.1
 
     apply_hamevo_and_compare_expected(psi, values)
-    assert len(hamevo._cache_hamiltonian_evo) == 2
+    if not commuting_terms:
+        assert len(hamevo._cache_hamiltonian_evo) == 2
 
     # changing input state should not change the cache
     psi = random_state(n_qubits)
     apply_hamevo_and_compare_expected(psi, values)
-    assert len(hamevo._cache_hamiltonian_evo) == 2
+    if not commuting_terms:
+        assert len(hamevo._cache_hamiltonian_evo) == 2
 
     # test limit cache
     previous_cache_keys = hamevo._cache_hamiltonian_evo.keys()
@@ -476,11 +497,13 @@ def test_hamevo_parametric_gen(n_qubits: int, batch_size: int) -> None:
         values[param] += 0.1
 
     values_cache_key = str(OrderedDict(values))
-    assert values_cache_key not in previous_cache_keys
+    if not commuting_terms:
+        assert values_cache_key not in previous_cache_keys
 
     apply_hamevo_and_compare_expected(psi, values)
-    assert len(hamevo._cache_hamiltonian_evo) == 2
-    assert values_cache_key in previous_cache_keys
+    if not commuting_terms:
+        assert len(hamevo._cache_hamiltonian_evo) == 2
+        assert values_cache_key in previous_cache_keys
 
 
 @pytest.mark.parametrize(

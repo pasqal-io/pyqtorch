@@ -126,8 +126,7 @@ def test_reembedding() -> None:
     ) and np.allclose(reembedded_results[0], reembedded_results[2], atol=ATOL_embedding)
 
 
-@pytest.mark.parametrize("diff_mode", [pyq.DiffMode.AD])
-def test_sample_run_expectation_grads_with_embedding(diff_mode) -> None:
+def test_sample_run_expectation_grads_with_embedding() -> None:
     name0, fn0 = "fn0", ConcretizedCallable("sin", ["x"])
     name1, fn1 = "fn1", ConcretizedCallable("mul", ["fn0", "y"])
     name2, fn2 = "fn2", ConcretizedCallable("mul", ["fn1", 2.0])
@@ -157,11 +156,11 @@ def test_sample_run_expectation_grads_with_embedding(diff_mode) -> None:
     wf = pyq.run(circ, state, values_ad, embedding)
     samples = pyq.sample(circ, state, values_ad, 100, embedding)
     exp_ad = pyq.expectation(
-        circ, state, values_ad, obs, diff_mode, embedding=embedding
+        circ, state, values_ad, obs, pyq.DiffMode.AD, embedding=embedding
     )
     assert torch.autograd.gradcheck(
         lambda x, y: pyq.expectation(
-            circ, state, {"x": x, "y": y}, obs, diff_mode, embedding=embedding
+            circ, state, {"x": x, "y": y}, obs, pyq.DiffMode.AD, embedding=embedding
         ),
         (x, y),
         atol=1e-1,  # torch.autograd.gradcheck is very susceptible to small numerical errors

@@ -104,11 +104,19 @@ def test_adjoint_diff(n_qubits: int, n_layers: int) -> None:
 @pytest.mark.parametrize("n_qubits", [3, 4, 5])
 @pytest.mark.parametrize("n_layers", [1, 2, 3])
 @pytest.mark.parametrize("diagonal", [True, False])
-def test_adjoint_diff_hamevo(n_qubits: int, n_layers: int, diagonal: bool) -> None:
+@pytest.mark.parametrize("commuting_terms", [False, True])
+def test_adjoint_diff_hamevo(
+    n_qubits: int, n_layers: int, diagonal: bool, commuting_terms: bool
+) -> None:
 
     cnot = pyq.CNOT(1, 2)
     ham = random_pauli_hamiltonian(
-        n_qubits, k_1q=n_qubits, k_2q=0, default_scale_coeffs=1.0, diagonal=diagonal
+        n_qubits,
+        k_1q=n_qubits,
+        k_2q=0,
+        default_scale_coeffs=1.0,
+        diagonal=diagonal,
+        commuting_terms=commuting_terms,
     )[0]
     ham_op = pyq.HamiltonianEvolution(ham, "t", qubit_support=tuple(range(n_qubits)))
     ops = [ham_op, cnot] * n_layers
