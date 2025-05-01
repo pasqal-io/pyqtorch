@@ -535,6 +535,7 @@ class HamiltonianEvolution(Sequence):
     def _forward_time(
         self,
         state: Tensor,
+        duration: float,
         values: dict[str, Tensor] | ParameterDict = dict(),
         embedding: Embedding = Embedding(),
     ) -> State:
@@ -550,10 +551,7 @@ class HamiltonianEvolution(Sequence):
         """
         n_qubits = len(state.shape) - 1
         batch_size = state.shape[-1]
-        duration = (
-            values[self.duration] if isinstance(self.duration, str) else self.duration
-        )
-        t_grid = torch.linspace(0, float(duration), self.steps)
+        t_grid = torch.linspace(0, duration, self.steps)
         if embedding is not None:
             values.update({embedding.tparam_name: torch.tensor(0.0)})  # type: ignore [dict-item]
             embedded_params = embedding(values)
@@ -610,6 +608,9 @@ class HamiltonianEvolution(Sequence):
     ) -> State:
         """Apply the hamiltonian evolution with input parameter values.
 
+        Note when duration is None for the time_dependent generator cases, we fall back
+        to considering forwarding as a time-independent case.
+
         Arguments:
             state: Input state.
             values: Values of parameters.
@@ -622,7 +623,20 @@ class HamiltonianEvolution(Sequence):
         if self.is_time_dependent or (
             embedding is not None and getattr(embedding, "tparam_name", None)
         ):
-            return self._forward_time(state, values, embedding)  # type: ignore [arg-type]
+            # to handle cases where a time-dependent generator becomes
+            # time-independent with missing duration
+            duration = (
+                values[self.duration]
+                if isinstance(self.duration, str)
+                else self.duration
+            )
+            if duration is None:
+                return self._forward(
+                    state,
+                    values,
+                    embedding,
+                )
+            return self._forward_time(state, float(duration), values, embedding)  # type: ignore [arg-type]
 
         else:
             return self._forward(state, values, embedding)
