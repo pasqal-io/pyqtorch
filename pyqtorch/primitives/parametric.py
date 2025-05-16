@@ -80,7 +80,7 @@ class Parametric(QuantumOperation):
                 values = embedding(values)
             # note: GPSR trick when the same param_name is used in many operations
             if self._param_uuid in values.keys():
-                return Parametric._expand_values(values[self._param_uuid])  # type: ignore[index]
+                return Parametric._expand_values(values[self._param_uuid] + values[self.param_name])  # type: ignore[index]
             return Parametric._expand_values(values[self.param_name])  # type: ignore[index]
 
         def parse_tensor(
