@@ -141,21 +141,14 @@ class PSRExpectation(Function):
             Returns:
                 Expectation evaluation.
             """
-            # return PSRExpectation.apply(
-            #     ctx.circuit,
-            #     ctx.state,
-            #     ctx.observable,
-            #     ctx.embedding,
-            #     ctx.expectation_method,
-            #     values.keys(),
-            #     *values.values(),
-            # )
-            return ctx.expectation_method(
+            return PSRExpectation.apply(
                 ctx.circuit,
                 ctx.state,
                 ctx.observable,
-                values,
                 ctx.embedding,
+                ctx.expectation_method,
+                values.keys(),
+                *values.values(),
             )
 
         def single_gap_shift(
@@ -183,10 +176,14 @@ class PSRExpectation(Function):
 
             # apply shift rule
             shifted_values = values.copy()
-            shifted_values[param_uuid] = shift
+            if param_uuid in shifted_values:
+                shifted_values[param_uuid] = shifted_values[param_uuid] + shift
+            else:
+                shifted_values[param_uuid] = shift
             f_plus = expectation_fn(shifted_values)
-            shifted_values[param_uuid] = -shift
+            shifted_values[param_uuid] = shifted_values[param_uuid] - 2 * shift
             f_minus = expectation_fn(shifted_values)
+            shifted_values[param_uuid] = shifted_values[param_uuid] + shift
             return (
                 spectral_gap
                 * (f_plus - f_minus)
@@ -229,15 +226,21 @@ class PSRExpectation(Function):
             M = torch.empty((n_eqs, n_eqs), dtype=dtype).to(device=device)
             batch_size = 1
             shifted_params = values.copy()
+            if param_uuid not in values:
+                shifted_params[param_uuid] = torch.zeros_like(
+                    shifts[0], requires_grad=True
+                )
             for i in range(n_eqs):
                 # + shift
-                shifted_params[param_uuid] = shifts[i]
+                shifted_params[param_uuid] = shifted_params[param_uuid] + shifts[i]
                 f_plus = expectation_fn(shifted_params)
 
                 # - shift
-                shifted_params[param_uuid] = -shifts[i]
+                shifted_params[param_uuid] = shifted_params[param_uuid] - 2 * shifts[i]
                 f_minus = expectation_fn(shifted_params)
-                shifted_params[param_uuid] += shifts[i]  # reset
+                shifted_params[param_uuid] = (
+                    shifted_params[param_uuid] + shifts[i]
+                )  # reset
                 F.append((f_plus - f_minus))
 
                 # calculate M matrix
