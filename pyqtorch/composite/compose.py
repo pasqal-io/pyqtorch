@@ -377,7 +377,7 @@ class Merge(Sequence):
                 max(
                     list(
                         map(
-                            lambda t: len(t) if isinstance(t, Tensor) else 1,
+                            lambda t: len(t) if isinstance(t, Tensor) and t.ndim > 0 else 1,
                             values.values(),
                         )
                     )
