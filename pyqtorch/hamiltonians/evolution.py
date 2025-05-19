@@ -714,9 +714,9 @@ class HamiltonianEvolution(Sequence):
             values = embedding(values)
 
         hamiltonian: torch.Tensor = self.create_hamiltonian(values, embedding)  # type: ignore [call-arg]
-        # note: GPSR trick when the same param_name is used in many operations
 
         if self._param_uuid in values.keys():
+            # note: GPSR trick when the same param_name is used in many operations
             val = values[self.param_name] + values[self._param_uuid]
         else:
             val = values[self.param_name]
