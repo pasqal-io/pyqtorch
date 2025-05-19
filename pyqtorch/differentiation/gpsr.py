@@ -266,7 +266,6 @@ class PSRExpectation(Function):
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
 
             Args:
-                param_name (str): Parameter name to compute gradient over.
                 param_uuid (str): Uuid of Parameter to help identify the computed gradient.
                 spectral_gap: Spectral gap of the corresponding operation.
                 values: Dictionary with parameter values.
