@@ -210,7 +210,7 @@ def test_sampled_diff(
     assert torch.allclose(exp_ad, exp_ad_sampled_dm, atol=1e-01)
 
 
-@pytest.mark.xfail  # Adjoint Scale is currently not supported
+@pytest.mark.skip  # Adjoint Scale is currently not supported
 @pytest.mark.parametrize("dtype", [torch.complex64, torch.complex128])
 @pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize("n_qubits", [2])
