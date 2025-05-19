@@ -141,16 +141,18 @@ class PSRExpectation(Function):
             Returns:
                 Expectation evaluation.
             """
-            return ctx.expectation_method(
+            return PSRExpectation.apply(
                 ctx.circuit,
                 ctx.state,
                 ctx.observable,
-                values,
                 ctx.embedding,
+                ctx.expectation_method,
+                values.keys(),
+                *values.values(),
             )
 
         def single_gap_shift(
-            param_name: str,
+            param_uuid: str,
             values: dict[str, Tensor],
             spectral_gap: Tensor,
             shift_prefac: float = 1.0,
@@ -158,7 +160,7 @@ class PSRExpectation(Function):
             """Implements single gap PSR rule.
 
             Args:
-                param_name: Name of the parameter to apply PSR.
+                param_uuid (str): Uuid of Parameter to help identify the computed gradient.
                 values: Dictionary with parameter values.
                 spectral_gap: Spectral gap value for PSR.
                 shift_prefac: Shift prefactor value to multiply pi/2.
@@ -174,10 +176,14 @@ class PSRExpectation(Function):
 
             # apply shift rule
             shifted_values = values.copy()
-            shifted_values[param_name] = shifted_values[param_name] + shift
+            if param_uuid in shifted_values:
+                shifted_values[param_uuid] = shifted_values[param_uuid] + shift
+            else:
+                shifted_values[param_uuid] = shift
             f_plus = expectation_fn(shifted_values)
-            shifted_values[param_name] = shifted_values[param_name] - 2 * shift
+            shifted_values[param_uuid] = shifted_values[param_uuid] - 2 * shift
             f_minus = expectation_fn(shifted_values)
+            shifted_values[param_uuid] = shifted_values[param_uuid] + shift
             return (
                 spectral_gap
                 * (f_plus - f_minus)
@@ -185,7 +191,7 @@ class PSRExpectation(Function):
             )
 
         def multi_gap_shift(
-            param_name: str,
+            param_uuid: str,
             values: dict[str, Tensor],
             spectral_gaps: Tensor,
             shift_prefac: float = 0.5,
@@ -196,7 +202,7 @@ class PSRExpectation(Function):
             https://arxiv.org/pdf/2108.01218.pdf
 
             Args:
-                param_name: Name of the parameter to apply PSR.
+                param_uuid (str): Uuid of Parameter to help identify the computed gradient.
                 values: Dictionary with parameter values.
                 spectral_gaps: Spectral gaps value for PSR.
                 shift_prefac: Shift prefactor value for PSR shifts.
@@ -220,15 +226,21 @@ class PSRExpectation(Function):
             M = torch.empty((n_eqs, n_eqs), dtype=dtype).to(device=device)
             batch_size = 1
             shifted_params = values.copy()
+            if param_uuid not in values:
+                shifted_params[param_uuid] = torch.zeros_like(
+                    shifts[0], requires_grad=True
+                )
             for i in range(n_eqs):
                 # + shift
-                shifted_params[param_name] = shifted_params[param_name] + shifts[i]
+                shifted_params[param_uuid] = shifted_params[param_uuid] + shifts[i]
                 f_plus = expectation_fn(shifted_params)
 
                 # - shift
-                shifted_params[param_name] = shifted_params[param_name] - 2 * shifts[i]
+                shifted_params[param_uuid] = shifted_params[param_uuid] - 2 * shifts[i]
                 f_minus = expectation_fn(shifted_params)
-                shifted_params[param_name] = shifted_params[param_name] + shifts[i]
+                shifted_params[param_uuid] = (
+                    shifted_params[param_uuid] + shifts[i]
+                )  # reset
                 F.append((f_plus - f_minus))
 
                 # calculate M matrix
@@ -246,7 +258,7 @@ class PSRExpectation(Function):
             return dfdx
 
         def vjp(
-            param_name: str,
+            param_uuid: str,
             spectral_gap: Tensor,
             values: dict[str, Tensor],
             shift_prefac: float,
@@ -254,7 +266,7 @@ class PSRExpectation(Function):
             """Vector-jacobian product between `grad_out` and jacobians of parameters.
 
             Args:
-                param_name: Parameter name to compute gradient over.
+                param_uuid (str): Uuid of Parameter to help identify the computed gradient.
                 spectral_gap: Spectral gap of the corresponding operation.
                 values: Dictionary with parameter values.
                 shift_prefac: Shift prefactor value for PSR shifts.
@@ -265,15 +277,13 @@ class PSRExpectation(Function):
             psr_fn = multi_gap_shift if len(spectral_gap) > 1 else single_gap_shift
 
             return grad_out * psr_fn(  # type: ignore[operator]
-                param_name,  # type: ignore
+                param_uuid,
                 values,
                 spectral_gap,
                 shift_prefac=shift_prefac,
             )
 
         grads = {p: None for p in values.keys()}
-        # use a copy for handling repeated params with uuid
-        val_copy = values.copy()
 
         def update_gradient(
             param_name: str, param_uuid: str, spectral_gap: Tensor, shift_prefac: float
@@ -286,40 +296,37 @@ class PSRExpectation(Function):
                 spectral_gap (Tensor): Spectral gap of the corresponding operation.
                 shift_prefac (float): Shift prefactor value for PSR shifts.
             """
-            if val_copy[param_name].requires_grad:
-                val_copy.update({param_uuid: val_copy[param_name].clone()})
-                if grads[param_name] is None:
-                    grads[param_name] = vjp(
-                        param_uuid, spectral_gap, val_copy, shift_prefac
-                    )
-                else:
-                    grad_contrib = vjp(param_uuid, spectral_gap, val_copy, shift_prefac)
-                    grads[param_name] += grad_contrib.reshape(grads[param_name].shape)  # type: ignore[attr-defined]
+            if grads[param_name] is None:
+                grads[param_name] = vjp(param_uuid, spectral_gap, values, shift_prefac)
+            else:
+                grad_contrib = vjp(param_uuid, spectral_gap, values, shift_prefac)
+                grads[param_name] += grad_contrib.reshape(grads[param_name].shape)  # type: ignore[attr-defined]
 
         for op in ctx.circuit.flatten():
 
             if isinstance(op, (Parametric, HamiltonianEvolution)) and op.is_parametric:
-                factor = 1.0 if isinstance(op, Parametric) else 2.0
-                if len(op.spectral_gap) > 1:
-                    update_gradient(
-                        op.param_name, op._param_uuid, factor * op.spectral_gap, 0.5  # type: ignore[arg-type]
-                    )
-                else:
-                    shift_factor = 1.0
-                    # note the spectral gap can be empty
-                    # this is handled in single-gap PSR
-                    if isinstance(op, HamiltonianEvolution):
-                        shift_factor = (
-                            1.0 / (op.spectral_gap.item() * factor)
-                            if len(op.spectral_gap) == 1
-                            else 1.0
+                if values[op.param_name].requires_grad:  # type: ignore[index]
+                    factor = 1.0 if isinstance(op, Parametric) else 2.0
+                    if len(op.spectral_gap) > 1:
+                        update_gradient(
+                            op.param_name, op._param_uuid, factor * op.spectral_gap, 0.5  # type: ignore[arg-type]
                         )
-                    update_gradient(
-                        op.param_name,
-                        op._param_uuid,
-                        factor * op.spectral_gap,
-                        shift_factor,
-                    )
+                    else:
+                        shift_factor = 1.0
+                        # note the spectral gap can be empty
+                        # this is handled in single-gap PSR
+                        if isinstance(op, HamiltonianEvolution):
+                            shift_factor = (
+                                1.0 / (op.spectral_gap.item() * factor)
+                                if len(op.spectral_gap) == 1
+                                else 1.0
+                            )
+                        update_gradient(
+                            op.param_name,
+                            op._param_uuid,
+                            factor * op.spectral_gap,
+                            shift_factor,
+                        )
 
         return (
             None,
