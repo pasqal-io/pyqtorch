@@ -61,7 +61,7 @@ class MESolver(AdaptiveIntegrator):
         self.I = torch.eye(n, dtype=options.ctype)
 
         # define cached non-hermitian Hamiltonian
-        self.Hnh = cache(lambda H: H - 0.5j * self.sum_LdagL)
+        self.Hnh = cache(lambda H: -0.5j * self.sum_LdagL + H)
 
     def ode_fun(self, t: float, rho: Tensor) -> Tensor:
         H = self.H(t)
