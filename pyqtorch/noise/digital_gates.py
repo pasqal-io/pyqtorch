@@ -375,3 +375,65 @@ class GeneralizedAmplitudeDamping(Noise):
         )
         kraus_generalized_amplitude_damping: list[Tensor] = [K0, K1, K2, K3]
         super().__init__(kraus_generalized_amplitude_damping, target, error_probability)
+
+class TwoQubitDepolarizing(Noise):
+    """
+    Two-qubit depolarizing channel.
+
+    .. math::
+        \\rho \\Rightarrow (1-p) \\rho + \\frac{p}{15} \\sum_{i=1}^{15} P_i \\rho P_i
+
+    where P_i are all two-qubit Pauli operators except II.
+    """
+
+    def __init__(
+        self,
+        targets: tuple[int, int],
+        error_probability: float,
+    ):
+        if error_probability > 1.0 or error_probability < 0.0:
+            raise ValueError("The error_probability value is not a correct probability")
+        from itertools import product
+
+        # All single-qubit Paulis
+        paulis = [IMAT, XMAT, YMAT, ZMAT]
+        pauli_labels = ['I', 'X', 'Y', 'Z']
+
+        # Build all tensor products
+        kraus_ops = []
+        for i, (p1, p1_lbl) in enumerate(zip(paulis, pauli_labels)):
+            for j, (p2, p2_lbl) in enumerate(zip(paulis, pauli_labels)):
+                if i == 0 and j == 0:  # skip II
+                    continue
+                op = torch.kron(p1, p2)
+                kraus_ops.append(op)
+
+        K0 = sqrt(1.0 - error_probability) * torch.kron(IMAT, IMAT)
+        scaled_kraus = [
+            sqrt(error_probability / 15.0) * op for op in kraus_ops
+        ]
+        kraus_depol = [K0] + scaled_kraus
+
+        super().__init__(kraus_depol, targets, error_probability)
+
+class TwoQubitDephasing(Noise):
+    """
+    Two-qubit dephasing channel.
+
+    .. math::
+        \\rho \\Rightarrow (1-p) \\rho + \\frac{p}{3}(IZ \\rho IZ + ZI \\rho ZI + ZZ \\rho ZZ)
+    """
+
+    def __init__(
+        self,
+        targets: tuple[int, int],
+        error_probability: float,
+    ):
+        if error_probability > 1.0 or error_probability < 0.0:
+            raise ValueError("The error_probability value is not a correct probability")
+        K0 = sqrt(1.0 - error_probability) * torch.kron(IMAT, IMAT)
+        K1 = sqrt(error_probability / 3.0) * torch.kron(IMAT, ZMAT)
+        K2 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, IMAT)
+        K3 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, ZMAT)
+        kraus_dephasing = [K0, K1, K2, K3]
+        super().__init__(kraus_dephasing, targets, error_probability)
