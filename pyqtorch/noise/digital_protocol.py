@@ -14,6 +14,8 @@ class DigitalNoiseType(StrEnum):
     AMPLITUDE_DAMPING = "AmplitudeDamping"
     PHASE_DAMPING = "PhaseDamping"
     GENERALIZED_AMPLITUDE_DAMPING = "GeneralizedAmplitudeDamping"
+    TWO_QUBIT_DEPOLARIZING = "two_qubit_depolarizing"
+    TWO_QUBIT_DEPHASING = "two_qubit_dephasing"
 
 
 @dataclass
@@ -68,7 +70,7 @@ class DigitalNoiseProtocol:
             DigitalNoiseType | list[DigitalNoiseType] | list[DigitalNoiseProtocol]
         ),
         error_probability: tuple[float, ...] | float | None = None,
-        target: int | None = None,
+        target: int | tuple[int, int] | None = None,
     ) -> None:
 
         self._error_probability = error_probability
@@ -96,7 +98,16 @@ class DigitalNoiseProtocol:
                 raise ValueError(
                     f"No error_probability passed to the protocol {noise.type}."
                 )
-
+        if noise.type in [DigitalNoiseType.TWO_QUBIT_DEPOLARIZING, DigitalNoiseType.TWO_QUBIT_DEPHASING]:
+            if not (isinstance(noise.target, tuple) and len(noise.target) == 2 and all(isinstance(i, int) for i in noise.target)):
+                raise ValueError(
+                    f"{noise.type} requires a target of type Tuple[int, int], got {noise.target}."
+                )
+        else:
+            if noise.target is not None and not isinstance(noise.target, int):
+                raise ValueError(
+                    f"{noise.type} requires a single-qubit target (int), got {noise.target}."
+                )
         self.len = len(self.noise_instances)
 
     @property
@@ -155,6 +166,14 @@ class DigitalNoiseProtocol:
     @classmethod
     def generalized_amplitude_damping(cls, *args, **kwargs) -> DigitalNoiseProtocol:
         return cls(DigitalNoiseType.GENERALIZED_AMPLITUDE_DAMPING, *args, **kwargs)
+
+    @classmethod
+    def two_qubit_depolarizing(cls, *args, **kwargs) -> DigitalNoiseProtocol:
+        return cls(DigitalNoiseType.TWO_QUBIT_DEPOLARIZING, *args, **kwargs)
+
+    @classmethod
+    def two_qubit_dephasing(cls, *args, **kwargs) -> DigitalNoiseProtocol:
+        return cls(DigitalNoiseType.TWO_QUBIT_DEPHASING, *args, **kwargs)
 
     def __repr__(self) -> str:
         if self.len == 1:
