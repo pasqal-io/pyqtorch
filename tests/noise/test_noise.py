@@ -7,6 +7,8 @@ import torch
 from helpers import get_op_support, random_pauli_hamiltonian
 from torch import Tensor
 
+from pyqtorch.noise.digital_gates import TwoQubitDepolarizing, TwoQubitDephasing
+from pyqtorch.utils import density_mat, product_state
 from pyqtorch.apply import apply_operator_dm, operator_product
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.hamiltonians import Observable
@@ -384,3 +386,38 @@ def test_analog_noise_add():
         noise_add.noise_operators
     )
     assert noise_add.qubit_support == (2, 3)
+
+def test_two_qubit_depolarizing():
+    target = (0, 1)
+    batch_size = 1
+    prob = 0.3
+
+    # Start from a pure product state |00⟩
+    rho_0 = density_mat(product_state("00", batch_size))
+
+    # Apply TwoQubitDepolarizing
+    noise = TwoQubitDepolarizing(target=target, error_probability=prob)
+    rho_noisy = noise(rho_0)
+
+    # Ensure output is valid density matrix
+    assert rho_noisy.shape == rho_0.shape
+    assert torch.allclose(rho_noisy, rho_noisy.conj().transpose(0, 1), atol=1e-6)  # Hermitian
+    tr = torch.trace(rho_noisy[:, :, 0])
+    assert torch.allclose(tr, torch.tensor(1.0, dtype=torch.cdouble), atol=1e-4)     # Trace=1
+
+def test_two_qubit_dephasing():
+    target = (0, 1)
+    batch_size = 1
+    prob = 0.6
+
+    rho_0 = density_mat(product_state("00", batch_size))  # shape [4, 4, 1]
+    # Apply TwoQubitDephasing
+    noise = TwoQubitDephasing(target=target, error_probability=prob)
+    rho_noisy = noise(rho_0)
+
+    # Check properties
+    assert rho_noisy.shape == rho_0.shape
+    assert torch.allclose(rho_noisy, rho_noisy.conj().transpose(0, 1), atol=1e-6)  # Hermitian
+    trace = torch.trace(rho_noisy[:, :, 0])
+    assert torch.allclose(trace, torch.tensor(1.0, dtype=torch.cdouble), atol=1e-4)  # Trace=1
+    assert (rho_noisy.real >= -1e-6).all()  # Weak check for positivity
