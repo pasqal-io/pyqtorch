@@ -385,36 +385,44 @@ class TwoQubitDepolarizing(Noise):
 
     where P_i are all two-qubit Pauli operators except II.
     """
-
     def __init__(
         self,
-        targets: tuple[int, int],
+        target: tuple[int, int],
         error_probability: float,
     ):
-        if error_probability > 1.0 or error_probability < 0.0:
+        if not 0.0 <= error_probability <= 1.0:
             raise ValueError("The error_probability value is not a correct probability")
-        from itertools import product
 
-        # All single-qubit Paulis
-        paulis = [IMAT, XMAT, YMAT, ZMAT]
-        pauli_labels = ['I', 'X', 'Y', 'Z']
+        # ensure all ops live on the same device/dtype as the single-qubit mats
+        device, dtype = IMAT.device, IMAT.dtype
+        I = IMAT.to(device, dtype)
+        X = XMAT.to(device, dtype)
+        Y = YMAT.to(device, dtype)
+        Z = ZMAT.to(device, dtype)
 
-        # Build all tensor products
+        # precompute identity ⊗ identity once
+        I4 = torch.kron(I, I)
+
+        # build the 15 nontrivial two-qubit Paulis
+        paulis = [I, X, Y, Z]
         kraus_ops = []
-        for i, (p1, p1_lbl) in enumerate(zip(paulis, pauli_labels)):
-            for j, (p2, p2_lbl) in enumerate(zip(paulis, pauli_labels)):
-                if i == 0 and j == 0:  # skip II
+        for p1 in paulis:
+            for p2 in paulis:
+                # skip I⊗I
+                if p1 is I and p2 is I:
                     continue
-                op = torch.kron(p1, p2)
+                op = torch.kron(p1, p2).to(device, dtype)
                 kraus_ops.append(op)
 
-        K0 = sqrt(1.0 - error_probability) * torch.kron(IMAT, IMAT)
-        scaled_kraus = [
-            sqrt(error_probability / 15.0) * op for op in kraus_ops
+        # K0 = √(1-p) I⊗I, Ki = √(p/15) P_i
+        K0 = sqrt(1.0 - error_probability) * I4
+        scaled = [
+            sqrt(error_probability / 15.0) * op
+            for op in kraus_ops
         ]
-        kraus_depol = [K0] + scaled_kraus
 
-        super().__init__(kraus_depol, targets, error_probability)
+        super().__init__([K0, *scaled], target, error_probability)
+
 
 class TwoQubitDephasing(Noise):
     """
@@ -423,17 +431,28 @@ class TwoQubitDephasing(Noise):
     .. math::
         \\rho \\Rightarrow (1-p) \\rho + \\frac{p}{3}(IZ \\rho IZ + ZI \\rho ZI + ZZ \\rho ZZ)
     """
-
     def __init__(
         self,
-        targets: tuple[int, int],
+        target: tuple[int, int],
         error_probability: float,
     ):
-        if error_probability > 1.0 or error_probability < 0.0:
+        if not 0.0 <= error_probability <= 1.0:
             raise ValueError("The error_probability value is not a correct probability")
-        K0 = sqrt(1.0 - error_probability) * torch.kron(IMAT, IMAT)
-        K1 = sqrt(error_probability / 3.0) * torch.kron(IMAT, ZMAT)
-        K2 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, IMAT)
-        K3 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, ZMAT)
-        kraus_dephasing = [K0, K1, K2, K3]
-        super().__init__(kraus_dephasing, targets, error_probability)
+
+        # device/dtype from the single-qubit mats
+        device, dtype = IMAT.device, IMAT.dtype
+        I = IMAT.to(device, dtype)
+        Z = ZMAT.to(device, dtype)
+
+        # precompute identity ⊗ identity
+        I4 = torch.kron(I, I)
+
+        # K0 = √(1-p) I⊗I
+        K0 = sqrt(1.0 - error_probability) * I4
+
+        # three dephasing Paulis
+        K1 = sqrt(error_probability / 3.0) * torch.kron(I, Z).to(device, dtype)
+        K2 = sqrt(error_probability / 3.0) * torch.kron(Z, I).to(device, dtype)
+        K3 = sqrt(error_probability / 3.0) * torch.kron(Z, Z).to(device, dtype)
+
+        super().__init__([K0, K1, K2, K3], target, error_probability)

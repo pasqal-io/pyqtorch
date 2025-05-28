@@ -26,6 +26,8 @@ from pyqtorch.noise import (
     GeneralizedAmplitudeDamping,
     Noise,
     PhaseDamping,
+    TwoQubitDepolarizing,
+    TwoQubitDephasing,
 )
 from pyqtorch.primitives import (
     OPS_DIGITAL,
@@ -384,3 +386,92 @@ def test_analog_noise_add():
         noise_add.noise_operators
     )
     assert noise_add.qubit_support == (2, 3)
+
+
+@pytest.mark.parametrize(
+    "n_qubits",
+    [{"low": 2, "high": 5}],
+    indirect=True,
+)
+@pytest.mark.parametrize("p", [0.0, 0.25, 0.5, 1.0])
+def test_two_qubit_depolarizing_channel(
+    n_qubits: int,
+    batch_size: int,
+    p: float,
+) -> None:
+    """Test TwoQubitDepolarizing on a full 2-qubit system up to 5 qubits total."""
+    # prepare a random pure state and its DM
+    psi = random_state(n_qubits, batch_size)
+    rho = density_mat(psi)
+
+    # apply 2-qubit depolarizing on qubits (0,1)
+    noise = TwoQubitDepolarizing(target=(0, 1), error_probability=p)
+    rho_out = noise(rho)
+
+    # shape and trace preservation
+    d = 2**n_qubits
+    assert rho_out.shape == (d, d, batch_size)
+    # trace: sum of diagonals == 1
+    tr = torch.einsum("iij->j", rho_out)
+    assert torch.allclose(tr, torch.ones_like(tr))
+
+    # p = 0 → identity channel
+    if pytest.approx(p, abs=1e-6) == 0.0:
+        assert torch.allclose(rho_out, rho)
+
+    # if n_qubits == 2, then p=1 → full depolarization → maximally mixed
+    if n_qubits == 2 and pytest.approx(p, abs=1e-6) == 1.0:
+        imix = torch.eye(4, dtype=rho.dtype, device=rho.device).unsqueeze(2) / 4.0
+        imix = imix.repeat(1, 1, batch_size)
+        assert torch.allclose(rho_out, imix, atol=1e-7)
+
+    # for intermediate p, check convex combination on the 2-qubit subsystem when n_qubits==2
+    if n_qubits == 2 and p not in (0.0, 1.0):
+        imix = torch.eye(4, dtype=rho.dtype, device=rho.device).unsqueeze(2) / 4.0
+        imix = imix.repeat(1, 1, batch_size)
+        expected = (1 - p) * rho + p * imix
+        assert torch.allclose(rho_out, expected, atol=1e-7)
+
+
+@pytest.mark.parametrize(
+    "n_qubits",
+    [{"low": 2, "high": 5}],
+    indirect=True,
+)
+@pytest.mark.parametrize("p", [0.0, 0.25, 0.5, 1.0])
+def test_two_qubit_dephasing_channel(
+    n_qubits: int,
+    batch_size: int,
+    p: float,
+) -> None:
+    """Test TwoQubitDephasing preserves diagonals and trace for various p."""
+    psi = random_state(n_qubits, batch_size)
+    rho = density_mat(psi)
+
+    noise = TwoQubitDephasing(target=(0, 1), error_probability=p)
+    rho_out = noise(rho)
+
+    d = 2**n_qubits
+    assert rho_out.shape == (d, d, batch_size)
+
+    # trace preservation
+    tr = torch.einsum("iij->j", rho_out)
+    assert torch.allclose(tr, torch.ones_like(tr))
+
+    # p = 0 → identity channel
+    if pytest.approx(p, abs=1e-6) == 0.0:
+        assert torch.allclose(rho_out, rho)
+
+    # at any p, the diagonal elements of ρ must remain unchanged
+    diag_in = torch.diagonal(rho, dim1=0, dim2=1)  # shape [d, batch]
+    diag_out = torch.diagonal(rho_out, dim1=0, dim2=1)
+    assert torch.allclose(diag_out, diag_in)
+
+    # for intermediate p (not 0 or 1), check that off-diagonals are shrunk in magnitude
+    if p not in (0.0, 1.0):
+        # off-diagonal magnitude should be ≤ original
+        rho_off = rho.clone()
+        rho_off.fill_diagonal_(0)
+        rho_out_off = rho_out.clone()
+        rho_out_off.fill_diagonal_(0)
+        assert torch.all(torch.abs(rho_out_off) <= torch.abs(rho_off) + 1e-8)
