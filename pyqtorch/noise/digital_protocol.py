@@ -22,7 +22,7 @@ class DigitalNoiseType(StrEnum):
 class DigitalNoiseInstance:
     type: DigitalNoiseType
     error_probability: tuple[float, ...] | float | None
-    target: int | None
+    target: int | tuple[int, int] | None
 
 
 class DigitalNoiseProtocol:
@@ -98,8 +98,15 @@ class DigitalNoiseProtocol:
                 raise ValueError(
                     f"No error_probability passed to the protocol {noise.type}."
                 )
-        if noise.type in [DigitalNoiseType.TWO_QUBIT_DEPOLARIZING, DigitalNoiseType.TWO_QUBIT_DEPHASING]:
-            if not (isinstance(noise.target, tuple) and len(noise.target) == 2 and all(isinstance(i, int) for i in noise.target)):
+        if noise.type in [
+            DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+            DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        ]:
+            if not (
+                isinstance(noise.target, tuple)
+                and len(noise.target) == 2
+                and all(isinstance(i, int) for i in noise.target)
+            ):
                 raise ValueError(
                     f"{noise.type} requires a target of type Tuple[int, int], got {noise.target}."
                 )

@@ -8,7 +8,7 @@ from functools import lru_cache, partial, wraps
 from logging import getLogger
 from math import sqrt
 from string import ascii_uppercase as ABC
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Sequence, Tuple, Union
 
 import numpy as np
 import torch
@@ -519,40 +519,153 @@ def expand_operator(
     return operator
 
 
-def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
-    from pyqtorch.primitives import I
-
+def promote_operator(
+    operator: Tensor, target: Union[int, Tuple[int, int]], n_qubits: int
+) -> Tensor:
     """
-    FIXME: Remove and replace usage with the `expand_operator` above.
+    Promotes a 1- or 2-qubit operator to the full Hilbert space of n_qubits.
 
-    Promotes `operator` to the size of the circuit (number of qubits and batch).
-    Targeting the first qubit implies target = 0, so target > n_qubits - 1.
-
-    Arguments:
-        operator: The operator tensor to be promoted.
-        target: The index of the target qubit to which the operator is applied.
-            Targeting the first qubit implies target = 0, so target > n_qubits - 1.
-        n_qubits: Number of qubits in the circuit.
+    Args:
+        operator: A tensor representing the quantum operator (1- or 2-qubit).
+        target: Index of the target qubit (int), or tuple of two qubits (int, int).
+        n_qubits: Total number of qubits in the system.
 
     Returns:
-        Tensor: The promoted operator tensor.
+        Tensor: Promoted operator acting on n_qubits.
 
     Raises:
-        ValueError: If `target` is outside the valid range of qubits.
+        ValueError: If target qubits are invalid.
     """
-    if target > n_qubits - 1:
-        raise ValueError(
-            "The target must be a valid qubit index within the circuit's range."
+    if isinstance(target, int):
+        target_list = [target]
+    elif isinstance(target, tuple):
+        if len(target) != 2:
+            raise ValueError("Only 1- or 2-qubit operators are supported.")
+        if target[0] == target[1]:
+            raise ValueError("Target qubits must be distinct.")
+        target_list = list(target)
+    else:
+        raise TypeError("Target must be an int or a tuple of two ints.")
+
+    if any(t >= n_qubits or t < 0 for t in target_list):
+        raise ValueError("Target indices must be within [0, n_qubits).")
+
+    # Sort target_list to simplify permutation logic later
+    target_list_sorted = sorted(target_list)
+
+    # Step 1: Build up the full operator
+    full_op: Union[Tensor, None] = None
+    target_idx = 0
+    current_target = target_list_sorted[target_idx]
+
+    for qubit in range(n_qubits):
+        if qubit == current_target:
+            if full_op is None:
+                full_op = operator
+            else:
+                # The operator already includes both target qubits
+                pass
+            target_idx += 1
+            if target_idx < len(target_list_sorted):
+                current_target = target_list_sorted[target_idx]
+        else:
+            I_tensor = IMAT
+            full_op = I_tensor if full_op is None else operator_kron(full_op, I_tensor)
+
+    # Step 2: Permute to match original target order if needed
+    if isinstance(target, tuple) and target != tuple(target_list_sorted):
+        # Compute permutation
+        perm = list(range(n_qubits))
+        i, j = target_list_sorted
+        a, b = target
+        perm[i], perm[j] = a, b  # Swap i and j into original order
+
+        # Apply permutation
+        assert full_op is not None
+        full_op = (
+            full_op.view([2] * 2 * n_qubits)
+            .permute(*(perm + [i + n_qubits for i in perm]))
+            .reshape(2**n_qubits, 2**n_qubits)
         )
-    qubits = torch.arange(0, n_qubits)
-    qubits = qubits[qubits != target]
-    for qubit in qubits:
-        operator = torch.where(
-            target > qubit,
-            operator_kron(I(target).tensor(), operator),
-            operator_kron(operator, I(target).tensor()),
-        )
-    return operator
+
+    return full_op
+
+
+# def promote_operator(
+#     operator: Tensor, target: int | tuple[int, int], n_qubits: int
+# ) -> Tensor:
+#     from pyqtorch.primitives import I
+
+#     """
+#     FIXME: Remove and replace usage with the `expand_operator` above.
+
+#     Promotes `operator` to the size of the circuit (number of qubits and batch).
+#     Targeting the first qubit implies target = 0, so target > n_qubits - 1.
+
+#     Arguments:
+#         operator: The operator tensor to be promoted.
+#         target: The index of the target qubit to which the operator is applied.
+#             Targeting the first qubit implies target = 0, so target > n_qubits - 1.
+#         n_qubits: Number of qubits in the circuit.
+
+#     Returns:
+#         Tensor: The promoted operator tensor.
+
+#     Raises:
+#         ValueError: If `target` is outside the valid range of qubits.
+#     """
+#     # if target > n_qubits - 1:
+#     #     raise ValueError(
+#     #         "The target must be a valid qubit index within the circuit's range."
+#     #     )
+#     # qubits = torch.arange(0, n_qubits)
+#     # qubits = qubits[qubits != target]
+#     # for qubit in qubits:
+#     #     operator = torch.where(
+#     #         target > qubit,
+#     #         operator_kron(I(target).tensor(), operator),
+#     #         operator_kron(operator, I(target).tensor()),
+#     #     )
+#     # return operator
+
+#     if isinstance(target, int):
+#         target = (target,)
+#     elif isinstance(target, tuple):
+#         if len(target) != 2:
+#             raise ValueError("Only support 1- or 2-qubit operators.")
+#         if len(set(target)) != 2:
+#             raise ValueError("Target qubits must be distinct for 2-qubit operators.")
+
+#     if max(target) >= n_qubits or min(target) < 0:
+#         raise ValueError("Target indices must be within [0, n_qubits).")
+
+#     full_op = None
+#     idx = 0  # Index for which part of the full system we're at
+
+#     for qubit in range(n_qubits):
+#         if qubit in target:
+#             if full_op is None:
+#                 full_op = operator
+#             else:
+#                 continue  # already inserted
+#         else:
+#             I_tensor = I(
+#                 0
+#             ).tensor()  # Identity on a dummy qubit; dimension is what matters
+#             full_op = I_tensor if full_op is None else operator_kron(full_op, I_tensor)
+
+#     # Insert at correct location if not already ordered
+#     if isinstance(target, tuple) and target[0] > target[1]:
+#         # Swap qubits if necessary (for consistency with gate ordering)
+#         perm = list(range(n_qubits))
+#         perm[target[0]], perm[target[1]] = perm[target[1]], perm[target[0]]
+#         full_op = (
+#             full_op.view([2] * 2 * n_qubits)
+#             .permute(*(perm + [i + n_qubits for i in perm]))
+#             .reshape(2**n_qubits, 2**n_qubits)
+#         )
+
+#     return full_op
 
 
 def permute_state(

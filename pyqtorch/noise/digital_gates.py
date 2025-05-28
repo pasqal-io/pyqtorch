@@ -21,11 +21,11 @@ class Noise(torch.nn.Module):
     def __init__(
         self,
         kraus: list[Tensor],
-        target: int,
+        target: int | tuple[int, int],
         error_probability: tuple[float, ...] | float,
     ) -> None:
         super().__init__()
-        self.target: int = target
+        self.target: tuple[int, int] | int = target
         self.qubit_support: tuple[int, ...] = qubit_support_as_tuple(self.target)
         self.is_diagonal = False
         for index, tensor in enumerate(kraus):
@@ -376,6 +376,7 @@ class GeneralizedAmplitudeDamping(Noise):
         kraus_generalized_amplitude_damping: list[Tensor] = [K0, K1, K2, K3]
         super().__init__(kraus_generalized_amplitude_damping, target, error_probability)
 
+
 class TwoQubitDepolarizing(Noise):
     """
     Two-qubit depolarizing channel:
@@ -389,24 +390,26 @@ class TwoQubitDepolarizing(Noise):
         error_probability: float,
     ):
         if not isinstance(target, tuple) or len(target) != 2:
-            raise TypeError("Target must be a tuple of two integers for two-qubit noise.")
+            raise TypeError(
+                "Target must be a tuple of two integers for two-qubit noise."
+            )
         if error_probability < 0.0 or error_probability > 1.0:
             raise ValueError("Error probability must be between 0 and 1.")
 
-        I, X, Y, Z = IMAT, XMAT, YMAT, ZMAT
-        paulis = [I, X, Y, Z]
+        X, Y, Z = XMAT, YMAT, ZMAT
+        paulis = [IMAT, X, Y, Z]
         P_list = [
             torch.kron(A, B)
-            for A in paulis for B in paulis
-            if not (torch.allclose(A, I) and torch.allclose(B, I))
+            for A in paulis
+            for B in paulis
+            if not (torch.allclose(A, IMAT) and torch.allclose(B, IMAT))
         ]
-        kraus_list = [
-            sqrt(error_probability / 15.0) * P for P in P_list
-        ]
-        K0 = sqrt(1.0 - error_probability) * torch.kron(I, I)
+        kraus_list = [sqrt(error_probability / 15.0) * P for P in P_list]
+        K0 = sqrt(1.0 - error_probability) * torch.kron(IMAT, IMAT)
         kraus_list.insert(0, K0)
 
         super().__init__(kraus_list, target, error_probability)
+
 
 class TwoQubitDephasing(Noise):
     """
@@ -420,15 +423,16 @@ class TwoQubitDephasing(Noise):
         error_probability: float,
     ):
         if not isinstance(target, tuple) or len(target) != 2:
-            raise TypeError("Target must be a tuple of two integers for two-qubit noise.")
+            raise TypeError(
+                "Target must be a tuple of two integers for two-qubit noise."
+            )
         if error_probability < 0.0 or error_probability > 1.0:
             raise ValueError("Error probability must be between 0 and 1.")
 
-        I, Z = IMAT, ZMAT
-        K0 = sqrt(1.0 - error_probability) * torch.kron(I, I)
-        K1 = sqrt(error_probability / 3.0) * torch.kron(I, Z)
-        K2 = sqrt(error_probability / 3.0) * torch.kron(Z, I)
-        K3 = sqrt(error_probability / 3.0) * torch.kron(Z, Z)
+        K0 = sqrt(1.0 - error_probability) * torch.kron(IMAT, IMAT)
+        K1 = sqrt(error_probability / 3.0) * torch.kron(IMAT, ZMAT)
+        K2 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, IMAT)
+        K3 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, ZMAT)
         kraus_list = [K0, K1, K2, K3]
 
         super().__init__(kraus_list, target, error_probability)
