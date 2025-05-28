@@ -21,11 +21,12 @@ class Noise(torch.nn.Module):
     def __init__(
         self,
         kraus: list[Tensor],
-        target: int,
+        target: int | tuple[int, ...],
         error_probability: tuple[float, ...] | float,
     ) -> None:
         super().__init__()
-        self.target: int = target
+        # target may be a single int or a tuple of ints for multi-qubit noise
+        self.target: int | tuple[int, ...] = target
         self.qubit_support: tuple[int, ...] = qubit_support_as_tuple(self.target)
         self.is_diagonal = False
         for index, tensor in enumerate(kraus):
@@ -46,7 +47,10 @@ class Noise(torch.nn.Module):
         t_ops = [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
         if n_qubit_support is None:
             return t_ops
-        return [promote_operator(t, self.target, n_qubit_support) for t in t_ops]
+        return [
+            promote_operator(t, self.target, n_qubit_support)  # type: ignore[arg-type]
+            for t in t_ops
+        ]
 
     def forward(
         self,
@@ -376,6 +380,7 @@ class GeneralizedAmplitudeDamping(Noise):
         kraus_generalized_amplitude_damping: list[Tensor] = [K0, K1, K2, K3]
         super().__init__(kraus_generalized_amplitude_damping, target, error_probability)
 
+
 class TwoQubitDepolarizing(Noise):
     """
     Two-qubit depolarizing channel.
@@ -385,6 +390,7 @@ class TwoQubitDepolarizing(Noise):
 
     where P_i are all two-qubit Pauli operators except II.
     """
+
     def __init__(
         self,
         target: tuple[int, int],
@@ -395,31 +401,28 @@ class TwoQubitDepolarizing(Noise):
 
         # ensure all ops live on the same device/dtype as the single-qubit mats
         device, dtype = IMAT.device, IMAT.dtype
-        I = IMAT.to(device, dtype)
-        X = XMAT.to(device, dtype)
-        Y = YMAT.to(device, dtype)
-        Z = ZMAT.to(device, dtype)
+        I_mat = IMAT.to(device, dtype)
+        X_mat = XMAT.to(device, dtype)
+        Y_mat = YMAT.to(device, dtype)
+        Z_mat = ZMAT.to(device, dtype)
 
         # precompute identity ⊗ identity once
-        I4 = torch.kron(I, I)
+        I4 = torch.kron(I_mat, I_mat)
 
         # build the 15 nontrivial two-qubit Paulis
-        paulis = [I, X, Y, Z]
+        paulis = [I_mat, X_mat, Y_mat, Z_mat]
         kraus_ops = []
         for p1 in paulis:
             for p2 in paulis:
                 # skip I⊗I
-                if p1 is I and p2 is I:
+                if p1 is I_mat and p2 is I_mat:
                     continue
                 op = torch.kron(p1, p2).to(device, dtype)
                 kraus_ops.append(op)
 
         # K0 = √(1-p) I⊗I, Ki = √(p/15) P_i
         K0 = sqrt(1.0 - error_probability) * I4
-        scaled = [
-            sqrt(error_probability / 15.0) * op
-            for op in kraus_ops
-        ]
+        scaled = [sqrt(error_probability / 15.0) * op for op in kraus_ops]
 
         super().__init__([K0, *scaled], target, error_probability)
 
@@ -431,6 +434,7 @@ class TwoQubitDephasing(Noise):
     .. math::
         \\rho \\Rightarrow (1-p) \\rho + \\frac{p}{3}(IZ \\rho IZ + ZI \\rho ZI + ZZ \\rho ZZ)
     """
+
     def __init__(
         self,
         target: tuple[int, int],
@@ -441,18 +445,18 @@ class TwoQubitDephasing(Noise):
 
         # device/dtype from the single-qubit mats
         device, dtype = IMAT.device, IMAT.dtype
-        I = IMAT.to(device, dtype)
-        Z = ZMAT.to(device, dtype)
+        I_mat = IMAT.to(device, dtype)
+        Z_mat = ZMAT.to(device, dtype)
 
         # precompute identity ⊗ identity
-        I4 = torch.kron(I, I)
+        I4 = torch.kron(I_mat, I_mat)
 
         # K0 = √(1-p) I⊗I
         K0 = sqrt(1.0 - error_probability) * I4
 
         # three dephasing Paulis
-        K1 = sqrt(error_probability / 3.0) * torch.kron(I, Z).to(device, dtype)
-        K2 = sqrt(error_probability / 3.0) * torch.kron(Z, I).to(device, dtype)
-        K3 = sqrt(error_probability / 3.0) * torch.kron(Z, Z).to(device, dtype)
+        K1 = sqrt(error_probability / 3.0) * torch.kron(I_mat, Z_mat).to(device, dtype)
+        K2 = sqrt(error_probability / 3.0) * torch.kron(Z_mat, I_mat).to(device, dtype)
+        K3 = sqrt(error_probability / 3.0) * torch.kron(Z_mat, Z_mat).to(device, dtype)
 
         super().__init__([K0, K1, K2, K3], target, error_probability)

@@ -26,8 +26,8 @@ from pyqtorch.noise import (
     GeneralizedAmplitudeDamping,
     Noise,
     PhaseDamping,
-    TwoQubitDepolarizing,
     TwoQubitDephasing,
+    TwoQubitDepolarizing,
 )
 from pyqtorch.primitives import (
     OPS_DIGITAL,
