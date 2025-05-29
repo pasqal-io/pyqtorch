@@ -52,7 +52,7 @@ class Noise(torch.nn.Module):
 
         # Normalize target to a tuple internally
         if isinstance(target, int):
-            self.target: tuple[int, ...] = (target,)
+            self.target: tuple[int, ...] | int = (target,)
         else:
             self.target = target
 
