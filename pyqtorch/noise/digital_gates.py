@@ -404,11 +404,13 @@ class TwoQubitDepolarizing(Noise):
             for B in paulis
             if not (torch.allclose(A, IMAT) and torch.allclose(B, IMAT))
         ]
-        kraus_list = [sqrt(error_probability / 15.0) * P for P in P_list]
+        kraus_two_qubit_depolarizing = [
+            sqrt(error_probability / 15.0) * P for P in P_list
+        ]
         K0 = sqrt(1.0 - error_probability) * torch.kron(IMAT, IMAT)
-        kraus_list.insert(0, K0)
+        kraus_two_qubit_depolarizing.insert(0, K0)
 
-        super().__init__(kraus_list, target, error_probability)
+        super().__init__(kraus_two_qubit_depolarizing, target, error_probability)
 
 
 class TwoQubitDephasing(Noise):
@@ -433,6 +435,6 @@ class TwoQubitDephasing(Noise):
         K1 = sqrt(error_probability / 3.0) * torch.kron(IMAT, ZMAT)
         K2 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, IMAT)
         K3 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, ZMAT)
-        kraus_list = [K0, K1, K2, K3]
+        kraus_two_qubit_dephasing = [K0, K1, K2, K3]
 
-        super().__init__(kraus_list, target, error_probability)
+        super().__init__(kraus_two_qubit_dephasing, target, error_probability)

@@ -98,6 +98,21 @@ class DigitalNoiseProtocol:
                 raise ValueError(
                     f"No error_probability passed to the protocol {noise.type}."
                 )
+            if noise.type in [
+                DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+                DigitalNoiseType.TWO_QUBIT_DEPHASING,
+            ]:
+                if not (
+                    isinstance(noise.target, tuple)
+                    and len(noise.target) == 2
+                    and all(isinstance(i, int) for i in noise.target)
+                ):
+                    noise.target = (0, 1)
+            else:
+                if noise.target is not None and not isinstance(noise.target, int):
+                    raise ValueError(
+                        f"{noise.type} requires a single-qubit target (int), got {noise.target}."
+                    )
         self.len = len(self.noise_instances)
 
     @property
