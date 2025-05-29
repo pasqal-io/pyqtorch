@@ -484,7 +484,7 @@ class TwoQubitDephasing(Noise):
         # Kraus 0: sqrt(1-p) I₄
         device, dtype = IMAT.device, IMAT.dtype
         I4 = torch.eye(dim2, device=device, dtype=dtype)
-        K0 = torch.sqrt(1.0 - p) * I4
+        K0 = sqrt(1.0 - p) * I4
 
         # Kraus 1–4: projectors onto |00>,|01>,|10>,|11>
         proj_kraus = []
@@ -492,6 +492,6 @@ class TwoQubitDephasing(Noise):
             e_i = torch.zeros(dim2, device=device, dtype=dtype)
             e_i[i] = 1.0
             P_i = e_i.unsqueeze(1) @ e_i.unsqueeze(0)  # |i><i|
-            proj_kraus.append(torch.sqrt(p) * P_i)
+            proj_kraus.append(sqrt(p) * P_i)
 
         super().__init__([K0, *proj_kraus], target, error_probability)
