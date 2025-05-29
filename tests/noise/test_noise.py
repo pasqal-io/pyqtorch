@@ -422,18 +422,18 @@ def test_two_qubit_depolarizing_channel(
     # p = 1 → manually compute the 5-term channel
     if pytest.approx(p) == 1.0:
         # Define Pauli ops
-        I = IMAT.to(rho.device, rho.dtype)
-        X = XMAT.to(rho.device, rho.dtype)
-        Y = YMAT.to(rho.device, rho.dtype)
-        Z = ZMAT.to(rho.device, rho.dtype)
+        pauli_I = IMAT.to(rho.device, rho.dtype)
+        pauli_X = XMAT.to(rho.device, rho.dtype)
+        pauli_Y = YMAT.to(rho.device, rho.dtype)
+        pauli_Z = ZMAT.to(rho.device, rho.dtype)
 
         # Define the 5 Pauli terms
         terms = [
-            torch.kron(I, X),
-            torch.kron(I, Y),
-            torch.kron(I, Z),
-            torch.kron(X, I),
-            torch.kron(Z, Z),
+            torch.kron(pauli_I, pauli_X),
+            torch.kron(pauli_I, pauli_Y),
+            torch.kron(pauli_I, pauli_Z),
+            torch.kron(pauli_X, pauli_I),
+            torch.kron(pauli_Z, pauli_Z),
         ]
 
         rho_expected = torch.zeros_like(rho)
@@ -484,7 +484,14 @@ def test_two_qubit_dephasing_channel(
         off = rho_out.clone()
         for i in range(d):
             off[i, i, :] = 0
-        assert torch.allclose(
+        # assert torch.allclose(
+        #     off,
+        #     torch.zeros_like(off),
+        #     rtol=RTOL,
+        #     atol=ATOL,
+        # )
+
+        assert torch.testing.assert_close(
             off,
             torch.zeros_like(off),
             rtol=RTOL,

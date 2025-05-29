@@ -438,24 +438,24 @@ class TwoQubitDepolarizing(Noise):
         # Prepare mats on correct device/dtype
         device, dtype = IMAT.device, IMAT.dtype
 
-        I = IMAT.to(device, dtype)
-        X = XMAT.to(device, dtype)
-        Y = YMAT.to(device, dtype)
-        Z = ZMAT.to(device, dtype)
+        pauli_I = IMAT.to(device, dtype)
+        pauli_X = XMAT.to(device, dtype)
+        pauli_Y = YMAT.to(device, dtype)
+        pauli_Z = ZMAT.to(device, dtype)
 
         # Identity on 2 qubits
-        I4 = torch.kron(I, I)
+        I4 = torch.kron(pauli_I, pauli_I)
 
         # K0 = √(1-p)·I⊗I
         K0 = sqrt(1.0 - p) * I4
 
         # The five chosen two‐qubit Paulis
         pairs = [
-            (I, X),
-            (I, Y),
-            (I, Z),
-            (X, I),
-            (Z, Z),
+            (pauli_I, pauli_X),
+            (pauli_I, pauli_Y),
+            (pauli_I, pauli_Z),
+            (pauli_X, pauli_I),
+            (pauli_Z, pauli_Z),
         ]
         weight = sqrt(p / 5.0)
 
@@ -492,9 +492,9 @@ class TwoQubitDephasing(Noise):
 
         # Kraus 1–4: projectors onto |00>,|01>,|10>,|11>
         proj_kraus = []
-        for i in range(dim2):
+        for idx in range(dim2):
             e_i = torch.zeros(dim2, device=device, dtype=dtype)
-            e_i[i] = 1.0
+            e_i[idx] = 1.0
             P_i = e_i.unsqueeze(1) @ e_i.unsqueeze(0)  # |i><i|
             proj_kraus.append(sqrt(p) * P_i)
 
