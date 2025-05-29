@@ -484,14 +484,7 @@ def test_two_qubit_dephasing_channel(
         off = rho_out.clone()
         for i in range(d):
             off[i, i, :] = 0
-        # assert torch.allclose(
-        #     off,
-        #     torch.zeros_like(off),
-        #     rtol=RTOL,
-        #     atol=ATOL,
-        # )
-
-        assert torch.testing.assert_close(
+        assert torch.allclose(
             off,
             torch.zeros_like(off),
             rtol=RTOL,
