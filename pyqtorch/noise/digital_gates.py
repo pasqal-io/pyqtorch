@@ -415,7 +415,7 @@ class TwoQubitDepolarizing(Noise):
         for p1 in paulis:
             for p2 in paulis:
                 # skip I⊗I
-                if p1 is I_mat and p2 is I_mat:
+                if torch.equal(p1, I_mat) and torch.equal(p2, I_mat):
                     continue
                 op = torch.kron(p1, p2).to(device, dtype)
                 kraus_ops.append(op)
@@ -423,6 +423,11 @@ class TwoQubitDepolarizing(Noise):
         # K0 = √(1-p) I⊗I, Ki = √(p/15) P_i
         K0 = sqrt(1.0 - error_probability) * I4
         scaled = [sqrt(error_probability / 15.0) * op for op in kraus_ops]
+
+        # sanity check
+        total = sum([K.conj().transpose(0, 1) @ K for K in [K0, *scaled]])
+        assert torch.allclose(total, I4, atol=1e-6)
+        assert len([K0,*scaled]) == 16
 
         super().__init__([K0, *scaled], target, error_probability)
 
