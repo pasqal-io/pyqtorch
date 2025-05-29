@@ -411,12 +411,20 @@ def test_two_qubit_depolarizing_channel(
     if n_qubits == 2 and pytest.approx(p) == 1.0:
         imix = torch.eye(4, dtype=rho.dtype, device=rho.device).unsqueeze(2) / 4.0
         imix = imix.repeat(1, 1, batch_size)
-        assert torch.allclose(
+        # assert torch.allclose(
+        #     rho_out,
+        #     imix,
+        #     rtol=RTOL,
+        #     atol=ATOL,
+        # )
+
+        assert torch.testing.assert_close(
             rho_out,
             imix,
             rtol=RTOL,
             atol=ATOL,
         )
+
 
 
 @pytest.mark.parametrize(
@@ -457,7 +465,14 @@ def test_two_qubit_dephasing_channel(
         off = rho_out.clone()
         for i in range(d):
             off[i, i, :] = 0
-        assert torch.allclose(
+        # assert torch.allclose(
+        #     off,
+        #     torch.zeros_like(off),
+        #     rtol=RTOL,
+        #     atol=ATOL,
+        # )
+
+        assert torch.testing.assert_close(
             off,
             torch.zeros_like(off),
             rtol=RTOL,
