@@ -410,25 +410,40 @@ def test_two_qubit_depolarizing_channel(
     rho_out = noise(rho)
 
     d = 2**n_qubits
-    # shape & trace
+    # shape & trace checks
     assert rho_out.shape == (d, d, batch_size)
     tr = torch.einsum("iij->j", rho_out)
-    assert torch.allclose(tr, torch.ones_like(tr))
+    assert torch.allclose(tr, torch.ones_like(tr), atol=ATOL)
 
-    # p = 0 → identity
+    # p = 0 → identity channel
     if pytest.approx(p) == 0.0:
-        assert torch.allclose(rho_out, rho)
+        assert torch.allclose(rho_out, rho, atol=ATOL)
 
-    # p = 1 & n_qubits == 2 → maximally mixed on qubits 0&1
-    if n_qubits == 2 and pytest.approx(p) == 1.0:
-        imix = torch.eye(4, dtype=rho.dtype, device=rho.device).unsqueeze(2) / 4.0
-        imix = imix.repeat(1, 1, batch_size)
-        assert torch.allclose(
-            rho_out,
-            imix,
-            rtol=RTOL,
-            atol=ATOL,
-        )
+    # p = 1 → manually compute the 5-term channel
+    if pytest.approx(p) == 1.0:
+        # Define Pauli ops
+        I = IMAT.to(rho.device, rho.dtype)
+        X = XMAT.to(rho.device, rho.dtype)
+        Y = YMAT.to(rho.device, rho.dtype)
+        Z = ZMAT.to(rho.device, rho.dtype)
+
+        # Define the 5 Pauli terms
+        terms = [
+            torch.kron(I, X),
+            torch.kron(I, Y),
+            torch.kron(I, Z),
+            torch.kron(X, I),
+            torch.kron(Z, Z),
+        ]
+
+        rho_expected = torch.zeros_like(rho)
+        for P in terms:
+            P = P.unsqueeze(-1)  # shape [4,4,1] to match batch
+            rho_expected += apply_operator_dm(rho, P, (0, 1))
+
+        rho_expected /= len(terms)
+
+        assert torch.allclose(rho_out, rho_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize(

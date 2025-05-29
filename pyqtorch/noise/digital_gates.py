@@ -431,35 +431,38 @@ class TwoQubitDepolarizing(Noise):
         target: tuple[int, int],
         error_probability: float,
     ):
-        if not 0.0 <= error_probability <= 1.0:
-            raise ValueError("The error_probability value is not a correct probability")
+        p = error_probability
+        if not 0.0 <= p <= 1.0:
+            raise ValueError("error_probability must lie in [0,1]")
 
-        # ensure all ops live on the same device/dtype as the single-qubit mats
+        # Prepare mats on correct device/dtype
         device, dtype = IMAT.device, IMAT.dtype
-        I_mat = IMAT.to(device, dtype)
-        X_mat = XMAT.to(device, dtype)
-        Y_mat = YMAT.to(device, dtype)
-        Z_mat = ZMAT.to(device, dtype)
+        I = IMAT.to(device, dtype)
+        X = XMAT.to(device, dtype)
+        Y = YMAT.to(device, dtype)
+        Z = ZMAT.to(device, dtype)
 
-        # precompute identity ⊗ identity once
-        I4 = torch.kron(I_mat, I_mat)
+        # Identity on 2 qubits
+        I4 = torch.kron(I, I)
 
-        # build the 15 nontrivial two-qubit Paulis
-        paulis = [I_mat, X_mat, Y_mat, Z_mat]
-        kraus_ops = []
-        for p1 in paulis:
-            for p2 in paulis:
-                # skip I⊗I
-                if p1 is I_mat and p2 is I_mat:
-                    continue
-                op = torch.kron(p1, p2).to(device, dtype)
-                kraus_ops.append(op)
+        # K0 = √(1-p)·I⊗I
+        K0 = sqrt(1.0 - p) * I4
 
-        # K0 = √(1-p) I⊗I, Ki = √(p/15) P_i
-        K0 = sqrt(1.0 - error_probability) * I4
-        scaled = [sqrt(error_probability / 15.0) * op for op in kraus_ops]
+        # The five chosen two‐qubit Paulis
+        pairs = [
+            (I, X),
+            (I, Y),
+            (I, Z),
+            (X, I),
+            (Z, Z),
+        ]
+        weight = sqrt(p / 5.0)
 
-        super().__init__([K0, *scaled], target, error_probability)
+        kraus_ops: list[Tensor] = [K0]
+        for P1, P2 in pairs:
+            kraus_ops.append(weight * torch.kron(P1, P2))
+
+        super().__init__(kraus_ops, target, error_probability)
 
 
 class TwoQubitDephasing(Noise):
