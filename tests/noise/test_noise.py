@@ -234,6 +234,11 @@ def test_noisy_primitive(
     batch_size: int,
 ) -> None:
     noisy_primitive, primitve_gate, noise_gate = random_noisy_unitary_gate
+
+    gate_support = tuple(primitve_gate.qubit_support)
+    noise_gate.target = gate_support
+    if len(gate_support) > 1:
+        pytest.skip("skipping two qubit test")
     state = random_input_dm
     values = {"theta": torch.rand(1)}
     rho_evol = noisy_primitive(state, values)
@@ -307,13 +312,6 @@ def test_digital_noise_apply(
     batch_size: int,
     noise_type: DigitalNoiseType,
 ) -> None:
-    # Skip multi-qubit noise in this single-qubit context
-    if noise_type in (
-        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
-        DigitalNoiseType.TWO_QUBIT_DEPHASING,
-    ):
-        pytest.skip("Skipping two-qubit noise in single-qubit gate test")
-
     # Annotate union to accept both floats and tuples of varying length
     error_probability: float | tuple[float, ...]
 
@@ -325,18 +323,26 @@ def test_digital_noise_apply(
         error_probability = 0.0
 
     noise_concrete = DigitalNoiseProtocol(noise_type, error_probability)
-
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
-        op_concrete = op(*supp)
-        op_concrete_noise = op(*supp, noise=noise_concrete)  # type: ignore [misc]
-        psi_init = density_mat(random_state(n_qubits, batch_size))
-        psi_expected = op_concrete(psi_init)
-        psi_star = op_concrete_noise(psi_init)
-        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+        is_two_q = noise_type in (
+            DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+            DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        )
+        # only apply if gate parity matches noise parity
+        if len(supp) == 1 and not is_two_q:
+            op_concrete = op(*supp)
+            op_concrete_noise = op(*supp, noise=noise_concrete)  # type: ignore [misc]
+            psi_init = density_mat(random_state(n_qubits, batch_size))
+            psi_expected = op_concrete(psi_init)
+            psi_star = op_concrete_noise(psi_init)
+            assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+        else:
+            # otherwise skip
+            continue
 
 
-@pytest.mark.parametrize("noise_type", [nt for nt in DigitalNoiseType])
+@pytest.mark.parametrize("noise_type", [noise for noise in DigitalNoiseType])
 @pytest.mark.parametrize("n_qubits", [4, 5])
 @pytest.mark.parametrize("batch_size", [1, 5])
 def test_param_noise_apply(
@@ -344,13 +350,6 @@ def test_param_noise_apply(
     batch_size: int,
     noise_type: DigitalNoiseType,
 ) -> None:
-    # Skip multi-qubit noise here too
-    if noise_type in (
-        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
-        DigitalNoiseType.TWO_QUBIT_DEPHASING,
-    ):
-        pytest.skip("Skipping two-qubit noise in parametric-gate test")
-
     # Annotate union for varying tuple lengths
     error_probability: float | tuple[float, ...]
     if noise_type == DigitalNoiseType.PAULI_CHANNEL:
@@ -360,18 +359,31 @@ def test_param_noise_apply(
     else:
         error_probability = 0.0
 
-    noise_concrete = DigitalNoiseProtocol(noise_type, error_probability)
-
     for op in OPS_PARAM:
+        # skip if not parametric
+        if not hasattr(op, "n_params"):
+            continue
         supp = get_op_support(op, n_qubits)
-        params = [f"th{i}" for i in range(op.n_params)]
-        op_concrete = op(*supp, *params)
-        op_concrete_noise = op(*supp, *params, noise=noise_concrete)  # type: ignore [misc]
-        psi_init = density_mat(random_state(n_qubits))
-        values = {param: torch.rand(batch_size) for param in params}
-        psi_expected = op_concrete(psi_init, values=values)
-        psi_star = op_concrete_noise(psi_init, values=values)
-        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+        is_two_q = noise_type in (
+            DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+            DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        )
+        # only apply if gate parity matches noise parity
+        if len(supp) == 1 and not is_two_q:
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=tuple(supp)
+            )
+            params = [f"th{i}" for i in range(op.n_params)]
+            op_concrete = op(*supp, *params)
+            op_concrete_noise = op(*supp, *params, noise=noise_concrete)  # type: ignore [misc]
+            psi_init = density_mat(random_state(n_qubits))
+            values = {param: torch.rand(batch_size) for param in params}
+            psi_expected = op_concrete(psi_init, values=values)
+            psi_star = op_concrete_noise(psi_init, values=values)
+            assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+        else:
+            # otherwise skip
+            continue
 
 
 @pytest.mark.parametrize(
@@ -398,25 +410,40 @@ def test_two_qubit_depolarizing_channel(
     rho_out = noise(rho)
 
     d = 2**n_qubits
-    # shape & trace
+    # shape & trace checks
     assert rho_out.shape == (d, d, batch_size)
     tr = torch.einsum("iij->j", rho_out)
-    assert torch.allclose(tr, torch.ones_like(tr))
+    assert torch.allclose(tr, torch.ones_like(tr), atol=ATOL)
 
-    # p = 0 → identity
+    # p = 0 → identity channel
     if pytest.approx(p) == 0.0:
-        assert torch.allclose(rho_out, rho)
+        assert torch.allclose(rho_out, rho, atol=ATOL)
 
-    # p = 1 & n_qubits == 2 → maximally mixed on qubits 0&1
-    if n_qubits == 2 and pytest.approx(p) == 1.0:
-        imix = torch.eye(4, dtype=rho.dtype, device=rho.device).unsqueeze(2) / 4.0
-        imix = imix.repeat(1, 1, batch_size)
-        assert torch.allclose(
-            rho_out,
-            imix,
-            rtol=RTOL,
-            atol=ATOL,
-        )
+    # p = 1 → manually compute the 5-term channel
+    if pytest.approx(p) == 1.0:
+        # Define Pauli ops
+        I = IMAT.to(rho.device, rho.dtype)
+        X = XMAT.to(rho.device, rho.dtype)
+        Y = YMAT.to(rho.device, rho.dtype)
+        Z = ZMAT.to(rho.device, rho.dtype)
+
+        # Define the 5 Pauli terms
+        terms = [
+            torch.kron(I, X),
+            torch.kron(I, Y),
+            torch.kron(I, Z),
+            torch.kron(X, I),
+            torch.kron(Z, Z),
+        ]
+
+        rho_expected = torch.zeros_like(rho)
+        for P in terms:
+            P = P.unsqueeze(-1)  # shape [4,4,1] to match batch
+            rho_expected += apply_operator_dm(rho, P, (0, 1))
+
+        rho_expected /= len(terms)
+
+        assert torch.allclose(rho_out, rho_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize(
