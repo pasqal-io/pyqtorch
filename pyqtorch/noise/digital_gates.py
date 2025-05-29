@@ -449,19 +449,24 @@ class TwoQubitDepolarizing(Noise):
         # K0 = √(1-p)·I⊗I
         K0 = sqrt(1.0 - p) * I4
 
-        # The five chosen two‐qubit Paulis
+        # All 16 two-qubit Pauli pairs (I, X, Y, Z) ⊗ (I, X, Y, Z)
+        paulis = [pauli_I, pauli_X, pauli_Y, pauli_Z]
+        pairs = [(P1, P2) for P1 in paulis for P2 in paulis]
+        # Remove the identity-identity (I⊗I) term, which is K0
         pairs = [
-            (pauli_I, pauli_X),
-            (pauli_I, pauli_Y),
-            (pauli_I, pauli_Z),
-            (pauli_X, pauli_I),
-            (pauli_Z, pauli_Z),
+            pair
+            for pair in pairs
+            if not (torch.equal(pair[0], pauli_I) and torch.equal(pair[1], pauli_I))
         ]
-        weight = sqrt(p / 5.0)
+        weight = sqrt(p / 15.0)
 
         kraus_ops: list[Tensor] = [K0]
         for P1, P2 in pairs:
             kraus_ops.append(weight * torch.kron(P1, P2))
+
+        assert (
+            len(kraus_ops) == 16
+        ), f"Expected 16 Kraus operators, got {len(kraus_ops)}"
 
         super().__init__(kraus_ops, target, error_probability)
 

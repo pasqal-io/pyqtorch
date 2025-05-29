@@ -427,13 +427,23 @@ def test_two_qubit_depolarizing_channel(
         pauli_Y = YMAT.to(rho.device, rho.dtype)
         pauli_Z = ZMAT.to(rho.device, rho.dtype)
 
-        # Define the 5 Pauli terms
+        # Define all 15 two-qubit Pauli terms (excluding identity ⊗ identity)
         terms = [
+            torch.kron(pauli_X, pauli_I),
+            torch.kron(pauli_X, pauli_X),
+            torch.kron(pauli_X, pauli_Y),
+            torch.kron(pauli_X, pauli_Z),
+            torch.kron(pauli_Y, pauli_I),
+            torch.kron(pauli_Y, pauli_X),
+            torch.kron(pauli_Y, pauli_Y),
+            torch.kron(pauli_Y, pauli_Z),
+            torch.kron(pauli_Z, pauli_I),
+            torch.kron(pauli_Z, pauli_X),
+            torch.kron(pauli_Z, pauli_Y),
+            torch.kron(pauli_Z, pauli_Z),
             torch.kron(pauli_I, pauli_X),
             torch.kron(pauli_I, pauli_Y),
             torch.kron(pauli_I, pauli_Z),
-            torch.kron(pauli_X, pauli_I),
-            torch.kron(pauli_Z, pauli_Z),
         ]
 
         rho_expected = torch.zeros_like(rho)
