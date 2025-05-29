@@ -321,27 +321,38 @@ def test_digital_noise_apply(
         error_probability = 0.0
 
     # Check if this is a two-qubit noise model
-    is_two_qubit_noise = noise_type in [DigitalNoiseType.TWO_QUBIT_DEPOLARIZING, DigitalNoiseType.TWO_QUBIT_DEPHASING]
-    
+    is_two_qubit_noise = noise_type in [
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+    ]
+
     # For each gate, create and apply noise with appropriate target
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
         # flatten the support
-        supp = tuple(item for sublist in supp for item in (sublist if isinstance(sublist, tuple) else (sublist,)))
+        supp = tuple(
+            item
+            for sublist in supp
+            for item in (sublist if isinstance(sublist, tuple) else (sublist,))
+        )
         # Skip gates that don't match the noise model's qubit requirements
         if is_two_qubit_noise and len(supp) != 2:
             continue
         elif not is_two_qubit_noise and len(supp) != 1:
             continue
-            
+
         # Create noise protocol with appropriate target
         if is_two_qubit_noise:
             # For two-qubit noise, use tuple target
-            noise_concrete = DigitalNoiseProtocol(noise_type, error_probability, target=supp)
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp
+            )
         else:
             # For single-qubit noise, use integer target
-            noise_concrete = DigitalNoiseProtocol(noise_type, error_probability, target=supp[0])
-            
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp[0]
+            )
+
         op_concrete = op(*supp)
         op_concrete_noise = op(*supp, noise=noise_concrete)  # type: ignore [misc]
         print(supp)
@@ -368,31 +379,42 @@ def test_param_noise_apply(
         error_probability = (0.0, 0.0)
     else:
         error_probability = 0.0
-    
+
     # Check if this is a two-qubit noise model
-    is_two_qubit_noise = noise_type in [DigitalNoiseType.TWO_QUBIT_DEPOLARIZING, DigitalNoiseType.TWO_QUBIT_DEPHASING]
-    
+    is_two_qubit_noise = noise_type in [
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+    ]
+
     # For each gate, create and apply noise with appropriate target
     for op in OPS_PARAM:
         supp = get_op_support(op, n_qubits)
         # flatten the support
-        supp = tuple(item for sublist in supp for item in (sublist if isinstance(sublist, tuple) else (sublist,)))
-        
+        supp = tuple(
+            item
+            for sublist in supp
+            for item in (sublist if isinstance(sublist, tuple) else (sublist,))
+        )
+
         # Skip gates that don't match the noise model's qubit requirements
         if is_two_qubit_noise and len(supp) != 2:
             continue
         elif not is_two_qubit_noise and len(supp) != 1:
             continue
-            
+
         # Create noise protocol with appropriate target
         if is_two_qubit_noise:
             # For two-qubit noise, use tuple target
-            noise_concrete = DigitalNoiseProtocol(noise_type, error_probability, target=supp)
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp
+            )
         else:
             # For single-qubit noise, use integer target
-            noise_concrete = DigitalNoiseProtocol(noise_type, error_probability, target=supp[0])
-            
-        params = [f"th{i}" for i in range(op.n_params)]
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp[0]
+            )
+
+        params = [f"th{i}" for i in range(getattr(op, "n_params", 1))]
         op_concrete = op(*supp, *params)
         op_concrete_noise = op(*supp, *params, noise=noise_concrete)  # type: ignore [misc]
         psi_init = density_mat(random_state(n_qubits, batch_size))
