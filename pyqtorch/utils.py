@@ -566,11 +566,16 @@ def promote_operator(
             raise ValueError(f"Target qubit {t} is outside [0, {n_qubits-1}]")
 
     # Separate batch dimension
-    *ops_dims, batch = operator.shape
-    mat_dim = ops_dims[0]
-    op_mat = (
-        operator.view(mat_dim, mat_dim) if len(ops_dims) == 2 else operator[:, :, 0]
-    )
+    if operator.ndim == 2:
+        # No batch dimension
+        op_mat = operator
+        batch = 1
+    elif operator.ndim == 3:
+        # Batched operator
+        op_mat = operator
+        batch = operator.shape[2]
+    else:
+        raise ValueError("Operator must have shape [d, d] or [d, d, batch_size]")
 
     # Build up the full operator by kron’ing identities on all non-target qubits
     full_op = op_mat
@@ -580,7 +585,9 @@ def promote_operator(
         full_op = operator_kron(full_op, I(q).tensor())
 
     # Re-insert batch dimension
-    return full_op.unsqueeze(-1).repeat(1, 1, batch)
+    if batch == 1 and full_op.ndim == 2:
+        return full_op.unsqueeze(-1)
+    return full_op
 
 
 def permute_state(
