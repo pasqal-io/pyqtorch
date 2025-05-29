@@ -144,7 +144,7 @@ hermitian_matrix = matrix + matrix.T.conj()
 time = torch.tensor([1.0])
 time_symbol = "t"
 dur_val = torch.rand(1)
-noise_ops = Depolarizing(0, error_probability=0.1).tensor(2)
+noise_ops = Depolarizing(0, error_probability=0.1).tensor(n_qubit_support=2)
 noise_ops = [op.squeeze() for op in noise_ops]
 # also can be specified as AnalogNoise
 noise_ops = AnalogNoise(noise_ops, qubit_support=(0,1))
