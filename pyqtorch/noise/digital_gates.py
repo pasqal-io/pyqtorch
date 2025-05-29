@@ -437,6 +437,7 @@ class TwoQubitDepolarizing(Noise):
 
         # Prepare mats on correct device/dtype
         device, dtype = IMAT.device, IMAT.dtype
+
         I = IMAT.to(device, dtype)
         X = XMAT.to(device, dtype)
         Y = YMAT.to(device, dtype)
