@@ -237,8 +237,6 @@ def test_noisy_primitive(
 
     gate_support = tuple(primitve_gate.qubit_support)
     noise_gate.target = gate_support
-    if len(gate_support) > 1:
-        pytest.skip("skipping two qubit test")
     state = random_input_dm
     values = {"theta": torch.rand(1)}
     rho_evol = noisy_primitive(state, values)
@@ -322,24 +320,47 @@ def test_digital_noise_apply(
     else:
         error_probability = 0.0
 
-    noise_concrete = DigitalNoiseProtocol(noise_type, error_probability)
+    # Check if this is a two-qubit noise model
+    is_two_qubit_noise = noise_type in [
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+    ]
+
+    # For each gate, create and apply noise with appropriate target
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
-        is_two_q = noise_type in (
-            DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
-            DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        # flatten the support
+        supp = tuple(
+            item
+            for sublist in supp
+            for item in (sublist if isinstance(sublist, tuple) else (sublist,))
         )
-        # only apply if gate parity matches noise parity
-        if len(supp) == 1 and not is_two_q:
-            op_concrete = op(*supp)
-            op_concrete_noise = op(*supp, noise=noise_concrete)  # type: ignore [misc]
-            psi_init = density_mat(random_state(n_qubits, batch_size))
-            psi_expected = op_concrete(psi_init)
-            psi_star = op_concrete_noise(psi_init)
-            assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-        else:
-            # otherwise skip
+        # Skip gates that don't match the noise model's qubit requirements
+        if is_two_qubit_noise and len(supp) != 2:
             continue
+        elif not is_two_qubit_noise and len(supp) != 1:
+            continue
+
+        # Create noise protocol with appropriate target
+        if is_two_qubit_noise:
+            # For two-qubit noise, use tuple target
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp
+            )
+        else:
+            # For single-qubit noise, use integer target
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp[0]
+            )
+
+        op_concrete = op(*supp)
+        op_concrete_noise = op(*supp, noise=noise_concrete)  # type: ignore [misc]
+        print(supp)
+        print(op_concrete_noise)
+        psi_init = density_mat(random_state(n_qubits, batch_size))
+        psi_expected = op_concrete(psi_init)
+        psi_star = op_concrete_noise(psi_init)
+        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("noise_type", [noise for noise in DigitalNoiseType])
@@ -359,31 +380,48 @@ def test_param_noise_apply(
     else:
         error_probability = 0.0
 
+    # Check if this is a two-qubit noise model
+    is_two_qubit_noise = noise_type in [
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+    ]
+
+    # For each gate, create and apply noise with appropriate target
     for op in OPS_PARAM:
-        # skip if not parametric
-        if not hasattr(op, "n_params"):
-            continue
         supp = get_op_support(op, n_qubits)
-        is_two_q = noise_type in (
-            DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
-            DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        # flatten the support
+        supp = tuple(
+            item
+            for sublist in supp
+            for item in (sublist if isinstance(sublist, tuple) else (sublist,))
         )
-        # only apply if gate parity matches noise parity
-        if len(supp) == 1 and not is_two_q:
-            noise_concrete = DigitalNoiseProtocol(
-                noise_type, error_probability, target=tuple(supp)
-            )
-            params = [f"th{i}" for i in range(op.n_params)]
-            op_concrete = op(*supp, *params)
-            op_concrete_noise = op(*supp, *params, noise=noise_concrete)  # type: ignore [misc]
-            psi_init = density_mat(random_state(n_qubits))
-            values = {param: torch.rand(batch_size) for param in params}
-            psi_expected = op_concrete(psi_init, values=values)
-            psi_star = op_concrete_noise(psi_init, values=values)
-            assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
-        else:
-            # otherwise skip
+
+        # Skip gates that don't match the noise model's qubit requirements
+        if is_two_qubit_noise and len(supp) != 2:
             continue
+        elif not is_two_qubit_noise and len(supp) != 1:
+            continue
+
+        # Create noise protocol with appropriate target
+        if is_two_qubit_noise:
+            # For two-qubit noise, use tuple target
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp
+            )
+        else:
+            # For single-qubit noise, use integer target
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp[0]
+            )
+
+        params = [f"th{i}" for i in range(getattr(op, "n_params", 1))]
+        op_concrete = op(*supp, *params)
+        op_concrete_noise = op(*supp, *params, noise=noise_concrete)  # type: ignore [misc]
+        psi_init = density_mat(random_state(n_qubits, batch_size))
+        values = {param: torch.rand(batch_size) for param in params}
+        psi_expected = op_concrete(psi_init, values=values)
+        psi_star = op_concrete_noise(psi_init, values=values)
+        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize(
