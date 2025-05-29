@@ -63,33 +63,39 @@ class Krylov(KrylovIntegrator):
         # step 0 of the loop
         v = torch.matmul(self.H(t), state)
         a = torch.matmul(v.conj().mT, state)
+        a_scalar = a.squeeze((1, 2))
+
         n = torch.linalg.vector_norm(v.squeeze(2), dim=1)
-        T[:, 0, 0] = a.squeeze((1, 2))
+        T[:, 0, 0] = a_scalar
         v = v - a * state
 
         for i in range(1, self.options.max_krylov):
 
             # this block should not be executed in step 0
             b = torch.linalg.vector_norm(v.squeeze(2), dim=1).view(-1, 1, 1)
-            if b.max() < self.options.norm_tolerance:
+            b_scalar = b.squeeze((1, 2))
+
+            if b_scalar.max() < self.options.norm_tolerance:
                 exp = torch.linalg.matrix_exp(-1j * dt * T[:, :i, :i])
                 weights = exp[:, :, 0]
                 converged = True
                 break
 
-            T[:, i, i - 1] = b.squeeze((1, 2))
-            T[:, i - 1, i] = b.squeeze((1, 2))
-            state = v / b.view(-1, 1, 1)
+            T[:, i, i - 1] = b_scalar
+            T[:, i - 1, i] = b_scalar
+            state = v / b
 
             lanczos_vectors.append(state)
             weights, converged = exponentiate()
+
             if converged:
                 break
 
             v = torch.matmul(self.H(t), state)
             a = torch.matmul(v.conj().mT, state)
+
             n = torch.linalg.vector_norm(v.squeeze(2), dim=1)
-            T[:, i, i] = a.squeeze((1, 2))
+            T[:, i, i] = a_scalar
             v = v - a * lanczos_vectors[i] - b * lanczos_vectors[i - 1]
 
         if not converged:
@@ -98,11 +104,13 @@ class Krylov(KrylovIntegrator):
                 to precision in allotted number of steps."
             )
 
-        result = lanczos_vectors[0] * weights[:, 0].view(-1, 1, 1)
-        for i in range(1, len(lanczos_vectors)):
-            result += lanczos_vectors[i] * weights[:, i].view(-1, 1, 1)
+        lanczos_vector_stack = torch.stack(lanczos_vectors, dim=1)
+        n_lanczos = lanczos_vector_stack.shape[1]
 
-        # move leading batch dimension back to trailing dimension
-        result = result.squeeze(-1).T
+        # take weighted combination of lanczos vectors and
+        # move the batch dimension (b) back to the end
+        result = torch.einsum(
+            "bijk, bi -> jb", lanczos_vector_stack, weights[:, :n_lanczos]
+        )
 
         return result
