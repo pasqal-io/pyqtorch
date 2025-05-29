@@ -519,40 +519,68 @@ def expand_operator(
     return operator
 
 
-def promote_operator(operator: Tensor, target: int, n_qubits: int) -> Tensor:
-    from pyqtorch.primitives import I
-
+def promote_operator(
+    operator: Tensor, target: int | tuple[int, ...], n_qubits: int
+) -> Tensor:
     """
-    FIXME: Remove and replace usage with the `expand_operator` above.
+    Embed a k-qubit operator into an n-qubit Hilbert space by tensoring identities
+    on all other qubits.
 
-    Promotes `operator` to the size of the circuit (number of qubits and batch).
-    Targeting the first qubit implies target = 0, so target > n_qubits - 1.
+    Given an operator `operator` of shape `[2**k, 2**k, batch]` acting on the
+    qubits indexed by `target` (either a single int or a tuple of length k),
+    this function returns a new operator of shape `[2**n_qubits, 2**n_qubits, batch]`
+    which acts as the original on those qubits and as the identity everywhere else.
 
     Arguments:
-        operator: The operator tensor to be promoted.
-        target: The index of the target qubit to which the operator is applied.
-            Targeting the first qubit implies target = 0, so target > n_qubits - 1.
-        n_qubits: Number of qubits in the circuit.
+        operator (Tensor):
+            A tensor of shape `[2**k, 2**k, batch_size]` representing a k-qubit operator.
+        target (int or tuple[int, ...]):
+            The index (or indices) of the qubit(s) in the n-qubit register that
+            this operator should act on.  A single int implies a 1-qubit operator;
+            a tuple of length k implies a k-qubit operator.
+        n_qubits (int):
+            The total number of qubits in the larger register.  Must satisfy
+            `max(target) < n_qubits`.
 
     Returns:
-        Tensor: The promoted operator tensor.
+        Tensor:
+            A tensor of shape `[2**n_qubits, 2**n_qubits, batch_size]` representing
+            the promoted operator.
 
     Raises:
-        ValueError: If `target` is outside the valid range of qubits.
+        ValueError:
+            If any entry of `target` is outside the range `[0, n_qubits-1]`.
     """
-    if target > n_qubits - 1:
-        raise ValueError(
-            "The target must be a valid qubit index within the circuit's range."
-        )
-    qubits = torch.arange(0, n_qubits)
-    qubits = qubits[qubits != target]
-    for qubit in qubits:
-        operator = torch.where(
-            target > qubit,
-            operator_kron(I(target).tensor(), operator),
-            operator_kron(operator, I(target).tensor()),
-        )
-    return operator
+    from pyqtorch.primitives import I
+    from pyqtorch.utils import operator_kron
+
+    # Normalize to tuple form
+    if isinstance(target, int):
+        targets: tuple[int, ...] = (target,)
+    else:
+        targets = target
+
+    # Validate each qubit index
+    for t in targets:
+        if t < 0 or t >= n_qubits:
+            raise ValueError(f"Target qubit {t} is outside [0, {n_qubits-1}]")
+
+    # Separate batch dimension
+    *ops_dims, batch = operator.shape
+    mat_dim = ops_dims[0]
+    op_mat = (
+        operator.view(mat_dim, mat_dim) if len(ops_dims) == 2 else operator[:, :, 0]
+    )
+
+    # Build up the full operator by kron’ing identities on all non-target qubits
+    full_op = op_mat
+    for q in reversed(range(n_qubits)):
+        if q in targets:
+            continue
+        full_op = operator_kron(full_op, I(q).tensor())
+
+    # Re-insert batch dimension
+    return full_op.unsqueeze(-1).repeat(1, 1, batch)
 
 
 def permute_state(

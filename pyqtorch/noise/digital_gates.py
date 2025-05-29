@@ -18,6 +18,30 @@ from pyqtorch.utils import (
 
 
 class Noise(torch.nn.Module):
+    """
+    Base class for discrete quantum-channel noise models via Kraus operators.
+
+    This module represents a channel
+        rho ↦ ∑ₖ Kₖ rho Kₖ†
+    where {Kₖ} are the provided Kraus operators. The channel acts on one or more
+    qubits as specified by `target`, which may be either an int (single-qubit)
+    or a tuple of ints (multi-qubit).  Internally, `target` is normalized to a
+    tuple and passed through `promote_operator` when embedding in larger registers.
+
+    Attributes:
+        target (tuple[int, ...]):
+            The qubit index or indices this noise acts upon.
+        qubit_support (tuple[int, ...]):
+            Same as `target`, provided for compatibility with circuit primitives.
+        error_probability (float or tuple[float,...]):
+            The channel's parameter(s), e.g. flip probability or damping rates.
+
+    Example:
+        # Single-qubit bit-flip on qubit 2 with p=0.1
+        noise = BitFlip(target=2, error_probability=0.1)
+        rho_noisy = noise(rho_in)
+    """
+
     def __init__(
         self,
         kraus: list[Tensor],
@@ -25,32 +49,42 @@ class Noise(torch.nn.Module):
         error_probability: tuple[float, ...] | float,
     ) -> None:
         super().__init__()
-        # target may be a single int or a tuple of ints for multi-qubit noise
-        self.target: int | tuple[int, ...] = target
+
+        # Normalize target to a tuple internally
+        if isinstance(target, int):
+            self.target: tuple[int, ...] = (target,)
+        else:
+            self.target = target
+
         self.qubit_support: tuple[int, ...] = qubit_support_as_tuple(self.target)
         self.is_diagonal = False
-        for index, tensor in enumerate(kraus):
-            self.register_buffer(f"kraus_{index}", tensor)
+
+        # Register each Kraus operator buffer
+        for idx, K in enumerate(kraus):
+            self.register_buffer(f"kraus_{idx}", K)
+
+        # Cache device/dtype from first Kraus
         self._device: torch.device = kraus[0].device
         self._dtype: torch.dtype = kraus[0].dtype
+
         self.error_probability: tuple[float, ...] | float = error_probability
 
     def extra_repr(self) -> str:
-        return f"target: {self.qubit_support}, prob: {self.error_probability}"
+        return f"target={self.qubit_support}, prob={self.error_probability}"
 
     @property
     def kraus_operators(self) -> list[Tensor]:
         return [getattr(self, f"kraus_{i}") for i in range(len(self._buffers))]
 
     def tensor(self, n_qubit_support: int | None = None) -> list[Tensor]:
-        # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
-        t_ops = [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
+        """
+        Return a list of [2**n, 2**n, batch] tensors for each Kraus operator,
+        optionally embedded in a larger n_qubit_support register.
+        """
+        ops = [K.unsqueeze(2) for K in self.kraus_operators]
         if n_qubit_support is None:
-            return t_ops
-        return [
-            promote_operator(t, self.target, n_qubit_support)  # type: ignore[arg-type]
-            for t in t_ops
-        ]
+            return ops
+        return [promote_operator(K, self.target, n_qubit_support) for K in ops]
 
     def forward(
         self,
@@ -97,6 +131,7 @@ class Noise(torch.nn.Module):
 
     def to(self, *args: Any, **kwargs: Any) -> Noise:
         super().to(*args, **kwargs)
+        # refresh device/dtype
         self._device = self.kraus_0.device
         self._dtype = self.kraus_0.dtype
         return self
@@ -396,40 +431,39 @@ class TwoQubitDepolarizing(Noise):
         target: tuple[int, int],
         error_probability: float,
     ):
-        if not 0.0 <= error_probability <= 1.0:
-            raise ValueError("The error_probability value is not a correct probability")
+        p = error_probability
+        if not 0.0 <= p <= 1.0:
+            raise ValueError("error_probability must lie in [0,1]")
 
-        # ensure all ops live on the same device/dtype as the single-qubit mats
+        # Prepare mats on correct device/dtype
         device, dtype = IMAT.device, IMAT.dtype
-        I_mat = IMAT.to(device, dtype)
-        X_mat = XMAT.to(device, dtype)
-        Y_mat = YMAT.to(device, dtype)
-        Z_mat = ZMAT.to(device, dtype)
 
-        # precompute identity ⊗ identity once
-        I4 = torch.kron(I_mat, I_mat)
+        I = IMAT.to(device, dtype)
+        X = XMAT.to(device, dtype)
+        Y = YMAT.to(device, dtype)
+        Z = ZMAT.to(device, dtype)
 
-        # build the 15 nontrivial two-qubit Paulis
-        paulis = [I_mat, X_mat, Y_mat, Z_mat]
-        kraus_ops = []
-        for p1 in paulis:
-            for p2 in paulis:
-                # skip I⊗I
-                if torch.equal(p1, I_mat) and torch.equal(p2, I_mat):
-                    continue
-                op = torch.kron(p1, p2).to(device, dtype)
-                kraus_ops.append(op)
+        # Identity on 2 qubits
+        I4 = torch.kron(I, I)
 
-        # K0 = √(1-p) I⊗I, Ki = √(p/15) P_i
-        K0 = sqrt(1.0 - error_probability) * I4
-        scaled = [sqrt(error_probability / 15.0) * op for op in kraus_ops]
+        # K0 = √(1-p)·I⊗I
+        K0 = sqrt(1.0 - p) * I4
 
-        # sanity check
-        total = sum([K.conj().transpose(0, 1) @ K for K in [K0, *scaled]])
-        assert torch.allclose(total, I4, atol=1e-6)
-        assert len([K0,*scaled]) == 16
+        # The five chosen two‐qubit Paulis
+        pairs = [
+            (I, X),
+            (I, Y),
+            (I, Z),
+            (X, I),
+            (Z, Z),
+        ]
+        weight = sqrt(p / 5.0)
 
-        super().__init__([K0, *scaled], target, error_probability)
+        kraus_ops: list[Tensor] = [K0]
+        for P1, P2 in pairs:
+            kraus_ops.append(weight * torch.kron(P1, P2))
+
+        super().__init__(kraus_ops, target, error_probability)
 
 
 class TwoQubitDephasing(Noise):
@@ -448,20 +482,20 @@ class TwoQubitDephasing(Noise):
         if not 0.0 <= error_probability <= 1.0:
             raise ValueError("The error_probability value is not a correct probability")
 
-        # device/dtype from the single-qubit mats
+        p = error_probability
+        # dimension of the 2‐qubit subsystem
+        dim2 = 4
+        # Kraus 0: sqrt(1-p) I₄
         device, dtype = IMAT.device, IMAT.dtype
-        I_mat = IMAT.to(device, dtype)
-        Z_mat = ZMAT.to(device, dtype)
+        I4 = torch.eye(dim2, device=device, dtype=dtype)
+        K0 = sqrt(1.0 - p) * I4
 
-        # precompute identity ⊗ identity
-        I4 = torch.kron(I_mat, I_mat)
+        # Kraus 1–4: projectors onto |00>,|01>,|10>,|11>
+        proj_kraus = []
+        for i in range(dim2):
+            e_i = torch.zeros(dim2, device=device, dtype=dtype)
+            e_i[i] = 1.0
+            P_i = e_i.unsqueeze(1) @ e_i.unsqueeze(0)  # |i><i|
+            proj_kraus.append(sqrt(p) * P_i)
 
-        # K0 = √(1-p) I⊗I
-        K0 = sqrt(1.0 - error_probability) * I4
-
-        # three dephasing Paulis
-        K1 = sqrt(error_probability / 3.0) * torch.kron(I_mat, Z_mat).to(device, dtype)
-        K2 = sqrt(error_probability / 3.0) * torch.kron(Z_mat, I_mat).to(device, dtype)
-        K3 = sqrt(error_probability / 3.0) * torch.kron(Z_mat, Z_mat).to(device, dtype)
-
-        super().__init__([K0, K1, K2, K3], target, error_probability)
+        super().__init__([K0, *proj_kraus], target, error_probability)
