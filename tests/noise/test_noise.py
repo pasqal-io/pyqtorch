@@ -26,8 +26,11 @@ from pyqtorch.noise import (
     GeneralizedAmplitudeDamping,
     Noise,
     PhaseDamping,
+    TwoQubitDephasing,
+    TwoQubitDepolarizing,
 )
-from pyqtorch.noise.digital_gates import TwoQubitDephasing, TwoQubitDepolarizing
+
+# from pyqtorch.noise.digital_gates import TwoQubitDephasing, TwoQubitDepolarizing
 from pyqtorch.primitives import (
     OPS_DIGITAL,
     OPS_PARAM,
@@ -309,7 +312,18 @@ def test_digital_noise_apply(
     """
     Goes through all non-parametric gates and tests their application to a random state
     in comparison with the noisy version with error_probability = 0.
+
+    Goes through all parametric gates and tests their application to a random state
+    in comparison with the noisy version with error_probability = 0.
+    Skips two-qubit noise types (tested separately).
     """
+    # Skip for two-qubit noise types
+    if noise_type in {
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+    }:
+        pytest.skip(f"{noise_type.name} is a two-qubit noise type. Skipped.")
+
     op: type[Primitive]
     error_probability: float | tuple[float, ...]
 
@@ -343,7 +357,18 @@ def test_param_noise_apply(
     """
     Goes through all parametric gates and tests their application to a random state
     in comparison with the noisy version with error_probability = 0.
+
+    Goes through all parametric gates and tests their application to a random state
+    in comparison with the noisy version with error_probability = 0.
+    Skips two-qubit noise types (tested separately).
     """
+    # Skip for two-qubit noise types
+    if noise_type in {
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+    }:
+        pytest.skip(f"{noise_type.name} is a two-qubit noise type. Skipped.")
+
     op: type[Parametric]
 
     error_probability: float | tuple[float, ...]
@@ -387,16 +412,25 @@ def test_analog_noise_add():
     assert noise_add.qubit_support == (2, 3)
 
 
-def test_two_qubit_depolarizing():
+@pytest.mark.parametrize(
+    "noise_type",
+    [DigitalNoiseType.TWO_QUBIT_DEPHASING, DigitalNoiseType.TWO_QUBIT_DEPOLARIZING],
+)
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_two_qubit_noise(
+    batch_size: int,
+    noise_type: DigitalNoiseType,
+):
     target = (0, 1)
-    batch_size = 1
     prob = 0.3
-
     # Start from a pure product state |00⟩
     rho_0 = density_mat(product_state("00", batch_size))
 
-    # Apply TwoQubitDepolarizing
-    noise = TwoQubitDepolarizing(target=target, error_probability=prob)
+    # Apply TwoQubit noise
+    if noise_type == DigitalNoiseType.TWO_QUBIT_DEPOLARIZING:
+        noise = TwoQubitDepolarizing(target=target, error_probability=prob)
+    elif noise_type == DigitalNoiseType.TWO_QUBIT_DEPHASING:
+        noise = TwoQubitDephasing(target=target, error_probability=prob)
     rho_noisy = noise(rho_0)
 
     # Ensure output is valid density matrix
@@ -408,25 +442,3 @@ def test_two_qubit_depolarizing():
     assert torch.allclose(
         tr, torch.tensor(1.0, dtype=torch.cdouble), atol=1e-4
     )  # Trace=1
-
-
-def test_two_qubit_dephasing():
-    target = (0, 1)
-    batch_size = 1
-    prob = 0.6
-
-    rho_0 = density_mat(product_state("00", batch_size))  # shape [4, 4, 1]
-    # Apply TwoQubitDephasing
-    noise = TwoQubitDephasing(target=target, error_probability=prob)
-    rho_noisy = noise(rho_0)
-
-    # Check properties
-    assert rho_noisy.shape == rho_0.shape
-    assert torch.allclose(
-        rho_noisy, rho_noisy.conj().transpose(0, 1), atol=1e-6
-    )  # Hermitian
-    trace = torch.trace(rho_noisy[:, :, 0])
-    assert torch.allclose(
-        trace, torch.tensor(1.0, dtype=torch.cdouble), atol=1e-4
-    )  # Trace=1
-    assert (rho_noisy.real >= -1e-6).all()  # Weak check for positivity
