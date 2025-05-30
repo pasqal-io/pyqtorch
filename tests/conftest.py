@@ -237,6 +237,7 @@ def random_noisy_unitary_gate(
         )
     if unitary_gate in CONTROLLED_GATES:
         control = random.choice([i for i in range(n_qubits) if i != target])
+        noise_gate.target = (control, target)
         return (
             unitary_gate(control=control, target=target, noise=random_noisy_protocol),  # type: ignore[call-arg]
             unitary_gate(control=control, target=target),  # type: ignore[call-arg]
@@ -244,6 +245,7 @@ def random_noisy_unitary_gate(
         )
     if unitary_gate in ROTATION_CONTROL_GATES:
         control = random.choice([i for i in range(n_qubits) if i != target])
+        noise_gate.target = (control, target)
         return (
             unitary_gate(
                 control=control,
