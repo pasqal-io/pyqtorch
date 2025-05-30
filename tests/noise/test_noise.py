@@ -4,6 +4,7 @@ import random
 
 import pytest
 import torch
+from math import sqrt
 from helpers import get_op_support, random_pauli_hamiltonian
 from torch import Tensor
 
@@ -310,7 +311,9 @@ def test_digital_noise_apply(
     batch_size: int,
     noise_type: DigitalNoiseType,
 ) -> None:
+    # Annotate union to accept both floats and tuples of varying length
     error_probability: float | tuple[float, ...]
+
     if noise_type == DigitalNoiseType.PAULI_CHANNEL:
         error_probability = (0.0, 0.0, 0.0)
     elif noise_type == DigitalNoiseType.GENERALIZED_AMPLITUDE_DAMPING:
@@ -318,11 +321,36 @@ def test_digital_noise_apply(
     else:
         error_probability = 0.0
 
+    # Check if this is a two-qubit noise model
+    is_two_qubit_noise = noise_type in [
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+    ]
+
+    # For each gate, create and apply noise with appropriate target
     for op in OPS_DIGITAL:
         supp = get_op_support(op, n_qubits)
-        
-        # Use len(supp) to determine noise type
-        noise_concrete = DigitalNoiseProtocol(noise_type, error_probability)
+        # flatten the support
+        flat_supp = tuple(
+            item
+            for sublist in supp
+            for item in (sublist if isinstance(sublist, tuple) else (sublist,))
+        )
+        # Skip gates that don't match the noise model's qubit requirements
+        if is_two_qubit_noise and len(flat_supp) != 2:
+            continue
+
+        # Create noise protocol with appropriate target
+        if is_two_qubit_noise:
+            # For two-qubit noise, use tuple target
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp
+            )
+        else:
+            # For single-qubit noise, no need to specify
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability
+            )
 
         op_concrete = op(*supp)
         op_concrete_noise = op(*supp, noise=noise_concrete)  # type: ignore [misc]
@@ -348,19 +376,41 @@ def test_param_noise_apply(
     else:
         error_probability = 0.0
 
+    # Check if this is a two-qubit noise model
+    is_two_qubit_noise = noise_type in [
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+    ]
+
+    # For each gate, create and apply noise with appropriate target
     for op in OPS_PARAM:
         supp = get_op_support(op, n_qubits)
-        print(supp)
-        # Use len(supp) to determine noise type
-        if len(supp) == 1:
-            noise_concrete = DigitalNoiseProtocol(noise_type, error_probability)
+        # flatten the support
+        flat_supp = tuple(
+            item
+            for sublist in supp
+            for item in (sublist if isinstance(sublist, tuple) else (sublist,))
+        )
+
+        # Skip gates that don't match the noise model's qubit requirements
+        if is_two_qubit_noise and len(flat_supp) != 2:
+            continue
+
+        # Create noise protocol with appropriate target
+        if is_two_qubit_noise:
+            # For two-qubit noise, use tuple target
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability, target=supp
+            )
         else:
-            noise_concrete = DigitalNoiseProtocol(noise_type, error_probability, target=supp)
+            # For single-qubit noise, use integer target
+            noise_concrete = DigitalNoiseProtocol(
+                noise_type, error_probability
+            )
 
         params = [f"th{i}" for i in range(getattr(op, "n_params", 1))]
         op_concrete = op(*supp, *params)
         op_concrete_noise = op(*supp, *params, noise=noise_concrete)  # type: ignore [misc]
-        print(op_concrete_noise)
         psi_init = density_mat(random_state(n_qubits, batch_size))
         values = {param: torch.rand(batch_size) for param in params}
         psi_expected = op_concrete(psi_init, values=values)
@@ -471,17 +521,24 @@ def test_two_qubit_dephasing_channel(
     if pytest.approx(p) == 0.0:
         assert torch.allclose(rho_out, rho)
 
-    # p = 1 & n_qubits == 2 → off-diagonals on qubits 0&1 must be zero
-    if n_qubits == 2 and pytest.approx(p) == 1.0:
-        off = rho_out.clone()
-        for i in range(d):
-            off[i, i, :] = 0
-        assert torch.allclose(
-            off,
-            torch.zeros_like(off),
-            rtol=RTOL,
-            atol=ATOL,
-        )
+    # p = 1 → use Kraus operators to compute expected output
+    if pytest.approx(p) == 1.0:
+        device, dtype = rho.device, rho.dtype
+        pauli_I = IMAT.to(device, dtype)
+        pauli_Z = ZMAT.to(device, dtype)
+
+        kraus_ops = [
+            sqrt(1/3) * torch.kron(pauli_I, pauli_Z),
+            sqrt(1/3) * torch.kron(pauli_Z, pauli_I),
+            sqrt(1/3) * torch.kron(pauli_Z, pauli_Z),
+        ]
+
+        rho_expected = torch.zeros_like(rho)
+        for K in kraus_ops:
+            K = K.unsqueeze(-1)  # shape [4,4,1] to match batch
+            rho_expected += apply_operator_dm(rho, K, (0, 1))
+
+        assert torch.allclose(rho_out, rho_expected, rtol=RTOL, atol=ATOL)
 
 
 def test_analog_noise_add():
