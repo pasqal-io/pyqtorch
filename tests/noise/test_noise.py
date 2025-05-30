@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import random
+from math import sqrt
 
 import pytest
 import torch
-from math import sqrt
 from helpers import get_op_support, random_pauli_hamiltonian
 from torch import Tensor
 
@@ -348,9 +348,7 @@ def test_digital_noise_apply(
             )
         else:
             # For single-qubit noise, no need to specify
-            noise_concrete = DigitalNoiseProtocol(
-                noise_type, error_probability
-            )
+            noise_concrete = DigitalNoiseProtocol(noise_type, error_probability)
 
         op_concrete = op(*supp)
         op_concrete_noise = op(*supp, noise=noise_concrete)  # type: ignore [misc]
@@ -404,9 +402,7 @@ def test_param_noise_apply(
             )
         else:
             # For single-qubit noise, use integer target
-            noise_concrete = DigitalNoiseProtocol(
-                noise_type, error_probability
-            )
+            noise_concrete = DigitalNoiseProtocol(noise_type, error_probability)
 
         params = [f"th{i}" for i in range(getattr(op, "n_params", 1))]
         op_concrete = op(*supp, *params)
@@ -528,9 +524,9 @@ def test_two_qubit_dephasing_channel(
         pauli_Z = ZMAT.to(device, dtype)
 
         kraus_ops = [
-            sqrt(1/3) * torch.kron(pauli_I, pauli_Z),
-            sqrt(1/3) * torch.kron(pauli_Z, pauli_I),
-            sqrt(1/3) * torch.kron(pauli_Z, pauli_Z),
+            sqrt(1 / 3) * torch.kron(pauli_I, pauli_Z),
+            sqrt(1 / 3) * torch.kron(pauli_Z, pauli_I),
+            sqrt(1 / 3) * torch.kron(pauli_Z, pauli_Z),
         ]
 
         rho_expected = torch.zeros_like(rho)

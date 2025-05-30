@@ -88,12 +88,18 @@ class Noise(torch.nn.Module):
 
         # Use promote_operator for single-qubit noise (more performant)
         if len(self.qubit_support) == 1:
-            return [promote_operator(K, self.target, n_qubit_support) for K in ops]
+            if isinstance(self.target, int):
+                target = self.target
+            else:
+                target = self.target[0]
+            return [promote_operator(K, target, n_qubit_support) for K in ops]
 
         # Use expand_operator for multi-qubit noise (handles non-consecutive indices)
         full_support = tuple(range(n_qubit_support))
         return [
-            expand_operator(K, self.qubit_support, full_support, diagonal=self.is_diagonal)
+            expand_operator(
+                K, self.qubit_support, full_support, diagonal=self.is_diagonal
+            )
             for K in ops
         ]
 
@@ -457,18 +463,15 @@ class TwoQubitDepolarizing(Noise):
         # All 16 two-qubit Pauli pairs (I, X, Y, Z) ⊗ (I, X, Y, Z)
         paulis = [pauli_I, pauli_X, pauli_Y, pauli_Z]
         pairs = [(P1, P2) for P1 in paulis for P2 in paulis]
-        
-        kraus_ops: list[Tensor] = []
-        for P1, P2 in pairs:
-            # Apply different weight for I⊗I versus other Pauli operators
-            if torch.equal(P1, pauli_I) and torch.equal(P2, pauli_I):
-                weight = sqrt(1.0 - p)
-            else:
-                weight = sqrt(p / 15.0)
-            
-            kraus_ops.append(weight * torch.kron(P1, P2))
 
-        assert len(kraus_ops) == 16, f"Expected 16 Kraus operators, got {len(kraus_ops)}"
+        kraus_ops: list[Tensor] = [sqrt(1.0 - p) * torch.kron(pairs[0][0], pairs[0][1])]
+
+        for P1, P2 in pairs[1:]:
+            kraus_ops.append(sqrt(p / 15.0) * torch.kron(P1, P2))
+
+        assert (
+            len(kraus_ops) == 16
+        ), f"Expected 16 Kraus operators, got {len(kraus_ops)}"
 
         super().__init__(kraus_ops, target, error_probability)
 

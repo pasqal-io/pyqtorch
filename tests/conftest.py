@@ -212,7 +212,10 @@ def random_noisy_unitary_gate(
     UNITARY_GATES = (
         SINGLE_GATES + ROTATION_GATES + CONTROLLED_GATES + ROTATION_CONTROL_GATES
     )
-    if random_noisy_protocol == DigitalNoiseType.TWO_QUBIT_DEPHASING or random_noisy_protocol == DigitalNoiseType.TWO_QUBIT_DEPOLARIZING:
+    if (
+        random_noisy_protocol == DigitalNoiseType.TWO_QUBIT_DEPHASING
+        or random_noisy_protocol == DigitalNoiseType.TWO_QUBIT_DEPOLARIZING
+    ):
         # For two-qubit noise protocols, we only two qubit gates
         UNITARY_GATES = CONTROLLED_GATES + ROTATION_CONTROL_GATES
     unitary_gate = random.choice(UNITARY_GATES)
