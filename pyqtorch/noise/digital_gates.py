@@ -12,6 +12,7 @@ from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
+    expand_operator,
     promote_operator,
     qubit_support_as_tuple,
 )
@@ -42,11 +43,19 @@ class Noise(torch.nn.Module):
         return [getattr(self, f"kraus_{i}") for i in range(len(self._buffers))]
 
     def tensor(self, n_qubit_support: int | None = None) -> list[Tensor]:
-        # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
+        # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits, batch_size].
         t_ops = [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
+
         if n_qubit_support is None:
             return t_ops
-        return [promote_operator(t, self.target, n_qubit_support) for t in t_ops]
+
+        if isinstance(self.target, int):
+            # Fast path for single-qubit noise
+            return [promote_operator(t, self.target, n_qubit_support) for t in t_ops]
+        else:
+            # General path for multi-qubit noise
+            full_support = tuple(range(n_qubit_support))
+            return [expand_operator(t, self.target, full_support) for t in t_ops]
 
     def forward(
         self,
@@ -398,17 +407,14 @@ class TwoQubitDepolarizing(Noise):
 
         X, Y, Z = XMAT, YMAT, ZMAT
         paulis = [IMAT, X, Y, Z]
-        P_list = [
-            torch.kron(A, B)
-            for A in paulis
-            for B in paulis
-            if not (torch.allclose(A, IMAT) and torch.allclose(B, IMAT))
+
+        # Include all 16 Pauli ⊗ Pauli combinations (including I ⊗ I)
+        P_list = [torch.kron(A, B) for A in paulis for B in paulis]
+
+        # Assign Kraus operators: index 0 is I⊗I with (1 - p), rest get p/15
+        kraus_two_qubit_depolarizing = [sqrt(1.0 - error_probability) * P_list[0]] + [
+            sqrt(error_probability / 15.0) * P for P in P_list[1:]
         ]
-        kraus_two_qubit_depolarizing = [
-            sqrt(error_probability / 15.0) * P for P in P_list
-        ]
-        K0 = sqrt(1.0 - error_probability) * torch.kron(IMAT, IMAT)
-        kraus_two_qubit_depolarizing.insert(0, K0)
 
         super().__init__(kraus_two_qubit_depolarizing, target, error_probability)
 
