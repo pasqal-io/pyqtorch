@@ -12,6 +12,7 @@ from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
+    expand_operator,
     promote_operator,
     qubit_support_as_tuple,
 )
@@ -84,7 +85,17 @@ class Noise(torch.nn.Module):
         ops = [K.unsqueeze(2) for K in self.kraus_operators]
         if n_qubit_support is None:
             return ops
-        return [promote_operator(K, self.target, n_qubit_support) for K in ops]
+
+        # Use promote_operator for single-qubit noise (more performant)
+        if len(self.qubit_support) == 1:
+            return [promote_operator(K, self.target, n_qubit_support) for K in ops]
+
+        # Use expand_operator for multi-qubit noise (handles non-consecutive indices)
+        full_support = tuple(range(n_qubit_support))
+        return [
+            expand_operator(K, self.qubit_support, full_support, diagonal=self.is_diagonal)
+            for K in ops
+        ]
 
     def forward(
         self,
@@ -443,30 +454,21 @@ class TwoQubitDepolarizing(Noise):
         pauli_Y = YMAT.to(device, dtype)
         pauli_Z = ZMAT.to(device, dtype)
 
-        # Identity on 2 qubits
-        I4 = torch.kron(pauli_I, pauli_I)
-
-        # K0 = √(1-p)·I⊗I
-        K0 = sqrt(1.0 - p) * I4
-
         # All 16 two-qubit Pauli pairs (I, X, Y, Z) ⊗ (I, X, Y, Z)
         paulis = [pauli_I, pauli_X, pauli_Y, pauli_Z]
         pairs = [(P1, P2) for P1 in paulis for P2 in paulis]
-        # Remove the identity-identity (I⊗I) term, which is K0
-        pairs = [
-            pair
-            for pair in pairs
-            if not (torch.equal(pair[0], pauli_I) and torch.equal(pair[1], pauli_I))
-        ]
-        weight = sqrt(p / 15.0)
-
-        kraus_ops: list[Tensor] = [K0]
+        
+        kraus_ops: list[Tensor] = []
         for P1, P2 in pairs:
+            # Apply different weight for I⊗I versus other Pauli operators
+            if torch.equal(P1, pauli_I) and torch.equal(P2, pauli_I):
+                weight = sqrt(1.0 - p)
+            else:
+                weight = sqrt(p / 15.0)
+            
             kraus_ops.append(weight * torch.kron(P1, P2))
 
-        assert (
-            len(kraus_ops) == 16
-        ), f"Expected 16 Kraus operators, got {len(kraus_ops)}"
+        assert len(kraus_ops) == 16, f"Expected 16 Kraus operators, got {len(kraus_ops)}"
 
         super().__init__(kraus_ops, target, error_probability)
 
@@ -488,19 +490,16 @@ class TwoQubitDephasing(Noise):
             raise ValueError("The error_probability value is not a correct probability")
 
         p = error_probability
-        # dimension of the 2‐qubit subsystem
-        dim2 = 4
-        # Kraus 0: sqrt(1-p) I₄
         device, dtype = IMAT.device, IMAT.dtype
-        I4 = torch.eye(dim2, device=device, dtype=dtype)
-        K0 = sqrt(1.0 - p) * I4
 
-        # Kraus 1–4: projectors onto |00>,|01>,|10>,|11>
-        proj_kraus = []
-        for idx in range(dim2):
-            e_i = torch.zeros(dim2, device=device, dtype=dtype)
-            e_i[idx] = 1.0
-            P_i = e_i.unsqueeze(1) @ e_i.unsqueeze(0)  # |i><i|
-            proj_kraus.append(sqrt(p) * P_i)
+        pauli_I = IMAT.to(device, dtype)
+        pauli_Z = ZMAT.to(device, dtype)
 
-        super().__init__([K0, *proj_kraus], target, error_probability)
+        kraus_ops = [
+            sqrt(1.0 - p) * torch.kron(pauli_I, pauli_I),
+            sqrt(p / 3.0) * torch.kron(pauli_I, pauli_Z),
+            sqrt(p / 3.0) * torch.kron(pauli_Z, pauli_I),
+            sqrt(p / 3.0) * torch.kron(pauli_Z, pauli_Z),
+        ]
+
+        super().__init__(kraus_ops, target, error_probability)
