@@ -71,6 +71,8 @@ from .noise import (
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
+    TwoQubitDephasing,
+    TwoQubitDepolarizing,
 )
 from .primitives import (
     CNOT,

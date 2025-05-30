@@ -10,6 +10,8 @@ from .digital_gates import (
     PauliChannel,
     PhaseDamping,
     PhaseFlip,
+    TwoQubitDephasing,
+    TwoQubitDepolarizing,
 )
 from .digital_protocol import DigitalNoiseProtocol, DigitalNoiseType, _repr_noise
 from .readout import CorrelatedReadoutNoise, ReadoutNoise, WhiteNoise

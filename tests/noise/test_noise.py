@@ -27,9 +27,13 @@ from pyqtorch.noise import (
     Noise,
     PhaseDamping,
 )
+
+# from pyqtorch.noise.digital_gates import TwoQubitDephasing, TwoQubitDepolarizing
 from pyqtorch.primitives import (
+    OPS_2Q,
     OPS_DIGITAL,
     OPS_PARAM,
+    OPS_PARAM_2Q,
     ControlledPrimitive,
     ControlledRotationGate,
     H,
@@ -321,14 +325,23 @@ def test_digital_noise_apply(
 
     noise_concrete = DigitalNoiseProtocol(noise_type, error_probability)
 
-    for op in OPS_DIGITAL:
-        supp = get_op_support(op, n_qubits)
-        op_concrete = op(*supp)
-        op_concrete_noise = op(*supp, noise=noise_concrete)  # type: ignore [misc]
-        psi_init = density_mat(random_state(n_qubits, batch_size))
-        psi_expected = op_concrete(psi_init)
-        psi_star = op_concrete_noise(psi_init)
-        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+    if noise_type in {
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+    }:
+
+        for op in OPS_2Q:
+            supp = get_op_support(op, n_qubits)
+            assert len(supp) == 2
+    else:
+        for op in OPS_DIGITAL:
+            supp = get_op_support(op, n_qubits)
+            op_concrete = op(*supp)
+            op_concrete_noise = op(*supp, noise=noise_concrete)  # type: ignore [misc]
+            psi_init = density_mat(random_state(n_qubits, batch_size))
+            psi_expected = op_concrete(psi_init)
+            psi_star = op_concrete_noise(psi_init)
+            assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 @pytest.mark.parametrize("noise_type", [noise for noise in DigitalNoiseType])
@@ -343,6 +356,8 @@ def test_param_noise_apply(
     Goes through all parametric gates and tests their application to a random state
     in comparison with the noisy version with error_probability = 0.
     """
+    # Skip for two-qubit noise types
+
     op: type[Parametric]
 
     error_probability: float | tuple[float, ...]
@@ -356,16 +371,25 @@ def test_param_noise_apply(
 
     noise_concrete = DigitalNoiseProtocol(noise_type, error_probability)
 
-    for op in OPS_PARAM:
-        supp = get_op_support(op, n_qubits)
-        params = [f"th{i}" for i in range(op.n_params)]
-        op_concrete = op(*supp, *params)
-        op_concrete_noise = op(*supp, *params, noise=noise_concrete)  # type: ignore [misc]
-        psi_init = density_mat(random_state(n_qubits))
-        values = {param: torch.rand(batch_size) for param in params}
-        psi_expected = op_concrete(psi_init, values=values)
-        psi_star = op_concrete_noise(psi_init, values=values)
-        assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
+    if noise_type in {
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+    }:
+
+        for op in OPS_PARAM_2Q:
+            supp = get_op_support(op, n_qubits)
+            assert len(supp) == 2
+    else:
+        for op in OPS_PARAM:
+            supp = get_op_support(op, n_qubits)
+            params = [f"th{i}" for i in range(op.n_params)]
+            op_concrete = op(*supp, *params)
+            op_concrete_noise = op(*supp, *params, noise=noise_concrete)  # type: ignore [misc]
+            psi_init = density_mat(random_state(n_qubits))
+            values = {param: torch.rand(batch_size) for param in params}
+            psi_expected = op_concrete(psi_init, values=values)
+            psi_star = op_concrete_noise(psi_init, values=values)
+            assert torch.allclose(psi_star, psi_expected, rtol=RTOL, atol=ATOL)
 
 
 def test_analog_noise_add():

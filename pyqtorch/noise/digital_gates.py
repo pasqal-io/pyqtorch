@@ -12,6 +12,7 @@ from pyqtorch.matrices import DEFAULT_MATRIX_DTYPE, IMAT, XMAT, YMAT, ZMAT
 from pyqtorch.utils import (
     DensityMatrix,
     density_mat,
+    expand_operator,
     promote_operator,
     qubit_support_as_tuple,
 )
@@ -21,11 +22,11 @@ class Noise(torch.nn.Module):
     def __init__(
         self,
         kraus: list[Tensor],
-        target: int,
+        target: int | tuple[int, int],
         error_probability: tuple[float, ...] | float,
     ) -> None:
         super().__init__()
-        self.target: int = target
+        self.target: tuple[int, int] | int = target
         self.qubit_support: tuple[int, ...] = qubit_support_as_tuple(self.target)
         self.is_diagonal = False
         for index, tensor in enumerate(kraus):
@@ -42,11 +43,19 @@ class Noise(torch.nn.Module):
         return [getattr(self, f"kraus_{i}") for i in range(len(self._buffers))]
 
     def tensor(self, n_qubit_support: int | None = None) -> list[Tensor]:
-        # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits,batch_size].
+        # Since PyQ expects tensor.Size = [2**n_qubits, 2**n_qubits, batch_size].
         t_ops = [kraus_op.unsqueeze(2) for kraus_op in self.kraus_operators]
+
         if n_qubit_support is None:
             return t_ops
-        return [promote_operator(t, self.target, n_qubit_support) for t in t_ops]
+
+        if isinstance(self.target, int):
+            # Fast path for single-qubit noise
+            return [promote_operator(t, self.target, n_qubit_support) for t in t_ops]
+        else:
+            # General path for multi-qubit noise
+            full_support = tuple(range(n_qubit_support))
+            return [expand_operator(t, self.target, full_support) for t in t_ops]
 
     def forward(
         self,
@@ -375,3 +384,63 @@ class GeneralizedAmplitudeDamping(Noise):
         )
         kraus_generalized_amplitude_damping: list[Tensor] = [K0, K1, K2, K3]
         super().__init__(kraus_generalized_amplitude_damping, target, error_probability)
+
+
+class TwoQubitDepolarizing(Noise):
+    """
+    Two-qubit depolarizing channel:
+        ρ ↦ (1 - p)ρ + (p / 15) * sum_{i=1}^{15} P_i ρ P_i†
+    where P_i are the 15 non-identity 2-qubit Pauli operators.
+    """
+
+    def __init__(
+        self,
+        target: tuple[int, int],
+        error_probability: float,
+    ):
+        if not isinstance(target, tuple) or len(target) != 2:
+            raise TypeError(
+                "Target must be a tuple of two integers for two-qubit noise."
+            )
+        if error_probability < 0.0 or error_probability > 1.0:
+            raise ValueError("Error probability must be between 0 and 1.")
+
+        X, Y, Z = XMAT, YMAT, ZMAT
+        paulis = [IMAT, X, Y, Z]
+
+        # Include all 16 Pauli ⊗ Pauli combinations (including I ⊗ I)
+        P_list = [torch.kron(A, B) for A in paulis for B in paulis]
+
+        # Assign Kraus operators: index 0 is I⊗I with (1 - p), rest get p/15
+        kraus_two_qubit_depolarizing = [sqrt(1.0 - error_probability) * P_list[0]] + [
+            sqrt(error_probability / 15.0) * P for P in P_list[1:]
+        ]
+
+        super().__init__(kraus_two_qubit_depolarizing, target, error_probability)
+
+
+class TwoQubitDephasing(Noise):
+    """
+    Two-qubit dephasing channel:
+        ρ ↦ (1 - p)ρ + (p / 3) * (IZ ρ IZ + ZI ρ ZI + ZZ ρ ZZ)
+    """
+
+    def __init__(
+        self,
+        target: tuple[int, int],
+        error_probability: float,
+    ):
+        if not isinstance(target, tuple) or len(target) != 2:
+            raise TypeError(
+                "Target must be a tuple of two integers for two-qubit noise."
+            )
+        if error_probability < 0.0 or error_probability > 1.0:
+            raise ValueError("Error probability must be between 0 and 1.")
+
+        K0 = sqrt(1.0 - error_probability) * torch.kron(IMAT, IMAT)
+        K1 = sqrt(error_probability / 3.0) * torch.kron(IMAT, ZMAT)
+        K2 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, IMAT)
+        K3 = sqrt(error_probability / 3.0) * torch.kron(ZMAT, ZMAT)
+        kraus_two_qubit_dephasing = [K0, K1, K2, K3]
+
+        super().__init__(kraus_two_qubit_dephasing, target, error_probability)
