@@ -283,10 +283,10 @@ def test_sample_run_expectation_grads_with_embedding_observable(embedding_fixtur
     exp_embedded = pyq.expectation(
         circ, state, values_ad, obs_embedded, pyq.DiffMode.AD, embedding=embedding
     )
-    
+    # y * sin(x)
     # Test 3: Manual verification - embedded observable should equal scaling factor * simple observable
     embedded_values = embedding(values_ad)
-    scaling_factor = embedded_values['mul_sinx_y']  # y * sin(x)
+    scaling_factor = embedded_values['mul_sinx_y'] 
     
     # Manual calculation: f(x,y) * ⟨ψ|Z|ψ⟩
     exp_manual = scaling_factor * pyq.expectation(

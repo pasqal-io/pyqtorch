@@ -200,7 +200,7 @@ def test_embedding_with_composite_gates(embedding_fixture):
     batch_size = 2
     x = torch.rand(batch_size, requires_grad=True)
     y = torch.rand(batch_size, requires_grad=True)
-    values = {'x': x, 'y': y}
+    values = {"x": x, "y": y}
     
     # Random initial state
     state = pyq.random_state(n_qubits, batch_size)
@@ -210,9 +210,9 @@ def test_embedding_with_composite_gates(embedding_fixture):
     
     # Test 1: Sequence
     ops_sequence = [
-        pyq.RX(0, param_name='mul_sinx_y'),
-        pyq.RY(1, param_name='mul_sinx_y'), 
-        pyq.RZ(2, param_name='mul_sinx_y')
+        pyq.RX(0, param_name="mul_sinx_y"),
+        pyq.RY(1, param_name="mul_sinx_y"), 
+        pyq.RZ(2, param_name="mul_sinx_y")
     ]
     sequence_op = Sequence(ops_sequence)
     
@@ -228,9 +228,9 @@ def test_embedding_with_composite_gates(embedding_fixture):
     
     # Test 2: Add
     ops_add = [
-        pyq.Scale(pyq.X(0), 'mul_sinx_y'),
-        pyq.Scale(pyq.Y(1), 'mul_sinx_y'),
-        pyq.Scale(pyq.Z(2), 'mul_sinx_y')
+        pyq.Scale(pyq.X(0), "mul_sinx_y"),
+        pyq.Scale(pyq.Y(1), "mul_sinx_y"),
+        pyq.Scale(pyq.Z(2), "mul_sinx_y")
     ]
     add_op = Add(ops_add)
     
@@ -246,7 +246,7 @@ def test_embedding_with_composite_gates(embedding_fixture):
     # Test 3: Scale - FIXED: Use a non-parametric operation that Scale accepts
     # Scale expects a Primitive, Sequence, or Add - not a Parametric operation
     base_primitive = pyq.X(0)  # Use a simple Primitive instead of parametric gate
-    scale_op = Scale(base_primitive, 'mul_sinx_y')
+    scale_op = Scale(base_primitive, "mul_sinx_y")
     
     # Method 1: Direct embedding
     result_scale_embed = scale_op(state.clone(), values, embedding)
@@ -258,11 +258,11 @@ def test_embedding_with_composite_gates(embedding_fixture):
         "Scale with embedding should match pre-evaluated Scale"
     
     # Test 4: Additional Scale test with Sequence (which Scale accepts)
-    sequence_for_scale = Sequence([pyq.RX(1, param_name='theta')])
-    scale_sequence_op = Scale(sequence_for_scale, 'mul_sinx_y')
+    sequence_for_scale = Sequence([pyq.RX(1, param_name="theta")])
+    scale_sequence_op = Scale(sequence_for_scale, "mul_sinx_y")
     
     # Add theta parameter for the sequence
-    test_values = {**values, 'theta': torch.rand(batch_size)}
+    test_values = {**values, "theta": torch.rand(batch_size)}
     
     # Method 1: Direct embedding
     result_scale_seq_embed = scale_sequence_op(state.clone(), test_values, embedding)

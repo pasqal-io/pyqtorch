@@ -523,12 +523,15 @@ def embedding_fixture():
     """
     import pyqtorch as pyq
     
-    sin_x, sin_x_fn = 'sin_x', pyq.ConcretizedCallable(call_name='sin', abstract_args=['x'])
-    mul_sinx_y, mul_sinx_y_fn = 'mul_sinx_y', pyq.ConcretizedCallable(call_name='mul', abstract_args=['sin_x', 'y'])
-    
+    sin_x, sin_x_fn = "sin_x", pyq.ConcretizedCallable(call_name="sin", abstract_args=["x"])
+    mul_sinx_y = "mul_sinx_y"
+    mul_sinx_y_fn = pyq.ConcretizedCallable(
+        call_name="mul", 
+        abstract_args=["sin_x", "y"]
+    )    
     embedding = pyq.Embedding(
-        vparam_names=['y'], 
-        fparam_names=['x'], 
+        vparam_names=["y"], 
+        fparam_names=["x"], 
         var_to_call={sin_x: sin_x_fn, mul_sinx_y: mul_sinx_y_fn}
     )
     
