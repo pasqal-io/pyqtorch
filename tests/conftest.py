@@ -510,30 +510,31 @@ def hamevo_generator(
     )
     return generator
 
+
 @pytest.fixture
 def embedding_fixture():
     """
     Fixture for comprehensive embedding tests as specified in issue #272.
-    
+
     This embedding corresponds to the expression y * sin(x) where:
     - y is a trainable parameter (vparam)
     - x is a feature parameter (fparam)
-    
+
     Mathematical representation: θ = y * sin(x)
     """
     import pyqtorch as pyq
-    
-    sin_x, sin_x_fn = "sin_x", pyq.ConcretizedCallable(call_name="sin", abstract_args=["x"])
+
+    sin_x, sin_x_fn = "sin_x", pyq.ConcretizedCallable(
+        call_name="sin", abstract_args=["x"]
+    )
     mul_sinx_y = "mul_sinx_y"
     mul_sinx_y_fn = pyq.ConcretizedCallable(
-        call_name="mul", 
-        abstract_args=["sin_x", "y"]
-    )    
-    embedding = pyq.Embedding(
-        vparam_names=["y"], 
-        fparam_names=["x"], 
-        var_to_call={sin_x: sin_x_fn, mul_sinx_y: mul_sinx_y_fn}
+        call_name="mul", abstract_args=["sin_x", "y"]
     )
-    
-    return embedding
+    embedding = pyq.Embedding(
+        vparam_names=["y"],
+        fparam_names=["x"],
+        var_to_call={sin_x: sin_x_fn, mul_sinx_y: mul_sinx_y_fn},
+    )
 
+    return embedding

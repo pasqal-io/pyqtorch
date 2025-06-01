@@ -462,46 +462,58 @@ def test_tensor_symmetries() -> None:
     assert torch.allclose(Toffoli((0, 2), 1).tensor(), Toffoli((2, 0), 1).tensor())
     assert torch.allclose(Toffoli((1, 2), 0).tensor(), Toffoli((2, 1), 0).tensor())
 
+
 def test_param_gate_embed(embedding_fixture):
     """
     Test embedding functionality with all parametric gates in OPS_PARAM.
-    
+
     Tests both tensor and run methods over random states for all gates in OPS_PARAM.
     Verifies correctness by checking that methods return the same results when:
-    1. Providing embedding in the methods vs 
+    1. Providing embedding in the methods vs
     2. Evaluating beforehand and applying gate with evaluated embedding
-    
+
     Mathematical verification for each gate G:
     G(f(x,y)) |ψ⟩ ≡ G(θ_evaluated) |ψ⟩ where θ_evaluated = y * sin(x)
-    
+
     NOTE: Some gates are skipped due to implementation limitations:
     - U gate: Embeddings not implemented (raises NotImplementedError)
     - CRX, CRY, CRZ: Known numerical inconsistencies with embeddings (controlled rotations)
     """
-    import torch
     import random
+
+    import torch
+
     from pyqtorch.primitives import (
-        OPS_PARAM, RX, RY, RZ, PHASE, CRX, CRY, CRZ, CPHASE, U
+        CPHASE,
+        CRX,
+        CRY,
+        CRZ,
+        OPS_PARAM,
+        PHASE,
+        RX,
+        RY,
+        RZ,
+        U,
     )
-    from pyqtorch.utils import random_state, ATOL, RTOL
-    
+    from pyqtorch.utils import ATOL, RTOL, random_state
+
     # Test parameters
     n_qubits = 4
     batch_size = 3
     embedding = embedding_fixture
-    
+
     # Random parameter values
     x = torch.rand(batch_size, requires_grad=True)
-    y = torch.rand(batch_size, requires_grad=True) 
-    values = {"x": x, "y": y}  
-    
+    y = torch.rand(batch_size, requires_grad=True)
+    values = {"x": x, "y": y}
+
     # Track which gates are tested vs skipped
     tested_gates = []
     skipped_gates = []
-    
+
     # Test each parametric gate
     for gate_class in OPS_PARAM:
-        
+
         # SKIP GATES WITH KNOWN EMBEDDING ISSUES
         if gate_class == U:
             print(f"⚠️ Skipping {gate_class.__name__} - embeddings not implemented")
@@ -511,83 +523,81 @@ def test_param_gate_embed(embedding_fixture):
             print(f"⚠️ Skipping {gate_class.__name__} - numerical inconsistencies")
             skipped_gates.append(gate_class.__name__)
             continue
-        
+
         # Generate appropriate qubit support for SUPPORTED gates only
         if gate_class in [RX, RY, RZ, PHASE]:
             # Single qubit gates
             target = random.randint(0, n_qubits - 1)
-            gate = gate_class(target, param_name="mul_sinx_y") 
+            gate = gate_class(target, param_name="mul_sinx_y")
             qubit_support = (target,)
-            
+
         elif gate_class in [CPHASE]:  # Only CPHASE works reliably with embeddings
             # Controlled phase gate (the only controlled gate that works properly)
             control = random.randint(0, n_qubits - 1)
             target = random.choice([i for i in range(n_qubits) if i != control])
-            gate = gate_class(control, target, param_name="mul_sinx_y")  
+            gate = gate_class(control, target, param_name="mul_sinx_y")
             qubit_support = (control, target)
-        
+
         # If gate is in a supported category, test it
         if gate_class in [RX, RY, RZ, PHASE, CPHASE]:
             # Random initial state
             psi_init = random_state(n_qubits, batch_size)
-            
+
             # Test 1: tensor() method
             # Method A: Direct embedding
             tensor_embed = gate.tensor(values, embedding)
-            
+
             # Method B: Pre-evaluation
             embedded_values = embedding(values)
             tensor_eval = gate.tensor(embedded_values)
-            
-            assert torch.allclose(tensor_embed, tensor_eval, rtol=RTOL, atol=ATOL), (
-                f"Gate {gate_class.__name__} tensor method failed embedding consistency"
-            )
-            
+
+            assert torch.allclose(
+                tensor_embed, tensor_eval, rtol=RTOL, atol=ATOL
+            ), f"Gate {gate_class.__name__} tensor method failed embedding consistency"
+
             # Test 2: run() method (forward pass)
-            # Method A: Direct embedding  
+            # Method A: Direct embedding
             result_embed = gate(psi_init.clone(), values, embedding)
-            
+
             # Method B: Pre-evaluation
             result_eval = gate(psi_init.clone(), embedded_values)
-            
-            assert torch.allclose(result_embed, result_eval, rtol=RTOL, atol=ATOL), (
-                f"Gate {gate_class.__name__} run method failed embedding consistency"
-            )
-            
+
+            assert torch.allclose(
+                result_embed, result_eval, rtol=RTOL, atol=ATOL
+            ), f"Gate {gate_class.__name__} run method failed embedding consistency"
+
             # Test 3: Verify tensor and run give same results (additional consistency check)
             from pyqtorch.apply import apply_operator
-            
+
             # Apply tensor method result manually
             tensor_result = apply_operator(
-                psi_init.clone(), 
-                tensor_embed, 
-                qubit_support
+                psi_init.clone(), tensor_embed, qubit_support
             )
-            
-            assert torch.allclose(result_embed, tensor_result, rtol=RTOL, atol=ATOL), (
-                f"Gate {gate_class.__name__} tensor and run methods inconsistent with embedding"
-            )
-            
+
+            assert torch.allclose(
+                result_embed, tensor_result, rtol=RTOL, atol=ATOL
+            ), f"Gate {gate_class.__name__} tensor and run methods inconsistent with embedding"
+
             print(f"✓ Gate {gate_class.__name__} passed all embedding tests")
             tested_gates.append(gate_class.__name__)
-    
+
     # Summary report
-    print("\n=== EMBEDDING TEST SUMMARY ===") 
+    print("\n=== EMBEDDING TEST SUMMARY ===")
     print(f"✅ Successfully tested gates: {tested_gates}")
     print(f"⚠️ Skipped gates: {skipped_gates}")
     coverage_text = f"{len(tested_gates)}/{len(tested_gates) + len(skipped_gates)}"
     print(f"📊 Coverage: {coverage_text} gates tested")
-    
+
     # Ensure we tested at least some gates
-    assert len(tested_gates) > 0, (
-        "No gates were successfully tested - this indicates a broader issue"
-    )
-    
+    assert (
+        len(tested_gates) > 0
+    ), "No gates were successfully tested - this indicates a broader issue"
+
     # Verify we tested the core single-qubit rotation gates at minimum
-    core_gates = ["RX", "RY", "RZ", "PHASE"] 
+    core_gates = ["RX", "RY", "RZ", "PHASE"]
     tested_core = [gate for gate in core_gates if gate in tested_gates]
-    assert len(tested_core) >= 3, (
-        f"Should test at least 3 core rotation gates, only tested: {tested_core}"
-    )
-    
+    assert (
+        len(tested_core) >= 3
+    ), f"Should test at least 3 core rotation gates, only tested: {tested_core}"
+
     print("✅ All supported gates passed embedding consistency tests!")
