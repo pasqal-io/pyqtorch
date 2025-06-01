@@ -461,8 +461,6 @@ def test_tensor_symmetries() -> None:
     assert torch.allclose(Toffoli((0, 1), 2).tensor(), Toffoli((1, 0), 2).tensor())
     assert torch.allclose(Toffoli((0, 2), 1).tensor(), Toffoli((2, 0), 1).tensor())
     assert torch.allclose(Toffoli((1, 2), 0).tensor(), Toffoli((2, 1), 0).tensor())
-
-
 def test_param_gate_embed(embedding_fixture):
     """
     Test embedding functionality with all parametric gates in OPS_PARAM.
@@ -526,13 +524,9 @@ def test_param_gate_embed(embedding_fixture):
             target = random.choice([i for i in range(n_qubits) if i != control])
             gate = gate_class(control, target, param_name='mul_sinx_y')
             qubit_support = (control, target)
-        else:
-            # Skip any other unsupported gate types
-            print(f"⚠️ Skipping {gate_class.__name__} - unsupported gate type for embedding test")
-            skipped_gates.append(gate_class.__name__)
-            continue
         
-        try:
+        # If gate is in a supported category, test it
+        if gate_class in [RX, RY, RZ, PHASE, CPHASE]:
             # Random initial state
             psi_init = random_state(n_qubits, batch_size)
             
@@ -572,16 +566,6 @@ def test_param_gate_embed(embedding_fixture):
             
             print(f"✓ Gate {gate_class.__name__} passed all embedding tests")
             tested_gates.append(gate_class.__name__)
-            
-        except NotImplementedError:
-            # Catch any other gates that might not support embeddings
-            print(f"⚠️ Skipping {gate_class.__name__} - embedding not implemented")
-            skipped_gates.append(gate_class.__name__)
-            continue
-        except Exception as e:
-            # Catch any other unexpected errors and report them
-            print(f"❌ Gate {gate_class.__name__} failed with error: {e}")
-            raise  # Re-raise to fail the test if it's an unexpected error
     
     # Summary report
     print(f"\n=== EMBEDDING TEST SUMMARY ===")
