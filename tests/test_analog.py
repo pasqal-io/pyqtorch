@@ -34,11 +34,6 @@ from pyqtorch.utils import (
 
 pi = torch.tensor(torch.pi)
 
-
-# =============================================================================
-# EXISTING TESTS - DO NOT MODIFY
-# =============================================================================
-
 def Hamiltonian(batch_size: int = 1) -> torch.Tensor:
     sigmaz = torch.diag(torch.tensor([1.0, -1.0], dtype=DEFAULT_MATRIX_DTYPE))
     Hbase = torch.kron(sigmaz, sigmaz)
@@ -540,15 +535,6 @@ def test_hamevo_is_time_dependent_generator(generator, time_param, result) -> No
     hamevo = HamiltonianEvolution(generator, time_param)
     assert hamevo.is_time_dependent == result
 
-
-# =============================================================================
-# NEW TESTS FOR PARAMETER RE-EMBEDDING - Issue #273
-# =============================================================================
-# These tests validate that parameter re-embedding produces identical results
-# to full embedding when using time-dependent HamiltonianEvolution with 
-# ConcretizedCallable parameters.
-# Reference: https://pasqal-io.github.io/pyqtorch/latest/embed/
-# =============================================================================
 
 @pytest.mark.parametrize("batch_size", [1, 3])
 @pytest.mark.parametrize("n_qubits", [2, 3])
