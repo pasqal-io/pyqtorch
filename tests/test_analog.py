@@ -535,92 +535,6 @@ def test_hamevo_is_time_dependent_generator(generator, time_param, result) -> No
     hamevo = HamiltonianEvolution(generator, time_param)
     assert hamevo.is_time_dependent == result
 
-
-@pytest.mark.parametrize("batch_size", [1, 3])
-@pytest.mark.parametrize("n_qubits", [2, 3])
-def test_hamiltonian_evolution_parameter_reembedding_basic(
-    batch_size: int, n_qubits: int
-) -> None:
-    """
-    Test basic parameter re-embedding functionality in time-dependent HamiltonianEvolution.
-    
-    This test verifies that reembed_tparam produces identical results to full embedding
-    for a simple time-dependent generator using sin(t) and t^2 terms.
-    
-    Mathematical verification:
-    H(t) = ω[y·sin(t)·σₓ⊗I + x·t²·I⊗σᵧ]
-    
-    The test ensures that:
-    embedding.embed_all() ≡ embedding.reembed_tparam() 
-    for different time values, up to numerical precision.
-    """
-    # Create time-dependent parameter expressions using ConcretizedCallable
-    tparam = "t"
-    sin_t, sin_t_fn = "sin_t", ConcretizedCallable("sin", [tparam])
-    t_sq, t_sq_fn = "t_sq", ConcretizedCallable("mul", [tparam, tparam])
-    
-    # Create a complex generator with nested dependencies
-    # H(t) = ω[y·sin(t)·X(0) + x·t²·Y(1)]  
-    omega = 2.5
-    generator = Scale(
-        Add([
-            Scale(Scale(pyq.X(0), sin_t), "y"),    # y·sin(t)·X(0)
-            Scale(Scale(pyq.Y(1), t_sq), "x"),     # x·t²·Y(1)
-        ]),
-        omega
-    )
-    
-    # Create embedding with time parameter tracking
-    embedding = pyq.Embedding(
-        vparam_names=["x", "y"],           # Variational parameters
-        fparam_names=[],                   # No feature parameters
-        var_to_call={sin_t: sin_t_fn, t_sq: t_sq_fn},  # Time-dependent mappings
-        tparam_name=tparam,               # Track time parameter
-    )
-    
-    # Create HamiltonianEvolution
-    hamevo = pyq.HamiltonianEvolution(
-        generator=generator,
-        time=tparam,
-        qubit_support=tuple(range(n_qubits))
-    )
-    
-    # Test parameters - INCLUDE time parameter from the start
-    x_val = torch.rand(batch_size, requires_grad=True)
-    y_val = torch.rand(batch_size, requires_grad=True)
-    base_values = {"x": x_val, "y": y_val, tparam: torch.tensor(0.0)}  # Include time
-    
-    # Test multiple time values to ensure robustness
-    test_times = [0.0, 0.5, 1.0, 1.5708, 3.14159]  # Include 0, π/2, π
-    
-    for t_val in test_times:
-        values_full = base_values.copy()
-        values_full[tparam] = torch.tensor(t_val)
-        
-        # Method 1: Full embedding (recalculates everything)
-        embedded_full = embedding.embed_all(values_full.copy())
-        evolved_op_full = hamevo.tensor(values=embedded_full, embedding=None)
-        
-        # Method 2: Re-embedding (only recalculates time-dependent parameters)
-        embedded_base = embedding.embed_all(base_values.copy())
-        embedded_reembed = embedding.reembed_tparam(
-            embedded_base.copy(), torch.tensor(t_val)
-        )
-        evolved_op_reembed = hamevo.tensor(values=embedded_reembed, embedding=None)
-        
-        # Verify mathematical equivalence
-        assert torch.allclose(
-            evolved_op_full, evolved_op_reembed, 
-            rtol=1e-12, atol=1e-14
-        ), f"Re-embedding failed for t={t_val}. Max diff: {torch.max(torch.abs(evolved_op_full - evolved_op_reembed))}"
-        
-        # Verify that tracked variables are correctly identified
-        expected_tracked = {sin_t, t_sq}  # Both depend on time
-        assert set(embedding.tracked_vars) == expected_tracked, (
-            f"Expected tracked vars {expected_tracked}, got {set(embedding.tracked_vars)}"
-        )
-
-
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_hamiltonian_evolution_parameter_reembedding_complex(batch_size: int) -> None:
     """
@@ -647,11 +561,14 @@ def test_hamiltonian_evolution_parameter_reembedding_complex(batch_size: int) ->
     base_expr, base_fn = "base_expr", ConcretizedCallable("mul", ["x", "theta"])
     
     # Layer 2: time-dependent expressions  
-    base_times_t, base_times_t_fn = "base_times_t", ConcretizedCallable("mul", ["base_expr", tparam])
+    base_times_t, base_times_t_fn = (
+        "base_times_t", 
+        ConcretizedCallable("mul", ["base_expr", tparam])
+    )
     sin_base_t, sin_base_t_fn = "sin_base_t", ConcretizedCallable("sin", ["base_times_t"])
     cos_t, cos_t_fn = "cos_t", ConcretizedCallable("cos", [tparam])
     
-    # Layer 3: binary multiplication chains (omega * y * sin_base_t becomes (omega * y) * sin_base_t)
+    # Layer 3: binary multiplication chains 
     omega_y, omega_y_fn = "omega_y", ConcretizedCallable("mul", ["omega", "y"])
     term1, term1_fn = "term1", ConcretizedCallable("mul", ["omega_y", "sin_base_t"])
     term2, term2_fn = "term2", ConcretizedCallable("mul", ["alpha", "cos_t"])
@@ -691,7 +608,7 @@ def test_hamiltonian_evolution_parameter_reembedding_complex(batch_size: int) ->
         "y": torch.tensor(2.0),
         "omega": torch.tensor(1.2),
         "alpha": torch.tensor(0.7),
-        tparam: torch.tensor(0.0),  # Include time parameter
+        tparam: torch.tensor(0.0),
     }
     
     # Test different time values
@@ -724,9 +641,9 @@ def test_hamiltonian_evolution_parameter_reembedding_complex(batch_size: int) ->
         }
         actual_tracked = set(embedding.tracked_vars)
         assert expected_tracked <= actual_tracked, (
-            f"Missing tracked variables. Expected subset {expected_tracked}, got {actual_tracked}"
+            f"Missing tracked vars: expected {expected_tracked}, "
+            f"got {actual_tracked}"
         )
-
 
 def test_hamiltonian_evolution_parameter_reembedding_state_evolution() -> None:
     """
@@ -817,7 +734,7 @@ def test_hamiltonian_evolution_parameter_reembedding_edge_cases() -> None:
     
     # Case 1: Mixed time-dependent and time-independent parameters
     sin_t, sin_t_fn = "sin_t", ConcretizedCallable("sin", [tparam])
-    const_expr, const_expr_fn = "const_expr", ConcretizedCallable("mul", ["a", "b"])  # No time dependence
+    const_expr, const_expr_fn = "const_expr", ConcretizedCallable("mul", ["a", "b"])
     
     generator = Add([
         Scale(pyq.X(0), sin_t),       # Time-dependent  
@@ -844,8 +761,9 @@ def test_hamiltonian_evolution_parameter_reembedding_edge_cases() -> None:
     
     # Verify tracking: only sin_t should be tracked
     assert sin_t in embedding.tracked_vars, "sin_t should be tracked (depends on time)"
-    assert const_expr not in embedding.tracked_vars, "const_expr should not be tracked (time-independent)"
-    
+    assert const_expr not in embedding.tracked_vars, (
+        "const_expr should not be tracked (time-independent)"
+    )    
     # Case 2: Zero time evolution should work
     embedded_zero = embedding.reembed_tparam(embedded_base.copy(), torch.tensor(0.0))
     op_zero = hamevo.tensor(values=embedded_zero, embedding=None)
@@ -966,3 +884,89 @@ def test_hamiltonian_evolution_parameter_reembedding_performance_verification(
     assert expected_tracked <= actual_tracked, (
         f"Missing tracked parameters: {expected_tracked - actual_tracked}"
     )
+
+@pytest.mark.parametrize("batch_size", [1, 3])
+@pytest.mark.parametrize("n_qubits", [2, 3])
+def test_hamiltonian_evolution_parameter_reembedding_basic(
+    batch_size: int, n_qubits: int
+) -> None:
+    """
+    Test basic parameter re-embedding functionality in time-dependent HamiltonianEvolution.
+    
+    This test verifies that reembed_tparam produces identical results to full embedding
+    for a simple time-dependent generator using sin(t) and t^2 terms.
+    
+    Mathematical verification:
+    H(t) = ω[y·sin(t)·σₓ⊗I + x·t²·I⊗σᵧ]
+    
+    The test ensures that:
+    embedding.embed_all() ≡ embedding.reembed_tparam() 
+    for different time values, up to numerical precision.
+    """
+    # Create time-dependent parameter expressions using ConcretizedCallable
+    tparam = "t"
+    sin_t, sin_t_fn = "sin_t", ConcretizedCallable("sin", [tparam])
+    t_sq, t_sq_fn = "t_sq", ConcretizedCallable("mul", [tparam, tparam])
+    
+    # Create a complex generator with nested dependencies
+    # H(t) = ω[y·sin(t)·X(0) + x·t²·Y(1)]  
+    omega = 2.5
+    generator = Scale(
+        Add([
+            Scale(Scale(pyq.X(0), sin_t), "y"),    # y·sin(t)·X(0)
+            Scale(Scale(pyq.Y(1), t_sq), "x"),     # x·t²·Y(1)
+        ]),
+        omega
+    )
+    
+    # Create embedding with time parameter tracking
+    embedding = pyq.Embedding(
+        vparam_names=["x", "y"],           # Variational parameters
+        fparam_names=[],                   # No feature parameters
+        var_to_call={sin_t: sin_t_fn, t_sq: t_sq_fn},  # Time-dependent mappings
+        tparam_name=tparam,               # Track time parameter
+    )
+    
+    # Create HamiltonianEvolution
+    hamevo = pyq.HamiltonianEvolution(
+        generator=generator,
+        time=tparam,
+        qubit_support=tuple(range(n_qubits))
+    )
+    
+    # Test parameters - INCLUDE time parameter from the start
+    x_val = torch.rand(batch_size, requires_grad=True)
+    y_val = torch.rand(batch_size, requires_grad=True)
+    base_values = {"x": x_val, "y": y_val, tparam: torch.tensor(0.0)}  # Include time
+    
+    # Test multiple time values to ensure robustness
+    test_times = [0.0, 0.5, 1.0, 1.5708, 3.14159]  # Include 0, π/2, π
+    
+    for t_val in test_times:
+        values_full = base_values.copy()
+        values_full[tparam] = torch.tensor(t_val)
+        
+        # Method 1: Full embedding (recalculates everything)
+        embedded_full = embedding.embed_all(values_full.copy())
+        evolved_op_full = hamevo.tensor(values=embedded_full, embedding=None)
+        
+        # Method 2: Re-embedding (only recalculates time-dependent parameters)
+        embedded_base = embedding.embed_all(base_values.copy())
+        embedded_reembed = embedding.reembed_tparam(
+            embedded_base.copy(), torch.tensor(t_val)
+        )
+        evolved_op_reembed = hamevo.tensor(values=embedded_reembed, embedding=None)
+        
+        # Verify mathematical equivalence
+        assert torch.allclose(
+            evolved_op_full, evolved_op_reembed, 
+            rtol=1e-12, atol=1e-14
+        ), (
+            f"Re-embedding failed for t={t_val}. "
+            f"Max diff: {torch.max(torch.abs(evolved_op_full - evolved_op_reembed))}"
+        )
+        # Verify that tracked variables are correctly identified
+        expected_tracked = {sin_t, t_sq}  # Both depend on time
+        assert set(embedding.tracked_vars) == expected_tracked, (
+            f"Expected tracked vars {expected_tracked}, got {set(embedding.tracked_vars)}"
+        )
