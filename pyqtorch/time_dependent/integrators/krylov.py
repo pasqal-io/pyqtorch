@@ -31,15 +31,13 @@ class KrylovIntegrator:
 
     def run(self) -> Tensor:
 
-        out = []
-        for i in range(self.y0.shape[1]):
-            # run the Krylov routine
-            result = []
-            y = self.y0[:, i : i + 1]
-            t = self.t0
-            for tnext in self.tsave:
-                y = self.integrate(t, tnext, y)
-                result.append(y.T)
-                t = tnext
-            out.append(torch.cat(result))
-        return torch.stack(out, dim=2)
+        # run the Krylov routine
+        result = []
+        y = self.y0
+        t = self.t0
+        for tnext in self.tsave:
+            y = self.integrate(t, tnext, y)
+            result.append(y)
+            t = tnext
+
+        return torch.stack(result, dim=0)
