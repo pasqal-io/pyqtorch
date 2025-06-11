@@ -5,7 +5,7 @@ from typing import Any, Tuple
 
 from torch import Tensor, no_grad
 from torch.autograd import Function
-
+from pyqtorch.embed import ConcretizedCallable
 from pyqtorch.apply import apply_operator
 from pyqtorch.circuit import QuantumCircuit
 from pyqtorch.composite import Scale
@@ -13,6 +13,9 @@ from pyqtorch.embed import Embedding
 from pyqtorch.hamiltonians import HamiltonianEvolution, Observable
 from pyqtorch.primitives import Parametric, Primitive
 from pyqtorch.utils import inner_prod, param_dict
+from frozendict import frozendict
+
+import pdb
 
 logger = getLogger(__name__)
 
@@ -64,19 +67,26 @@ class AdjointExpectation(Function):
             msg = "AdjointExpectation does not support Embedding."
             logger.error(msg)
             raise NotImplementedError(msg)
+        ctx.save_for_backward(*param_values)
         ctx.out_state = circuit.run(state, values, embedding)
         ctx.projected_state = observable(ctx.out_state, values)
-        ctx.save_for_backward(*param_values)
         return inner_prod(ctx.out_state, ctx.projected_state).real
 
     @staticmethod
     @no_grad()
     def backward(ctx: Any, grad_out: Tensor) -> Tuple[None, ...]:
-        param_values = ctx.saved_tensors
-        values = param_dict(ctx.param_names, param_values)
-        grads_dict = {k: None for k in values.keys()}
+
+        if ctx.embedding is None:
+            values = param_dict(ctx.param_names, ctx.saved_tensors)
+            param_names = ctx.param_names
+        else:
+            param_values = param_dict(ctx.param_names, ctx.saved_tensors)
+            values = ctx.embedding.embed_all(param_values)
+
+        grads_dict = {k: None for k in param_names}
         for op in ctx.circuit.flatten()[::-1]:
             if isinstance(op, (Primitive, Parametric, HamiltonianEvolution)):
+
                 ctx.out_state = apply_operator(
                     ctx.out_state, op.dagger(values, ctx.embedding), op.qubit_support
                 )
@@ -84,7 +94,11 @@ class AdjointExpectation(Function):
                     isinstance(op, (Parametric, HamiltonianEvolution))
                     and op.is_parametric
                 ):
-                    param_name: str = op.param_name  # type: ignore[assignment]
+                    if isinstance(op.param_name, ConcretizedCallable):
+                        param_name = op.param_name.independent_args[0]
+                    else:
+                        param_name: str = op.param_name  # type: ignore[assignment]
+                    print("param_name:", param_name)
                     if values[param_name].requires_grad:
                         mu = apply_operator(
                             ctx.out_state,
@@ -92,11 +106,12 @@ class AdjointExpectation(Function):
                             op.qubit_support,
                         )
                         grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
-                    if grads_dict[param_name] is not None:
-                        grads_dict[param_name] += grad
-                    else:
-                        grads_dict[param_name] = grad
 
+                        if grads_dict[param_name] is not None:
+                            grads_dict[param_name] += grad
+                        else:
+                            grads_dict[param_name] = grad
+                        print("grads_dict:",grads_dict)
                 ctx.projected_state = apply_operator(
                     ctx.projected_state,
                     op.dagger(values, ctx.embedding),
@@ -134,6 +149,7 @@ class AdjointExpectation(Function):
 
                 if values[op.param_name].requires_grad:  # type: ignore [index]
                     grads_dict[op.param_name] = grad_out * 2 * -values[op.param_name]  # type: ignore [index]
+
                 ctx.projected_state = apply_operator(
                     ctx.projected_state,
                     op.dagger(values, ctx.embedding),
