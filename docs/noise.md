@@ -68,6 +68,9 @@ K_{2} \ =\sqrt{1\ -p} \ \begin{pmatrix}
 \sqrt{\ \gamma } & 0
 \end{pmatrix}
 \end{cases}$
+* The two-qubit depolarizing channel: described by mapping an input a density matrix $\rho$ to the Kraus representation $\sum_i p_i  K_i \rho K_i^{\dagger}$ where the $K_i$ are the 16 possible two-qubit pauli matrices. We implement the case where it is described with a single probability input $p$:
+$\textbf{TwoQubitDepolarizing}(\rho) = (1-p) \rho + \frac{p}{15} (IX \rho IX + IY \rho IY + ... + ZZ \rho ZZ)$
+* The two-qubit dephasing channel: with a Kraus representation: $\textbf{TwoQubitDephasing}(\rho) = (1-p) \rho + \frac{1}{3} (IZ \rho IZ + ZI \rho ZI + ZZ \rho ZZ)$
 
  Noise gates are `Primitive` types, but they also request a `probability` argument to represent the noise affecting the system. And either a vector or a density matrix can be used as an input, but the output will always be a density matrix.
 
