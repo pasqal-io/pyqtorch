@@ -368,3 +368,45 @@ def test_all_diff_singlegap(
         # check second order gradients
         for j in range(len(gradgrad_ad)):
             assert torch.allclose(gradgrad_ad[j], gradgrad_gpsr[j], atol=GRADCHECK_ATOL)
+
+
+@pytest.mark.parametrize("call_name", ["sin", "cos"])
+@pytest.mark.parametrize("gates", [pyq.RX, pyq.RY, pyq.RZ])
+def test_concretized_callable_differentiation(call_name, gates):
+
+    x = torch.rand(1, requires_grad=True)
+    fn = pyq.ConcretizedCallable(
+        call_name=call_name, abstract_args=["x"], engine_name="torch"
+    )
+    circ = pyq.QuantumCircuit(1, [gates(0, fn)])
+    state = pyq.zero_state(1)
+    obs = pyq.Observable([pyq.Z(0)])
+    values = {"x": x}
+    expval = pyq.expectation(
+        circuit=circ,
+        state=state,
+        values=values,
+        observable=obs,
+        diff_mode=pyq.DiffMode.ADJOINT,
+    )
+
+    grad = torch.autograd.grad(
+        expval, tuple(values.values()), torch.ones_like(expval), retain_graph=True
+    )
+
+    values = {"x": x, call_name: fn(x)}
+    _circ = pyq.QuantumCircuit(1, [gates(0, call_name)])
+    _expval = pyq.expectation(
+        circuit=_circ,
+        state=state,
+        values=values,
+        observable=obs,
+        diff_mode=pyq.DiffMode.ADJOINT,
+    )
+
+    _grad = torch.autograd.grad(
+        _expval, tuple(values.values()), torch.ones_like(_expval), retain_graph=True
+    )
+
+    assert expval == _expval
+    assert grad == _grad
