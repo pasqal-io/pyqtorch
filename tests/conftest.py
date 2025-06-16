@@ -185,7 +185,7 @@ def random_noise_gate(n_qubits: int) -> Any:
 
 
 @pytest.fixture
-def random_noisy_protocol() -> Any:
+def random_noisy_protocol(n_qubits: int, target: int) -> Any:
     noise_type = random.choice(list(DigitalNoiseType))
     if noise_type == DigitalNoiseType.PAULI_CHANNEL:
         noise_prob = torch.rand(size=(3,))
@@ -196,6 +196,15 @@ def random_noisy_protocol() -> Any:
         noise_prob = torch.rand(size=(2,))
     else:
         noise_prob = torch.rand(size=(1,)).item()
+
+    # Set the target for two-qubit noise protocols
+    if noise_type in [
+        DigitalNoiseType.TWO_QUBIT_DEPHASING,
+        DigitalNoiseType.TWO_QUBIT_DEPOLARIZING,
+    ]:
+        control = random.choice([i for i in range(n_qubits) if i != target])
+        noise_target: int | tuple[int, int] = (control, target)
+        return DigitalNoiseProtocol(noise_type, noise_prob, target=noise_target)
     return DigitalNoiseProtocol(noise_type, noise_prob)
 
 
@@ -209,12 +218,27 @@ def random_noisy_unitary_gate(
     ROTATION_GATES = [RX, RY, RZ, PHASE]
     CONTROLLED_GATES = [CNOT, CY, CZ]
     ROTATION_CONTROL_GATES = [CRX, CRY, CRZ, CPHASE]
-    UNITARY_GATES = (
-        SINGLE_GATES + ROTATION_GATES + CONTROLLED_GATES + ROTATION_CONTROL_GATES
+    UNITARY_GATES: list[
+        type[ControlledRotationGate | ControlledPrimitive | Parametric | Primitive]
+    ] = (SINGLE_GATES + ROTATION_GATES + CONTROLLED_GATES + ROTATION_CONTROL_GATES)
+    control = random.choice([i for i in range(n_qubits) if i != target])
+    is_two_qubit_noise = (
+        random_noisy_protocol.noise_instances[0].type
+        == DigitalNoiseType.TWO_QUBIT_DEPHASING
+        or random_noisy_protocol.noise_instances[0].type
+        == DigitalNoiseType.TWO_QUBIT_DEPOLARIZING
     )
+    if is_two_qubit_noise:
+        # For two-qubit noise protocols, we only two qubit gates
+        UNITARY_GATES = CONTROLLED_GATES + ROTATION_CONTROL_GATES
+        control = random_noisy_protocol.target[0]  # type: ignore[union-attr]
     unitary_gate = random.choice(UNITARY_GATES)
     protocol_gates, protocol_info = random_noisy_protocol.gates[0]
-    noise_gate = protocol_gates(target, protocol_info.error_probability)
+
+    if is_two_qubit_noise:
+        noise_gate = protocol_gates((control, target), protocol_info.error_probability)  # type: ignore[call-arg]
+    else:
+        noise_gate = protocol_gates(target, protocol_info.error_probability)
     if unitary_gate in SINGLE_GATES:
         return (
             unitary_gate(target=target, noise=random_noisy_protocol),  # type: ignore[call-arg]
@@ -230,14 +254,12 @@ def random_noisy_unitary_gate(
             noise_gate,
         )
     if unitary_gate in CONTROLLED_GATES:
-        control = random.choice([i for i in range(n_qubits) if i != target])
         return (
             unitary_gate(control=control, target=target, noise=random_noisy_protocol),  # type: ignore[call-arg]
             unitary_gate(control=control, target=target),  # type: ignore[call-arg]
             noise_gate,
         )
     if unitary_gate in ROTATION_CONTROL_GATES:
-        control = random.choice([i for i in range(n_qubits) if i != target])
         return (
             unitary_gate(
                 control=control,
@@ -509,3 +531,32 @@ def hamevo_generator(
         omega,
     )
     return generator
+
+
+@pytest.fixture
+def embedding_fixture():
+    """
+    Fixture for comprehensive embedding tests as specified in issue #272.
+
+    This embedding corresponds to the expression y * sin(x) where:
+    - y is a trainable parameter (vparam)
+    - x is a feature parameter (fparam)
+
+    Mathematical representation: θ = y * sin(x)
+    """
+    import pyqtorch as pyq
+
+    sin_x, sin_x_fn = "sin_x", pyq.ConcretizedCallable(
+        call_name="sin", abstract_args=["x"]
+    )
+    mul_sinx_y = "mul_sinx_y"
+    mul_sinx_y_fn = pyq.ConcretizedCallable(
+        call_name="mul", abstract_args=["sin_x", "y"]
+    )
+    embedding = pyq.Embedding(
+        vparam_names=["y"],
+        fparam_names=["x"],
+        var_to_call={sin_x: sin_x_fn, mul_sinx_y: mul_sinx_y_fn},
+    )
+
+    return embedding

@@ -178,3 +178,116 @@ def test_sample_run() -> None:
     assert torch.allclose(wf, product_state("1100"))
     assert torch.allclose(pyq.QuantumCircuit(4, [pyq.I(0)]).run("1100"), wf)
     assert "1100" in samples[0]
+
+
+def test_embedding_with_composite_gates(embedding_fixture):
+    """
+    Test embedding functionality with composite gates (Sequence, Add, Scale).
+
+    Verifies that the tensor and run methods return the same results when:
+    1. Providing the embedding in the methods directly
+    2. Evaluating the embedding beforehand and applying gates with evaluated values
+
+    Mathematical verification:
+    U_composite(f(x,y)) |ψ⟩ ≡ U_composite(θ_evaluated) |ψ⟩
+    where θ_evaluated = f(x,y) = y * sin(x)
+    """
+    import torch
+
+    import pyqtorch as pyq
+    from pyqtorch.composite import Add, Scale, Sequence
+
+    # Test parameters
+    n_qubits = 3
+    batch_size = 2
+    x = torch.rand(batch_size, requires_grad=True)
+    y = torch.rand(batch_size, requires_grad=True)
+    values = {"x": x, "y": y}
+
+    # Random initial state
+    state = pyq.random_state(n_qubits, batch_size)
+
+    # Create composite operations with embeddings
+    embedding = embedding_fixture
+
+    # Test 1: Sequence
+    ops_sequence = [
+        pyq.RX(0, param_name="mul_sinx_y"),
+        pyq.RY(1, param_name="mul_sinx_y"),
+        pyq.RZ(2, param_name="mul_sinx_y"),
+    ]
+    sequence_op = Sequence(ops_sequence)
+
+    # Method 1: Direct embedding
+    result_sequence_embed = sequence_op(state.clone(), values, embedding)
+
+    # Method 2: Pre-evaluation
+    embedded_values = embedding(values)
+    result_sequence_eval = sequence_op(state.clone(), embedded_values)
+
+    assert torch.allclose(
+        result_sequence_embed, result_sequence_eval, atol=1e-6
+    ), "Sequence with embedding should match pre-evaluated sequence"
+
+    # Test 2: Add
+    ops_add = [
+        pyq.Scale(pyq.X(0), "mul_sinx_y"),
+        pyq.Scale(pyq.Y(1), "mul_sinx_y"),
+        pyq.Scale(pyq.Z(2), "mul_sinx_y"),
+    ]
+    add_op = Add(ops_add)
+
+    # Method 1: Direct embedding
+    result_add_embed = add_op(state.clone(), values, embedding)
+
+    # Method 2: Pre-evaluation
+    result_add_eval = add_op(state.clone(), embedded_values)
+
+    assert torch.allclose(
+        result_add_embed, result_add_eval, atol=1e-6
+    ), "Add with embedding should match pre-evaluated Add"
+
+    # Test 3: Scale - FIXED: Use a non-parametric operation that Scale accepts
+    # Scale expects a Primitive, Sequence, or Add - not a Parametric operation
+    base_primitive = pyq.X(0)  # Use a simple Primitive instead of parametric gate
+    scale_op = Scale(base_primitive, "mul_sinx_y")
+
+    # Method 1: Direct embedding
+    result_scale_embed = scale_op(state.clone(), values, embedding)
+
+    # Method 2: Pre-evaluation
+    result_scale_eval = scale_op(state.clone(), embedded_values)
+
+    assert torch.allclose(
+        result_scale_embed, result_scale_eval, atol=1e-6
+    ), "Scale with embedding should match pre-evaluated Scale"
+
+    # Test 4: Additional Scale test with Sequence (which Scale accepts)
+    sequence_for_scale = Sequence([pyq.RX(1, param_name="theta")])
+    scale_sequence_op = Scale(sequence_for_scale, "mul_sinx_y")
+
+    # Add theta parameter for the sequence
+    test_values = {**values, "theta": torch.rand(batch_size)}
+
+    # Method 1: Direct embedding
+    result_scale_seq_embed = scale_sequence_op(state.clone(), test_values, embedding)
+
+    # Method 2: Pre-evaluation
+    embedded_test_values = embedding(test_values)
+    result_scale_seq_eval = scale_sequence_op(state.clone(), embedded_test_values)
+
+    assert torch.allclose(
+        result_scale_seq_embed, result_scale_seq_eval, atol=1e-6
+    ), "Scale with Sequence embedding should match pre-evaluated Scale with Sequence"
+
+    # Test 5: Tensor method verification for all composite types
+    for op, name in [(sequence_op, "Sequence"), (add_op, "Add"), (scale_op, "Scale")]:
+        # Tensor method with embedding
+        tensor_embed = op.tensor(values, embedding)
+
+        # Tensor method with pre-evaluation
+        tensor_eval = op.tensor(embedded_values)
+
+        assert torch.allclose(
+            tensor_embed, tensor_eval, atol=1e-6
+        ), f"{name} tensor method with embedding should match pre-evaluated tensor"
