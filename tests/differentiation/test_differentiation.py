@@ -443,6 +443,5 @@ def test_concretized_callable_differentiation(call_name, gate):
         retain_graph=True,
         allow_unused=True,
     )
-    print("Grad:", grad, _grad)
     assert expval == _expval
     assert torch.allclose(_grad[0], grad[0])
