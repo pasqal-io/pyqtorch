@@ -54,7 +54,7 @@ class AdjointExpectation(Function):
         state: Tensor,
         observable: Observable,
         embedding: Embedding | None,
-        param_names: list[str],
+        param_names: list[str | ConcretizedCallable],
         *param_values: Tensor,
     ) -> Tensor:
         ctx.circuit = circuit
@@ -68,11 +68,17 @@ class AdjointExpectation(Function):
         values = param_dict(param_names, param_values)
         ctx.out_state = circuit.run(state, values, embedding)
         ctx.projected_state = observable(ctx.out_state, values)
+
         for op in ctx.circuit.flatten()[::-1]:
-            if isinstance(op.param_name, ConcretizedCallable):
-                if op.is_parametric and op.param_name not in ctx.param_names:
+            if op.is_parametric:
+                if (
+                    isinstance(op.param_name, ConcretizedCallable)
+                    and op.param_name not in ctx.param_names
+                ):
                     torch.set_grad_enabled(True)
-                    values[op.param_name] = op.param_name(values).requires_grad_()
+                    values[op.param_name] = op.param_name.evaluate(
+                        values
+                    ).requires_grad_()
                     ctx.param_names.append(op.param_name)
                 torch.set_grad_enabled(False)
 
@@ -87,6 +93,20 @@ class AdjointExpectation(Function):
         param_names = ctx.param_names
         grads_dict = {k: None for k in param_names}
 
+        def _calculate_grad(arg_name: str) -> None:
+
+            if values[arg_name].requires_grad:
+                mu = apply_operator(
+                    ctx.out_state,
+                    op.jacobian(values, ctx.embedding),
+                    op.qubit_support,
+                )
+                grad = grad_out * 2 * inner_prod(ctx.projected_state, mu).real
+                if grads_dict[arg_name] is not None:
+                    grads_dict[arg_name] += grad
+                else:
+                    grads_dict[arg_name] = grad
+
         for op in ctx.circuit.flatten()[::-1]:
             if isinstance(op, (Primitive, Parametric, HamiltonianEvolution)):
 
@@ -97,43 +117,38 @@ class AdjointExpectation(Function):
                     isinstance(op, (Parametric, HamiltonianEvolution))
                     and op.is_parametric
                 ):
-                    if isinstance(op.param_name, ConcretizedCallable):
-                        grads_dict[op.param_name] = None
-
                     param_name: str = op.param_name  # type: ignore[assignment]
 
-                    def calculate_grad(argname):
-                        if values[argname].requires_grad:
-                            mu = apply_operator(
-                                ctx.out_state,
-                                op.jacobian(values, ctx.embedding),
-                                op.qubit_support,
-                            )
-                            grad = (
-                                grad_out * 2 * inner_prod(ctx.projected_state, mu).real
-                            )
-                            if grads_dict[argname] is not None:
-                                grads_dict[argname] += grad
-                            else:
-                                grads_dict[argname] = grad
-
                     if isinstance(param_name, str):
-                        calculate_grad(param_name)
+                        _calculate_grad(param_name)
+
                     if isinstance(param_name, ConcretizedCallable):
-                        calculate_grad(param_name)
-                        grad = grads_dict[op.param_name]
-                        for argname in op.param_name.independent_args:
-                            grads_dict[argname] = deepcopy(grad)
-                            if grads_dict[argname] is not None:
-                                grads_dict[argname] *= deepcopy(
-                                    torch.autograd.grad(
-                                        values[op.param_name],
-                                        values[argname],
-                                        retain_graph=True,
-                                    )[0]
-                                )
+                        #  and op.param_name not in ctx.param_names:
+                        grads_dict[op.param_name] = None
+
+                        _calculate_grad(arg_name=param_name)
+
+                        f = lambda x: torch.autograd.grad(
+                            values[param_name], values[x], retain_graph=True
+                        )[0]
+
+                        grads_dict.update(
+                            zip(
+                                param_name.independent_args,
+                                map(f, param_name.independent_args),
+                            )
+                        )
+                        f = lambda x: grads_dict[x] * deepcopy(grads_dict[param_name])
+
+                        grads_dict.update(
+                            zip(
+                                param_name.independent_args,
+                                map(f, param_name.independent_args),
+                            )
+                        )
 
                         del grads_dict[op.param_name]
+
                 ctx.projected_state = apply_operator(
                     ctx.projected_state,
                     op.dagger(values, ctx.embedding),
@@ -181,6 +196,4 @@ class AdjointExpectation(Function):
                 logger.error(
                     f"AdjointExpectation does not support operation: {type(op)}."
                 )
-            print("grads_dict", grads_dict)
-        print("grads_dict", grads_dict)
         return (None, None, None, None, None, *grads_dict.values())
