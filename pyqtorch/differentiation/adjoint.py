@@ -65,7 +65,7 @@ class AdjointExpectation(Function):
             msg = "AdjointExpectation does not support Embedding."
             logger.error(msg)
             raise NotImplementedError(msg)
-        values = param_dict(param_names, param_values)
+        values = param_dict(param_names, param_values)  # type: ignore
         ctx.out_state = circuit.run(state, values, embedding)
         ctx.projected_state = observable(ctx.out_state, values)
 
@@ -76,7 +76,7 @@ class AdjointExpectation(Function):
                     and op.param_name not in ctx.param_names
                 ):
                     torch.set_grad_enabled(True)
-                    values[op.param_name] = op.param_name.evaluate(
+                    values[op.param_name] = op.param_name.evaluate(  # type: ignore
                         values
                     ).requires_grad_()
                     ctx.param_names.append(op.param_name)
