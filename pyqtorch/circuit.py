@@ -10,8 +10,10 @@ from torch import Tensor, bernoulli, tensor
 from torch.nn import Module, ParameterDict
 
 from pyqtorch.composite import Sequence
-from pyqtorch.embed import Embedding
+from pyqtorch.embed import ConcretizedCallable, Embedding
+from pyqtorch.hamiltonians import HamiltonianEvolution
 from pyqtorch.noise.readout import ReadoutInterface as Readout
+from pyqtorch.primitives import Parametric
 from pyqtorch.utils import (
     DensityMatrix,
     DropoutMode,
@@ -54,6 +56,19 @@ class QuantumCircuit(Sequence):
 
         # keep in memory for differentiation
         self._flattened_ops = self.flatten()
+
+        self._gpsr_ops = [
+            op
+            for op in self._flattened_ops
+            if isinstance(op, (Parametric, HamiltonianEvolution)) and op.is_parametric
+        ]
+
+        self._concretized_param_ops = [
+            op
+            for op in self._flattened_ops
+            if hasattr(op, "param_name")
+            and isinstance(op.param_name, ConcretizedCallable)
+        ]
 
     def run(
         self,
