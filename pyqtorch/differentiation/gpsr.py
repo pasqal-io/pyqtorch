@@ -302,7 +302,7 @@ class PSRExpectation(Function):
                 grad_contrib = vjp(param_uuid, spectral_gap, values, shift_prefac)
                 grads[param_name] += grad_contrib.reshape(grads[param_name].shape)  # type: ignore[attr-defined]
 
-        for op in ctx.circuit.flatten():
+        for op in ctx.circuit._flattened_ops:
 
             if isinstance(op, (Parametric, HamiltonianEvolution)) and op.is_parametric:
                 if values[op.param_name].requires_grad:  # type: ignore[index]
@@ -351,7 +351,7 @@ def check_support_psr(circuit: QuantumCircuit):
     """
 
     param_names = list()
-    for op in circuit.flatten():
+    for op in circuit._flattened_ops:
         if isinstance(op, Scale):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."

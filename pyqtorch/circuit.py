@@ -52,6 +52,9 @@ class QuantumCircuit(Sequence):
         self.n_qubits = n_qubits
         self.readout_noise = readout_noise
 
+        # keep in memory for differentiation
+        self._flattened_ops = self.flatten()
+
     def run(
         self,
         state: Tensor = None,

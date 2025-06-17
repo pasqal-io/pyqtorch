@@ -69,7 +69,7 @@ class AdjointExpectation(Function):
         ctx.out_state = circuit.run(state, values, embedding)
         ctx.projected_state = observable(ctx.out_state, values)
 
-        for op in ctx.circuit.flatten()[::-1]:
+        for op in ctx.circuit._flattened_ops[::-1]:
             if op.is_parametric:
                 if (
                     isinstance(op.param_name, ConcretizedCallable)
@@ -107,7 +107,7 @@ class AdjointExpectation(Function):
                 else:
                     grads_dict[arg_name] = grad
 
-        for op in ctx.circuit.flatten()[::-1]:
+        for op in ctx.circuit._flattened_ops[::-1]:
             if isinstance(op, (Primitive, Parametric, HamiltonianEvolution)):
 
                 ctx.out_state = apply_operator(
