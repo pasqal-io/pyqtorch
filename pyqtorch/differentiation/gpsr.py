@@ -302,31 +302,30 @@ class PSRExpectation(Function):
                 grad_contrib = vjp(param_uuid, spectral_gap, values, shift_prefac)
                 grads[param_name] += grad_contrib.reshape(grads[param_name].shape)  # type: ignore[attr-defined]
 
-        for op in ctx.circuit.flatten():
+        for op in ctx.circuit._gpsr_ops:
 
-            if isinstance(op, (Parametric, HamiltonianEvolution)) and op.is_parametric:
-                if values[op.param_name].requires_grad:  # type: ignore[index]
-                    factor = 1.0 if isinstance(op, Parametric) else 2.0
-                    if len(op.spectral_gap) > 1:
-                        update_gradient(
-                            op.param_name, op._param_uuid, factor * op.spectral_gap, 0.5  # type: ignore[arg-type]
+            if values[op.param_name].requires_grad:  # type: ignore[index]
+                factor = 1.0 if isinstance(op, Parametric) else 2.0
+                if len(op.spectral_gap) > 1:
+                    update_gradient(
+                        op.param_name, op._param_uuid, factor * op.spectral_gap, 0.5  # type: ignore[arg-type]
+                    )
+                else:
+                    shift_factor = 1.0
+                    # note the spectral gap can be empty
+                    # this is handled in single-gap PSR
+                    if isinstance(op, HamiltonianEvolution):
+                        shift_factor = (
+                            1.0 / (op.spectral_gap.item() * factor)
+                            if len(op.spectral_gap) == 1
+                            else 1.0
                         )
-                    else:
-                        shift_factor = 1.0
-                        # note the spectral gap can be empty
-                        # this is handled in single-gap PSR
-                        if isinstance(op, HamiltonianEvolution):
-                            shift_factor = (
-                                1.0 / (op.spectral_gap.item() * factor)
-                                if len(op.spectral_gap) == 1
-                                else 1.0
-                            )
-                        update_gradient(
-                            op.param_name,
-                            op._param_uuid,
-                            factor * op.spectral_gap,
-                            shift_factor,
-                        )
+                    update_gradient(
+                        op.param_name,
+                        op._param_uuid,
+                        factor * op.spectral_gap,
+                        shift_factor,
+                    )
 
         return (
             None,
@@ -351,7 +350,7 @@ def check_support_psr(circuit: QuantumCircuit):
     """
 
     param_names = list()
-    for op in circuit.flatten():
+    for op in circuit._flattened_ops:
         if isinstance(op, Scale):
             raise ValueError(
                 f"PSR is not applicable as circuit contains an operation of type: {type(op)}."

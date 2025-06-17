@@ -69,18 +69,15 @@ class AdjointExpectation(Function):
         ctx.out_state = circuit.run(state, values, embedding)
         ctx.projected_state = observable(ctx.out_state, values)
 
-        for op in ctx.circuit.flatten()[::-1]:
-            if op.is_parametric:
-                if (
-                    isinstance(op.param_name, ConcretizedCallable)
-                    and op.param_name not in ctx.param_names
-                ):
-                    torch.set_grad_enabled(True)
-                    values[op.param_name] = op.param_name.evaluate(  # type: ignore
-                        values
-                    ).requires_grad_()
-                    ctx.param_names.append(op.param_name)
-                torch.set_grad_enabled(False)
+        torch.set_grad_enabled(True)
+        for op in ctx.circuit._concretized_param_ops[::-1]:
+            if op.param_name not in ctx.param_names:
+
+                values[op.param_name] = op.param_name.evaluate(  # type: ignore
+                    values
+                ).requires_grad_()
+                ctx.param_names.append(op.param_name)
+        torch.set_grad_enabled(False)
 
         ctx.save_for_backward(*values.values())
         return inner_prod(ctx.out_state, ctx.projected_state).real
@@ -107,7 +104,7 @@ class AdjointExpectation(Function):
                 else:
                     grads_dict[arg_name] = grad
 
-        for op in ctx.circuit.flatten()[::-1]:
+        for op in ctx.circuit._flattened_ops[::-1]:
             if isinstance(op, (Primitive, Parametric, HamiltonianEvolution)):
 
                 ctx.out_state = apply_operator(
