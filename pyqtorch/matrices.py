@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 
 import torch
 from torch import Tensor
@@ -159,21 +160,26 @@ def controlled(
     n_control_qubits: int = 1,
     diagonal: bool = False,
 ) -> torch.Tensor:
+    target_dim = operation.shape[0]
+    n_target_qubits = int(round(math.log2(target_dim)))
+    total_qubits = n_control_qubits + n_target_qubits
+    total_dim = 2**total_qubits
+
     if diagonal:
         _controlled: torch.Tensor = (
             torch.ones(
-                2 ** (n_control_qubits + 1),
+                total_dim,
                 dtype=operation.dtype,
                 device=operation.device,
             )
             .unsqueeze(1)
             .repeat(1, batch_size)
         )
-        _controlled[2 ** (n_control_qubits + 1) - 2 :, :] = operation
+        _controlled[total_dim - target_dim :, :] = operation
     else:
         _controlled = (
             torch.eye(
-                2 ** (n_control_qubits + 1),
+                total_dim,
                 dtype=operation.dtype,
                 device=operation.device,
             )
@@ -181,7 +187,7 @@ def controlled(
             .repeat(1, 1, batch_size)
         )
         _controlled[
-            2 ** (n_control_qubits + 1) - 2 :, 2 ** (n_control_qubits + 1) - 2 :, :
+            total_dim - target_dim :, total_dim - target_dim :, :
         ] = operation
     return _controlled
 
