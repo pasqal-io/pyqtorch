@@ -169,6 +169,18 @@ def test_CSWAP_controlqubits0(initial_state: Tensor, expected_state: Tensor) -> 
     assert torch.allclose(cswap(initial_state, None), expected_state)
 
 
+
+def test_controlled_multi_qubit_operation() -> None:
+    swap_mat = torch.tensor(
+        [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]],
+        dtype=torch.complex128,
+    )
+    custom_cswap = pyq.primitives.ControlledPrimitive(swap_mat, control=0, target=(1, 2))
+    cswap = pyq.CSWAP(0, (1, 2))
+    for bs in ["000", "001", "010", "011", "100", "101", "110", "111"]:
+        st = product_state(bs)
+        assert torch.allclose(custom_cswap(st, None), cswap(st, None))
+
 @pytest.mark.parametrize(
     "initial_state,expected_state",
     [
